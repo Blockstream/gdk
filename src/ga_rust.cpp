@@ -544,11 +544,12 @@ namespace sdk {
 
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
-        auto currency = amount_json.value("fiat_currency", "USD");
+        auto pricing = get_settings()["pricing"];
+        auto currency = amount_json.value("fiat_currency", pricing.value("currency", "USD"));
         auto currency_query = nlohmann::json({ { "currencies", currency } });
         currency_query["price_url"] = m_net_params.get_price_url();
         currency_query["fallback_rate"] = amount_json.value("fiat_rate", "");
-        currency_query["exchange"] = get_settings()["pricing"]["exchange"];
+        currency_query["exchange"] = pricing["exchange"];
         std::string fetched_rate;
         try {
             auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
