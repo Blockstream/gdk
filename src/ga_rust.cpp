@@ -310,7 +310,14 @@ namespace sdk {
     { /* TODO: Implement when watch only is implemented */
     }
 
-    nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", nlohmann::json({}), m_session); }
+    nlohmann::json ga_rust::get_settings() const
+    {
+        try {
+            return rust_call("get_settings", nlohmann::json({}), m_session);
+        } catch (const std::exception& ex) {
+            return nlohmann::json({});
+        }
+    }
 
     nlohmann::json ga_rust::get_post_login_data()
     {
@@ -544,20 +551,27 @@ namespace sdk {
 
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
-        auto pricing = get_settings()["pricing"];
-        auto currency = amount_json.value("fiat_currency", pricing.value("currency", "USD"));
-        auto currency_query = nlohmann::json({ { "currencies", currency } });
-        currency_query["price_url"] = m_net_params.get_price_url();
-        currency_query["fallback_rate"] = amount_json.value("fiat_rate", "");
-        currency_query["exchange"] = pricing["exchange"];
-        std::string fetched_rate;
-        try {
-            auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
-            fetched_rate = xrates.value(currency, "");
-        } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::warning) << "cannot fetch exchange rate " << ex.what();
+        auto pricing = get_settings().value("pricing", nlohmann::json({ { "currency", "" }, { "exchange", "" } }));
+        std::string currency = amount_json.value("fiat_currency", pricing["currency"]);
+        std::string exchange = pricing["exchange"];
+
+        std::string fiat_rate;
+
+        if (!currency.empty() && !exchange.empty()) {
+            auto currency_query = nlohmann::json({ { "currencies", currency } });
+            currency_query["price_url"] = m_net_params.get_price_url();
+            currency_query["fallback_rate"] = amount_json.value("fiat_rate", "");
+            currency_query["exchange"] = exchange;
+
+            try {
+                auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
+                fiat_rate = xrates.value(currency, "");
+            } catch (const std::exception& ex) {
+                GDK_LOG_SEV(log_level::warning) << "cannot fetch exchange rate " << ex.what();
+            }
         }
-        return amount::convert(amount_json, currency, fetched_rate);
+
+        return amount::convert(amount_json, currency, fiat_rate);
     }
 
     amount ga_rust::get_min_fee_rate() const { return amount(m_net_params.is_liquid() ? 100 : 1000); }
