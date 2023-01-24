@@ -1267,13 +1267,13 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::get_settings()
+    nlohmann::json ga_session::get_settings() const
     {
         locker_t locker(m_mutex);
         return get_settings(locker);
     }
 
-    nlohmann::json ga_session::get_settings(session_impl::locker_t& locker)
+    nlohmann::json ga_session::get_settings(session_impl::locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1323,8 +1323,8 @@ namespace sdk {
     // For historic reasons certain settings have been put under appearance and the server
     // still expects to find them there, but logically they don't belong there at all so
     // a more consistent scheme is presented via the gdk
-    void ga_session::remap_appearance_settings(
-        session_impl::locker_t& locker, const nlohmann::json& src_json, nlohmann::json& dst_json, bool from_settings)
+    void ga_session::remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
+        nlohmann::json& dst_json, bool from_settings) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 

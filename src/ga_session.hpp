@@ -76,7 +76,7 @@ namespace sdk {
         nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);
         std::vector<std::string> get_enabled_twofactor_methods();
 
-        nlohmann::json get_settings();
+        nlohmann::json get_settings() const;
         nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);
 
@@ -208,7 +208,7 @@ namespace sdk {
         nlohmann::json get_spending_limits(locker_t& locker) const;
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
-        nlohmann::json get_settings(locker_t& locker);
+        nlohmann::json get_settings(locker_t& locker) const;
         bool unblind_utxo(locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,
             unique_pubkeys_and_scripts_t& missing);
         std::vector<unsigned char> get_alternate_blinding_nonce(
@@ -226,7 +226,7 @@ namespace sdk {
         void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
 
         void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
-            nlohmann::json& dst_json, bool from_settings);
+            nlohmann::json& dst_json, bool from_settings) const;
 
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,

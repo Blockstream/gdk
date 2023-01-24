@@ -198,7 +198,7 @@ namespace sdk {
     bool ga_lightning::is_watch_only() const { throw std::runtime_error("is_watch_only not implemented"); }
     void ga_lightning::ensure_full_session() { throw std::runtime_error("ensure_full_session not implemented"); }
 
-    nlohmann::json ga_lightning::get_settings() { throw std::runtime_error("get_settings not implemented"); }
+    nlohmann::json ga_lightning::get_settings() const { throw std::runtime_error("get_settings not implemented"); }
 
     nlohmann::json ga_lightning::get_post_login_data()
     {
