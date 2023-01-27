@@ -51,6 +51,7 @@ rust_sources = [
   'gdk_common/src/be/sighashtype.rs',
   'gdk_common/src/be/transaction.rs',
   'gdk_common/src/be/txid.rs',
+  'gdk_common/src/descriptor.rs',
   'gdk_common/src/error.rs',
   'gdk_common/src/exchange_rates.rs',
   'gdk_common/src/lib.rs',

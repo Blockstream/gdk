@@ -1,4 +1,5 @@
 pub mod be;
+pub mod descriptor;
 pub mod error;
 pub mod exchange_rates;
 pub mod mnemonic;
