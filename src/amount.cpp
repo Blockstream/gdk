@@ -6,7 +6,7 @@
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
-#include "include/wally_wrapper.h"
+#include "wally_wrapper.h"
 
 #include "amount.hpp"
 #include "assertion.hpp"

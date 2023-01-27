@@ -1,0 +1,26 @@
+@PACKAGE_INIT@
+
+
+set_and_check(GDK_LIB_DIR "@PACKAGE_LIB_CMAKE_INSTALL_DIR@")
+
+if("greenaddress" IN_LIST gdk_FIND_COMPONENTS)
+    include("${GDK_LIB_DIR}/cmake/greenaddress-targets.cmake")
+    foreach(_target IN LISTS _IMPORT_CHECK_FILES_FOR_gdk::greenaddress)
+        if(NOT EXIST ${_target})
+            message(FATAL_ERROR "missing library ${_target}, please ``cmake install --component gdk-runtime")
+        endif()
+    endforeach()
+    set(gdk_greenaddress_FOUND TRUE)
+endif()
+
+if("greenaddress-full" IN_LIST gdk_FIND_COMPONENTS)
+    include("${GDK_LIB_DIR}/cmake/greenaddress-full-targets.cmake")
+    foreach(_target IN LISTS _IMPORT_CHECK_FILES_FOR_gdk::greenaddress-full)
+        if(NOT EXIST ${_target})
+            message(FATAL_ERROR "missing library ${_target}, please ``cmake install --component gdk-dev")
+        endif()
+    endforeach()
+    set(gdk_greenaddress-full_FOUND TRUE)
+endif()
+set(gdk_COMPONENT_FOUND TRUE)
+check_required_components(gdk)

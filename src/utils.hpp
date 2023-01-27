@@ -7,7 +7,7 @@
 
 #include "containers.hpp"
 #include "ga_wally.hpp"
-#include "include/gdk.h"
+#include "gdk.h"
 #include "logging.hpp"
 #include "threading.hpp"
 

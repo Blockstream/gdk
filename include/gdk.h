@@ -6,20 +6,10 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include "gdk_export.h"
+
 #ifdef __cplusplus
 extern "C" {
-#endif
-
-#if defined(_WIN32)
-#ifdef GDK_BUILD
-#define GDK_API __declspec(dllexport)
-#else
-#define GDK_API
-#endif
-#elif defined(__GNUC__) && defined(GDK_BUILD)
-#define GDK_API __attribute__((visibility("default")))
-#else
-#define GDK_API
 #endif
 
 /** Error codes for API calls */

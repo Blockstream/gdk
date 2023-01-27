@@ -27,3 +27,4 @@ incremental = false
 debug = true
 debug-assertions = true
 panic = 'abort'
+lto = true

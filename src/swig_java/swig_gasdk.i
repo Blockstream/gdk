@@ -1,7 +1,7 @@
 %module GDK
 %{
-#include "../../include/gdk.h"
-#include "../../include/greenlight.h"
+#include "gdk.h"
+#include "greenlight.h"
 #include <limits.h>
 
 /* Make local functions visible to the O/S for better JVM stack traces */
@@ -580,4 +580,4 @@ GA_destroy_string
 GA_subscribe_to_topic_as_json
 */
 
-%include "../include/gdk.h"
+%include "gdk.h"

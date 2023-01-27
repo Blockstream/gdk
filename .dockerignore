@@ -11,3 +11,4 @@
 !./tools/fedora37_deps.sh
 !./tools/env.sh
 !./tools/requirements.txt
+!./cmake/profiles/

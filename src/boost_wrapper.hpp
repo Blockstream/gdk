@@ -4,23 +4,8 @@
 
 #if __clang__
 #pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wnon-virtual-dtor"
-#pragma clang diagnostic ignored "-Wtautological-constant-out-of-range-compare"
-#pragma clang diagnostic ignored "-Wunused-parameter"
-#pragma clang diagnostic ignored "-Wnull-pointer-subtraction"
-#pragma clang diagnostic ignored "-Wdeprecated-copy"
 #else
 #pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#pragma GCC diagnostic ignored "-Wnon-virtual-dtor"
-#pragma GCC diagnostic ignored "-Wparentheses"
-#pragma GCC diagnostic ignored "-Wsign-compare"
-#if __GNUC__ >= 9
-#pragma GCC diagnostic ignored "-Wdeprecated-copy"
-#endif
-#if __FreeBSD__
-#pragma GCC diagnostic ignored "-Warray-bounds"
-#endif
 #endif
 
 #if __clang_major__ >= 7

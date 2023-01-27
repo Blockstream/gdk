@@ -5,7 +5,7 @@
 #include <memory>
 #include <nlohmann/json.hpp>
 
-#include "include/gdk.h"
+#include "gdk.h"
 
 #include "boost_wrapper.hpp"
 #include "ga_wally.hpp"

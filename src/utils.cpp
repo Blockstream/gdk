@@ -18,11 +18,11 @@
 
 #include "boost_wrapper.hpp"
 
-#include "../subprojects/gdk_rust/gdk_rust.h"
 #include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
+#include "gdk_rust.h"
 #include "gsl_wrapper.hpp"
 #include "memory.hpp"
 #include "signer.hpp"

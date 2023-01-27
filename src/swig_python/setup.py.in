@@ -1,0 +1,17 @@
+"""setuptools config for gdk """
+
+from setuptools import Extension, setup
+
+
+setup(
+    ext_modules=[Extension(
+        name="greenaddress._greenaddress",
+        sources=["swig_gasdk.i"],
+        include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
+        swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API"],
+        extra_objects=["${CMAKE_BINARY_DIR}/libgreenaddress_full.a", "${Python_LIBRARIES}"],
+        extra_link_args=["-shared"],
+        language="c++",
+    )],
+)
+

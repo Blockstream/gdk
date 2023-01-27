@@ -1,40 +1,47 @@
 #!/usr/bin/env bash
 set -e
 
-sed_exe=$1
 
-result="$3/com/blockstream/libgreenaddress/GDK.java"
+sed_exe=$1; shift
+swig_exe=$1; shift
+javac_exe=$1; shift
+jar_exe=$1; shift
+swig_c_file=$1; shift
+dest_dir=$1; shift
+swig_input=$1; shift
+swig_extra_input=$1; shift
+gdk_include=$1; shift
+wallycore_jar=$1; shift
+java_target_version=$1
 
+result="${dest_dir}/com/blockstream/libgreenaddress/GDK.java"
 mkdir -p `dirname $result`
 
-swig -java -noproxy -package com.blockstream.libgreenaddress -o $2 -outdir $3 $4
-
-$sed_exe -i 's/GDKJNI/GDK/g' $2
+${swig_exe} -java -noproxy -package com.blockstream.libgreenaddress -I${gdk_include} -DGDK_API -o ${swig_c_file} -outdir ${dest_dir} ${swig_input}
+${sed_exe} -i 's/GDKJNI/GDK/g' ${swig_c_file}
 
 # Merge the constants and JNI interface into GDK.java
-grep -v '^}$' $3/GDKJNI.java | $sed_exe 's/GDKJNI/GDK/g' >$result
-grep 'public final static' $3/GDKConstants.java >>$result
-cat $5 >>$result
+grep -v '^}$' ${dest_dir}/GDKJNI.java | ${sed_exe} 's/GDKJNI/GDK/g' >$result
+grep 'public final static' ${dest_dir}/GDKConstants.java >>$result
+cat ${swig_extra_input} >>$result
 echo '}' >>$result
 
-JAVAC_SOURCE=$7
-JAVAC_TARGET=$7
-JAVAC_ARGS="-implicit:none -source $JAVAC_SOURCE -target $JAVAC_TARGET -sourcepath $3/com/blockstream/libgreenaddress/ $3/com/blockstream/libgreenaddress/GDK.java"
+##### GDK.jar not needed any more
+#
 
-$JAVA_HOME/bin/javac $JAVAC_ARGS
+# JAVAC_SOURCE=${java_target_version}
+# JAVAC_TARGET=${java_target_version}
+# JAVAC_ARGS="-implicit:none -source ${java_target_version} -target ${java_target_version} -sourcepath ${dest_dir}/com/blockstream/libgreenaddress/ ${dest_dir}/com/blockstream/libgreenaddress/GDK.java"
+# ${javac_exe} $JAVAC_ARGS
 
-tmp_wally_java_dir=`mktemp -d`
-pushd . > /dev/null
-cd $tmp_wally_java_dir
-$JAVA_HOME/bin/jar xf $6
-popd > /dev/null
+# tmp_wally_java_dir=`mktemp -d`
+# pushd . > /dev/null
+# cd $tmp_wally_java_dir
+# ${jar_exe} xf ${wallycore_jar}
+# popd > /dev/null
 
-$JAVA_HOME/bin/jar cf $3/GDK.jar -C $3 'com/blockstream/libgreenaddress/GDK$Obj.class' \
-  -C $3 'com/blockstream/libgreenaddress/GDK$NotificationHandler.class' \
-  -C $3 'com/blockstream/libgreenaddress/GDK$JSONConverter.class' \
-  -C $3 'com/blockstream/libgreenaddress/GDK.class' \
-  -C $tmp_wally_java_dir .
-
-# Clean up
-rm -f $3/*.java
-rm -rf $tmp_wally_java_dir
+# ${jar_exe} cf ${dest_dir}/GDK.jar -C ${dest_dir} 'com/blockstream/libgreenaddress/GDK$Obj.class' \
+#   -C ${dest_dir} 'com/blockstream/libgreenaddress/GDK$NotificationHandler.class' \
+#   -C ${dest_dir} 'com/blockstream/libgreenaddress/GDK$JSONConverter.class' \
+#   -C ${dest_dir} 'com/blockstream/libgreenaddress/GDK.class' \
+#   -C $tmp_wally_java_dir .

@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "gsl_wrapper.hpp"
-#include "include/wally_wrapper.h"
+#include "wally_wrapper.h"
 
 #include "assertion.hpp"
 

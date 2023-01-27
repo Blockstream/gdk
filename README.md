@@ -1,76 +1,91 @@
+[![pipeline status](https://gl.blockstream.io/blockstream/green/gdk/badges/main/pipeline.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/commits/main)
+[![coverage report](https://gl.blockstream.io/blockstream/green/gdk/badges/main/coverage.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/commits/main)
+[![Latest Release](https://gl.blockstream.io/blockstream/green/gdk/-/badges/release.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/releases)
+
+
 # Green C/C++ SDK
 
 GDK is a cross-platform, cross-language library for Blockstream Green wallets.
 
 Read the API documentation at https://gdk.readthedocs.io/en/latest/
 
-## Meson/Ninja build:
+## building from source
+### installing required software
+#### Android ndk
+If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
+`export ANDROID_NDK=$HOME/Downloads/ndk`
+or you can add it to your bash profile `~/.bash_profile`
 
-### Build dependencies:
+#### rust
+  1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
+  2. Install default rust toolchain: `rustup install 1.64.0`
+
+  3. Install additional rust targets for cross-building: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios x86_64-apple-ios`
+
+### platform-specific dependencies
 For Debian Bullseye:
-
 ```
 sudo ./tools/bullseye_deps.sh
 ```
 
+
 For Mac OSX:
 
 Install Xcode and brew if not installed, then
-
 ```
 brew update && brew install ninja automake autoconf libtool gnu-sed python3 pkg-config swig (optional) gnu-getopt gnu-tar
 pip3 install --user meson
 xcode-select --install
 ```
-
-Install rust dependencies:
-
-  1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
-
-  2. Install default rust toolchain: `rustup install 1.64.0`
-
-  3. Install additional rust targets: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios
-x86_64-apple-ios`
-
 You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.X/bin`
 
-If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
-
-`export ANDROID_NDK=$HOME/Downloads/ndk`
-
-or you can add it to your bash profile `~/.bash_profile`
-
-Java bindings can be built by installing swig as explained above and setting JAVA_HOME to the location of the JDK.
-
-### To build:
-
-`tools/build.sh <options>`
-
-Options exist to build for a particular configuration/platform (flags in squared brackets are optional):
-
+## cmake build:
+#### building dependencies
+Using the tool in ``tools`` you can build in one go all the required dependencies for gdk
+```bash
+$ ./tools/builddeps.sh <options> --prefix <absolute-destination-path>
 ```
---clang
---gcc
---ndk [armeabi-v7a arm64-v8a x86 x86_64]
---iphone [static]
+``<options>`` are:
+- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms. Android build supports following ``<arch>``s
+    - ``armeabi-v7a``
+    - ``arm64-v8a``
+    - ``x86``
+    - ``x86_64``
+- ``--buildtype debug``: in case gdk must be built in debug mode
+for example:
+```bash
+$ ./tools/builddeps.sh --clang --prefix $HOME/prebuilt/clang
 ```
+downloads, builds and installs all dependencies using clang compiler under ``$HOME/prebuild/clang`` folder
 
+### building gdk
+A script located in tools is enough to cover most common build use cases
+```bash 
+$ tools/build.sh <options>
+```
+``<options>`` are:
+- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms
+- ``--enable-tests``: builds test that can be easily launched using ``ctest`` (if your cmake is <= 3.20 you need to ``cd`` into the build directory, otherwise just use ``--test-dir``)
+- ``--python-version <version>``: builds python-wheels. ``<version>`` can be something as simple as ``3``, you let cmake pick the 3.X version present in your system for you
+- ``--parallel <jobs>``: set the number of paralle process that the build-system can spawn, default to CPU count.
+- ``--external-deps-dir <path>`` the folder specificied under ``--prefix`` option when running ``tools/buildddeps.sh``
+- ``--install <path>``: have the script invoke ``cmake --install`` and install all\* artifacts produced into ``<path>``
 for example
-
-`tools/build.sh --gcc`
+```bash
+tools/build.sh --clang --external-deps-dir $HOME/prefix/clang
+```
 
 Build output is placed in `build-<target>`, e.g. `build-clang`, `build-gcc` sub-directories.
 
-You can quickly run a single targets build from the `build-<target>` sub-directory using:
 
-`ninja`
+\* Cmake introduces the concept of ``COMPONENT``s .GDK install is now split into two components: ``gdk-runtime`` includes only the dynamic library (with symbol files) and the python-wheel (if built and available); ``gdk-dev`` includes static library libgreenaddress-full.a, header files and all the header files for languages bindings like java and swift. CI as well as ``tools/build.sh --install <path>`` will always install everything.
 
 ### To clean:
 
 `tools/clean.sh`
 
-### Docker based deps & build
+### Docker based deps & build (apple platforms excluded)
 
 This doesn't require any of the previous steps but requires docker installed; it will build the project
 
@@ -80,22 +95,12 @@ docker run -v $PWD:/root/gdk -it greenaddress_sdk
 ```
 
 This will open a bash shell into the container, where you can then launch builds for any platform.
+The docker container provided by GreenAddress comes with dependencies already built under the ``/prebuid`` folder
 
 ```bash
-root@bab682a071e6:~/gdk# ./tools/build.sh --gcc
-root@bab682a071e6:~/gdk# ./tools/build.sh --clang
-root@bab682a071e6:~/gdk# ./tools/build.sh --iphonesim
-...
+root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebuid/gcc
+root@bab682a071e6:~/gdk# ./tools/build.sh --clang --external-deps-dir /prebuid/clang
 ```
-and if you want to leverage prebuilt dependencies stored in /prebld folder (no pre-built dependencies available for macOS)
-```bash
-root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebld/gcc
-root@bab682a071e6:~/gdk# ./tools/build.sh --clang --external-deps-dir /prebld/clang
-```
-
-
-
-### Extra build options
 
 #### Debug builds
 
@@ -109,57 +114,6 @@ or
 
 for a debug optimized build.
 
-#### Clang Analyzer
-
-To build using clang-analyzer use
-
-`tools/build.sh --analyze --clang`
-
-#### Clang tidy
-
-The clang-tidy targets are enabled if found in the PATH. Extra options exist to specify version of it,
-
-`tools/build.sh --clang-tidy-version=7 --clang`
-
-then use as follows
-
-`ninja src/clang-tidy`
-
-#### Sanitizers
-
-A sanitizer build can be invoked using
-
-`tools/build.sh --sanitizer=<type> --gcc`
-
-where `<type>` is any available sanitizer of your choice and available on the toolchain being used.
-
-#### Compiler versions
-
-A different compiler version can be specified as
-
-`tools/build.sh --compiler-version=<version>`
-
-which allows for multiple side by side installs of compilers in common linux distributions.
-
-### Build examples
-
-Use clang-5.0, enable clang-tidy and debug build
-
-`./tools/build.sh --compiler-version=5.0 --buildtype=debug --clang-tidy-version=5.0 --clang`
-
-Use address sanitizer with gcc-7, enable clang-tidy and debug build
-
-`./tools/build.sh --compiler-version=7 --buildtype=debug --sanitizer=address --clang-tidy-version=5.0 --gcc`
-
-Use clang-analyzer (it'll analyze GDK and its direct dependencies)
-
-`./tools/build.sh --analyze --clang`
-
-### Upgrading dependencies
-
-Use `tools/upgrade_deps.sh`, for example to upgrade wally
-
-`./tools/upgrade_deps.sh -l libwally-core -s 987575025520d18bac31e6e2d27c8c936d812c64 -u https://github.com/ElementsProject/libwally-core/archive/987575025520d18bac31e6e2d27c8c936d812c64.tar.gz`
 
 ### Java and Python wrappers
 

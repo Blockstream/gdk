@@ -52,6 +52,7 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
+    env | sort
     ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=${HOST_OS} \
                 --disable-swig-java --disable-swig-python ${CONFIGURE_ARGS}
 

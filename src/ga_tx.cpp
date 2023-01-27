@@ -1351,7 +1351,7 @@ namespace sdk {
 
         nlohmann::json result(details);
         size_t j = 0;
-        for (size_t i = 0; i < num_outputs; ++i) {
+        for (i = 0; i < num_outputs; ++i) {
             if (!output_contributes_to_last_vbf(transaction_outputs.at(i))) {
                 continue;
             }
@@ -1391,9 +1391,9 @@ namespace sdk {
         for (const auto& utxo : details["used_utxos"]) {
             const auto asset_id = h2b_rev(utxo["asset_id"]);
             input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
-            const auto abf = h2b_rev(utxo["assetblinder"]);
-            input_abfs.insert(input_abfs.end(), std::begin(abf), std::end(abf));
-            const auto asset_generator = asset_generator_from_bytes(asset_id, abf);
+            const auto utxo_abf = h2b_rev(utxo["assetblinder"]);
+            input_abfs.insert(input_abfs.end(), std::begin(utxo_abf), std::end(utxo_abf));
+            const auto asset_generator = asset_generator_from_bytes(asset_id, utxo_abf);
             input_ags.insert(input_ags.end(), std::begin(asset_generator), std::end(asset_generator));
         }
 

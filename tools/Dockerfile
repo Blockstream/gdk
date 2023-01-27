@@ -2,6 +2,7 @@ FROM debian:bullseye@sha256:45ee40a844048c2f6d0105899c1a17733530b56d481612608aab
 WORKDIR /root
 COPY ./tools/bullseye_deps.sh ./tools/bullseye_deps.sh
 COPY ./tools/requirements.txt /requirements.txt
+COPY ./cmake/profiles/ ./cmake/profiles/
 RUN ./tools/bullseye_deps.sh
 
 ENV ANDROID_NDK=/root/android-ndk-r23b
@@ -62,19 +63,19 @@ COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bi
 COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
 COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
 
-COPY --from=builderarmv7a /prebuild/armv7a /prebld/armv7a
-COPY --from=builderarmv8a /prebuild/armv8a /prebld/armv8a
-COPY --from=builderx86 /prebuild/x86 /prebld/x86
-COPY --from=builderx86_64 /prebuild/x86_64 /prebld/x86_64
+COPY --from=builderarmv7a /prebuild/armv7a /prebuild/armv7a
+COPY --from=builderarmv8a /prebuild/armv8a /prebuild/armv8a
+COPY --from=builderx86 /prebuild/x86 /prebuild/x86
+COPY --from=builderx86_64 /prebuild/x86_64 /prebuild/x86_64
 
-COPY --from=buildergcc /prebuild/gcc /prebld/gcc
-COPY --from=buildergcc-debug /prebuild/gcc-debug /prebld/gcc-debug
-COPY --from=builderclang /prebuild/clang /prebld/clang
-COPY --from=builderclang-debug /prebuild/clang-debug /prebld/clang-debug
+COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
+COPY --from=buildergcc-debug /prebuild/gcc-debug /prebuild/gcc-debug
+COPY --from=builderclang /prebuild/clang /prebuild/clang
+COPY --from=builderclang-debug /prebuild/clang-debug /prebuild/clang-debug
 
-COPY --from=buildermingw /prebuild/mingw-w64 /prebld/mingw-w64
+COPY --from=buildermingw /prebuild/mingw-w64 /prebuild/mingw-w64
 
-ENV OPENSSL_DIR=/prebld/gcc/openssl/build
+ENV OPENSSL_DIR=/prebuild/gcc/openssl/build
 ENV OPENSSL_STATIC=True
 ENV ELECTRS_EXEC=/root/bin/electrs_bitcoin
 ENV ELECTRS_LIQUID_EXEC=/root/bin/electrs_liquid

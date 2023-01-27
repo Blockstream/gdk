@@ -8,7 +8,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include "include/gdk.h"
+#include "gdk.h"
 
 namespace ga {
 namespace sdk {

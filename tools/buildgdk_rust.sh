@@ -1,118 +1,84 @@
 #! /usr/bin/env bash
 set -e
 
-BUILDTYPE="$1"
-shift
-
-OUTPUT="$1"
-shift
-
-SOURCE_ROOT="$1"
-shift
-
-BUILD_ROOT="$1"
-shift
-
-OBJCOPY="$1"
-shift
-
-RUSTSRC="$SOURCE_ROOT/subprojects"
-RUSTDST="$BUILD_ROOT/subprojects"
-
-if [ $(command -v rsync) ]; then
-    # reminder that ending slash is required for rsyncing folders ;)
-    rsync -a "$RUSTSRC/gdk_rust/" "$RUSTDST/gdk_rust/"
-else
-    cp -r "$RUSTSRC/gdk_rust" "$RUSTDST"
-fi
-
+BUILDTYPE="$1"; shift
+TRIPLE="$1"; shift
+ANDROID_TOOLCHAIN_ROOT=$1; shift
+ARCHIVER=$1; shift
+OPENSSL_DIR="$1"; shift
+SOURCE_DIR="$1"; shift
+OUTPUT_DIR="$1"; shift
+ARTIFACT="$1"; shift
+export MACOSX_DEPLOYMENT_TARGET=$1; shift
 
 export CC_i686_linux_android=i686-linux-android19-clang
+export CARGO_TARGET_I686_LINUX_ANDROID_LINKER=${CC_i686_linux_android}
 export CC_x86_64_linux_android=x86_64-linux-android21-clang
+export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=${CC_x86_64_linux_android}
 export CC_armv7_linux_androideabi=armv7a-linux-androideabi19-clang
+export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=${CC_armv7_linux_androideabi}
 export CC_aarch64_linux_android=aarch64-linux-android21-clang
+export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${CC_aarch64_linux_android}
+export AR=${ARCHIVER}
 
-OUT_LIB_FILE="libgdk_rust.a"
-CARGO_ARGS=()
-
-cd "$BUILD_ROOT/subprojects/gdk_rust"
 
 if [ "$(uname)" = "Darwin" ]; then
     export CARGO_PROFILE_DEV_LTO=true
-fi
-
-if [ \( "$1" = "--ndk" \) ]; then
-
-    # https://github.com/rust-windowing/android-ndk-rs/issues/149
-    export RUSTFLAGS="-L$BUILD_ROOT/subprojects/gdk_rust/libgcc/"
-
-    if [ "$(uname)" = "Darwin" ]; then
-        export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin
-        export AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/darwin-x86_64/bin/llvm-ar
-    else
-        export PATH=${PATH}:${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin
-        export AR=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
-        export OBJCOPY=${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-objcopy
-    fi
-    if [ "$HOST_ARCH" = "armeabi-v7a" ]; then
-        RUSTTARGET=armv7-linux-androideabi
-    elif [ "$HOST_ARCH" = "arm64-v8a" ]; then
-        RUSTTARGET=aarch64-linux-android
-    elif [ "$HOST_ARCH" = "x86" ]; then
-        RUSTTARGET=i686-linux-android
-    elif [ "$HOST_ARCH" = "x86_64" ]; then
-        RUSTTARGET=x86_64-linux-android
-    else
-        echo "Unkown android platform"
-        exit -1
-    fi
-elif [ \( "$1" = "--windows" \) ]; then
-    RUSTTARGET=x86_64-pc-windows-gnu
-elif [ \( "$1" = "--iphone" \) ]; then
-    RUSTTARGET=aarch64-apple-ios
-    LD_ARCH="-arch arm64 -platform_version ios 11.0 11.0"
-elif [ \( "$1" = "--iphonesim" \) ]; then
-    RUSTTARGET=x86_64-apple-ios
-    LD_ARCH="-arch x86_64 -platform_version ios-simulator 11.0 11.0"
-elif [ "$(uname)" = "Darwin" ]; then
     SDK_CPU=$(uname -m)
-    RUSTTARGET=$HOST_OS
-    LD_ARCH="-arch $SDK_CPU -platform_version macos 10.13 10.13"
-else
-    LD_ARCH="-platform_version macos 10.13 10.13"
+    export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
+    LD_ARCH="-arch ${SDK_CPU}"
 fi
 
-if [ "$BUILDTYPE" == "release" ]; then
+ARTIFACT_PATH_HINT=${OUTPUT_DIR}
+CARGO_ARGS=()
+CARGO_ARGS+=("--manifest-path=${SOURCE_DIR}/Cargo.toml")
+CARGO_ARGS+=("--target-dir=${OUTPUT_DIR}")
+
+if [ "$BUILDTYPE" == "Release" ]; then
     CARGO_ARGS+=("--release")
-fi
-
-if [ -n "$RUSTTARGET" ]; then
-    CARGO_ARGS+=("--target=$RUSTTARGET")
-fi
-
-if [ -n "${NUM_JOBS}" ]; then
-    CARGO_ARGS+=("--jobs")
-    CARGO_ARGS+=(${NUM_JOBS})
-fi
-
-printf "cargo args: ${CARGO_ARGS[*]}\n"
-OPENSSL_DIR=${BUILD_ROOT}/external_deps/openssl/build OPENSSL_STATIC=1 \
-  cargo build "${CARGO_ARGS[@]}"
-
-if [ -z "$RUSTTARGET" ]; then
-    cp "target/${BUILDTYPE}/${OUT_LIB_FILE}" "${BUILD_ROOT}/$OUTPUT"
+    ARTIFACT_PATH_HINT=${OUTPUT_DIR}"/release"
 else
-    mkdir -p "target/${BUILDTYPE}"
-    cp "target/${RUSTTARGET}/$BUILDTYPE/${OUT_LIB_FILE}" "${BUILD_ROOT}/$OUTPUT"
+    ARTIFACT_PATH_HINT=${OUTPUT_DIR}"/debug"
 fi
 
-APPLE_KEEP="${SOURCE_ROOT}/subprojects/gdk_rust/apple-exported-symbols"
-KEEP="${SOURCE_ROOT}/subprojects/gdk_rust/exported-symbols"
-WEAKEN="${SOURCE_ROOT}/subprojects/gdk_rust/weaken-symbols"
+if [ -n "$TRIPLE" ]; then
+    CARGO_ARGS+=("--target=$TRIPLE")
+    ARTIFACT_PATH_HINT=${OUTPUT_DIR}/${TRIPLE}
+fi
 
-if [ -z "${OBJCOPY}" ]; then
-    # on Darwin we use ld to hide all the unnecessary symbols (mostly secp256k1 stuff)
-    ld ${LD_ARCH} -o "${BUILD_ROOT}/$OUTPUT" -r -exported_symbols_list "$APPLE_KEEP" "${BUILD_ROOT}/$OUTPUT"
+if [[ ${TRIPLE} == *"android"* ]];then
+    export PATH=${PATH}:${ANDROID_TOOLCHAIN_ROOT}/bin
+    export RUSTFLAGS="-L${SOURCE_DIR}/libgcc"
+elif [[ ${TRIPLE} == "aarch64-apple-ios" ]]; then
+    LD_ARCH="-arch arm64 -platform_version ios ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
+elif [[ ${TRIPLE} == "x86_64-apple-ios" ]]; then
+    LD_ARCH="-arch x86_64 -platform_version ios-simulator ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
+fi
+
+# behaving correctly when no-op
+oldT=$(date +%s)
+
+export OPENSSL_DIR=$OPENSSL_DIR 
+export OPENSSL_STATIC=1
+# echo "cargo args: ${CARGO_ARGS[*]}"
+cargo build "${CARGO_ARGS[@]}"
+ARTIFACT_FULL_PATH=$(find ${ARTIFACT_PATH_HINT} -name ${ARTIFACT})
+
+
+# skipping the remaining part if build has been a no-op
+statFmt="-c %Y"
+if [ "$(uname)" = "Darwin" ]; then
+    statFmt="-f %m"
+fi
+newT=$(stat ${statFmt} ${ARTIFACT_FULL_PATH})
+if [[ $newT -lt $oldT ]] && [[ -f "${OUTPUT_DIR}/${ARTIFACT}" ]] ; then
+    exit 0
+fi
+
+if [ "$(uname)" = "Darwin" ]; then
+    echo "stripping away unwanted symbols"
+    APPLE_KEEP="${SOURCE_DIR}/apple-exported-symbols"
+    ld ${LD_ARCH} -o ${OUTPUT_DIR}/${ARTIFACT} -r -exported_symbols_list "${APPLE_KEEP}" ${ARTIFACT_FULL_PATH}
 else
-    $OBJCOPY --strip-unneeded --keep-symbols="$KEEP" --weaken-symbols="$WEAKEN" "${BUILD_ROOT}/$OUTPUT"
+    cp ${ARTIFACT_FULL_PATH} ${OUTPUT_DIR}
 fi

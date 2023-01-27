@@ -325,10 +325,10 @@ namespace sdk {
         if (!proxy.empty()) {
             m_proxy = proxy;
         }
-        const auto current_state = m_state.load();
-        GDK_RUNTIME_ASSERT(current_state != state_t::exited);
+        const auto initial_state = m_state.load();
+        GDK_RUNTIME_ASSERT(initial_state != state_t::exited);
         m_desired_state = new_state;
-        const bool is_noop = new_state == current_state;
+        const bool is_noop = new_state == initial_state;
         locker.unlock();
         m_condition.notify_all();
 
@@ -597,7 +597,7 @@ namespace sdk {
         {
             // TODO: Set m_last_ping_ts whenever we receive a subscription
             unique_unlock unlocker(locker);
-            const auto options = autobahn::wamp_subscribe_options("exact");
+            const autobahn::wamp_subscribe_options options("exact");
             sub = s->subscribe(
                        topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options)
                       .get();

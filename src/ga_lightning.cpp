@@ -6,7 +6,7 @@
 // ??
 #endif
 
-#include "../subprojects/gdk_rust/gdk_rust.h"
+#include "gdk_rust.h"
 
 #include "exception.hpp"
 #include "ga_lightning.hpp"

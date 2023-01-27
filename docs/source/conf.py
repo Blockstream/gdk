@@ -95,10 +95,14 @@ author = u'Blockstream Corporation'
 #
 # The short X.Y version.
 
-with open('../../meson.build', 'r') as meson_file:
-    raw_meson = meson_file.readline()
-label = " version: "
-version = [e for e in raw_meson.split(",") if label in e][0][(len(label)+1):-1]
+import re
+version_re = "project\(gdk VERSION (.*) LANGUAGES"
+with open('../../CMakeLists.txt', 'r') as cmake_file:
+    for line in cmake_file:
+        matched = re.match(version_re, line)
+        if matched is not None:
+            version = matched.group(1)
+            break
 
 # The full version, including alpha/beta/rc tags.
 release = version

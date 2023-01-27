@@ -2,7 +2,7 @@
 #define GDK_GA_TX_HPP
 #pragma once
 
-#include <ga_wally.hpp>
+#include "ga_wally.hpp"
 #include <nlohmann/json.hpp>
 
 namespace ga {
