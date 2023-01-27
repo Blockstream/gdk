@@ -110,7 +110,9 @@ if [ ${BUILD} == "--gcc" ]; then
 elif [ ${BUILD} == "--clang" ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
-    source tools/macos_env.sh
+    if [ "$(uname)" = "Darwin" ]; then
+        source tools/macos_env.sh
+    fi
 elif [ ${BUILD} == "--ndk" ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
