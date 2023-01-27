@@ -135,7 +135,7 @@ impl Account {
         self.script_type
     }
 
-    fn descriptor(&self, is_internal: bool) -> String {
+    fn descriptor(&self, is_internal: bool) -> Result<String, Error> {
         let internal_idx = if is_internal {
             1
         } else {
@@ -146,9 +146,15 @@ impl Account {
             ScriptType::P2wpkh => ("wpkh", ""),
             ScriptType::P2pkh => ("pkh", ""),
         };
-        // TODO: add key origin identification
-        // TODO: add checksum
-        format!("{}({}/{}/*){}", prefix, self.xpub, internal_idx, suffix)
+        let (_, path) = get_account_derivation(self.account_num, self.network.id())?;
+        let path = &path.to_string()[2..];
+        // TODO: set parent fingerprint correctly
+        let parent_fingerprint = "00000000";
+        let key_origin = format!("[{}/{}]", parent_fingerprint, path);
+        let desc = format!("{}({}{}/{}/*){}", prefix, key_origin, self.xpub, internal_idx, suffix);
+        let (desc, _) =
+            gdk_common::miniscript::descriptor::Descriptor::parse_descriptor(&crate::EC, &desc)?;
+        Ok(desc.to_string())
     }
 
     fn slip132_extended_pubkey(&self) -> Option<String> {
@@ -183,7 +189,7 @@ impl Account {
             receiving_id: "".to_string(),
             bip44_discovered: self.has_transactions()?,
             user_path: self.path.clone().into(),
-            core_descriptors: vec![self.descriptor(false), self.descriptor(true)],
+            core_descriptors: vec![self.descriptor(false)?, self.descriptor(true)?],
             slip132_extended_pubkey: self.slip132_extended_pubkey(),
         })
     }
