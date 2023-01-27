@@ -134,8 +134,8 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
-        throw std::runtime_error("login_wo not implemented");
-        __builtin_unreachable();
+        set_signer(signer);
+        return rust_call("login_wo", signer->get_credentials(), m_session);
     }
     bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
     {
