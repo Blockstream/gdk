@@ -30,6 +30,7 @@ use gdk_common::model::{
     UpdateAccountOpt, UtxoStrategy,
 };
 use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::slip132::slip132_version;
 use gdk_common::util::{now, weight_to_vsize};
 use gdk_common::wally::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
@@ -155,15 +156,8 @@ impl Account {
             None
         } else {
             let mut xpub_bytes = self.xpub.encode();
-            let slip132_version = match (self.network.mainnet, self.script_type) {
-                (true, ScriptType::P2pkh) => [0x04, 0x88, 0xb2, 0x1e], // xpub
-                (true, ScriptType::P2shP2wpkh) => [0x04, 0x9d, 0x7c, 0xb2], // ypub
-                (true, ScriptType::P2wpkh) => [0x04, 0xb2, 0x47, 0x46], // zpub
-                (false, ScriptType::P2pkh) => [0x04, 0x35, 0x87, 0xcf], // tpub
-                (false, ScriptType::P2shP2wpkh) => [0x04, 0x4a, 0x52, 0x62], // upub
-                (false, ScriptType::P2wpkh) => [0x04, 0x5f, 0x1c, 0xf6], // vpub
-            };
-            xpub_bytes[0..4].copy_from_slice(&slip132_version[0..4]);
+            xpub_bytes[0..4]
+                .copy_from_slice(&slip132_version(self.network.mainnet, self.script_type));
             Some(bitcoin::util::base58::check_encode_slice(&xpub_bytes))
         }
     }
