@@ -29,6 +29,17 @@ impl fmt::Display for ScriptType {
     }
 }
 
+impl ScriptType {
+    /// An integer associated to the scipt/account type to compute the GDK pointer (account_num)
+    pub fn num(&self) -> u32 {
+        match self {
+            Self::P2shP2wpkh => 0,
+            Self::P2wpkh => 1,
+            Self::P2pkh => 2,
+        }
+    }
+}
+
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
 
