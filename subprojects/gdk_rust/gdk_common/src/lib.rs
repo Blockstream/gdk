@@ -21,6 +21,7 @@ pub use bitcoin;
 pub use elements;
 pub use error::*;
 pub use log;
+pub use miniscript;
 pub use network::*;
 pub use rand;
 pub use state::State;

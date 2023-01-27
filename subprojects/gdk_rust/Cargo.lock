@@ -622,6 +622,7 @@ dependencies = [
  "elements",
  "libc",
  "log",
+ "miniscript",
  "rand",
  "serde",
  "serde_cbor",
@@ -1029,6 +1030,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aa361d4faea93603064a027415f07bd8e1d5c88c9fbf68bf56a285428fd79ce"
 dependencies = [
  "autocfg",
+]
+
+[[package]]
+name = "miniscript"
+version = "9.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "123a10aae81d0712ecc09b780f6f0ae0b0f506a5c4c912974725760d59ba073e"
+dependencies = [
+ "bitcoin",
 ]
 
 [[package]]

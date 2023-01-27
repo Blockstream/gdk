@@ -10,6 +10,7 @@ testing = []
 [dependencies]
 aes = "0.7.0"
 aes-gcm-siv = "0.10"
+miniscript = "9.0"
 bitcoin = { version = "0.29", features = ["serde"] }
 elements = { version = "0.20", features = ["serde"] }
 libc = "0.2"
