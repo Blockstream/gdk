@@ -177,6 +177,20 @@ impl NetworkParameters {
         crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
+    pub fn xpub_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
+        assert_eq!(self.bip32_network(), master_xpub.network);
+        // Only public_key and chain_code contribute to the xpub hash
+        let mut xpub = master_xpub.clone();
+        xpub.network = bitcoin::network::constants::Network::Testnet;
+        xpub.depth = 0;
+        xpub.parent_fingerprint = Fingerprint::default();
+        xpub.child_number = ChildNumber::from_normal_idx(0).unwrap();
+        let password = xpub.encode().to_vec();
+        let salt = "GREEN_XPUB_HASH_NETWORK".as_bytes().to_vec();
+        let cost = 2048;
+        crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
+    }
+
     pub fn bip32_network(&self) -> bitcoin::network::constants::Network {
         if self.mainnet {
             bitcoin::network::constants::Network::Bitcoin
@@ -218,10 +232,15 @@ mod tests {
         network.network = "mainnet".to_string();
         network.mainnet = true;
         let wallet_hash_id = network.wallet_hash_id(&master_xpub);
-        // Value got logging in with the above mnemonic with network name "mainnet" (ga_session)
+        let xpub_hash_id = network.xpub_hash_id(&master_xpub);
+        // Values got logging in with the above mnemonic with network name "mainnet" (ga_session)
         assert_eq!(
             wallet_hash_id,
             "ca8f6b74e485133f441e01313682e6d5613cedbe479b2c472e017e21cc42a052"
+        );
+        assert_eq!(
+            xpub_hash_id,
+            "cf3bc52a701f6111fe8be5451fc61bec5dad8c30216910ec8673d815e5936799"
         );
     }
 }

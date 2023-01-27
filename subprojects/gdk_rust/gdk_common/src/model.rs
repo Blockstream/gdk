@@ -103,6 +103,7 @@ impl AddressAmount {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct LoginData {
     pub wallet_hash_id: String,
+    pub xpub_hash_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]

@@ -744,6 +744,7 @@ impl ElectrumSession {
         let master_xpub = self.master_xpub.ok_or_else(|| Error::WalletNotInitialized)?;
         Ok(LoginData {
             wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
+            xpub_hash_id: self.network.xpub_hash_id(&master_xpub),
         })
     }
 
