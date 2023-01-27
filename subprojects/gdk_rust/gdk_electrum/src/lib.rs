@@ -434,6 +434,7 @@ impl ElectrumSession {
                 xpub: Some(xpub),
                 discovered: false,
                 is_already_created: true,
+                allow_gaps: false,
             })?;
         }
 
@@ -814,22 +815,24 @@ impl ElectrumSession {
         let master_blinding = store.read()?.cache.master_blinding.clone();
         let network = self.network.clone();
         let mut accounts = self.accounts.write()?;
-        // Check that the given subaccount number is the next available one for its script type.
-        let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
-        let (last_account, next_account) =
-            get_last_next_account_nums(accounts.keys().copied().collect(), script_type);
+        if !opt.allow_gaps {
+            // Check that the given subaccount number is the next available one for its script type.
+            let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
+            let (last_account, next_account) =
+                get_last_next_account_nums(accounts.keys().copied().collect(), script_type);
 
-        if opt.subaccount != next_account {
-            // The subaccount already exists, or skips over the next available subaccount number
-            bail!(Error::InvalidSubaccount(opt.subaccount));
-        }
-        if let Some(last_account) = last_account {
-            // This is the next subaccount number, but the last one is still unused
-            let account = accounts
-                .get(&last_account)
-                .ok_or_else(|| Error::InvalidSubaccount(last_account))?;
-            if !opt.is_already_created && !account.has_transactions()? {
-                bail!(Error::AccountGapsDisallowed);
+            if opt.subaccount != next_account {
+                // The subaccount already exists, or skips over the next available subaccount number
+                bail!(Error::InvalidSubaccount(opt.subaccount));
+            }
+            if let Some(last_account) = last_account {
+                // This is the next subaccount number, but the last one is still unused
+                let account = accounts
+                    .get(&last_account)
+                    .ok_or_else(|| Error::InvalidSubaccount(last_account))?;
+                if !opt.is_already_created && !account.has_transactions()? {
+                    bail!(Error::AccountGapsDisallowed);
+                }
             }
         }
 

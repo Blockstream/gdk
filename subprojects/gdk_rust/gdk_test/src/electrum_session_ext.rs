@@ -59,6 +59,7 @@ impl ElectrumSessionExt for ElectrumSession {
                 xpub: Some(xpub),
                 discovered: false,
                 is_already_created: true,
+                allow_gaps: false,
             };
             self.create_subaccount(opt).unwrap();
         }

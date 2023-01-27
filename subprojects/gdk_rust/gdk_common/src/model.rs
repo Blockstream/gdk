@@ -208,6 +208,8 @@ pub struct CreateAccountOpt {
     pub discovered: bool,
     #[serde(default)]
     pub is_already_created: bool,
+    #[serde(skip_deserializing, skip_serializing)]
+    pub allow_gaps: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
