@@ -8,6 +8,7 @@ pub mod notification;
 pub mod password;
 pub mod scripts;
 pub mod session;
+pub mod slip132;
 pub mod state;
 pub mod store;
 pub mod util;

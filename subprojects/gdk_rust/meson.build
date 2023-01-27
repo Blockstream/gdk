@@ -61,6 +61,7 @@ rust_sources = [
   'gdk_common/src/password.rs',
   'gdk_common/src/scripts.rs',
   'gdk_common/src/session.rs',
+  'gdk_common/src/slip132.rs',
   'gdk_common/src/state.rs',
   'gdk_common/src/util/mod.rs',
   'gdk_common/src/util/strser.rs',
