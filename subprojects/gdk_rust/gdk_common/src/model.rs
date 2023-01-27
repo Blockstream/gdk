@@ -1,6 +1,9 @@
 use crate::be::{BEOutPoint, BEScript, BESigHashType, BETransaction, BETransactionEntry, BETxid};
+use crate::descriptor::parse_single_sig_descriptor;
+use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
 use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
 use crate::NetworkId;
+use crate::NetworkParameters;
 use bitcoin::Network;
 use elements::confidential;
 use serde::{Deserialize, Serialize};
@@ -11,7 +14,8 @@ use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
 use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use bitcoin::hashes::hex::ToHex;
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPubKey};
+use bitcoin::hashes::{sha256, Hash};
+use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
@@ -647,6 +651,106 @@ pub struct Credentials {
     pub mnemonic: String,
     #[serde(default)]
     pub bip39_passphrase: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum WatchOnlyCredentials {
+    Slip132ExtendedPubkeys(Vec<String>),
+    CoreDescriptors(Vec<String>),
+}
+
+/// An intermediate struct to hold account data
+#[derive(Debug, Clone)]
+pub struct AccountData {
+    pub account_num: u32,
+    pub xpub: ExtendedPubKey,
+}
+
+fn from_slip132_extended_pubkey(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Error> {
+    let (is_mainnet, script_type, xpub) = decode_from_slip132_string(s)?;
+    if is_mainnet != expected_is_mainnet {
+        return Err(Error::MismatchingNetwork);
+    }
+
+    let bip32_account = extract_bip32_account(&xpub)?;
+    let account_num = bip32_account * 16 + script_type.num();
+
+    Ok(AccountData {
+        account_num,
+        xpub,
+    })
+}
+
+fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Error> {
+    let coin_type = if expected_is_mainnet {
+        0
+    } else {
+        1
+    };
+    let (script_type, xpub, bip32_account) = parse_single_sig_descriptor(s, coin_type)?;
+    let is_mainnet = match xpub.network {
+        Network::Bitcoin => true,
+        _ => false,
+    };
+    if is_mainnet != expected_is_mainnet {
+        return Err(Error::MismatchingNetwork);
+    }
+
+    let account_num = bip32_account * 16 + script_type.num();
+
+    Ok(AccountData {
+        account_num,
+        xpub,
+    })
+}
+
+impl WatchOnlyCredentials {
+    // Derive an extended public key to use for the store
+    pub fn store_master_xpub(
+        &self,
+        net_params: &NetworkParameters,
+    ) -> Result<ExtendedPubKey, Error> {
+        let network = if net_params.mainnet {
+            Network::Bitcoin
+        } else {
+            Network::Testnet
+        };
+        let b = serde_json::to_vec(self).unwrap();
+        let seed = sha256::Hash::hash(&b);
+        let xprv = ExtendedPrivKey::new_master(network, &seed)?;
+        let secp = bitcoin::secp256k1::Secp256k1::new();
+        let xpub = ExtendedPubKey::from_priv(&secp, &xprv);
+        Ok(xpub)
+    }
+
+    pub fn accounts(self, is_mainnet: bool) -> Result<Vec<AccountData>, Error> {
+        let r: Result<Vec<_>, _> = match self {
+            WatchOnlyCredentials::Slip132ExtendedPubkeys(keys) => {
+                keys.iter().map(|k| from_slip132_extended_pubkey(&k, is_mainnet)).collect()
+            }
+            WatchOnlyCredentials::CoreDescriptors(descriptors) => {
+                descriptors.iter().map(|d| from_descriptor(&d, is_mainnet)).collect()
+            }
+        };
+        // Handle duplicates
+        let mut m = HashMap::<u32, ExtendedPubKey>::new();
+        for a in r? {
+            if let Some(old) = m.insert(a.account_num, a.xpub.clone()) {
+                if old != a.xpub {
+                    return Err(Error::MismatchingXpub);
+                }
+            };
+        }
+        let v = m
+            .iter()
+            .map(|(k, v)| AccountData {
+                account_num: *k,
+                xpub: *v,
+            })
+            .collect();
+        Ok(v)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
