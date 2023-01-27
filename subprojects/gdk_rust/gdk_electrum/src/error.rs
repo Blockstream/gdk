@@ -116,6 +116,9 @@ pub enum Error {
     #[error("invalid subaccount {0}")]
     InvalidSubaccount(u32),
 
+    #[error(transparent)]
+    MiniscriptError(#[from] gdk_common::miniscript::Error),
+
     #[error("Xpubs mismatch ({0} vs {1})")]
     MismatchingXpubs(ExtendedPubKey, ExtendedPubKey),
 

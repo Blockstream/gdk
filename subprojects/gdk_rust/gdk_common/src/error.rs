@@ -49,14 +49,29 @@ pub enum Error {
     #[error("Invalid sighash")]
     InvalidSigHash,
 
+    #[error("Invalid SLIP132 version")]
+    InvalidSlip132Version,
+
     #[error("Invalid URL: {0}")]
     InvalidUrl(String),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    #[error("Mismatching network")]
+    MismatchingNetwork,
+
+    #[error("Mismatching xpub")]
+    MismatchingXpub,
+
+    #[error("Unexpected child number")]
+    UnexpectedChildNumber,
+
     #[error("Unsupported sighash")]
     UnsupportedSigHash,
+
+    #[error("Unsupported descriptor")]
+    UnsupportedDescriptor,
 
     #[error(transparent)]
     Utf8(#[from] std::str::Utf8Error),
