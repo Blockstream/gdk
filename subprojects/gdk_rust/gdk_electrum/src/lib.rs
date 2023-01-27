@@ -390,6 +390,32 @@ impl ElectrumSession {
         Ok(self.store.as_ref().ok_or_else(|| Error::StoreNotLoaded)?.clone())
     }
 
+    pub fn login_wo(&mut self, credentials: WatchOnlyCredentials) -> Result<LoginData, Error> {
+        if self.network.liquid {
+            return Err(Error::Generic("Watch-only login not implemented for Liquid".into()));
+        }
+
+        // Create a fake master xpub deriving it from the WatchOnlyCredentials
+        let master_xpub = credentials.store_master_xpub(&self.network)?;
+        self.load_store(&LoadStoreOpt {
+            master_xpub,
+        })?;
+
+        for account in credentials.accounts(self.network.mainnet)? {
+            self.create_subaccount(CreateAccountOpt {
+                subaccount: account.account_num,
+                name: "".to_string(),
+                xpub: Some(account.xpub),
+                discovered: false,
+                is_already_created: true,
+                allow_gaps: true,
+            })?;
+        }
+
+        self.start_threads()?;
+        self.get_wallet_hash_id()
+    }
+
     pub fn login(&mut self, credentials: Credentials) -> Result<LoginData, Error> {
         info!(
             "login {:?} last network call succeeded {:?}",
