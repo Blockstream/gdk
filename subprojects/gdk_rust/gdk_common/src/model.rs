@@ -15,7 +15,9 @@ use crate::wally::MasterBlindingKey;
 use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::{sha256, Hash};
-use bitcoin::util::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use bitcoin::util::bip32::{
+    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
+};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
@@ -178,6 +180,7 @@ pub struct GetUnspentOpt {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadStoreOpt {
     pub master_xpub: ExtendedPubKey,
+    pub master_xpub_fingerprint: Option<Fingerprint>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -665,6 +668,7 @@ pub enum WatchOnlyCredentials {
 pub struct AccountData {
     pub account_num: u32,
     pub xpub: ExtendedPubKey,
+    pub master_xpub_fingerprint: Option<Fingerprint>,
 }
 
 fn from_slip132_extended_pubkey(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Error> {
@@ -679,6 +683,7 @@ fn from_slip132_extended_pubkey(s: &str, expected_is_mainnet: bool) -> Result<Ac
     Ok(AccountData {
         account_num,
         xpub,
+        master_xpub_fingerprint: None,
     })
 }
 
@@ -688,7 +693,8 @@ fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Er
     } else {
         1
     };
-    let (script_type, xpub, bip32_account) = parse_single_sig_descriptor(s, coin_type)?;
+    let (script_type, xpub, bip32_account, master_xpub_fingerprint) =
+        parse_single_sig_descriptor(s, coin_type)?;
     let is_mainnet = match xpub.network {
         Network::Bitcoin => true,
         _ => false,
@@ -702,6 +708,7 @@ fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Er
     Ok(AccountData {
         account_num,
         xpub,
+        master_xpub_fingerprint: Some(master_xpub_fingerprint),
     })
 }
 
@@ -724,7 +731,7 @@ impl WatchOnlyCredentials {
         Ok(xpub)
     }
 
-    pub fn accounts(self, is_mainnet: bool) -> Result<Vec<AccountData>, Error> {
+    pub fn accounts(self, is_mainnet: bool) -> Result<(Vec<AccountData>, Fingerprint), Error> {
         let r: Result<Vec<_>, _> = match self {
             WatchOnlyCredentials::Slip132ExtendedPubkeys(keys) => {
                 keys.iter().map(|k| from_slip132_extended_pubkey(&k, is_mainnet)).collect()
@@ -735,21 +742,35 @@ impl WatchOnlyCredentials {
         };
         // Handle duplicates
         let mut m = HashMap::<u32, ExtendedPubKey>::new();
+        let mut master_xpub_fingerprint = None;
         for a in r? {
             if let Some(old) = m.insert(a.account_num, a.xpub.clone()) {
                 if old != a.xpub {
                     return Err(Error::MismatchingXpub);
                 }
             };
+            // Check all master_xpub fingerprints are equal
+            match master_xpub_fingerprint {
+                None => {
+                    master_xpub_fingerprint = a.master_xpub_fingerprint;
+                }
+                Some(f) => {
+                    if Some(f) != a.master_xpub_fingerprint {
+                        return Err(Error::MismatchingDescriptor);
+                    }
+                }
+            }
         }
         let v = m
             .iter()
             .map(|(k, v)| AccountData {
                 account_num: *k,
                 xpub: *v,
+                master_xpub_fingerprint: master_xpub_fingerprint.clone(),
             })
             .collect();
-        Ok(v)
+        let master_xpub_fingerprint = master_xpub_fingerprint.unwrap_or_default();
+        Ok((v, master_xpub_fingerprint))
     }
 }
 

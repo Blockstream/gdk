@@ -30,7 +30,9 @@ use crate::store::*;
 
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
 use gdk_common::bitcoin::secp256k1;
-use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use gdk_common::bitcoin::util::bip32::{
+    DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
+};
 use gdk_common::{bitcoin, elements};
 
 use electrum_client::GetHistoryRes;
@@ -113,6 +115,13 @@ pub struct ElectrumSession {
     ///
     /// It is Some after wallet initialization
     pub master_xpub: Option<ExtendedPubKey>,
+
+    /// The BIP32 fingerprint of the master xpub
+    ///
+    /// If watch-only `master_xpub` is `None`, thus we have this value here.
+    /// If watch-only with slip132 exteneded keys, this value is not known, and we use the default value, i.e. `00000000`.
+    master_xpub_fingerprint: Fingerprint,
+
     pub notify: NativeNotif,
     pub handles: Vec<JoinHandle<()>>,
 
@@ -356,6 +365,8 @@ impl ElectrumSession {
             self.store = Some(store);
         }
         self.master_xpub = Some(opt.master_xpub);
+        self.master_xpub_fingerprint =
+            opt.master_xpub_fingerprint.unwrap_or_else(|| opt.master_xpub.fingerprint());
         self.notify.settings(&self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?);
         Ok(())
     }
@@ -397,11 +408,13 @@ impl ElectrumSession {
 
         // Create a fake master xpub deriving it from the WatchOnlyCredentials
         let master_xpub = credentials.store_master_xpub(&self.network)?;
+        let (accounts, master_xpub_fingerprint) = credentials.accounts(self.network.mainnet)?;
         self.load_store(&LoadStoreOpt {
             master_xpub,
+            master_xpub_fingerprint: Some(master_xpub_fingerprint),
         })?;
 
-        for account in credentials.accounts(self.network.mainnet)? {
+        for account in accounts {
             self.create_subaccount(CreateAccountOpt {
                 subaccount: account.account_num,
                 name: "".to_string(),
@@ -433,6 +446,7 @@ impl ElectrumSession {
 
         self.load_store(&LoadStoreOpt {
             master_xpub: master_xpub.clone(),
+            master_xpub_fingerprint: None,
         })?;
 
         if self.network.liquid {
@@ -869,6 +883,7 @@ impl ElectrumSession {
                 let account = entry.insert(Account::new(
                     network,
                     &master_xprv,
+                    self.master_xpub_fingerprint,
                     &opt.xpub, // account xpub
                     master_blinding,
                     store,

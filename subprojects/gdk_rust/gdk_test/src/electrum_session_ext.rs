@@ -29,6 +29,7 @@ impl ElectrumSessionExt for ElectrumSession {
         // Load the rust persisted cache
         let opt = LoadStoreOpt {
             master_xpub: signer.master_xpub(),
+            master_xpub_fingerprint: None,
         };
         self.load_store(&opt).unwrap();
 

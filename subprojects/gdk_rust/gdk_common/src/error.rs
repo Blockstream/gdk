@@ -58,6 +58,9 @@ pub enum Error {
     #[error(transparent)]
     Io(#[from] std::io::Error),
 
+    #[error("Mismatching descriptor")]
+    MismatchingDescriptor,
+
     #[error("Mismatching network")]
     MismatchingNetwork,
 

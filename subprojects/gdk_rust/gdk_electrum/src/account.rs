@@ -12,7 +12,7 @@ use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::secp256k1::{self, Message};
 use gdk_common::bitcoin::util::address::Payload;
 use gdk_common::bitcoin::util::bip32::{
-    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey,
+    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
 };
 use gdk_common::bitcoin::{PublicKey, Witness};
 use gdk_common::elements::confidential::Value;
@@ -57,6 +57,7 @@ pub struct Account {
     /// `Account::sign` will always fail.
     xprv: Option<ExtendedPrivKey>,
     xpub: ExtendedPubKey,
+    master_xpub_fingerprint: Fingerprint,
     chains: [ExtendedPubKey; 2],
     network: NetworkParameters,
     store: Store,
@@ -82,6 +83,7 @@ impl Account {
     pub fn new(
         network: NetworkParameters,
         master_xprv: &Option<ExtendedPrivKey>,
+        master_xpub_fingerprint: Fingerprint,
         account_xpub: &Option<ExtendedPubKey>,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
@@ -120,6 +122,7 @@ impl Account {
             script_type,
             xprv,
             xpub,
+            master_xpub_fingerprint,
             chains,
             store,
             master_blinding,
@@ -148,8 +151,7 @@ impl Account {
         };
         let (_, path) = get_account_derivation(self.account_num, self.network.id())?;
         let path = &path.to_string()[2..];
-        // TODO: set parent fingerprint correctly
-        let parent_fingerprint = "00000000";
+        let parent_fingerprint = self.master_xpub_fingerprint.to_string();
         let key_origin = format!("[{}/{}]", parent_fingerprint, path);
         let desc = format!("{}({}{}/{}/*){}", prefix, key_origin, self.xpub, internal_idx, suffix);
         let (desc, _) =
