@@ -291,4 +291,24 @@ mod tests {
 
         Ok(())
     }
+
+    /// Tests that calling `PinClient::decrypt()` with a different PIN from the
+    /// one used in `PinClient::encrypt()` always results in a failure.
+    #[test]
+    fn different_pin_fails_decryption() -> TestResult {
+        let client = PinClient::test();
+
+        let data = "Hello there";
+
+        let mut encrypted = client.encrypt(data.as_bytes(), &Pin::from("123456"))?;
+
+        let decrypted = client.decrypt(&encrypted, &Pin::from("12345"));
+        assert_eq!(Err(crate::Error::InvalidPin), decrypted);
+
+        encrypted.remove_hmac();
+        let decrypted = client.decrypt(&encrypted, &Pin::from("12345"));
+        assert!(matches!(decrypted, Err(crate::Error::Decryption(_))));
+
+        Ok(())
+    }
 }
