@@ -320,7 +320,8 @@ impl ElectrumSession {
         details: &DecryptWithPinDetails,
     ) -> Result<serde_json::Value, Error> {
         let decrypted = self.inner_decrypt_with_pin(details)?;
-        serde_json::from_slice(&decrypted).map_err(Into::into)
+        serde_json::from_slice(&decrypted)
+            .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))
     }
 
     pub fn credentials_from_pin_data(
