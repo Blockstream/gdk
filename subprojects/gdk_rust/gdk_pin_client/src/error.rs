@@ -15,6 +15,9 @@ pub enum Error {
     #[error(transparent)]
     Json(#[from] serde_json::Error),
 
+    #[error("The PIN is not valid")]
+    InvalidPin,
+
     #[error("Received an invalid response from the PIN server")]
     InvalidResponse,
 
@@ -23,4 +26,24 @@ pub enum Error {
 
     #[error("Failed calling the PIN server")]
     ServerCallFailed,
+}
+
+// Implementing `PartialEq` by hand because `serde_json::Error` and
+// `block_modes::BlockModeError` don't implement this trait.
+impl PartialEq for Error {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::BitcoinHexError(a), Self::BitcoinHexError(b)) => a == b,
+
+            (Self::Secp256k1(a), Self::Secp256k1(b)) => a == b,
+
+            (Self::HandshakeFailed, Self::HandshakeFailed)
+            | (Self::InvalidPin, Self::InvalidPin)
+            | (Self::InvalidResponse, Self::InvalidResponse)
+            | (Self::ServerCallFailed, Self::ServerCallFailed) => true,
+
+            _ => false,
+        }
+    }
 }
