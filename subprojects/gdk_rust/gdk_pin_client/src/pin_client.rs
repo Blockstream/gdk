@@ -38,7 +38,7 @@ impl PinClient {
         let client_key = ClientKey::new();
         let server_key = self.set_pin(pin, &client_key)?;
         let (encrypted, salt) = crypto::encrypt(plaintext, &server_key);
-        Ok(PinData::new(encrypted, client_key, salt))
+        Ok(PinData::new(encrypted, client_key, salt, &server_key))
     }
 
     /// Decrypts the [`PinData`] obtained by calling [`PinClient::encrypt`],
@@ -73,7 +73,6 @@ impl PinClient {
 
         let response = self.call_server(&request, op)?;
         response.verify(&response_key)?;
-
         response.decrypt_server_key(&response_key)
     }
 
