@@ -171,14 +171,18 @@ mod tests {
     use super::*;
     use crate::tests::*;
 
+    impl PinClient {
+        /// Returns a new `PinClient` with the server URL set to
+        /// `PIN_SERVER_URL` and the public key set to `PIN_SERVER_PUBLIC_KEY`.
+        pub(crate) fn test() -> Self {
+            Self::new(ureq::Agent::new(), PIN_SERVER_URL.clone(), PIN_SERVER_PUBLIC_KEY.clone())
+        }
+    }
+
     /// Tests a basic roundtrip with the PIN server.
     #[test]
     fn roundtrip() -> TestResult {
-        let client = PinClient::new(
-            ureq::Agent::new(),
-            PIN_SERVER_URL.clone(),
-            PIN_SERVER_PUBLIC_KEY.clone(),
-        );
+        let client = PinClient::test();
 
         let data = "Hello there";
 
@@ -226,11 +230,7 @@ mod tests {
     /// being correctly decrypted.
     #[test]
     fn serialize_pin_data() -> TestResult {
-        let client = PinClient::new(
-            ureq::Agent::new(),
-            PIN_SERVER_URL.clone(),
-            PIN_SERVER_PUBLIC_KEY.clone(),
-        );
+        let client = PinClient::test();
 
         let data = "Hello there";
 
