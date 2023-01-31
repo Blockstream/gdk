@@ -45,6 +45,13 @@ impl PinClient {
     /// returning the original plaintext.
     pub fn decrypt(&self, data: &PinData, pin: &Pin) -> Result<Vec<u8>> {
         let server_key = self.get_pin(pin, data.client_key())?;
+
+        if let Some(hmac) = data.hmac() {
+            if hmac != &PinData::get_hmac(&server_key, &data.salt(), data.encrypted_bytes()) {
+                return Err(crate::Error::InvalidPin);
+            }
+        }
+
         let decrypted = crypto::decrypt(data.encrypted_bytes(), &server_key, data.salt())?;
         Ok(decrypted)
     }
