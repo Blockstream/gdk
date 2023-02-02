@@ -4,20 +4,18 @@
 //! to be run in gdk_regsitry folder
 //!
 
-use std::{
-    collections::{BTreeMap, HashMap},
-    fs::File,
-    io::Write,
-    str::FromStr,
-};
+use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 
 use gdk_common::elements::AssetId;
-use gdk_registry::{
-    get_assets, init, policy_asset_id, refresh_assets, AssetCategory, AssetEntry, Config,
-    ElementsNetwork, GetAssetsBuilder, RefreshAssetsParams, RegistryInfos,
-};
+use gdk_common::ureq;
+use gdk_registry::{policy_asset_id, AssetEntry, ElementsNetwork};
 use once_cell::unsync::Lazy;
-use tempfile::TempDir;
+
+const LIQUID_ASSETS_ENDPOINT: &str = "http://assets.blockstream.info";
+
+const LIQUID_ICONS_ENDPOINT: &str = "http://assets.blockstream.info/icons.json";
+
+const LIQUID_POLICY_ASSET: Lazy<AssetId> = Lazy::new(|| policy_asset_id(ElementsNetwork::Liquid));
 
 const FEATURED_ASSETS: Lazy<Vec<AssetId>> = Lazy::new(|| {
     [
@@ -31,15 +29,58 @@ const FEATURED_ASSETS: Lazy<Vec<AssetId>> = Lazy::new(|| {
     ]
     .into_iter()
     .map(AssetId::from_str)
-    .collect::<Result<_, _>>()
+    .collect::<std::result::Result<_, _>>()
     .unwrap()
 });
 
-fn main() {
-    let temp_dir = TempDir::new().unwrap();
-    init(&temp_dir).unwrap();
-    make_liquid_hard_coded();
-    make_testnet_regtest_hard_coded()
+type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
+type Assets = HashMap<AssetId, AssetEntry>;
+type Icons = HashMap<AssetId, String>;
+
+fn main() -> Result<()> {
+    let agent = ureq::Agent::new();
+
+    let mut icons = liquid_icons(&agent)?;
+
+    let assets = liquid_assets(&agent, &icons)?;
+
+    icons.retain(|asset_id, _| {
+        asset_id == &*LIQUID_POLICY_ASSET || FEATURED_ASSETS.contains(asset_id)
+    });
+
+    println!("Kept {} icons after filtering", icons.len());
+
+    let mut file = File::create("src/hard_coded/liquid_icons.json")?;
+    file.write_all(serde_json::to_string_pretty(&icons)?.as_bytes())?;
+
+    let mut file = File::create("src/hard_coded/liquid_assets.json")?;
+    file.write_all(serde_json::to_string_pretty(&assets)?.as_bytes())?;
+
+    Ok(())
+}
+
+fn liquid_icons(agent: &ureq::Agent) -> Result<Icons> {
+    let icons = agent.get(LIQUID_ICONS_ENDPOINT).call()?.into_json::<Icons>()?;
+
+    println!("Downloaded {} assets icons", icons.len());
+
+    Ok(icons)
+}
+
+fn liquid_assets(agent: &ureq::Agent, icons: &HashMap<AssetId, String>) -> Result<Assets> {
+    let mut assets = agent.get(LIQUID_ASSETS_ENDPOINT).call()?.into_json::<Assets>()?;
+
+    println!("Downloaded {} assets information", assets.len());
+
+    assets.retain(|id, entry| icons.contains_key(id) && entry.verifies().is_ok());
+
+    println!("Kept {} assets information with icons and after verification", assets.len());
+
+    assets.insert(*&*LIQUID_POLICY_ASSET, new_policy(*&*LIQUID_POLICY_ASSET, "btc", "L-BTC"));
+
+    println!("After inserting policy asset: {}", assets.len());
+
+    Ok(assets)
 }
 
 fn new_policy(asset_id: AssetId, name: &str, ticker: &str) -> AssetEntry {
@@ -49,52 +90,5 @@ fn new_policy(asset_id: AssetId, name: &str, ticker: &str) -> AssetEntry {
         ticker: Some(ticker.into()),
         precision: 8,
         ..Default::default()
-    }
-}
-
-fn make_liquid_hard_coded() {
-    refresh_assets(RefreshAssetsParams::new(true, true, Config::default(), None)).unwrap();
-
-    let RegistryInfos {
-        mut assets,
-        mut icons,
-        ..
-    } = get_assets(GetAssetsBuilder::new().category(AssetCategory::All).build()).unwrap();
-
-    println!("Downloaded {} assets information", assets.len());
-    println!("Downloaded {} assets icons", icons.len());
-    assets.retain(|k, v| icons.contains_key(k) && v.verifies().unwrap_or(false));
-    println!("Kept {} assets information with icons and after verification", assets.len());
-
-    let policy_asset_id = policy_asset_id(ElementsNetwork::Liquid);
-    assets.insert(policy_asset_id, new_policy(policy_asset_id, "btc", "L-BTC"));
-    println!("After inserting policy asset: {}", assets.len());
-
-    let assets_ord = BTreeMap::from_iter(assets.into_iter());
-    let mut file = File::create("src/hard_coded/liquid_assets.json").unwrap();
-    file.write_all(serde_json::to_string_pretty(&assets_ord).unwrap().as_bytes()).unwrap();
-
-    let mut file = File::create("src/hard_coded/liquid_icons.json").unwrap();
-    icons.retain(|k, _| k == &policy_asset_id || FEATURED_ASSETS.contains(k));
-    file.write_all(serde_json::to_string_pretty(&icons).unwrap().as_bytes()).unwrap();
-
-    println!("wrote {:?}", file);
-}
-
-fn make_testnet_regtest_hard_coded() {
-    // At the moment there are no icons at https://assets-testnet.blockstream.info, so we can skip
-    // the call, this could change in the future.
-
-    for (t, name, ticker) in [
-        (ElementsNetwork::LiquidTestnet, "btc", "L-TEST"), // change name to "Testnet Liquid Bitcoin"
-        (ElementsNetwork::ElementsRegtest, "btc", "L-TEST"), // change name to "Regtest Liquid Bitcoin"
-    ] {
-        let mut assets = HashMap::new();
-        let policy_asset_id = policy_asset_id(t);
-        assets.insert(policy_asset_id, new_policy(policy_asset_id, name, ticker));
-        let mut file = File::create(format!("src/hard_coded/{}_assets.json", t)).unwrap();
-
-        file.write_all(serde_json::to_string_pretty(&assets).unwrap().as_bytes()).unwrap();
-        println!("wrote {:?}", file);
     }
 }
