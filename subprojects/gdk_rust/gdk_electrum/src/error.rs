@@ -101,12 +101,6 @@ pub enum Error {
     #[error("invalid mnemonic")]
     InvalidMnemonic,
 
-    /// An invalid pin attempt. Should trigger an increment to the caller
-    /// counter as after 3 consecutive wrong guesses the server will delete the
-    /// corresponding key. Other errors should leave such counter unchanged.
-    #[error("id_invalid_pin")]
-    InvalidPin,
-
     #[error("invalid replacement request fields")]
     InvalidReplacementRequest,
 
@@ -269,11 +263,14 @@ impl Error {
             InvalidAmount => "id_invalid_amount",
             InvalidAssetId => "id_invalid_asset_id",
             FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
+            // An invalid pin attempt. Should trigger an increment to the
+            // caller counter as after 3 consecutive wrong guesses the server
+            // will delete the corresponding key. Other errors should leave
+            // such counter unchanged.
             PinClient(gdk_pin_client::Error::InvalidPin | gdk_pin_client::Error::Decryption(_)) => {
                 "id_invalid_pin"
             }
             PinClient(_) => "id_connection_failed",
-            InvalidPin => "id_invalid_pin",
             EmptyAddressees => "id_no_recipients",
             _ => "id_unknown",
         }
