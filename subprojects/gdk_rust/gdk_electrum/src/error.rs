@@ -269,6 +269,9 @@ impl Error {
             InvalidAmount => "id_invalid_amount",
             InvalidAssetId => "id_invalid_asset_id",
             FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
+            PinClient(gdk_pin_client::Error::InvalidPin | gdk_pin_client::Error::Decryption(_)) => {
+                "id_invalid_pin"
+            }
             PinClient(_) => "id_connection_failed",
             InvalidPin => "id_invalid_pin",
             EmptyAddressees => "id_no_recipients",
