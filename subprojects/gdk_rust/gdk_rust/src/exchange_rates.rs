@@ -140,6 +140,7 @@ mod tests {
     #[derive(Default)]
     struct TestSession {
         xr_cache: ExchangeRatesCache,
+        network_parameters: NetworkParameters,
     }
 
     impl ExchangeRatesCacher for TestSession {
@@ -166,7 +167,7 @@ mod tests {
         }
 
         fn network_parameters(&self) -> &NetworkParameters {
-            todo!()
+            &self.network_parameters
         }
 
         fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
