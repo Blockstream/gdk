@@ -22,9 +22,14 @@ pub(crate) fn fetch_cached<S: Session>(
     }
 
     if sess.network_parameters().development {
-        let ticker = Ticker::new(pair, 1.1);
-        sess.cache_ticker(ticker);
-        return Ok(Some(ticker));
+        // TODO: remove once mocked up price endpoint is available in localtest
+        if &params.exchange == "BROKEN" {
+            return Ok(None);
+        } else {
+            let ticker = Ticker::new(pair, 1.1);
+            sess.cache_ticker(ticker);
+            return Ok(Some(ticker));
+        }
     }
 
     info!("missed exchange rate cache");
