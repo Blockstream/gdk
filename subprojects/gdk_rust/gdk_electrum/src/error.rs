@@ -128,7 +128,11 @@ pub enum Error {
     #[error("non confidential address")]
     NonConfidentialAddress,
 
-    #[error("id_connection_failed")]
+    #[error("{}", match .0 {
+        gdk_pin_client::Error::InvalidPin
+        | gdk_pin_client::Error::Decryption(_) => "id_invalid_pin",
+        _ => "id_connection_failed",
+    })]
     PinClient(#[from] gdk_pin_client::Error),
 
     #[error("PSET and Tx mismatch ({0} vs {1})")]
