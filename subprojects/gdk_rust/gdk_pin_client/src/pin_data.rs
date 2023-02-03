@@ -61,6 +61,12 @@ impl PinData {
         Hmac::from_engine(engine)
     }
 
+    /// Allows testing against the old `PinData`s that didn't have an Hmac.
+    #[cfg(test)]
+    pub(crate) fn remove_hmac(&mut self) {
+        self.hmac = None;
+    }
+
     pub(crate) fn encrypted_bytes(&self) -> &[u8] {
         &*self.encrypted_bytes
     }
