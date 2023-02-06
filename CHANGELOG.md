@@ -16,6 +16,12 @@
 - GA_create_transaction: The `addressees_have_assets` element has been removed.
 - GA_get_unspent_outputs: The default sorting for multisig non-2of2
   subaccounts has been changed from oldest-first to largest-first.
+- Singlesig: GA_change_settings, GA_get_available_currencies and
+  GA_convert_amount have now aligned behaviour with multisig: all the prices
+  and venues are matched and changing settings actually influence the fiat
+  currency returned from GA_convert_amount.
+- GA_encrypt_with_pin: Add `hmac` field.
+- Liquid: update hardcoded asset icons.
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.
@@ -25,6 +31,8 @@
 - GA_create_transaction: Non-partial transactions where `utxo_strategy` is set
   to `"manual"` now return an error if an asset is provided in `used_utxos`
   that does not correspond to an adressee.
+- Singlesig: GA_get_transactions: fix script serialization
+- Singlesig: fixes for block and transaction notifications
 
 ### Removed
 
