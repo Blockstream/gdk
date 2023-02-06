@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.0.58
+## Release 0.0.59
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.58 - 2023-02-06
 
 ### Added
 - GA_validate: Add support for validating transaction addressees.
