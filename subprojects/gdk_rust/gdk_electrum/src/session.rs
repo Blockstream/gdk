@@ -278,3 +278,15 @@ where
         Ok(self.map(serde_json::to_value)??)
     }
 }
+
+impl<V> ToJson for Option<V>
+where
+    V: serde::Serialize,
+{
+    fn to_json(self) -> Result<Value, JsonError> {
+        Ok(match self {
+            None => json!(null),
+            Some(v) => serde_json::to_value(v)?,
+        })
+    }
+}
