@@ -310,14 +310,7 @@ namespace sdk {
     { /* TODO: Implement when watch only is implemented */
     }
 
-    nlohmann::json ga_rust::get_settings() const
-    {
-        try {
-            return rust_call("get_settings", nlohmann::json({}), m_session);
-        } catch (const std::exception& ex) {
-            return nlohmann::json({});
-        }
-    }
+    nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", nlohmann::json({}), m_session); }
 
     nlohmann::json ga_rust::get_post_login_data()
     {
