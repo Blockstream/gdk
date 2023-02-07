@@ -356,7 +356,7 @@ impl ElectrumSession {
             self.store = Some(store);
         }
         self.master_xpub = Some(opt.master_xpub);
-        self.notify.settings(&self.get_settings()?);
+        self.notify.settings(&self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?);
         Ok(())
     }
 
@@ -1108,12 +1108,13 @@ impl ElectrumSession {
         //TODO better implement default
     }
 
-    pub fn get_settings(&self) -> Result<Settings, Error> {
-        Ok(self.store()?.read()?.get_settings().unwrap_or_default())
+    /// Return the settings or None if the store is not loaded (not logged in)
+    pub fn get_settings(&self) -> Option<Settings> {
+        Some(self.store().ok()?.read().ok()?.get_settings().unwrap_or_default())
     }
 
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
-        let mut settings = self.get_settings()?;
+        let mut settings = self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?;
         settings.update(value);
         self.store()?.write()?.insert_settings(Some(settings.clone()))?;
         self.notify.settings(&settings);
