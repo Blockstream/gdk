@@ -91,7 +91,7 @@ while true; do
     case "$1" in
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
-        --iphone | --iphonesim ) BUILD="$1"; shift ;;
+        --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --compiler-version) COMPILER_VERSION="-$2"; shift 2 ;;
         --prefix ) GDK_BUILD_ROOT="$2"; shift 2 ;;

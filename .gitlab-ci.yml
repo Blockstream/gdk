@@ -348,7 +348,7 @@ build_osx_ios:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
     - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake -B build-iphone -S .
     - cmake --build build-iphone --parallel 16
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-runtime --strip
@@ -364,7 +364,7 @@ build_osx_ios_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
     - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake -DCMAKE_BUILD_TYPE=Debug -B build-iphone -S .
     - cmake --build build-iphone --parallel 16
 
@@ -379,7 +379,7 @@ build_osx_ios_sim:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --prefix $PREBUILT_DIR; fi
     - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake -B build-iphonesim -S .
     - cmake --build build-iphonesim --parallel 16
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-runtime --strip
@@ -395,7 +395,7 @@ build_osx_ios_sim_debug:
     - cd $CI_PROJECT_DIR
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim --buildtype debug --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --buildtype debug --prefix $PREBUILT_DIR; fi
     - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake -DCMAKE_BUILD_TYPE=Debug -B build-iphonesim -S .
     - cmake --build build-iphonesim-debug --parallel 16
 

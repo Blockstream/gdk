@@ -7,6 +7,7 @@ have_cmd()
     command -v "$1" > /dev/null 2>&1
 }
 
+# called with BUILD and any supplemental arguments
 function build_dependencies() {
     LINKS_DIR="${bld_root}/external_deps"
     if [ -z "${EXTERNAL_DEPS_DIR}" ]; then
@@ -26,7 +27,7 @@ function build_dependencies() {
         echo "using external-deps-dir dependencies from ${EXTERNAL_DEPS_DIR}"
     else
         echo "building external dependencies in ${EXTERNAL_DEPS_DIR}"
-        NUM_JOBS=$parallel ./tools/builddeps.sh ${BUILD} ${NDK_ARCH} --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR}
+        NUM_JOBS=$parallel ./tools/builddeps.sh --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR} $*
     fi
 }
 
@@ -107,7 +108,14 @@ if [ "$BUILDTYPE" == "debug" ]; then
     bld_root=$bld_root-debug
 fi
 
-build_dependencies
+if [[ "${BUILD}" == "--ndk" ]]; then
+    build_dependencies ${BUILD} ${NDK_ARCH}
+elif [[ "${BUILD}" == "--iphone" ]] || [[ "${BUILD}" == "--iphonesim" ]] ; then
+    build_dependencies ${BUILD} ${LIBTYPE}
+else
+    build_dependencies ${BUILD}
+fi
+
 cmake -B $bld_root -S . \
     -DEXTERNAL-DEPS-DIR=$EXTERNAL_DEPS_DIR \
     -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$cmake_profile \
