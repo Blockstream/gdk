@@ -1,0 +1,11 @@
+
+[profile.ci]
+retries = 3
+test-threads = 6
+failure-output = "immediate-final" # Print out output for failing tests as soon as they fail, and also at the end of the run (for easy scrollability).
+fail-fast = false # Do not cancel the test run on the first failure.
+slow-timeout = {period = "60s", terminate-after = 3} # test tagged as slow after X seconds, hard-terminated after 3 periods
+leak-timeout = "5s" # test is leaky if after termination, test still has stdout or stderr open (subprocess probably still running) 
+
+[profile.ci.junit]
+path = "junit.xml"

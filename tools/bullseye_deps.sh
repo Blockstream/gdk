@@ -21,6 +21,7 @@ rustup component add rustfmt clippy llvm-tools-preview
 rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
 cargo install cargo-audit
 cargo install grcov
+cargo install cargo-nextest
 
 mkdir /tmp/protoc && \
     cd /tmp/protoc && \
