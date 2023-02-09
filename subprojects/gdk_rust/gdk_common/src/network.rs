@@ -217,17 +217,17 @@ pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ure
 
 #[cfg(test)]
 mod tests {
+    use crate::EC;
     use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
 
     #[test]
     fn test_wallet_hash_id() {
-        let secp = bitcoin::secp256k1::Secp256k1::new();
         let seed = crate::wally::bip39_mnemonic_to_seed(
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
             "",
         ).unwrap();
         let master_xprv = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
-        let master_xpub = ExtendedPubKey::from_priv(&secp, &master_xprv);
+        let master_xpub = ExtendedPubKey::from_priv(&EC, &master_xprv);
         let mut network = crate::NetworkParameters::default();
         network.network = "mainnet".to_string();
         network.mainnet = true;

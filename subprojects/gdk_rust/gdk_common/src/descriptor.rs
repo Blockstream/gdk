@@ -1,7 +1,6 @@
 use crate::error::Error;
 use crate::scripts::ScriptType;
 use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
-use miniscript::bitcoin::secp256k1;
 use miniscript::descriptor::{Descriptor, DescriptorPublicKey, ShInner};
 
 /// Make sure the key origin is in the expected format
@@ -44,9 +43,8 @@ pub fn parse_single_sig_descriptor(
     s: &str,
     coin_type: u32,
 ) -> Result<(ScriptType, ExtendedPubKey, u32, Fingerprint), Error> {
-    let secp = &secp256k1::Secp256k1::signing_only();
     let (desc, _) =
-        Descriptor::parse_descriptor(secp, s).map_err(|_| Error::UnsupportedDescriptor)?;
+        Descriptor::parse_descriptor(&crate::EC, s).map_err(|_| Error::UnsupportedDescriptor)?;
     if !desc.has_wildcard() {
         return Err(Error::UnsupportedDescriptor);
     }

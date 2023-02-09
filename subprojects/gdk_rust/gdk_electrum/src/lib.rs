@@ -29,7 +29,6 @@ use crate::interface::ElectrumUrl;
 use crate::store::*;
 
 use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
-use gdk_common::bitcoin::secp256k1;
 use gdk_common::bitcoin::util::bip32::{
     DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
 };
@@ -49,6 +48,7 @@ use gdk_common::elements::pset::PartiallySignedTransaction;
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
 use gdk_common::NetworkId;
+use gdk_common::EC;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
@@ -64,7 +64,6 @@ use crate::spv::SpvCrossValidator;
 use electrum_client::{Client, ElectrumApi};
 use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
-use gdk_common::once_cell::sync::Lazy;
 use gdk_common::rand::seq::SliceRandom;
 use gdk_common::rand::thread_rng;
 use gdk_common::ureq;
@@ -75,13 +74,6 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
-
-static EC: Lazy<secp256k1::Secp256k1<secp256k1::All>> = Lazy::new(|| {
-    let mut ctx = secp256k1::Secp256k1::new();
-    let mut rng = gdk_common::rand::thread_rng();
-    ctx.randomize(&mut rng);
-    ctx
-});
 
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,

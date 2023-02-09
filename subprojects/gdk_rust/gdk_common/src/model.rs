@@ -726,8 +726,7 @@ impl WatchOnlyCredentials {
         let b = serde_json::to_vec(self).unwrap();
         let seed = sha256::Hash::hash(&b);
         let xprv = ExtendedPrivKey::new_master(network, &seed)?;
-        let secp = bitcoin::secp256k1::Secp256k1::new();
-        let xpub = ExtendedPubKey::from_priv(&secp, &xprv);
+        let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
         Ok(xpub)
     }
 

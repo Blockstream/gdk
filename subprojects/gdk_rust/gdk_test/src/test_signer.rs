@@ -7,6 +7,7 @@ use gdk_common::bitcoin::util::address::Address;
 use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use gdk_common::bitcoin::util::sighash::SighashCache;
 use gdk_common::bitcoin::{self, EcdsaSighashType, Witness};
+use gdk_common::EC;
 
 use gdk_common::be::BETransaction;
 use gdk_common::model::*;
@@ -26,7 +27,7 @@ impl TestSigner {
             credentials: credentials.clone(),
             network,
             is_liquid,
-            secp: bitcoin::secp256k1::Secp256k1::new(),
+            secp: EC.clone(),
         }
     }
     fn seed(&self) -> [u8; 64] {
