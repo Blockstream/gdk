@@ -25,6 +25,7 @@ pub use error::*;
 pub use log;
 pub use miniscript;
 pub use network::*;
+pub use once_cell;
 pub use rand;
 pub use state::State;
 pub use ureq;

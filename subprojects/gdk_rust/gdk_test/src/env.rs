@@ -1,7 +1,7 @@
 //! Contains the bindings to the various environment variables needed to run
 //! the integration tests.
 
-use once_cell::sync::Lazy;
+use gdk_common::once_cell::sync::Lazy;
 use std::env;
 
 /// Environment variable pointing to the directory containing the compiled

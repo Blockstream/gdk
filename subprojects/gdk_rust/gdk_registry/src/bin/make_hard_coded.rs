@@ -7,9 +7,9 @@
 use std::{collections::HashMap, fs::File, io::Write, str::FromStr};
 
 use gdk_common::elements::AssetId;
+use gdk_common::once_cell::unsync::Lazy;
 use gdk_common::ureq;
 use gdk_registry::{policy_asset_id, AssetEntry, ElementsNetwork};
-use once_cell::unsync::Lazy;
 
 const LIQUID_ASSETS_ENDPOINT: &str = "http://assets.blockstream.info";
 

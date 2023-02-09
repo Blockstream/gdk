@@ -10,7 +10,7 @@ use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::{BlockHash, Txid};
 use gdk_common::bitcoin::{BlockHeader, Network};
 use gdk_common::log::{info, warn};
-use once_cell::sync::Lazy;
+use gdk_common::once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};

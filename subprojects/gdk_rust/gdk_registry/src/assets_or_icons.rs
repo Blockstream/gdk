@@ -34,7 +34,7 @@ pub(crate) mod test {
     use crate::hard_coded;
     use crate::registry_infos::{RegistryAssets, RegistryIcons};
     use crate::ElementsNetwork;
-    use once_cell::unsync::Lazy;
+    use gdk_common::once_cell::unsync::Lazy;
     use serde_json::{to_string, Map, Value};
     use std::cell::RefCell;
 

@@ -4,7 +4,7 @@ use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
 use gdk_common::log::{debug, warn};
-use once_cell::sync::OnceCell;
+use gdk_common::once_cell::sync::OnceCell;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::params::{ElementsNetwork, RefreshAssetsParams};

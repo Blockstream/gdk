@@ -10,7 +10,7 @@ use gdk_common::bitcoin::blockdata::constants::{
 };
 use gdk_common::bitcoin::BlockHash;
 use gdk_common::bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
-use once_cell::sync::Lazy;
+use gdk_common::once_cell::sync::Lazy;
 
 use gdk_common::network::NetworkParameters;
 
