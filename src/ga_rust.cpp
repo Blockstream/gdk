@@ -11,7 +11,6 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
-#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
@@ -413,50 +412,6 @@ namespace sdk {
             GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
         }
-    }
-
-    nlohmann::json ga_rust::create_transaction(const nlohmann::json& details)
-    {
-        if (gdk_config()["enable_shared_tx_impl"].get<bool>()) {
-            // Use the common implementation
-            try {
-                return create_ga_transaction(*this, details);
-            } catch (const user_error& e) {
-                return nlohmann::json({ { "error", e.what() } });
-            }
-        }
-
-        // TODO: Remove this derived impl and share one in session_impl
-        //       once tx creation is shared
-        GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction:" << details.dump();
-        nlohmann::json result(details);
-
-        auto addressees_p = result.find("addressees");
-        if (addressees_p != result.end()) {
-            for (auto& addressee : *addressees_p) {
-                validate_tx_addressee(*this, result, addressee);
-                const std::string error = json_get_value(result, "error");
-                if (!error.empty()) {
-                    GDK_LOG_SEV(log_level::warning) << "ga_rust::create_transaction error: " << error;
-                    return result;
-                }
-                if (!addressee.contains("satoshi")) {
-                    // TODO: unify amount handling between session types
-                    result["error"] = res::id_no_amount_specified;
-                    return result;
-                }
-            }
-        }
-        GDK_LOG_SEV(log_level::debug) << "ga_rust::create_transaction result: " << result.dump();
-        return rust_call("create_transaction", result, m_session);
-    }
-
-    nlohmann::json ga_rust::user_sign_transaction(const nlohmann::json& details)
-    {
-        // TODO: Remove this derived impl and share one in session_impl
-        //       once tx creation is shared
-        GDK_RUNTIME_ASSERT(!gdk_config()["enable_shared_tx_impl"].get<bool>());
-        return rust_call("sign_transaction", details, m_session);
     }
 
     nlohmann::json ga_rust::service_sign_transaction(

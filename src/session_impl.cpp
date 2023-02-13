@@ -4,6 +4,7 @@
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_tor.hpp"
+#include "ga_tx.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
@@ -328,6 +329,20 @@ namespace sdk {
     }
 
     nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/) { return nlohmann::json(); }
+
+    nlohmann::json session_impl::create_transaction(const nlohmann::json& details)
+    {
+        try {
+            return create_ga_transaction(*this, details);
+        } catch (const user_error& e) {
+            return nlohmann::json({ { "error", e.what() } });
+        }
+    }
+
+    nlohmann::json session_impl::user_sign_transaction(const nlohmann::json& details)
+    {
+        return sign_ga_transaction(*this, details);
+    }
 
     void session_impl::save_cache()
     {

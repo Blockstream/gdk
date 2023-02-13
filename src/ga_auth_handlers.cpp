@@ -316,15 +316,9 @@ namespace sdk {
             }
 
             m_signer = new_signer;
-            if (is_electrum && is_liquid) {
-                if (!gdk_config()["enable_shared_tx_impl"].get<bool>()) {
-                    // TODO: Remove this from all session types once tx creation is shared
-                    m_result = m_session->login(new_signer);
-                    return state_type::done;
-                }
-                if (new_signer->is_hardware() && !gdk_config()["enable_ss_liquid_hww"].get<bool>()) {
-                    throw user_error("Hardware wallet support for Liquid is not yet enabled");
-                }
+            if (is_electrum && is_liquid && new_signer->is_hardware()
+                && !gdk_config()["enable_ss_liquid_hww"].get<bool>()) {
+                throw user_error("Hardware wallet support for Liquid is not yet enabled");
             }
 
             // We need master pubkey for the challenge, client secret pubkey for login
@@ -665,12 +659,8 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        // TODO: Remove shared_impl check once tx creation is shared
-        const bool use_shared_impl = gdk_config()["enable_shared_tx_impl"].get<bool>();
-        const bool is_sweep = json_get_value(m_tx_details, "is_sweep", false);
-        const bool is_liquid_electrum = m_net_params.is_liquid() && m_net_params.is_electrum();
-        if (is_sweep || (is_liquid_electrum && !use_shared_impl)) {
-            // Sign the tx in software.
+        if (json_get_value(m_tx_details, "is_sweep", false)) {
+            // Sweep tx. Sign the tx in software.
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)

@@ -107,8 +107,6 @@ namespace sdk {
         wally_tx_ptr get_raw_transaction_details(const std::string& txhash_hex) const;
         nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
-        nlohmann::json create_transaction(const nlohmann::json& details);
-        nlohmann::json user_sign_transaction(const nlohmann::json& details);
         nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json psbt_get_details(const nlohmann::json& details);
         nlohmann::json psbt_sign(const nlohmann::json& details);

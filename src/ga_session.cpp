@@ -3297,20 +3297,6 @@ namespace sdk {
             { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
     }
 
-    nlohmann::json ga_session::create_transaction(const nlohmann::json& details)
-    {
-        try {
-            return create_ga_transaction(*this, details);
-        } catch (const user_error& e) {
-            return nlohmann::json({ { "error", e.what() } });
-        }
-    }
-
-    nlohmann::json ga_session::user_sign_transaction(const nlohmann::json& details)
-    {
-        return sign_ga_transaction(*this, details);
-    }
-
     nlohmann::json ga_session::psbt_sign(const nlohmann::json& details)
     {
         nlohmann::json result = details;

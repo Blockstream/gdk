@@ -57,13 +57,6 @@ namespace sdk {
             const std::string datadir = global_config["datadir"];
             global_config.emplace("registrydir", datadir + "/registry");
         }
-        if (!global_config.contains("enable_shared_tx_impl")) {
-            // "enable_shared_tx_impl" is a development setting, to share the
-            // create_transaction implementation between session types.
-            // TODO: Remove this setting and all references to it
-            //       once tx creation is shared.
-            global_config.emplace("enable_shared_tx_impl", false);
-        }
         if (!global_config.contains("enable_ss_liquid_hww")) {
             // "enable_ss_liquid_hww" is a development setting, to enable
             // hardware wallet support for single sig sessions.
