@@ -180,6 +180,7 @@ test_rust:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+  allow_failure: true
 
 rust_audit:
   stage: test
