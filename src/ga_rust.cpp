@@ -427,7 +427,18 @@ namespace sdk {
 
     nlohmann::json ga_rust::psbt_sign(const nlohmann::json& details)
     {
-        throw std::runtime_error("psbt_sign not implemented");
+        auto [utxos, tx] = psbt_sign_local(details);
+
+        auto result = nlohmann::json();
+        result["utxos"] = utxos;
+
+        if (!tx.empty()) {
+            result["psbt"] = psbt_merge_tx(details.at("psbt"), tx);
+        } else {
+            result["psbt"] = details.at("psbt");
+        }
+
+        return result;
     }
 
     nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& /*twofactor_data*/)
