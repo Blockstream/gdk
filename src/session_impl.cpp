@@ -339,6 +339,68 @@ namespace sdk {
         }
     }
 
+    std::pair<std::vector<nlohmann::json>, std::string> session_impl::psbt_sign_local(const nlohmann::json& details)
+    {
+        const nlohmann::json psbt_details = psbt_extract(details.at("psbt"));
+        std::string tx_hex = psbt_details.at("transaction");
+        std::vector<uint32_t> sighashes = psbt_details.at("sighashes");
+        const auto flags = tx_flags(m_net_params.is_liquid());
+        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
+        const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
+        GDK_RUNTIME_ASSERT(sighashes.size() == tx->num_inputs);
+
+        // Clear utxos and fill it with the ones that will be signed
+        std::vector<nlohmann::json> inputs;
+        inputs.reserve(tx->num_inputs);
+        bool requires_signatures = false;
+        for (size_t i = 0; i < tx->num_inputs; ++i) {
+            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
+            const uint32_t vout = tx->inputs[i].index;
+            nlohmann::json input_utxo({ { "skip_signing", true } });
+            for (auto& utxo : details.at("utxos")) {
+                if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
+                    // TODO: remove this once get_unspent_outputs populates prevout_script
+                    auto prevout_script = b2h(output_script_from_utxo(utxo));
+                    input_utxo = std::move(utxo);
+                    input_utxo["prevout_script"] = prevout_script;
+                    input_utxo["user_sighash"] = sighashes.at(i);
+                    requires_signatures = true;
+                    break;
+                }
+            }
+            inputs.emplace_back(input_utxo);
+        }
+
+        std::vector<nlohmann::json> utxos;
+
+        if (!requires_signatures) {
+            return std::make_pair(utxos, "");
+        }
+
+        // FIXME: refactor to use HWW path
+        const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
+
+        const bool is_low_r = get_signer()->supports_low_r();
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            const auto& utxo = inputs.at(i);
+            const std::string& signature = signatures.at(i);
+            if (utxo.value("skip_signing", false)) {
+                GDK_RUNTIME_ASSERT(signature.empty());
+                continue;
+            }
+            add_input_signature(tx, i, utxo, signature, is_low_r);
+        }
+
+        for (auto& utxo : inputs) {
+            if (utxo.value("skip_signing", false)) {
+                continue;
+            }
+            utxos.emplace_back(std::move(utxo));
+        }
+
+        return std::make_pair(utxos, tx_to_hex(tx, flags));
+    }
+
     nlohmann::json session_impl::user_sign_transaction(const nlohmann::json& details)
     {
         return sign_ga_transaction(*this, details);

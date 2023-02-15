@@ -3299,74 +3299,29 @@ namespace sdk {
 
     nlohmann::json ga_session::psbt_sign(const nlohmann::json& details)
     {
-        nlohmann::json result = details;
-        const nlohmann::json psbt_details = psbt_extract(details.at("psbt"));
-        std::string tx_hex = psbt_details.at("transaction");
-        std::vector<uint32_t> sighashes = psbt_details.at("sighashes");
-        const auto flags = tx_flags(m_net_params.is_liquid());
-        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
-        const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
-        GDK_RUNTIME_ASSERT(sighashes.size() == tx->num_inputs);
+        auto [utxos, tx] = psbt_sign_local(details);
 
-        // Clear utxos and fill it with the ones that will be signed
-        std::vector<nlohmann::json> inputs;
-        inputs.reserve(tx->num_inputs);
-        bool requires_signatures = false;
-        for (size_t i = 0; i < tx->num_inputs; ++i) {
-            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
-            const uint32_t vout = tx->inputs[i].index;
-            nlohmann::json input_utxo({ { "skip_signing", true } });
-            for (auto& utxo : result.at("utxos")) {
-                if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
-                    // TODO: remove this once get_unspent_outputs populates prevout_script
-                    utxo["prevout_script"] = b2h(output_script_from_utxo(utxo));
-                    input_utxo = std::move(utxo);
-                    input_utxo["user_sighash"] = sighashes.at(i);
-                    requires_signatures = true;
-                    break;
-                }
-            }
-            inputs.emplace_back(input_utxo);
-        }
+        auto result = nlohmann::json();
+        result["utxos"] = utxos;
 
-        result["utxos"].clear();
-        if (!requires_signatures) {
+        if (tx.empty()) {
+            result["psbt"] = details.at("psbt");
             return result;
-        }
-
-        // FIXME: refactor to use HWW path
-        const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
-
-        const bool is_low_r = get_signer()->supports_low_r();
-        for (size_t i = 0; i < inputs.size(); ++i) {
-            const auto& utxo = inputs.at(i);
-            const std::string& signature = signatures.at(i);
-            if (utxo.value("skip_signing", false)) {
-                GDK_RUNTIME_ASSERT(signature.empty());
-                continue;
-            }
-            add_input_signature(tx, i, utxo, signature, is_low_r);
         }
 
         // FIXME: handle existing 2FA
         const nlohmann::json twofactor_data = nlohmann::json::object();
 
         nlohmann::json private_data;
-        if (result.contains("blinding_nonces")) {
-            private_data["blinding_nonces"] = std::move(result["blinding_nonces"]);
-            result.erase("blinding_nonces");
+        if (details.contains("blinding_nonces")) {
+            private_data["blinding_nonces"] = std::move(details["blinding_nonces"]);
         }
 
-        auto ret = wamp_cast_json(m_wamp->call(
-            "vault.sign_raw_tx", tx_to_hex(tx, flags), mp_cast(twofactor_data).get(), mp_cast(private_data).get()));
+        auto ret = wamp_cast_json(
+            m_wamp->call("vault.sign_raw_tx", tx, mp_cast(twofactor_data).get(), mp_cast(private_data).get()));
 
         result["psbt"] = psbt_merge_tx(details.at("psbt"), ret.at("tx"));
-        for (auto& utxo : inputs) {
-            if (utxo.value("skip_signing", false)) {
-                continue;
-            }
-            result["utxos"].emplace_back(std::move(utxo));
-        }
+
         return result;
     }
 
