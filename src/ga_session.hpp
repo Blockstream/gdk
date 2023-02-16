@@ -176,6 +176,7 @@ namespace sdk {
         void set_local_encryption_keys_impl(
             locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
+        void derive_wallet_identifiers(nlohmann::json& login_data, bool is_initial_login) const;
         void get_cached_client_blob(const std::string& server_hmac);
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);

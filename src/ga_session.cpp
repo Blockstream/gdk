@@ -582,17 +582,6 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
-        // Compute wallet identifier for callers to use if they wish.
-        const auto hash_ids = get_wallet_hash_ids(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
-        auto& wallet_hash_id = hash_ids["wallet_hash_id"];
-        auto& xpub_hash_id = hash_ids["xpub_hash_id"];
-        if (!is_initial_login) {
-            GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
-            GDK_RUNTIME_ASSERT(login_data.at("xpub_hash_id") == xpub_hash_id);
-        }
-        m_login_data["wallet_hash_id"] = std::move(wallet_hash_id);
-        m_login_data["xpub_hash_id"] = std::move(xpub_hash_id);
-
         // Check that csv blocks used are recoverable and provided by the server
         const auto net_csv_buckets = m_net_params.csv_buckets();
         for (uint32_t bucket : m_login_data["csv_times"]) {
@@ -980,6 +969,19 @@ namespace sdk {
         m_wamp->call(locker, "login.set_appearance", appearance.get());
     }
 
+    void ga_session::derive_wallet_identifiers(nlohmann::json& login_data, bool is_initial_login) const
+    {
+        auto hash_ids = get_wallet_hash_ids(m_net_params, login_data["chain_code"], login_data["public_key"]);
+        auto& wallet_hash_id = hash_ids["wallet_hash_id"];
+        auto& xpub_hash_id = hash_ids["xpub_hash_id"];
+        if (!is_initial_login) {
+            GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
+            GDK_RUNTIME_ASSERT(login_data.at("xpub_hash_id") == xpub_hash_id);
+        }
+        login_data["wallet_hash_id"] = std::move(wallet_hash_id);
+        login_data["xpub_hash_id"] = std::move(xpub_hash_id);
+    }
+
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
@@ -1003,6 +1005,8 @@ namespace sdk {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
+
+        derive_wallet_identifiers(login_data, is_initial_login);
 
         const bool reset_2fa_active = json_get_value(login_data, "reset_2fa_active", false);
         const std::string server_hmac = login_data["client_blob_hmac"];
@@ -1425,6 +1429,8 @@ namespace sdk {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
+
+        derive_wallet_identifiers(login_data, is_initial_login);
 
         const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 
