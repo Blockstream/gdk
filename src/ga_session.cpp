@@ -3306,7 +3306,7 @@ namespace sdk {
         auto [utxos, tx] = psbt_sign_local(details);
 
         auto result = nlohmann::json();
-        result["utxos"] = utxos;
+        result["utxos"] = std::move(utxos);
 
         if (tx.empty()) {
             result["psbt"] = details.at("psbt");
@@ -3318,7 +3318,7 @@ namespace sdk {
 
         nlohmann::json private_data;
         if (details.contains("blinding_nonces")) {
-            private_data["blinding_nonces"] = std::move(details["blinding_nonces"]);
+            private_data["blinding_nonces"] = details["blinding_nonces"];
         }
 
         auto ret = wamp_cast_json(
