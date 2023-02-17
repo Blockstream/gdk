@@ -1,5 +1,7 @@
 #include "ga_auth_handlers.hpp"
 
+#include <utility>
+
 #include "assertion.hpp"
 #include "boost_wrapper.hpp"
 #include "containers.hpp"
@@ -218,11 +220,10 @@ namespace sdk {
     //
     // Register
     //
-    register_call::register_call(
-        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
+    register_call::register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data)
         : auth_handler_impl(session, "register_user", std::shared_ptr<signer>())
-        , m_hw_device(hw_device)
-        , m_credential_data(credential_data)
+        , m_hw_device(std::move(hw_device))
+        , m_credential_data(std::move(credential_data))
     {
     }
 
@@ -268,11 +269,10 @@ namespace sdk {
     //
     // Login User
     //
-    login_user_call::login_user_call(
-        session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data)
+    login_user_call::login_user_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data)
         : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
-        , m_hw_device(hw_device)
-        , m_credential_data(credential_data)
+        , m_hw_device(std::move(hw_device))
+        , m_credential_data(std::move(credential_data))
     {
     }
 
@@ -457,9 +457,9 @@ namespace sdk {
     //
     // Create subaccount
     //
-    create_subaccount_call::create_subaccount_call(session& session, const nlohmann::json& details)
+    create_subaccount_call::create_subaccount_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "create_subaccount")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_subaccount(0)
         , m_initialized(false)
     {
@@ -582,9 +582,9 @@ namespace sdk {
     //
     // Sign tx
     //
-    sign_transaction_call::sign_transaction_call(session& session, const nlohmann::json& tx_details)
+    sign_transaction_call::sign_transaction_call(session& session, nlohmann::json tx_details)
         : auth_handler_impl(session, "sign_transaction")
-        , m_tx_details(tx_details)
+        , m_tx_details(std::move(tx_details))
         , m_initialized(false)
         , m_user_signed(false)
         , m_server_signed(false)
@@ -795,9 +795,9 @@ namespace sdk {
     //
     // Sign PSBT
     //
-    psbt_sign_call::psbt_sign_call(session& session, const nlohmann::json& details)
+    psbt_sign_call::psbt_sign_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "psbt_sign")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -829,9 +829,9 @@ namespace sdk {
     //
     // PSBT get details
     //
-    psbt_get_details_call::psbt_get_details_call(session& session, const nlohmann::json& details)
+    psbt_get_details_call::psbt_get_details_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "psbt_get_details")
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 
@@ -856,9 +856,9 @@ namespace sdk {
     //
     // Get receive address
     //
-    get_receive_address_call::get_receive_address_call(session& session, const nlohmann::json& details)
+    get_receive_address_call::get_receive_address_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_receive_address")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -893,9 +893,9 @@ namespace sdk {
     //
     // Get previous addresses
     //
-    get_previous_addresses_call::get_previous_addresses_call(session& session, const nlohmann::json& details)
+    get_previous_addresses_call::get_previous_addresses_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_previous_addresses")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -936,9 +936,9 @@ namespace sdk {
     //
     // Create transaction
     //
-    create_transaction_call::create_transaction_call(session& session, const nlohmann::json& details)
+    create_transaction_call::create_transaction_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "create_transaction")
-        , m_details(details)
+        , m_details(std::move(details))
     {
         m_details["error"] = std::string(); // Clear any previous error
     }
@@ -1031,11 +1031,11 @@ namespace sdk {
     //
     // Get subaccounts
     //
-    get_subaccounts_call::get_subaccounts_call(session& session, const nlohmann::json& details)
+    get_subaccounts_call::get_subaccounts_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_subaccounts")
         , m_subaccount_type(address_type::p2sh_p2wpkh)
         , m_subaccount(0)
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 
@@ -1099,10 +1099,10 @@ namespace sdk {
     //
     // Get transactions
     //
-    get_transactions_call::get_transactions_call(session& session, const nlohmann::json& details)
+    get_transactions_call::get_transactions_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_transactions")
-        , m_details(details)
-        , m_subaccount(json_get_value(details, "subaccount", 0))
+        , m_details(std::move(details))
+        , m_subaccount(json_get_value(m_details, "subaccount", 0))
     {
     }
 
@@ -1204,9 +1204,9 @@ namespace sdk {
     // Get unspent outputs
     //
     get_unspent_outputs_call::get_unspent_outputs_call(
-        session& session, const nlohmann::json& details, const std::string& name)
+        session& session, nlohmann::json details, const std::string& name)
         : auth_handler_impl(session, name.empty() ? "get_unspent_outputs" : name)
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -1353,8 +1353,8 @@ namespace sdk {
     //
     // Get balance
     //
-    get_balance_call::get_balance_call(session& session, const nlohmann::json& details)
-        : get_unspent_outputs_call(session, details, "get_balance")
+    get_balance_call::get_balance_call(session& session, nlohmann::json details)
+        : get_unspent_outputs_call(session, std::move(details), "get_balance")
     {
     }
 
@@ -1394,9 +1394,9 @@ namespace sdk {
     //
     // Set unspent outputs status
     //
-    set_unspent_outputs_status_call::set_unspent_outputs_status_call(session& session, const nlohmann::json& details)
+    set_unspent_outputs_status_call::set_unspent_outputs_status_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "set_unspent_output_status")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -1442,9 +1442,9 @@ namespace sdk {
     //
     // Change settings
     //
-    change_settings_call::change_settings_call(session& session, const nlohmann::json& settings)
+    change_settings_call::change_settings_call(session& session, nlohmann::json settings)
         : auth_handler_impl(session, "change_settings")
-        , m_settings(settings)
+        , m_settings(std::move(settings))
         , m_initialized(false)
     {
     }
@@ -1488,10 +1488,10 @@ namespace sdk {
     // Enable 2FA
     //
     change_settings_twofactor_call::change_settings_twofactor_call(
-        session& session, const std::string& method_to_update, const nlohmann::json& details)
+        session& session, const std::string& method_to_update, nlohmann::json details)
         : auth_handler_impl(session, "change_settings_twofactor")
         , m_method_to_update(method_to_update)
-        , m_details(details)
+        , m_details(std::move(details))
         , m_enabling(m_details.value("enabled", true))
         , m_initialized(false)
     {
@@ -1627,9 +1627,9 @@ namespace sdk {
     //
     // Update subaccount
     //
-    update_subaccount_call::update_subaccount_call(session& session, const nlohmann::json& details)
+    update_subaccount_call::update_subaccount_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "update_subaccount")
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 
@@ -1651,9 +1651,9 @@ namespace sdk {
     //
     // Change limits
     //
-    change_limits_call::change_limits_call(session& session, const nlohmann::json& details)
+    change_limits_call::change_limits_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "twofactor_change_limits")
-        , m_limit_details(details)
+        , m_limit_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -1712,9 +1712,9 @@ namespace sdk {
     //
     // Send transaction
     //
-    send_transaction_call::send_transaction_call(session& session, const nlohmann::json& tx_details, bool sign_only)
+    send_transaction_call::send_transaction_call(session& session, nlohmann::json tx_details, bool sign_only)
         : auth_handler_impl(session, sign_only ? "sign_transaction" : "send_transaction")
-        , m_tx_details(tx_details)
+        , m_tx_details(std::move(tx_details))
         , m_bump_amount(0)
         , m_type(sign_only ? "sign" : "send")
         , m_twofactor_required(false)
@@ -1836,9 +1836,9 @@ namespace sdk {
     //
     // Sign Message
     //
-    sign_message_call::sign_message_call(session& session, const nlohmann::json& details)
+    sign_message_call::sign_message_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "sign_message")
-        , m_details(details)
+        , m_details(std::move(details))
         , m_initialized(false)
     {
     }
@@ -1934,9 +1934,9 @@ namespace sdk {
     //
     // Set nlocktime/csvtime
     //
-    locktime_call::locktime_call(session& session, const nlohmann::json& params, bool is_csv)
+    locktime_call::locktime_call(session& session, nlohmann::json params, bool is_csv)
         : auth_handler_impl(session, is_csv ? "set_csvtime" : "set_nlocktime")
-        , m_params(params)
+        , m_params(std::move(params))
         , m_initialized(false)
     {
     }
@@ -1960,9 +1960,9 @@ namespace sdk {
     //
     // Get credentials
     //
-    get_credentials_call::get_credentials_call(session& session, const nlohmann::json& details)
+    get_credentials_call::get_credentials_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_credentials")
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 
@@ -1986,9 +1986,9 @@ namespace sdk {
     //
     // Encrypt with PIN
     //
-    encrypt_with_pin_call::encrypt_with_pin_call(session& session, const nlohmann::json& details)
+    encrypt_with_pin_call::encrypt_with_pin_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "encrypt_with_pin", std::shared_ptr<signer>())
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 
@@ -2001,9 +2001,9 @@ namespace sdk {
     //
     // Decrypt with PIN
     //
-    decrypt_with_pin_call::decrypt_with_pin_call(session& session, const nlohmann::json& details)
+    decrypt_with_pin_call::decrypt_with_pin_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "decrypt_with_pin", std::shared_ptr<signer>())
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 

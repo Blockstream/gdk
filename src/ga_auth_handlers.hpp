@@ -8,24 +8,24 @@ namespace ga {
 namespace sdk {
     class register_call : public auth_handler_impl {
     public:
-        register_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
+        register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data);
 
     private:
         state_type call_impl() override;
 
-        const nlohmann::json m_hw_device;
-        const nlohmann::json m_credential_data;
+        nlohmann::json m_hw_device;
+        nlohmann::json m_credential_data;
     };
 
     class login_user_call : public auth_handler_impl {
     public:
-        login_user_call(session& session, const nlohmann::json& hw_device, const nlohmann::json& credential_data);
+        login_user_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data);
 
     private:
         state_type call_impl() override;
         state_type request_subaccount_xpubs();
 
-        const nlohmann::json m_hw_device;
+        nlohmann::json m_hw_device;
         nlohmann::json m_credential_data;
         std::string m_challenge;
         std::string m_master_bip32_xpub;
@@ -34,7 +34,7 @@ namespace sdk {
 
     class create_subaccount_call : public auth_handler_impl {
     public:
-        create_subaccount_call(session& session, const nlohmann::json& details);
+        create_subaccount_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -66,7 +66,7 @@ namespace sdk {
 
     class sign_transaction_call : public auth_handler_impl {
     public:
-        sign_transaction_call(session& session, const nlohmann::json& tx_details);
+        sign_transaction_call(session& session, nlohmann::json tx_details);
 
     private:
         state_type call_impl() override;
@@ -83,7 +83,7 @@ namespace sdk {
 
     class psbt_sign_call : public auth_handler_impl {
     public:
-        psbt_sign_call(session& session, const nlohmann::json& details);
+        psbt_sign_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -95,7 +95,7 @@ namespace sdk {
 
     class psbt_get_details_call : public auth_handler_impl {
     public:
-        psbt_get_details_call(session& session, const nlohmann::json& details);
+        psbt_get_details_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -105,31 +105,31 @@ namespace sdk {
 
     class get_receive_address_call : public auth_handler_impl {
     public:
-        get_receive_address_call(session& session, const nlohmann::json& details);
+        get_receive_address_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
         void initialize();
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
         bool m_initialized;
     };
 
     class get_previous_addresses_call : public auth_handler_impl {
     public:
-        get_previous_addresses_call(session& session, const nlohmann::json& details);
+        get_previous_addresses_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
         void initialize();
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
         bool m_initialized;
     };
 
     class create_transaction_call : public auth_handler_impl {
     public:
-        create_transaction_call(session& session, const nlohmann::json& details);
+        create_transaction_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -140,7 +140,7 @@ namespace sdk {
 
     class get_subaccounts_call : public auth_handler_impl {
     public:
-        get_subaccounts_call(session& session, const nlohmann::json& details);
+        get_subaccounts_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -161,7 +161,7 @@ namespace sdk {
 
     class get_transactions_call : public auth_handler_impl {
     public:
-        get_transactions_call(session& session, const nlohmann::json& details);
+        get_transactions_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -172,8 +172,7 @@ namespace sdk {
 
     class get_unspent_outputs_call : public auth_handler_impl {
     public:
-        get_unspent_outputs_call(
-            session& session, const nlohmann::json& details, const std::string& name = std::string());
+        get_unspent_outputs_call(session& session, nlohmann::json details, const std::string& name = std::string());
 
     protected:
         state_type call_impl() override;
@@ -183,13 +182,13 @@ namespace sdk {
         void filter_result(bool encache);
         std::string get_sort_by() const;
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
         bool m_initialized;
     };
 
     class get_balance_call : public get_unspent_outputs_call {
     public:
-        get_balance_call(session& session, const nlohmann::json& details);
+        get_balance_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -198,7 +197,7 @@ namespace sdk {
 
     class set_unspent_outputs_status_call : public auth_handler_impl {
     public:
-        set_unspent_outputs_status_call(session& session, const nlohmann::json& details);
+        set_unspent_outputs_status_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -211,22 +210,21 @@ namespace sdk {
 
     class change_settings_call : public auth_handler_impl {
     public:
-        change_settings_call(session& session, const nlohmann::json& settings);
+        change_settings_call(session& session, nlohmann::json settings);
 
     private:
         state_type call_impl() override;
 
         void initialize();
 
-        const nlohmann::json m_settings;
+        nlohmann::json m_settings;
         nlohmann::json m_nlocktime_value;
         bool m_initialized;
     };
 
     class change_settings_twofactor_call : public auth_handler_impl {
     public:
-        change_settings_twofactor_call(
-            session& session, const std::string& method_to_update, const nlohmann::json& details);
+        change_settings_twofactor_call(session& session, const std::string& method_to_update, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -244,17 +242,17 @@ namespace sdk {
 
     class update_subaccount_call : public auth_handler_impl {
     public:
-        update_subaccount_call(session& session, const nlohmann::json& details);
+        update_subaccount_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
     };
 
     class change_limits_call : public auth_handler_impl {
     public:
-        change_limits_call(session& session, const nlohmann::json& details);
+        change_limits_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -274,7 +272,7 @@ namespace sdk {
 
     class send_transaction_call final : public auth_handler_impl {
     public:
-        send_transaction_call(session& session, const nlohmann::json& tx_details, bool sign_only = false);
+        send_transaction_call(session& session, nlohmann::json tx_details, bool sign_only = false);
 
         void request_code(const std::string& method) override;
 
@@ -295,7 +293,7 @@ namespace sdk {
 
     class sign_message_call : public auth_handler_impl {
     public:
-        sign_message_call(session& session, const nlohmann::json& details);
+        sign_message_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -329,7 +327,7 @@ namespace sdk {
 
     class locktime_call : public auth_handler_impl {
     public:
-        locktime_call(session& session, const nlohmann::json& params, bool is_csv);
+        locktime_call(session& session, nlohmann::json params, bool is_csv);
 
     private:
         state_type call_impl() override;
@@ -340,32 +338,32 @@ namespace sdk {
 
     class get_credentials_call : public auth_handler_impl {
     public:
-        get_credentials_call(session& session, const nlohmann::json& details);
+        get_credentials_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
     };
 
     class encrypt_with_pin_call : public auth_handler_impl {
     public:
-        encrypt_with_pin_call(session& session, const nlohmann::json& details);
+        encrypt_with_pin_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
     };
 
     class decrypt_with_pin_call : public auth_handler_impl {
     public:
-        decrypt_with_pin_call(session& session, const nlohmann::json& details);
+        decrypt_with_pin_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
 
-        const nlohmann::json m_details;
+        nlohmann::json m_details;
     };
 } // namespace sdk
 } // namespace ga
