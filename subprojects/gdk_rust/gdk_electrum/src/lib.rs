@@ -45,6 +45,7 @@ use gdk_common::{be::*, State};
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::elements::encode;
 use gdk_common::elements::pset::PartiallySignedTransaction;
+use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
 use gdk_common::NetworkId;
@@ -611,6 +612,12 @@ impl ElectrumSession {
                                     }
                                     // XXX clear affected blocks/txs more surgically?
                                 }
+                                Err(Error::Common(BtcEncodingError(_)))
+                                | Err(Error::Common(ElementsEncodingError(_))) => {
+                                    // We aren't able to decode the blockheaders returned by the server,
+                                    // do not sync headers further.
+                                    break 'outer;
+                                }
                                 Err(e) => {
                                     warn!("error while asking headers {}", e);
                                     thread::sleep(Duration::from_millis(500));
@@ -692,7 +699,7 @@ impl ElectrumSession {
                 }
                 Ok(None) => Ok(None), // nothing to update
                 Err(e) => {
-                    warn!("exception in tipper {:?}", e);
+                    gdk_common::log::error!("exception in tipper {:?}", e);
                     Err(e)
                 }
             };
@@ -725,6 +732,12 @@ impl ElectrumSession {
                     Ok(client) => {
                         let tip_before_sync = match update_tip(&client, false) {
                             Ok(height) => height,
+                            Err(Error::Common(BtcEncodingError(_)))
+                            | Err(Error::Common(ElementsEncodingError(_))) => {
+                                // We aren't able to decode the blockheaders returned by the server,
+                                // do not sync further.
+                                break;
+                            }
                             Err(_) => {
                                 continue;
                             }
