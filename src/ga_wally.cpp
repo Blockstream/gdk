@@ -853,6 +853,13 @@ namespace sdk {
         return std::make_tuple(asset_id, vbf, abf, value);
     }
 
+    bool is_possible_confidential_addr(const std::string& address)
+    {
+        const size_t expected_len = 2 + EC_PUBLIC_KEY_LEN + HASH160_LEN + BASE58_CHECKSUM_LEN;
+        size_t len;
+        return wally_base58_n_get_length(address.data(), address.size(), &len) == WALLY_OK && len == expected_len;
+    }
+
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix)
     {
         char* addr;

@@ -324,6 +324,7 @@ namespace sdk {
     unblind_t asset_unblind_with_nonce(byte_span_t blinding_nonce, byte_span_t rangeproof, byte_span_t commitment,
         byte_span_t extra_commitment, byte_span_t generator);
 
+    bool is_possible_confidential_addr(const std::string& address);
     std::string confidential_addr_to_addr(const std::string& address, uint32_t prefix);
     std::string confidential_addr_to_addr_segwit(
         const std::string& address, const std::string& confidential_prefix, const std::string& family);

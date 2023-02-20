@@ -56,8 +56,10 @@ static std::vector<unsigned char> output_script_for_address(
                 if (is_blech32) {
                     address = confidential_addr_to_addr_segwit(
                         address, net_params.blech32_prefix(), net_params.bech32_prefix());
-                } else {
+                } else if (is_possible_confidential_addr(address)) {
                     address = confidential_addr_to_addr(address, net_params.blinded_prefix());
+                } else {
+                    error = res::id_nonconfidential_addresses_not;
                 }
             } catch (const std::exception& e) {
                 // If the address isn't blech32, its base58 with the wrong prefix byte
