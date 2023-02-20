@@ -339,10 +339,10 @@ namespace sdk {
         }
     }
 
-    std::pair<std::vector<nlohmann::json>, std::string> session_impl::psbt_sign_local(const nlohmann::json& details)
+    nlohmann::json session_impl::psbt_sign(const nlohmann::json& details)
     {
         const auto psbt = psbt_from_base64(details.at("psbt"));
-        const auto tx = psbt_extract_tx(psbt);
+        auto tx = psbt_extract_tx(psbt);
 
         // Clear utxos and fill it with the ones that will be signed
         std::vector<nlohmann::json> inputs;
@@ -364,15 +364,15 @@ namespace sdk {
             inputs.emplace_back(input_utxo);
         }
 
-        std::vector<nlohmann::json> utxos;
-
+        nlohmann::json::array_t utxos;
         if (!requires_signatures) {
-            return std::make_pair(utxos, "");
+            // No signatures required, return the PSBT unchanged
+            return { { "utxos", utxos }, { "psbt", details.at("psbt") } };
         }
 
         // FIXME: refactor to use HWW path
         const auto flags = tx_flags(m_net_params.is_liquid());
-        const nlohmann::json tx_details = { { "transaction", tx_to_hex(tx, flags) } };
+        nlohmann::json tx_details = { { "transaction", tx_to_hex(tx, flags) } };
         const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
 
         const bool is_low_r = get_signer()->supports_low_r();
@@ -386,14 +386,30 @@ namespace sdk {
             add_input_signature(tx, i, utxo, signature, is_low_r);
         }
 
+        utxos.reserve(inputs.size());
         for (auto& utxo : inputs) {
-            if (utxo.value("skip_signing", false)) {
-                continue;
+            if (!utxo.value("skip_signing", false)) {
+                utxos.emplace_back(std::move(utxo));
             }
-            utxos.emplace_back(std::move(utxo));
+        }
+        nlohmann::json result = { { "utxos", std::move(utxos) } };
+
+        if (!m_net_params.is_electrum()) {
+            // Multisig: Get the server signature(s).
+            // We pass the UTXOs in (under a dummy asset key which is unused)
+            // for housekeeping puposes such as internal cache updates.
+            nlohmann::json u = { { "dummy", std::move(result["utxos"]) } };
+            tx_details = { { "transaction", tx_to_hex(tx, flags) }, { "utxos", std::move(u) } };
+            if (details.contains("blinding_nonces")) {
+                tx_details["blinding_nonces"] = details["blinding_nonces"];
+            }
+            auto ret = service_sign_transaction(tx_details, nlohmann::json::object());
+            tx = tx_from_hex(ret.at("transaction"), flags);
+            result["utxos"] = std::move(tx_details["utxos"]["dummy"]);
         }
 
-        return std::make_pair(utxos, tx_to_hex(tx, flags));
+        result["psbt"] = psbt_merge_tx(details.at("psbt"), tx_to_hex(tx, flags));
+        return result;
     }
 
     nlohmann::json session_impl::user_sign_transaction(const nlohmann::json& details)

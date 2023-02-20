@@ -425,22 +425,6 @@ namespace sdk {
         return rust_call("psbt_get_details", details, m_session);
     }
 
-    nlohmann::json ga_rust::psbt_sign(const nlohmann::json& details)
-    {
-        auto [utxos, tx] = psbt_sign_local(details);
-
-        auto result = nlohmann::json();
-        result["utxos"] = utxos;
-
-        if (!tx.empty()) {
-            result["psbt"] = psbt_merge_tx(details.at("psbt"), tx);
-        } else {
-            result["psbt"] = details.at("psbt");
-        }
-
-        return result;
-    }
-
     nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& /*twofactor_data*/)
     {
         auto txhash_hex = broadcast_transaction(details.at("transaction"));

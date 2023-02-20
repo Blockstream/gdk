@@ -3300,34 +3300,6 @@ namespace sdk {
             { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
     }
 
-    nlohmann::json ga_session::psbt_sign(const nlohmann::json& details)
-    {
-        auto [utxos, tx] = psbt_sign_local(details);
-
-        auto result = nlohmann::json();
-        result["utxos"] = std::move(utxos);
-
-        if (tx.empty()) {
-            result["psbt"] = details.at("psbt");
-            return result;
-        }
-
-        // FIXME: handle existing 2FA
-        const nlohmann::json twofactor_data = nlohmann::json::object();
-
-        nlohmann::json private_data;
-        if (details.contains("blinding_nonces")) {
-            private_data["blinding_nonces"] = details["blinding_nonces"];
-        }
-
-        auto ret = wamp_cast_json(
-            m_wamp->call("vault.sign_raw_tx", tx, mp_cast(twofactor_data).get(), mp_cast(private_data).get()));
-
-        result["psbt"] = psbt_merge_tx(details.at("psbt"), ret.at("tx"));
-
-        return result;
-    }
-
     nlohmann::json ga_session::service_sign_transaction(
         const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
