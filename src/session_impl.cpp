@@ -359,10 +359,7 @@ namespace sdk {
             nlohmann::json input_utxo({ { "skip_signing", true } });
             for (auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
-                    // TODO: remove this once get_unspent_outputs populates prevout_script
-                    auto prevout_script = b2h(output_script_from_utxo(utxo));
                     input_utxo = std::move(utxo);
-                    input_utxo["prevout_script"] = prevout_script;
                     input_utxo["user_sighash"] = sighashes.at(i);
                     requires_signatures = true;
                     break;

@@ -2634,6 +2634,10 @@ namespace sdk {
                 }
             }
         }
+        for (auto& utxo : utxos) {
+            if (!utxo.contains("prevout_script"))
+                utxo["prevout_script"] = b2h(output_script_from_utxo(locker, utxo));
+        }
         return utxos;
     }
 
