@@ -121,6 +121,14 @@ namespace sdk {
     wally_ext_key_ptr bip32_key_from_seed_alloc(
         byte_span_t seed, uint32_t version, uint32_t flags = BIP32_FLAG_SKIP_HASH);
 
+    xpub_t make_xpub(const ext_key* hdkey);
+    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex);
+    xpub_t make_xpub(const std::string& bip32_xpub);
+    std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags);
+
+    constexpr uint32_t harden(uint32_t pointer) { return pointer | 0x80000000; }
+    constexpr uint32_t unharden(uint32_t pointer) { return pointer & 0x7fffffff; }
+
     // BIP 38
     std::vector<unsigned char> bip38_raw_to_private_key(byte_span_t priv_key, byte_span_t passphrase, uint32_t flags);
 
@@ -401,14 +409,6 @@ namespace sdk {
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
-
-    xpub_t make_xpub(const ext_key* hdkey);
-    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex);
-    xpub_t make_xpub(const std::string& bip32_xpub);
-    std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags);
-
-    constexpr uint32_t harden(uint32_t pointer) { return pointer | 0x80000000; }
-    constexpr uint32_t unharden(uint32_t pointer) { return pointer & 0x7fffffff; }
 
 #undef GA_USE_RESULT
 
