@@ -266,14 +266,6 @@ namespace sdk {
         return SPV_STATUS_NAMES[spv_status];
     }
 
-    std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex)
-    {
-        auto psbt_hex = b2h(base64_to_bytes(psbt));
-        nlohmann::json details = { { "psbt_hex", std::move(psbt_hex) }, { "transaction", tx_hex } };
-        auto result = rust_call("psbt_merge_tx", details);
-        return base64_from_bytes(h2b(result.at("psbt_hex")));
-    }
-
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)
     {
         // Algorithm from the PCG family of random generators

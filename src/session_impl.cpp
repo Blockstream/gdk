@@ -397,7 +397,7 @@ namespace sdk {
         if (!m_net_params.is_electrum()) {
             // Multisig: Get the server signature(s).
             // We pass the UTXOs in (under a dummy asset key which is unused)
-            // for housekeeping puposes such as internal cache updates.
+            // for housekeeping purposes such as internal cache updates.
             nlohmann::json u = { { "dummy", std::move(result["utxos"]) } };
             tx_details = { { "transaction", tx_to_hex(tx, flags) }, { "utxos", std::move(u) } };
             if (details.contains("blinding_nonces")) {
@@ -408,7 +408,18 @@ namespace sdk {
             result["utxos"] = std::move(tx_details["utxos"]["dummy"]);
         }
 
-        result["psbt"] = psbt_merge_tx(details.at("psbt"), tx_to_hex(tx, flags));
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            const auto& utxo = inputs.at(i);
+            const std::string& signature = signatures.at(i);
+            GDK_RUNTIME_ASSERT(signature.empty() == !utxo.empty());
+            if (utxo.empty()) {
+                GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, tx->inputs[i].witness));
+                GDK_VERIFY(wally_psbt_set_input_final_scriptsig(
+                    psbt.get(), i, tx->inputs[i].script, tx->inputs[i].script_len));
+            }
+        }
+
+        result["psbt"] = psbt_to_base64(psbt);
         return result;
     }
 
