@@ -14,6 +14,7 @@
 #if !defined __APPLE__ && __clang_major__ >= 6
 #pragma clang diagnostic ignored "-Wenum-compare"
 #endif
+#pragma clang diagnostic ignored "-Wunknown-warning-option"
 #pragma clang diagnostic ignored "-Wignored-qualifiers"
 #pragma clang diagnostic ignored "-Wnon-virtual-dtor"
 #pragma clang diagnostic ignored "-Wunused-parameter"
