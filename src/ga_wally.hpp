@@ -44,6 +44,7 @@ namespace sdk {
     using wally_tx_witness_stack_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
     using wally_tx_output_ptr = std::unique_ptr<struct wally_tx_output>;
     using wally_tx_ptr = std::unique_ptr<struct wally_tx>;
+    using wally_psbt_ptr = std::unique_ptr<struct wally_psbt>;
 
     using byte_span_t = gsl::span<const unsigned char>;
     using uint32_span_t = gsl::span<const uint32_t>;
@@ -409,6 +410,15 @@ namespace sdk {
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
+
+    //
+    // PSBT/PSET
+    //
+    wally_psbt_ptr psbt_from_base64(const std::string& b64);
+
+    std::string psbt_to_base64(const wally_psbt_ptr& psbt);
+
+    wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt);
 
 #undef GA_USE_RESULT
 

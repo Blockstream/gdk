@@ -150,9 +150,6 @@ namespace sdk {
     // "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed"
     std::string spv_get_status_string(uint32_t spv_status);
 
-    // Extract data from a PSBT or PSET
-    nlohmann::json psbt_extract(const std::string& psbt);
-
     // Merge a transaction in a PSBT or PSET
     std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex);
 

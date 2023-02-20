@@ -1147,5 +1147,27 @@ namespace sdk {
         GDK_VERIFY(::bip32_key_to_base58(hdkey, flags, &s));
         return make_string(s);
     }
+
+    wally_psbt_ptr psbt_from_base64(const std::string& b64)
+    {
+        struct wally_psbt* p;
+        GDK_VERIFY(wally_psbt_from_base64(b64.c_str(), 0, &p));
+        return wally_psbt_ptr(p);
+    }
+
+    std::string psbt_to_base64(const wally_psbt_ptr& psbt)
+    {
+        char* s;
+        GDK_VERIFY(wally_psbt_to_base64(psbt.get(), 0, &s));
+        return make_string(s);
+    }
+
+    wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt)
+    {
+        struct wally_tx* p;
+        GDK_VERIFY(wally_psbt_extract(psbt.get(), WALLY_PSBT_EXTRACT_NON_FINAL, &p));
+        return wally_tx_ptr(p);
+    }
+
 } /* namespace sdk */
 } /* namespace ga */

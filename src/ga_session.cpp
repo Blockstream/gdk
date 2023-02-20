@@ -2547,9 +2547,8 @@ namespace sdk {
     nlohmann::json ga_session::psbt_get_details(const nlohmann::json& details)
     {
         const bool is_liquid = m_net_params.is_liquid();
-        const std::string tx_hex = psbt_extract(details.at("psbt")).at("transaction");
-        const auto flags = tx_flags(is_liquid);
-        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
+        const auto psbt = psbt_from_base64(details.at("psbt"));
+        const auto tx = psbt_extract_tx(psbt);
 
         nlohmann::json::array_t inputs;
         inputs.reserve(tx->num_inputs);

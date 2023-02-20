@@ -266,13 +266,6 @@ namespace sdk {
         return SPV_STATUS_NAMES[spv_status];
     }
 
-    nlohmann::json psbt_extract(const std::string& psbt)
-    {
-        auto psbt_hex = b2h(base64_to_bytes(psbt));
-        nlohmann::json details = { { "psbt_hex", std::move(psbt_hex) } };
-        return rust_call("psbt_extract", details);
-    }
-
     std::string psbt_merge_tx(const std::string& psbt, const std::string& tx_hex)
     {
         auto psbt_hex = b2h(base64_to_bytes(psbt));

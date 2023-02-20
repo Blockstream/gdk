@@ -341,13 +341,8 @@ namespace sdk {
 
     std::pair<std::vector<nlohmann::json>, std::string> session_impl::psbt_sign_local(const nlohmann::json& details)
     {
-        const nlohmann::json psbt_details = psbt_extract(details.at("psbt"));
-        std::string tx_hex = psbt_details.at("transaction");
-        std::vector<uint32_t> sighashes = psbt_details.at("sighashes");
-        const auto flags = tx_flags(m_net_params.is_liquid());
-        wally_tx_ptr tx = tx_from_hex(tx_hex, flags);
-        const nlohmann::json tx_details = { { "transaction", std::move(tx_hex) } };
-        GDK_RUNTIME_ASSERT(sighashes.size() == tx->num_inputs);
+        const auto psbt = psbt_from_base64(details.at("psbt"));
+        const auto tx = psbt_extract_tx(psbt);
 
         // Clear utxos and fill it with the ones that will be signed
         std::vector<nlohmann::json> inputs;
@@ -360,7 +355,8 @@ namespace sdk {
             for (auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
                     input_utxo = std::move(utxo);
-                    input_utxo["user_sighash"] = sighashes.at(i);
+                    const uint32_t sighash = psbt->inputs[i].sighash;
+                    input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
                     requires_signatures = true;
                     break;
                 }
@@ -375,6 +371,8 @@ namespace sdk {
         }
 
         // FIXME: refactor to use HWW path
+        const auto flags = tx_flags(m_net_params.is_liquid());
+        const nlohmann::json tx_details = { { "transaction", tx_to_hex(tx, flags) } };
         const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
 
         const bool is_low_r = get_signer()->supports_low_r();

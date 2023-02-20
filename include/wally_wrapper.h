@@ -12,6 +12,8 @@
 #include <wally_core.h>
 #include <wally_crypto.h>
 #include <wally_elements.h>
+#include <wally_psbt.h>
+#include <wally_psbt_members.h>
 #include <wally_script.h>
 #include <wally_transaction.h>
 
