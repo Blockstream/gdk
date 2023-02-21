@@ -39,6 +39,7 @@ enable_tests=FALSE # cmake bool format
 python_version=3
 enable_python=false
 parallel=$(cat /proc/cpuinfo | grep ^processor | wc -l)
+devmode=FALSE # cmake bool
 
 
 if [ "$(uname)" = "Darwin" ]; then
@@ -51,7 +52,7 @@ if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,clang,gcc,mingw-w64,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,clang,gcc,devmode,mingw-w64,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -59,6 +60,7 @@ while true; do
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
+        --devmode ) devmode=TRUE; shift ;;
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --python-version) enable_python=true; python_version="$2"; shift 2 ;;
@@ -110,6 +112,7 @@ cmake -B $bld_root -S . \
     -DCMAKE_BUILD_TYPE=$cmake_build_type \
     -DENABLE_TESTS:BOOL=$enable_tests \
     -DPYTHON_REQUIRED_VERSION=$python_version \
+    -DDEV_MODE:BOOL=$devmode
 
 cmake --build $bld_root --parallel $parallel
 

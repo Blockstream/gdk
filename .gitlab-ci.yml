@@ -64,23 +64,6 @@ stages:
     paths:
     - $INSTALL_PATH
 
-# .ios_sim_release:
-#   extends: .osx_env
-#   variables:
-#     INSTALL_PATH: "gdk-iphone-sim"
-#   before_script:
-#     - mkdir $CI_PROJECT_DIR/$INSTALL_PATH
-#   artifacts:
-#     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-#     expire_in: 1 day
-#     when: on_success
-#     paths:
-#     - $INSTALL_PATH
-
-
-  # variables:
-  #   INSTALL_PATH: "gdk-iphone"
-
 test_format:
   tags:
     - ga
@@ -148,6 +131,15 @@ test_gcc_bullseye_debug:
   script:
     - cd build-gcc-debug/
     - ctest
+
+build_gcc_bullseye_devmode:
+  tags:
+    - ga
+  stage: build
+  script:
+    - source /root/.cargo/env
+    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake -DDEV_MODE:BOOL=TRUE -B build-gcc -S .
+    - cmake --build build-gcc --target python-wheel --parallel 16
 
 
 

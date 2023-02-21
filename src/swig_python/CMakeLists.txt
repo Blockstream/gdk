@@ -25,24 +25,42 @@ endif()
 if(APPLE)
     set(_pythonLFlags "${_pythonLFlags} -framework Security")
 endif()
+
 file(COPY __init__.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/greenaddress/)
 file(COPY swig_gasdk.i DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress)
 file(COPY README.md DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress)
 configure_file(pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/pyproject.toml)
-configure_file(setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
 
-add_custom_command(OUTPUT python-wheel-canary-file
-    COMMAND cmake -E env
-        LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
-        CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
-        CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
-        CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
-        python -m build
-    COMMAND touch python-wheel-canary-file
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
-    DEPENDS greenaddress-full
-    COMMENT "building python-wheel"
-)
+if(DEV_MODE)
+    configure_file(dev-mode-setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
+    add_custom_command(OUTPUT python-wheel-canary-file
+        COMMAND cmake -E env
+            LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
+            CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
+            CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
+            CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
+            python -m build
+        COMMAND touch python-wheel-canary-file
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
+        DEPENDS greenaddress
+        COMMENT "building python-wheel in dev mode"
+    )
+else()
+    configure_file(setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
+    add_custom_command(OUTPUT python-wheel-canary-file
+        COMMAND cmake -E env
+            LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
+            CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
+            CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
+            CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
+            python -m build
+        COMMAND touch python-wheel-canary-file
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
+        DEPENDS greenaddress-full
+        COMMENT "building python-wheel"
+    )
+endif()
+
 add_custom_target(python-wheel
     DEPENDS python-wheel-canary-file
 )
@@ -52,7 +70,7 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/dist/
     FILES_MATCHING PATTERN *.whl
 )
 
-if(APPLE)
+if(APPLE OR DEV_MODE)
     return()
 endif()
 
