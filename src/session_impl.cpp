@@ -316,11 +316,7 @@ namespace sdk {
         // Overriden for multisig
     }
 
-    nlohmann::json session_impl::get_scriptpubkey_data(byte_span_t /*scriptpubkey*/)
-    {
-        // Overriden for multisig
-        return nlohmann::json();
-    }
+    nlohmann::json session_impl::get_scriptpubkey_data(byte_span_t /*scriptpubkey*/) { return nlohmann::json(); }
 
     nlohmann::json session_impl::get_address_data(const nlohmann::json& /*details*/)
     {

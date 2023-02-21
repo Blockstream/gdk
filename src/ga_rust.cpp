@@ -420,6 +420,15 @@ namespace sdk {
         throw std::runtime_error("service_sign_transaction not implemented");
     }
 
+    nlohmann::json ga_rust::get_scriptpubkey_data(byte_span_t scriptpubkey)
+    {
+        try {
+            return rust_call("get_scriptpubkey_data", nlohmann::json(b2h(scriptpubkey)), m_session);
+        } catch (const std::exception&) {
+            return nlohmann::json();
+        }
+    }
+
     nlohmann::json ga_rust::psbt_get_details(const nlohmann::json& details)
     {
         return rust_call("psbt_get_details", details, m_session);

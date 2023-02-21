@@ -959,6 +959,27 @@ impl ElectrumSession {
         store.get_tx_entry(&txid).map(|e| e.into())
     }
 
+    pub fn get_scriptpubkey_data(&self, script_pubkey: &str) -> Result<ScriptPubKeyData, Error> {
+        let script = BEScript::from_hex(script_pubkey, self.network.id())?;
+        let store = self.store()?;
+        let store = store.read()?;
+        let accounts = self.get_accounts()?;
+        for account in accounts.iter() {
+            let account_cache = store.account_cache(account.num())?;
+            if let Ok(path) = account_cache.get_path(&script) {
+                let (is_internal, pointer) = parse_path(path)?;
+                return Ok(ScriptPubKeyData {
+                    subaccount: account.num(),
+                    branch: 1,
+                    pointer: pointer,
+                    subtype: 0,
+                    is_internal: is_internal,
+                });
+            }
+        }
+        return Err(Error::ScriptPubkeyNotFound);
+    }
+
     pub fn get_balance(&self, opt: &GetBalanceOpt) -> Result<Balances, Error> {
         let mut result = HashMap::new();
         // bitcoin balance is always set even if 0

@@ -1098,6 +1098,16 @@ pub struct TransactionDetails {
     pub transaction_weight: usize,
 }
 
+// Output of get_scriptpubkey_data
+#[derive(Serialize, Debug, Clone)]
+pub struct ScriptPubKeyData {
+    pub subaccount: u32,
+    pub branch: u32, // Always 1
+    pub pointer: u32,
+    pub subtype: u32, // Always 0
+    pub is_internal: bool,
+}
+
 impl From<&BETransactionEntry> for TransactionDetails {
     fn from(tx_entry: &BETransactionEntry) -> Self {
         Self {
