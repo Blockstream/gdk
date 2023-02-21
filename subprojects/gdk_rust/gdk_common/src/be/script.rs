@@ -1,4 +1,6 @@
-use bitcoin::hashes::hex::ToHex;
+use crate::error::Error;
+use crate::NetworkId;
+use bitcoin::hashes::hex::{FromHex, ToHex};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -13,6 +15,13 @@ impl BEScript {
             Self::Bitcoin(script) => script.to_hex(),
             Self::Elements(script) => script.to_hex(),
         }
+    }
+
+    pub fn from_hex(s: &str, network: NetworkId) -> Result<Self, Error> {
+        Ok(match network {
+            NetworkId::Bitcoin(_) => bitcoin::Script::from_hex(s)?.into(),
+            NetworkId::Elements(_) => elements::Script::from_hex(s)?.into(),
+        })
     }
 
     pub fn is_empty(&self) -> bool {
