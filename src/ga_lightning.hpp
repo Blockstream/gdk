@@ -96,6 +96,7 @@ namespace sdk {
         nlohmann::json user_sign_transaction(const nlohmann::json& details);
         nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json psbt_sign(const nlohmann::json& details);
+        nlohmann::json psbt_get_details(const nlohmann::json& details);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 

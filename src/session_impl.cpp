@@ -324,7 +324,50 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& /*details*/) { return nlohmann::json(); }
+    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& details)
+    {
+        const bool is_liquid = m_net_params.is_liquid();
+        const auto psbt = psbt_from_base64(details.at("psbt"));
+        const auto tx = psbt_extract_tx(psbt);
+
+        nlohmann::json::array_t inputs;
+        inputs.reserve(tx->num_inputs);
+        for (size_t i = 0; i < tx->num_inputs; ++i) {
+            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
+            const uint32_t vout = tx->inputs[i].index;
+            for (const auto& utxo : details.at("utxos")) {
+                if (utxo.value("txhash", std::string()) == txhash_hex && utxo.at("pt_idx") == vout) {
+                    inputs.emplace_back(std::move(utxo));
+                    break;
+                }
+            }
+        }
+
+        nlohmann::json::array_t outputs;
+        outputs.reserve(tx->num_outputs);
+        for (size_t i = 0; i < tx->num_outputs; ++i) {
+            const auto& o = tx->outputs[i];
+            if (!o.script_len) {
+                continue; // Liquid fee
+            }
+            const auto scriptpubkey = gsl::make_span(o.script, o.script_len);
+            auto output_data = get_scriptpubkey_data(scriptpubkey);
+            if (output_data.empty()) {
+                continue; // Scriptpubkey does not belong the wallet
+            }
+            if (is_liquid) {
+                const auto unblinded = unblind_output(*this, tx, i);
+                if (unblinded.contains("error")) {
+                    GDK_LOG_SEV(log_level::warning) << "output " << i << ": " << unblinded.at("error");
+                    continue; // Failed to unblind
+                }
+                output_data.update(unblinded);
+            }
+            outputs.emplace_back(output_data);
+        }
+
+        return nlohmann::json{ { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } };
+    }
 
     nlohmann::json session_impl::create_transaction(const nlohmann::json& details)
     {

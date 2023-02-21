@@ -339,6 +339,11 @@ namespace sdk {
         throw std::runtime_error("psbt_sign not implemented");
     }
 
+    nlohmann::json ga_lightning::psbt_get_details(const nlohmann::json& details)
+    {
+        throw std::runtime_error("psbt_get_details not implemented");
+    }
+
     nlohmann::json ga_lightning::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
         throw std::runtime_error("send_transaction not implemented");

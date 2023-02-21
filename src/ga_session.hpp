@@ -140,7 +140,6 @@ namespace sdk {
             uint32_t subtype, uint32_t script_type);
         void encache_new_scriptpubkeys(uint32_t subaccount);
         nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
-        nlohmann::json psbt_get_details(const nlohmann::json& details);
 
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;

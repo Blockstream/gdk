@@ -429,11 +429,6 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_rust::psbt_get_details(const nlohmann::json& details)
-    {
-        return rust_call("psbt_get_details", details, m_session);
-    }
-
     nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& /*twofactor_data*/)
     {
         auto txhash_hex = broadcast_transaction(details.at("transaction"));
