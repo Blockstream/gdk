@@ -246,7 +246,7 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
         GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 
-    let methods_to_redact_out = vec!["credentials_from_pin_data"];
+    let methods_to_redact_out = vec!["credentials_from_pin_data", "decrypt_with_pin"];
     let mut output_redacted = if methods_to_redact_out.contains(&method) {
         "redacted".to_string()
     } else {
