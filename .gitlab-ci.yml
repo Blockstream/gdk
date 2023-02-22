@@ -49,7 +49,7 @@ stages:
 .osx_env:
   variables:
     NUM_JOBS: 16
-    PREBUILT_SUBDIR: "prebuilt-1"
+    PREBUILT_SUBDIR: "prebuilt-2"
 
 .ios_release:
   extends: .osx_env
@@ -209,7 +209,7 @@ test_rust:
 
 
 build_clang_fedora:
-  image: greenaddress/fedora_ci@sha256:78997558029c74fbf6ad078b0eb75663749a216b676f6df2eb17dba8c97acc0e
+  image: greenaddress/fedora_ci@sha256:383c15f6a17a145709b63d7e2fab92844dfa88f9cd8ce258d17d8b96540b47e8
   tags:
     - ga
   stage: build
@@ -221,12 +221,10 @@ build_clang_fedora:
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu18.04:
-  image: greenaddress/ubuntu_ci@sha256:bf83a3116c8fcb21e6535497c3aa7db266f4e8a823387ad30442c5a53f54bbff
+  image: greenaddress/ubuntu_ci@sha256:e7d72afc039db9660339e0d84bd509baa03fd5fc0e28c92ce64061aa850d73e9
   extends: .py_release
   stage: build
   script:
-    - update-alternatives --install /usr/bin/python python /usr/bin/python2.7 10
-    - update-alternatives --install /usr/bin/python python /usr/bin/python3.6 20
     - source /root/.cargo/env
     - apt-get update
     - apt-get install -y python3-venv

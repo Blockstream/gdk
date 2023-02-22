@@ -177,6 +177,10 @@ if [ ${BUILDTYPE} == "debug" ]; then
     export CXXFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
     export CPPFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
     export BUILDTYPE=${BUILDTYPE}
+else
+    export CFLAGS="$CFLAGS -O2 -DNDEBUG"
+    export CXXFLAGS="$CXXFLAGS -O2 -DNDEBUG"
+    # export CPPFLAGS="$CPPFLAGS -O3 -DNDEBUG" # tor seems to be annoyed by this variable ¯\_(ツ)_/¯
 fi
 
 export CXX=$CXX_COMPILER

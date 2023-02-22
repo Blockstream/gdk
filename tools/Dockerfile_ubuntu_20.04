@@ -1,7 +1,10 @@
-FROM ubuntu:18.04@sha256:07896b8999fbcb3aaf71a0c5addc9bbc4d59682a143208610cc023f41a968fa6 as base
+FROM ubuntu:20.04@sha256:bffb6799d706144f263f4b91e1226745ffb5643ea0ea89c2f709208e8d70c999 as base
 WORKDIR /root
-COPY ./tools/ubuntu_18.04_deps.sh ./tools/deps.sh
+COPY ./tools/ubuntu_20.04_deps.sh ./tools/deps.sh
 COPY ./tools/requirements.txt /requirements.txt
+COPY ./cmake/profiles/ ./cmake/profiles/
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
 RUN ./tools/deps.sh
 
 FROM base AS buildergcc

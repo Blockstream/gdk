@@ -4,7 +4,7 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install curl autoconf pkg-config build-essential libtool libtool-bin virtualenv python3-{pip,yaml,-venv} ninja-build clang llvm-dev git swig unzip cmake patchelf -yqq
+apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang git swig  cmake libssl-dev libtool-bin patchelf curl -yqq
 pip3 install --require-hashes -r /requirements.txt
 rm /requirements.txt
 
@@ -20,6 +20,7 @@ mkdir /tmp/protoc && \
     rm -rf /tmp/protoc
 
 if [ -f /.dockerenv ]; then
+    apt remove --purge unzip -yqq
     apt -yqq autoremove
     apt -yqq clean
     rm -rf /var/lib/apt/lists/* /var/cache/* /tmp/* /usr/share/locale/* /usr/share/man /usr/share/doc /lib/xtables/libip6* /root/.cache

@@ -2,6 +2,7 @@ FROM fedora:32@sha256:7afb459893c1c5defb714d7e0a2aae4a5c2a12f24aa5b26ff5f8f8e7dd
 WORKDIR /root
 COPY ./tools/fedora37_deps.sh ./tools/deps.sh
 COPY ./tools/requirements.txt /requirements.txt
+COPY ./cmake/profiles/ ./cmake/profiles/
 RUN ./tools/deps.sh
 
 FROM base AS buildergcc

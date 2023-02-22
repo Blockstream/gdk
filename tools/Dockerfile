@@ -1,9 +1,9 @@
 FROM debian:bullseye@sha256:45ee40a844048c2f6d0105899c1a17733530b56d481612608aab5e2e4048570b as base
 WORKDIR /root
-COPY ./tools/bullseye_deps.sh ./tools/bullseye_deps.sh
+COPY ./tools/bullseye_deps.sh ./tools/deps.sh
 COPY ./tools/requirements.txt /requirements.txt
 COPY ./cmake/profiles/ ./cmake/profiles/
-RUN ./tools/bullseye_deps.sh
+RUN ./tools/deps.sh
 
 ENV ANDROID_NDK=/root/android-ndk-r23b
 ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
