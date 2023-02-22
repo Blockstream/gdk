@@ -130,7 +130,6 @@ impl Session for ElectrumSession {
                     Error::Generic("get_scriptpubkey_data: input is not a string".into())
                 })?)
                 .to_json(),
-            "psbt_get_details" => self.psbt_get_details(serde_json::from_value(input)?).to_json(),
             "sign_transaction" => self.sign_transaction(&serde_json::from_value(input)?).to_json(),
             "send_transaction" => self.send_transaction(&serde_json::from_value(input)?).to_json(),
             "broadcast_transaction" => self

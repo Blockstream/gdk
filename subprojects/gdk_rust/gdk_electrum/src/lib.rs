@@ -16,7 +16,6 @@ pub mod account;
 pub mod error;
 pub mod headers;
 pub mod interface;
-pub mod pset;
 pub mod session;
 pub mod spv;
 
@@ -43,8 +42,6 @@ use gdk_common::wally::{
 use gdk_common::{be::*, State};
 
 use gdk_common::elements::confidential::{self, Asset, Nonce};
-use gdk_common::elements::encode;
-use gdk_common::elements::pset::PartiallySignedTransaction;
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
@@ -1035,87 +1032,6 @@ impl ElectrumSession {
 
         self.remove_recent_spent_utxos(tx_req)?;
         self.get_account(tx_req.subaccount)?.create_tx(tx_req)
-    }
-
-    pub fn psbt_get_details(
-        &mut self,
-        params: PsbtGetDetailsParams,
-    ) -> Result<PsbtGetDetailsResult, Error> {
-        if !self.network.liquid {
-            return Err(Error::Generic(
-                "`ElectrumSession::psbt_get_details` is currently only supported for Liquid"
-                    .to_owned(),
-            ));
-        }
-
-        let pset = {
-            let pset_bytes = base64::decode(&params.psbt)?;
-            encode::deserialize::<PartiallySignedTransaction>(&pset_bytes)?
-        };
-
-        let inputs = pset
-            .inputs()
-            .iter()
-            .filter_map(|input| {
-                params
-                    .utxos
-                    .iter()
-                    .find(|utxo| {
-                        utxo.txhash == input.previous_txid.to_string()
-                            && utxo.pt_idx == input.previous_output_index
-                    })
-                    .cloned()
-            })
-            .map(|utxo| match utxo.asset_id {
-                Some(_) => Ok(utxo),
-                None => Err(Error::Generic("`asset_id` field not present".into())),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let master_blinding = self
-            .get_master_blinding_key()?
-            .master_blinding_key
-            .ok_or(Error::MissingMasterBlindingKey)?;
-
-        let accounts = self.get_accounts()?;
-
-        let outputs = pset
-            .outputs()
-            .iter()
-            .map(|output| {
-                let mut tx_out = output.to_txout();
-
-                // the `nonce` field of `tx_out` would be `Nonce::Null` w/o
-                // this
-                tx_out.nonce = output
-                    .ecdh_pubkey
-                    .map(|pk| confidential::Nonce::from(pk.inner))
-                    .unwrap_or_default();
-
-                tx_out
-            })
-            .filter_map(|tx_out| {
-                let script = BEScript::Elements(tx_out.script_pubkey.clone());
-
-                let subaccount = accounts.iter().find_map(|account| {
-                    self.store
-                        .as_ref()?
-                        .read()
-                        .ok()?
-                        .account_cache(account.num())
-                        .ok()?
-                        .get_path(&script)
-                        .is_ok()
-                        .then(|| account.num())
-                })?;
-
-                unblind_output(tx_out, &master_blinding, None)
-                    .map(|secrets| PsbtGetDetailsOut::new(secrets.asset, secrets.value, subaccount))
-                    .ok()
-            })
-            .collect::<Vec<_>>();
-
-        Ok(PsbtGetDetailsResult::new(inputs, outputs))
     }
 
     pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {

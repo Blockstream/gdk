@@ -20,7 +20,6 @@ use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
 use gdk_common::ureq;
-use gdk_electrum::pset::{self, ExtractParam, FromTxParam, MergeTxParam};
 use gdk_electrum::{headers, ElectrumSession, NativeNotif};
 use serde::Serialize;
 
@@ -343,18 +342,6 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
             to_string(&json!("".to_string()))
-        }
-        "psbt_extract" => {
-            let param: ExtractParam = serde_json::from_str(input)?;
-            to_string(&pset::extract(&param)?)
-        }
-        "psbt_from_tx" => {
-            let param: FromTxParam = serde_json::from_str(input)?;
-            to_string(&pset::from_tx(&param)?)
-        }
-        "psbt_merge_tx" => {
-            let param: MergeTxParam = serde_json::from_str(input)?;
-            to_string(&pset::merge_tx(&param)?)
         }
         "spv_verify_tx" => {
             let param: SPVVerifyTxParams = serde_json::from_str(input)?;

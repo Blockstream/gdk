@@ -1191,46 +1191,6 @@ pub struct PreviousAddresses {
     pub list: Vec<PreviousAddress>,
 }
 
-/// Parameters passed to [`ElectrumSession::psbt_get_details`].
-#[derive(Debug, Clone, Deserialize)]
-pub struct PsbtGetDetailsParams {
-    pub psbt: String,
-    pub utxos: Vec<UnspentOutput>,
-}
-
-/// Object returned by [`ElectrumSession::psbt_get_details`].
-#[derive(Debug, Clone, Serialize)]
-pub struct PsbtGetDetailsResult {
-    pub inputs: Vec<UnspentOutput>,
-    pub outputs: Vec<PsbtGetDetailsOut>,
-}
-
-impl PsbtGetDetailsResult {
-    pub fn new(inputs: Vec<UnspentOutput>, outputs: Vec<PsbtGetDetailsOut>) -> Self {
-        Self {
-            inputs,
-            outputs,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize)]
-pub struct PsbtGetDetailsOut {
-    pub asset_id: elements::AssetId,
-    pub satoshi: u64,
-    pub subaccount: u32,
-}
-
-impl PsbtGetDetailsOut {
-    pub fn new(asset_id: elements::AssetId, satoshi: u64, subaccount: u32) -> Self {
-        Self {
-            asset_id,
-            satoshi,
-            subaccount,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AddressDataRequest {
     pub address: String,

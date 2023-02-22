@@ -1,7 +1,6 @@
 use crate::BETxid;
 use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::bitcoin::util::sighash;
-use gdk_common::elements::hash_types::Txid;
 use gdk_common::error::Error as CommonError;
 use gdk_common::ureq;
 use gdk_common::{bitcoin, elements};
@@ -140,9 +139,6 @@ pub enum Error {
         _ => "id_connection_failed",
     })]
     PinClient(#[from] gdk_pin_client::Error),
-
-    #[error("PSET and Tx mismatch ({0} vs {1})")]
-    PsetAndTxMismatch(Txid, Txid),
 
     #[error(transparent)]
     PsetBlindError(#[from] elements::pset::PsetBlindError),
