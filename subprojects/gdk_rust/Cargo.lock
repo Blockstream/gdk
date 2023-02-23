@@ -392,7 +392,7 @@ checksum = "a51f3d3808c1ec7e7e0b434fd9e2be0e5ac973441c9929395ab2b14a952333d9"
 dependencies = [
  "bitcoin_hashes",
  "bitcoind",
- "electrum-client",
+ "electrum-client 0.12.0",
  "log",
  "nix",
  "ureq",
@@ -404,6 +404,18 @@ name = "electrum-client"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "82a232d46710f8064b7bb2029d82819fc1f5fba053687e0e3bb47cc762af24f6"
+dependencies = [
+ "bitcoin",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "electrum-client"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43224a43201a58034759d2682c603607d98ea0ff459a8d3622e0616b2badcd5c"
 dependencies = [
  "bitcoin",
  "byteorder",
@@ -640,7 +652,7 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "block-modes",
- "electrum-client",
+ "electrum-client 0.13.0",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-pin-client",
@@ -695,7 +707,7 @@ dependencies = [
  "base64",
  "bitcoin",
  "electrsd",
- "electrum-client",
+ "electrum-client 0.13.0",
  "elements",
  "env_logger 0.10.0",
  "gdk-common",
@@ -714,7 +726,7 @@ name = "gdk-test"
 version = "0.1.0"
 dependencies = [
  "electrsd",
- "electrum-client",
+ "electrum-client 0.13.0",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-electrum",

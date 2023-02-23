@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 electrsd = { version = "0.22.0", features = [ "legacy" ] }
-electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+electrum-client = { version = "0.13.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 env_logger = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 gdk-electrum = { path = "../gdk_electrum", features = ["testing"] }

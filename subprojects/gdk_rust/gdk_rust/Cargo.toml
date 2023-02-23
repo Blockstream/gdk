@@ -24,7 +24,7 @@ android_logger = "0.8.6"
 [dev-dependencies]
 gdk-test = { path = "../gdk_test" }
 tempfile = "3.2.0"
-electrum-client = { version = "0.12.0", default-features = false, features = [ "proxy", "use-openssl" ] }
+electrum-client = { version = "0.13.0", default-features = false, features = [ "proxy", "use-openssl" ] }
 bitcoin = { version = "0.29", features = [ "serde" ] }
 elements = { version = "0.20", features = ["serde"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries

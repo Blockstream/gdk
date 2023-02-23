@@ -3,7 +3,7 @@ use std::thread;
 use std::time::Duration;
 
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
-use electrum_client::ElectrumApi;
+use electrsd::electrum_client::ElectrumApi;
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::secp256k1::SecretKey;
 use gdk_common::bitcoin::Amount;

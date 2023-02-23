@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 
-use electrum_client::{Client, ConfigBuilder};
+use electrum_client::{Client, ConfigBuilder, Socks5Config};
 use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
 use std::str::FromStr;
 
@@ -17,13 +17,15 @@ impl ElectrumUrl {
         let mut config = ConfigBuilder::new();
 
         // TODO: add support for socks5 credentials?
-        config = config.socks5(
-            proxy.filter(|p| !p.trim().is_empty()).map(|p| electrum_client::Socks5Config::new(p)),
-        )?;
+        if let Some(proxy) = proxy {
+            if !proxy.trim().is_empty() {
+                config = config.socks5(Some(Socks5Config::new(proxy)));
+            }
+        }
 
         let timeout = timeout.unwrap_or(NETWORK_REQUEST_TIMEOUT.as_secs() as u8);
 
-        config = config.timeout(Some(timeout))?;
+        config = config.timeout(Some(timeout));
 
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
@@ -84,6 +86,8 @@ mod test {
     use gdk_common::bitcoin::{EcdsaSighashType, Script};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
+
+    use super::*;
 
     fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {
         let pk = Vec::<u8>::from_hex(pk).unwrap();
@@ -190,5 +194,39 @@ mod test {
 
         let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
+    }
+
+    /// Tests that passing an invalid proxy to `ElectrumUrl::build_client()`
+    /// immediately results in an error.
+    #[test]
+    fn invalid_proxy() {
+        let url = ElectrumUrl::Plaintext(String::new());
+
+        let invalid_proxy = "socks5://3.4.5.6";
+
+        assert!(matches!(
+            url.build_client(Some(invalid_proxy), None),
+
+            Err(Error::ClientError(electrum_client::Error::IOError(err)))
+                if err.kind() == std::io::ErrorKind::InvalidInput,
+        ));
+    }
+
+    #[test]
+    fn valid_proxy() {
+        let url = ElectrumUrl::Plaintext(String::new());
+
+        // `build_client()` can still return an error, here we're just checking
+        // that the error it returns (if any) is not caused by an incorrectly
+        // formatted proxy.
+
+        for valid_proxy in ["127.0.0.1:9050", "socks5://127.0.0.1:9050"] {
+            assert!(!matches!(
+                url.build_client(Some(valid_proxy), None),
+
+                Err(Error::ClientError(electrum_client::Error::IOError(err)))
+                    if err.kind() == std::io::ErrorKind::InvalidInput,
+            ));
+        }
     }
 }
