@@ -95,6 +95,8 @@ mod test {
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
+    use super::*;
+
     fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {
         let pk = Vec::<u8>::from_hex(pk).unwrap();
         let pk = PublicKey::from_slice(pk.as_slice()).unwrap();
@@ -200,5 +202,19 @@ mod test {
 
         let script_sig = p2shwpkh_script_sig(&public_key);
         assert_eq!(tx.input[0].script_sig, script_sig);
+    }
+
+    /// Tests that passing an invalid proxy to `ElectrumUrl::build_client()`
+    /// immediately results in an error.
+    #[test]
+    fn invalid_proxy() {
+        let url = ElectrumUrl::Plaintext(String::new());
+
+        let proxy = "socks5://3.4.5.6";
+
+        assert!(matches!(
+            url.build_client(Some(proxy), None),
+            Err(Error::InvalidProxy(p)) if p == proxy,
+        ));
     }
 }
