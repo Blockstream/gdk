@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 
-use electrum_client::{Client, ConfigBuilder};
+use electrum_client::{Client, ConfigBuilder, Socks5Config};
 use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
 use std::str::FromStr;
 
@@ -17,9 +17,19 @@ impl ElectrumUrl {
         let mut config = ConfigBuilder::new();
 
         // TODO: add support for socks5 credentials?
-        config = config.socks5(
-            proxy.filter(|p| !p.trim().is_empty()).map(|p| electrum_client::Socks5Config::new(p)),
-        )?;
+        if let Some(proxy) = proxy {
+            if !proxy.trim().is_empty() {
+                use std::net::ToSocketAddrs;
+                // The electrum client currently panics if the proxy url is not
+                // well formed. Check that here before feeding it to
+                // `Socks5Config::new()`.
+                if proxy.to_socket_addrs().is_ok() {
+                    config = config.socks5(Some(Socks5Config::new(proxy)))?;
+                } else {
+                    return Err(Error::InvalidProxy(proxy.to_owned()));
+                }
+            }
+        }
 
         let timeout = timeout.unwrap_or(NETWORK_REQUEST_TIMEOUT.as_secs() as u8);
 

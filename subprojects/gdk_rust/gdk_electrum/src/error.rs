@@ -101,6 +101,9 @@ pub enum Error {
     #[error("invalid mnemonic")]
     InvalidMnemonic,
 
+    #[error("invalid proxy: {0}")]
+    InvalidProxy(String),
+
     #[error("invalid replacement request fields")]
     InvalidReplacementRequest,
 
