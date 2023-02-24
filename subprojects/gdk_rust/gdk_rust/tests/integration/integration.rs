@@ -27,7 +27,39 @@ static MEMO1: &str = "hello memo";
 static MEMO2: &str = "hello memo2";
 
 #[test]
-fn roundtrip_bitcoin() {
+fn roundtrip_bitcoin_1() {
+    let mut test_session = TestSession::new(false, |_| ());
+
+    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
+
+    test_session.fund(100_000_000, None);
+
+    let txid = test_session.send_tx(
+        &node_address,
+        10_000,
+        None,
+        Some(MEMO1.to_string()),
+        None,
+        None,
+        None,
+    ); // p2shwpkh
+    test_session.mine_block();
+    test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
+    test_session.send_multi(3, 100_000, &vec![]);
+    test_session.send_multi(30, 100_000, &vec![]);
+    test_session.mine_block();
+    test_session.fees();
+    test_session.settings();
+    test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
+    test_session.spv_verify_tx(&txid, 102, Some(1));
+    test_session.reconnect();
+    test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
+
+    test_session.stop();
+}
+
+#[test]
+fn roundtrip_bitcoin_2() {
     let mut test_session = TestSession::new(false, |_| ());
 
     let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
@@ -49,30 +81,32 @@ fn roundtrip_bitcoin() {
         None,
         None,
     ); // p2shwpkh
-    test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
     test_session.is_verified(&txid, SPVVerifyTxResult::Unconfirmed);
     test_session.send_tx(&node_bech32_address, 10_000, None, None, None, None, None); // p2wpkh
     test_session.send_tx(&node_legacy_address, 10_000, None, None, None, None, None); // p2pkh
     test_session.send_all(&node_legacy_address, None);
     test_session.mine_block();
     test_session.send_tx_same_script();
-    test_session.fund(100_000_000, None);
-    test_session.send_multi(3, 100_000, &vec![]);
-    test_session.send_multi(30, 100_000, &vec![]);
+
+    let utxos = test_session.utxo("btc", vec![149739]);
+    test_session.check_decryption(102, &[&txid]);
+
+    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None, None);
+    test_session.utxo("btc", vec![139569]); // the smallest utxo has been spent
+                                            // TODO add a test with external UTXO}
+}
     test_session.mine_block();
+    test_session.test_set_get_memo(&txid, MEMO1, MEMO2);
+    test_session.send_multi(3, 100_000, &vec![]);
+    test_session.send_multi(30, 100_000, &assets);
     test_session.fees();
     test_session.settings();
     test_session.is_verified(&txid, SPVVerifyTxResult::Verified);
-    test_session.reconnect();
     test_session.spv_verify_tx(&txid, 102, Some(1));
-    test_session.test_set_get_memo(&txid, MEMO2, ""); // after reconnect memo has been reloaded from disk
-    let mut utxos = test_session.utxo("btc", vec![149739, 96697483]);
-    test_session.check_decryption(103, &[&txid]);
+    test_session.reconnect();
+    test_session.test_set_get_memo(&txid, MEMO2, "");
 
-    utxos.0.get_mut("btc").unwrap().retain(|e| e.satoshi == 149739); // we want to use the smallest utxo
-    test_session.send_tx(&node_legacy_address, 10_000, None, None, Some(utxos), None, None);
-    test_session.utxo("btc", vec![139569, 96697483]); // the smallest utxo has been spent
-                                                      // TODO add a test with external UTXO
+    test_session.utxo(&assets[0], vec![99000000]);
 
     test_session.stop();
 }
