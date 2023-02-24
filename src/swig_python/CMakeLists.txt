@@ -1,3 +1,53 @@
+macro(create_python_wheel_target)
+    add_custom_command(OUTPUT python-wheel-canary-file
+        COMMAND cmake -E env
+            LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
+            CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
+            CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
+            CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
+            python -m build
+        COMMAND touch python-wheel-canary-file
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
+        DEPENDS greenaddress
+        COMMENT "building python-wheel"
+    )
+    add_custom_target(python-wheel
+        DEPENDS python-wheel-canary-file
+    )
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/dist/
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/python
+        FILES_MATCHING PATTERN *.whl
+    )
+endmacro()
+
+
+
+macro(prepare_manylinux_build_environment)
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/wheel-build-environment
+        EXCLUDE_FROM_ALL
+        COMPONENT gdk-cibuildwheel
+        PATTERN dist EXCLUDE
+        PATTERN greenaddress.egg-info EXCLUDE
+        PATTERN python-wheel-canary-file EXCLUDE
+    )
+    install(FILES
+            ${CMAKE_SOURCE_DIR}/include/gdk.h
+            ${CMAKE_SOURCE_DIR}/include/greenlight.h
+            ${CMAKE_BINARY_DIR}/src/gdk_export.h
+        DESTINATION ${CMAKE_INSTALL_DATADIR}/wheel-build-environment/greenaddress
+        COMPONENT gdk-cibuildwheel
+        EXCLUDE_FROM_ALL
+        )
+    install(TARGETS greenaddress-full
+        ARCHIVE DESTINATION ${CMAKE_INSTALL_DATADIR}/wheel-build-environment/greenaddress
+        COMPONENT gdk-cibuildwheel
+        EXCLUDE_FROM_ALL
+    )
+endmacro()
+
+
+
 if (CMAKE_CROSSCOMPILING)
     message("cross-compiling: skipping python bindings")
     return()
@@ -33,58 +83,17 @@ configure_file(pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/pyproj
 
 if(DEV_MODE)
     configure_file(dev-mode-setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
-    add_custom_command(OUTPUT python-wheel-canary-file
-        COMMAND cmake -E env
-            LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
-            CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
-            CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
-            CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
-            python -m build
-        COMMAND touch python-wheel-canary-file
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
-        DEPENDS greenaddress
-        COMMENT "building python-wheel in dev mode"
-    )
+elseif(APPLE)
+    configure_file(mac-setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
 else()
     configure_file(setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
-    add_custom_command(OUTPUT python-wheel-canary-file
-        COMMAND cmake -E env
-            LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
-            CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
-            CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
-            CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
-            python -m build
-        COMMAND touch python-wheel-canary-file
-        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
-        DEPENDS greenaddress-full
-        COMMENT "building python-wheel"
-    )
 endif()
+create_python_wheel_target()
 
-add_custom_target(python-wheel
-    DEPENDS python-wheel-canary-file
-)
-
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/dist/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/python
-    FILES_MATCHING PATTERN *.whl
-)
-
-if(APPLE OR DEV_MODE)
+if(DEV_MODE)
     return()
 endif()
 
-add_custom_command(OUTPUT python-wheel-manylinux-canary-file
-    COMMAND python -m auditwheel repair `find greenaddress -name *.whl` --plat manylinux_2_31_x86_64
-    COMMAND touch python-wheel-manylinux-canary-file
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-    DEPENDS python-wheel
-    COMMENT "rebranding python-wheel for manylinux platform"
-)
-add_custom_target(python-wheel-manylinux
-    DEPENDS python-wheel-manylinux-canary-file
-)
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/wheelhouse/
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/python
-    FILES_MATCHING PATTERN *.whl
-)
+if(NOT APPLE)
+    prepare_manylinux_build_environment()
+endif()

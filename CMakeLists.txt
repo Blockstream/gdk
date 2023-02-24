@@ -110,16 +110,18 @@ include(cmake/extern/tor.cmake)
 add_subdirectory(src)
 find_package(SWIG)
 add_subdirectory(src/swig_java)
-findPython()
-add_subdirectory(src/swig_python)
-add_subdirectory(src/swift)
 add_subdirectory(src/sqlite3)
-
 #### building final greenaddress libraries
 create_gdkrust_target()
 create_greenaddress_target()
 create_greenaddressfull_target()
 
+# build python wheel
+findPython()
+add_subdirectory(src/swig_python)
+
+# swift bindings
+add_subdirectory(src/swift)
 ### installation directives
 install_cmake_config()
 

@@ -84,28 +84,20 @@ rust_audit:
 
 
 build_gcc_bullseye:
-  tags:
-    - ga
+  extends: .py_release
   stage: build
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake -DENABLE_TESTS:BOOL=TRUE -B build-gcc -S .
+    - cmake -B build-gcc -S .
+        -DEXTERNAL-DEPS-DIR=/prebuild/gcc
+        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_TESTS:BOOL=TRUE
     - cmake --build build-gcc --parallel 16
     - cmake --build build-gcc --target python-wheel
-  artifacts:
-    expire_in: 2 hrs
-    paths:
-      - build-gcc/tests
-      - build-gcc/CTestTestfile.cmake
-
-test_gcc_bullseye:
-  tags:
-    - ga
-  stage: test
-  needs: [build_gcc_bullseye]
-  script:
-    - cd build-gcc 
-    - ctest
+    - cmake --install build-gcc --prefix $INSTALL_PATH --strip
+    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-dev
+    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-cibuildwheel
 
 
 build_gcc_bullseye_debug:
@@ -115,7 +107,11 @@ build_gcc_bullseye_debug:
   when: manual
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc-debug -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake -DENABLE_TESTS:BOOL=TRUE -DCMAKE_BUILD_TYPE=Debug -B build-gcc-debug -S .
+    - cmake -B build-gcc-debug -S .
+        -DEXTERNAL-DEPS-DIR=/prebuild/gcc-debug
+        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
+        -DCMAKE_BUILD_TYPE=Debug
+        -DENABLE_TESTS:BOOL=TRUE
     - cmake --build build-gcc-debug --parallel 16
   artifacts:
     expire_in: 2 hrs
@@ -138,20 +134,42 @@ build_gcc_bullseye_devmode:
   stage: build
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake -DDEV_MODE:BOOL=TRUE -B build-gcc -S .
-    - cmake --build build-gcc --target python-wheel --parallel 16
+    - cmake -B build-gcc-debug -S .
+        -DEXTERNAL-DEPS-DIR=/prebuild/gcc-debug
+        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
+        -DCMAKE_BUILD_TYPE=Debug
+        -DENABLE_TESTS:BOOL=TRUE
+        -DDEV_MODE:BOOL=TRUE
+    - cmake --build build-gcc-debug --target python-wheel --parallel 16
 
 
 
 build_clang_bullseye:
-  extends: .py_release
+  tags:
+    - ga
   stage: build
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake -B build-clang -S .
+    - cmake -B build-clang -S .
+        -DEXTERNAL-DEPS-DIR=/prebuild/clang
+        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
+        -DCMAKE_BUILD_TYPE=Release
+        -DENABLE_TESTS:BOOL=TRUE
     - cmake --build build-clang --parallel 16
-    - cmake --install build-clang --prefix $INSTALL_PATH
-    - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
+  artifacts:
+    expire_in: 2 hrs
+    paths:
+      - build-clang/tests
+      - build-clang/CTestTestfile.cmake
+
+test_clang_bullseye:
+  tags:
+    - ga
+  stage: test
+  needs: [build_clang_bullseye]
+  script:
+    - cd build-clang
+    - ctest
 
 
 build_clang_bullseye_debug:
@@ -160,7 +178,11 @@ build_clang_bullseye_debug:
   stage: build
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang-debug -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake -DENABLE_TESTS:BOOL=TRUE -DCMAKE_BUILD_TYPE=Debug -B build-clang-debug -S .
+    - cmake -B build-clang-debug -S .
+        -DEXTERNAL-DEPS-DIR=/prebuild/clang-debug
+        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
+        -DCMAKE_BUILD_TYPE=Debug
+        -DENABLE_TESTS:BOOL=TRUE
     - cmake --build build-clang-debug --parallel 16
   artifacts:
     expire_in: 2 hrs

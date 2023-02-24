@@ -27,7 +27,6 @@ repository = "https://github.com/blockstream/gdk"
 documentation = "https://gdk.readthedocs.io/en/release_${PROJECT_VERSION}"
 tracker = "https://github.com/blockstream/gdk/issues"
 
-[tools.setuptools]
-packages = ["greenaddress"]
-package-dir = {greenaddress = "${CMAKE_CURRENT_BINARY_DIR}"}
+[tool.setuptools]
 zip-safe = false
+packages = ["greenaddress"]

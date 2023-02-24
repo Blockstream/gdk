@@ -10,6 +10,7 @@ setup(
         include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
         swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API="],
         libraries=["greenaddress_full"],
+        extra_objects=["${Python_LIBRARIES}"],
         extra_link_args=["-shared", "-L${CMAKE_BINARY_DIR}", "-L./"],
         language="c++",
     )],
