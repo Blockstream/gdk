@@ -380,13 +380,14 @@ namespace sdk {
 
     nlohmann::json session_impl::psbt_sign(const nlohmann::json& details)
     {
+        const bool is_electrum = m_net_params.is_electrum();
         const auto psbt = psbt_from_base64(details.at("psbt"));
         auto tx = psbt_extract_tx(psbt);
 
         // Clear utxos and fill it with the ones that will be signed
         std::vector<nlohmann::json> inputs;
         inputs.reserve(tx->num_inputs);
-        bool requires_signatures = false;
+        size_t num_sigs_required = 0;
         for (size_t i = 0; i < tx->num_inputs; ++i) {
             const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
             const uint32_t vout = tx->inputs[i].index;
@@ -396,7 +397,7 @@ namespace sdk {
                     input_utxo = std::move(utxo);
                     const uint32_t sighash = psbt->inputs[i].sighash;
                     input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
-                    requires_signatures = true;
+                    ++num_sigs_required;
                     break;
                 }
             }
@@ -404,9 +405,16 @@ namespace sdk {
         }
 
         nlohmann::json::array_t utxos;
-        if (!requires_signatures) {
+        if (!num_sigs_required) {
             // No signatures required, return the PSBT unchanged
             return { { "utxos", utxos }, { "psbt", details.at("psbt") } };
+        } else if (num_sigs_required != tx->num_inputs && !is_electrum) {
+            // Partial signature required, ensure inputs are segwit
+            for (const auto& utxo : inputs) {
+                if (json_get_value(utxo, "address_type") == "p2sh") {
+                    throw user_error("Non-segwit utxos cannnot be used with psbt_sign");
+                }
+            }
         }
 
         // FIXME: refactor to use HWW path
@@ -433,7 +441,7 @@ namespace sdk {
         }
         nlohmann::json result = { { "utxos", std::move(utxos) } };
 
-        if (!m_net_params.is_electrum()) {
+        if (!is_electrum) {
             // Multisig: Get the server signature(s).
             // We pass the UTXOs in (under a dummy asset key which is unused)
             // for housekeeping purposes such as internal cache updates.
