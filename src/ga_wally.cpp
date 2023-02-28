@@ -195,17 +195,6 @@ namespace sdk {
         out.resize(written);
     }
 
-    void scriptpubkey_csv_2of3_then_2_from_bytes(byte_span_t keys, uint32_t csv_blocks, std::vector<unsigned char>& out)
-    {
-        GDK_RUNTIME_ASSERT(!out.empty());
-        const uint32_t flags = 0;
-        size_t written;
-        GDK_VERIFY(wally_scriptpubkey_csv_2of3_then_2_from_bytes(
-            keys.data(), keys.size(), csv_blocks, flags, &out[0], out.size(), &written));
-        GDK_RUNTIME_ASSERT(written <= out.size());
-        out.resize(written);
-    }
-
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script)
     {
         size_t csv_blocks_offset;

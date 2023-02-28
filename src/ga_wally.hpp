@@ -148,9 +148,6 @@ namespace sdk {
     void scriptpubkey_csv_2of2_then_1_from_bytes(
         byte_span_t keys, uint32_t csv_blocks, bool optimize, std::vector<unsigned char>& out);
 
-    void scriptpubkey_csv_2of3_then_2_from_bytes(
-        byte_span_t keys, uint32_t csv_blocks, std::vector<unsigned char>& out);
-
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
 
     sig_and_sighash_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
