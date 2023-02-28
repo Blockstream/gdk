@@ -10,7 +10,7 @@
 #include "network_parameters.hpp"
 #include "session.hpp"
 #include "signer.hpp"
-#include "sqlite3/sqlite3.h"
+#include "sqlite3.h"
 #include "utils.hpp"
 
 namespace ga {

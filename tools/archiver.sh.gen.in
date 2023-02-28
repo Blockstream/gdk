@@ -1,6 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
+sqlite3=@sqlite3_LINK_LIBRARIES@
 gdk_rust=$<TARGET_FILE:gdk-rust>
 wally=@wallycore_LIBDIR@/libwallycore.a
 secp256k1=@libsecp256k1_LIBDIR@/libsecp256k1.a
@@ -17,7 +18,7 @@ zlib=@ZLIB_LIBRARIES@
 tors="@_torLibList@"
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $wally $secp256k1 $libevent $maybeEventThread $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $maybeEventThread $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors"
 
 
 if [ "$(uname)" = "Darwin" ]; then

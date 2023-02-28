@@ -80,6 +80,10 @@ else()
         ws2_32
     )
 endif()
+#sqlite
+join_path(_sqlitePkgDir ${EXTERNAL-DEPS-DIR} "sqlite" "build")
+list(APPEND CMAKE_PREFIX_PATH ${_sqlitePkgDir})
+pkg_check_modules(sqlite3 REQUIRED IMPORTED_TARGET sqlite3)
 # wallycore
 join_path(_wallycorePkgDir ${EXTERNAL-DEPS-DIR} "libwally-core" "build")
 list(APPEND CMAKE_PREFIX_PATH ${_wallycorePkgDir})
@@ -98,7 +102,7 @@ include(cmake/extern/tor.cmake)
 add_subdirectory(src)
 find_package(SWIG)
 add_subdirectory(src/swig_java)
-add_subdirectory(src/sqlite3)
+
 #### building final greenaddress libraries
 create_gdkrust_target()
 create_greenaddress_target()

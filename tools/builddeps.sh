@@ -402,4 +402,15 @@ cmake --build tmp/${source_name}/build
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
+# build sqlite3
+name="sqlite3"
+source_url="https://www.sqlite.org/2022/sqlite-autoconf-3390000.tar.gz"
+source_name="sqlite-autoconf-3390000"
+source_filename="sqlite-autoconf-3390000.tar.gz"
+source_hash="e90bcaef6dd5813fcdee4e867f6b65f3c9bfd0aec0f1017f9f3bbce1e4ed09e2"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+export SQLITE_SRCDIR=`pwd`/tmp/${source_name}
+build ${name} ${SQLITE_SRCDIR}
+
+
 rm -rf tmp

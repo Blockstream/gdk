@@ -3,6 +3,7 @@
 !./tools/builddeps.sh
 !./tools/buildlibevent.sh
 !./tools/buildlibwally-core.sh
+!./tools/buildsqlite3.sh
 !./tools/buildopenssl.sh
 !./tools/buildtor.sh
 !./tools/buildzlib.sh

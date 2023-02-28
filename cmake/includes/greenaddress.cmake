@@ -4,7 +4,7 @@ include(CMakePrintHelpers)
 
 
 macro(create_greenaddress_target)
-    add_library(greenaddress SHARED $<TARGET_OBJECTS:greenaddress-objects> $<TARGET_OBJECTS:sqlite3>)
+    add_library(greenaddress SHARED $<TARGET_OBJECTS:greenaddress-objects>)
     if(TARGET swig-java-obj)
         target_sources(greenaddress PRIVATE $<TARGET_OBJECTS:swig-java-obj>)
     endif()
@@ -17,6 +17,7 @@ macro(create_greenaddress_target)
     target_include_directories(greenaddress INTERFACE ${_gaIncludeDir})
     target_link_libraries(greenaddress PRIVATE
         gdk-rust
+        PkgConfig::sqlite3
         Microsoft.GSL::GSL
         autobahn-cpp
         msgpackc-cxx
@@ -104,7 +105,7 @@ endmacro()
 
 
 macro(create_greenaddressstatic_target)
-    add_library(greenaddress-static STATIC $<TARGET_OBJECTS:greenaddress-objects> $<TARGET_OBJECTS:sqlite3>)
+    add_library(greenaddress-static STATIC $<TARGET_OBJECTS:greenaddress-objects>)
     if(TARGET swig_java)
         target_sources(greenaddress-static PRIVATE $<TARGET_OBJECTS:swig_java>)
         target_link_libraries(greenaddress-static PRIVATE swig_java)
@@ -137,7 +138,7 @@ endmacro()
 
 
 macro(create_greenaddressfull_target)
-    add_library(greenaddress-full STATIC $<TARGET_OBJECTS:greenaddress-objects> $<TARGET_OBJECTS:sqlite3>)
+    add_library(greenaddress-full STATIC $<TARGET_OBJECTS:greenaddress-objects>)
     set_target_properties(greenaddress-full PROPERTIES OUTPUT_NAME greenaddress_full)
     ### WARNING once on cmake > 3.12 ``target_sources(greenaddress-objects $<TARGET_NAME_IF_EXISTS:swig_java>)``
     if(TARGET swig_java)
