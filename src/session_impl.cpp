@@ -380,11 +380,13 @@ namespace sdk {
 
     nlohmann::json session_impl::psbt_sign(const nlohmann::json& details)
     {
+        const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
         const auto psbt = psbt_from_base64(details.at("psbt"));
         auto tx = psbt_extract_tx(psbt);
 
-        // Clear utxos and fill it with the ones that will be signed
+        // Get our inputs in order, with UTXO details for signing,
+        // or a "skip_signing" indicator if they aren't ours.
         std::vector<nlohmann::json> inputs;
         inputs.reserve(tx->num_inputs);
         size_t num_sigs_required = 0;
@@ -392,9 +394,9 @@ namespace sdk {
             const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
             const uint32_t vout = tx->inputs[i].index;
             nlohmann::json input_utxo({ { "skip_signing", true } });
-            for (auto& utxo : details.at("utxos")) {
+            for (const auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
-                    input_utxo = std::move(utxo);
+                    input_utxo = utxo;
                     const uint32_t sighash = psbt->inputs[i].sighash;
                     input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
                     ++num_sigs_required;
@@ -408,8 +410,9 @@ namespace sdk {
         if (!num_sigs_required) {
             // No signatures required, return the PSBT unchanged
             return { { "utxos", utxos }, { "psbt", details.at("psbt") } };
-        } else if (num_sigs_required != tx->num_inputs && !is_electrum) {
-            // Partial signature required, ensure inputs are segwit
+        }
+        if (!is_electrum && num_sigs_required != tx->num_inputs) {
+            // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
                 if (json_get_value(utxo, "address_type") == "p2sh") {
                     throw user_error("Non-segwit utxos cannnot be used with psbt_sign");
@@ -418,7 +421,7 @@ namespace sdk {
         }
 
         // FIXME: refactor to use HWW path
-        const auto flags = tx_flags(m_net_params.is_liquid());
+        const auto flags = tx_flags(is_liquid);
         nlohmann::json tx_details = { { "transaction", tx_to_hex(tx, flags) } };
         const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
 
@@ -442,11 +445,44 @@ namespace sdk {
         nlohmann::json result = { { "utxos", std::move(utxos) } };
 
         if (!is_electrum) {
-            // Multisig: Get the server signature(s).
+            // Multisig
+            std::vector<byte_span_t> old_scripts;
+            std::vector<std::vector<unsigned char>> new_scripts;
+            auto&& restore_tx = [&tx, &old_scripts] {
+                for (size_t i = 0; i < old_scripts.size(); ++i) {
+                    tx->inputs[i].script = (unsigned char*)old_scripts[i].data();
+                    tx->inputs[i].script_len = old_scripts[i].size();
+                }
+                old_scripts.clear();
+            };
+            auto restore_tx_on_throw = gsl::finally([&restore_tx] { restore_tx(); });
+
+            if  (num_sigs_required != tx->num_inputs) {
+                // Partial signing. For p2sh-wrapped inputs, replace
+                // input scriptSigs with redeemScripts before passing to the
+                // Green backend. The backend checks the redeemScript for
+                // segwit-ness to verify the tx is segwit before signing.
+                old_scripts.reserve(tx->num_inputs);
+                new_scripts.reserve(tx->num_inputs);
+                for (size_t i = 0; i < tx->num_inputs; ++i) {
+                    auto& txin = tx->inputs[i];
+                    old_scripts.emplace_back(gsl::make_span(txin.script, txin.script_len));
+                    new_scripts.emplace_back(psbt_get_input_redeem_script(psbt, i));
+                    auto& redeem_script = new_scripts.back();
+                    if (!redeem_script.empty()) {
+                        redeem_script = script_push_from_bytes(redeem_script);
+                        txin.script = redeem_script.data();
+                        txin.script_len = redeem_script.size();
+                    }
+                }
+            }
+
             // We pass the UTXOs in (under a dummy asset key which is unused)
             // for housekeeping purposes such as internal cache updates.
             nlohmann::json u = { { "dummy", std::move(result["utxos"]) } };
             tx_details = { { "transaction", tx_to_hex(tx, flags) }, { "utxos", std::move(u) } };
+            restore_tx();
+
             if (details.contains("blinding_nonces")) {
                 tx_details["blinding_nonces"] = details["blinding_nonces"];
             }

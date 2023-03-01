@@ -1158,5 +1158,18 @@ namespace sdk {
         return wally_tx_ptr(p);
     }
 
+    std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index)
+    {
+        size_t len;
+        GDK_VERIFY(wally_psbt_get_input_redeem_script_len(psbt.get(), index, &len));
+        std::vector<unsigned char> ret;
+        if (len) {
+            ret.resize(len);
+            GDK_VERIFY(wally_psbt_get_input_redeem_script(psbt.get(), index, ret.data(), len, &len));
+            GDK_RUNTIME_ASSERT(len == ret.size());
+        }
+        return ret;
+    }
+
 } /* namespace sdk */
 } /* namespace ga */

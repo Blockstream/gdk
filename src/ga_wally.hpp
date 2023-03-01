@@ -417,6 +417,8 @@ namespace sdk {
 
     wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt);
 
+    std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index);
+
 #undef GA_USE_RESULT
 
 } /* namespace sdk */
