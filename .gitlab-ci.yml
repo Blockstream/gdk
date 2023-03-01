@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:7d05c9d6b8558587f6240b94e8633fd663c27f31584e95ef9703ebc4faff8ea9
+image: greenaddress/ci@sha256:ba2a76bb933f1da6573631597f947b1ff2f47e772674ab38c4e87e0eac6861b2
 
 stages:
   - format
@@ -49,7 +49,7 @@ stages:
 .osx_env:
   variables:
     NUM_JOBS: 16
-    PREBUILT_SUBDIR: "prebuilt-2"
+    PREBUILT_SUBDIR: "prebuilt-5"
 
 .ios_release:
   extends: .osx_env
@@ -158,7 +158,7 @@ test_rust:
 
 
 build_clang_fedora:
-  image: greenaddress/fedora_ci@sha256:383c15f6a17a145709b63d7e2fab92844dfa88f9cd8ce258d17d8b96540b47e8
+  image: greenaddress/fedora_ci@sha256:43d7204d8c5114da904c55dc294385c908703bf87f16a7515f6d3485f6542903
   tags:
     - ga
   stage: build
@@ -168,7 +168,7 @@ build_clang_fedora:
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: greenaddress/ubuntu_ci@sha256:e7d72afc039db9660339e0d84bd509baa03fd5fc0e28c92ce64061aa850d73e9
+  image: greenaddress/ubuntu_ci@sha256:6185896e7ac8cb25a56384f8ed57a865b6c170e8f2511ffdd51d72d4baa01915
   extends: .py_release
   stage: build
   script:
