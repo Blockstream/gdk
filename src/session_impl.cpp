@@ -411,7 +411,8 @@ namespace sdk {
             // No signatures required, return the PSBT unchanged
             return { { "utxos", utxos }, { "psbt", details.at("psbt") } };
         }
-        if (!is_electrum && num_sigs_required != tx->num_inputs) {
+        const bool is_partial = num_sigs_required != tx->num_inputs;
+        if (!is_electrum && is_partial) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
                 if (json_get_value(utxo, "address_type") == "p2sh") {
@@ -457,7 +458,7 @@ namespace sdk {
             };
             auto restore_tx_on_throw = gsl::finally([&restore_tx] { restore_tx(); });
 
-            if  (num_sigs_required != tx->num_inputs) {
+            if (is_partial) {
                 // Partial signing. For p2sh-wrapped inputs, replace
                 // input scriptSigs with redeemScripts before passing to the
                 // Green backend. The backend checks the redeemScript for
@@ -496,13 +497,21 @@ namespace sdk {
             const std::string& signature = signatures.at(i);
             GDK_RUNTIME_ASSERT(signature.empty() == !utxo.empty());
             if (utxo.empty()) {
+                /* Finalize the input, but don't remove its finalization data.
+                 * FIXME: see comment below on partial signing */
                 GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, tx->inputs[i].witness));
                 GDK_VERIFY(wally_psbt_set_input_final_scriptsig(
                     psbt.get(), i, tx->inputs[i].script, tx->inputs[i].script_len));
             }
         }
 
-        result["psbt"] = psbt_to_base64(psbt);
+        /* For partial signing, we must keep the redeem script in the PSBT
+         * for inputs that we have finalized, despite this breaking the spec
+         * behaviour. FIXME: Use an extension field for this, since some
+         * inputs may have been already properly finalized before we sign.
+         */
+        uint32_t b64_flags = is_partial ? WALLY_PSBT_SERIALIZE_FLAG_REDUNDANT : 0;
+        result["psbt"] = psbt_to_base64(psbt, b64_flags);
         return result;
     }
 

@@ -413,7 +413,7 @@ namespace sdk {
     //
     wally_psbt_ptr psbt_from_base64(const std::string& b64);
 
-    std::string psbt_to_base64(const wally_psbt_ptr& psbt);
+    std::string psbt_to_base64(const wally_psbt_ptr& psbt, uint32_t flags = 0);
 
     wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt);
 

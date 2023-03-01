@@ -1144,10 +1144,10 @@ namespace sdk {
         return wally_psbt_ptr(p);
     }
 
-    std::string psbt_to_base64(const wally_psbt_ptr& psbt)
+    std::string psbt_to_base64(const wally_psbt_ptr& psbt, uint32_t flags)
     {
         char* s;
-        GDK_VERIFY(wally_psbt_to_base64(psbt.get(), 0, &s));
+        GDK_VERIFY(wally_psbt_to_base64(psbt.get(), flags, &s));
         return make_string(s);
     }
 
