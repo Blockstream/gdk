@@ -242,7 +242,7 @@ build_clang_fedora:
     - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake -B build-clang -S .
     - cmake --build build-clang --parallel 16
 
-build_gcc_ubuntu18.04:
+build_gcc_ubuntu20.04:
   image: greenaddress/ubuntu_ci@sha256:e7d72afc039db9660339e0d84bd509baa03fd5fc0e28c92ce64061aa850d73e9
   extends: .py_release
   stage: build
@@ -492,8 +492,8 @@ package_release:
     - build_clang_ndk_arm64-v8a
     - build_clang_ndk_x86_64
     - build_clang_ndk_x86
-    - build_clang_bullseye
-    - build_gcc_ubuntu18.04
+    - build_gcc_bullseye
+    - build_gcc_ubuntu20.04
     - build_clang_osx
     - build_clang_osx_m1
     - build_osx_ios
