@@ -261,9 +261,20 @@ source_name="zlib-1.2.12"
 source_filename="${source_name}.tar.gz"
 source_hash="d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-export ZLIB_SRCDIR=`pwd`/tmp/${source_name}
-build ${name} ${ZLIB_SRCDIR}
-
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
+    -DCMAKE_BUILD_TYPE=${cmake_build_type}
+cmake --build tmp/${source_name}/build --target zlibstatic zlib
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
+# no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
+find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type l -delete
+find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dylib*" -type f -delete
+find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dll*" -type f -delete
+# https://github.com/madler/zlib/issues/652
+if [ ${BUILD} == "--windows" ]; then
+    mv ${GDK_BUILD_ROOT}/${name}/build/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/${name}/build/lib/libz.a
+fi
 
 # building libevent
 name="libevent"
@@ -272,8 +283,19 @@ source_name="libevent-release-2.1.11-stable"
 source_filename="${source_name}.tar.gz"
 source_hash="229393ab2bf0dc94694f21836846b424f3532585bac3468738b7bf752c03901e"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-export LIBEVENT_SRCDIR=`pwd`/tmp/${source_name}
-build ${name} ${LIBEVENT_SRCDIR}
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
+    -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+    -DEVENT__LIBRARY_TYPE:STRING=STATIC \
+    -DEVENT__DISABLE_SAMPLES:BOOL=TRUE \
+    -DEVENT__DISABLE_OPENSSL:BOOL=TRUE \
+    -DEVENT__DISABLE_REGRESS:BOOL=TRUE \
+    -DEVENT__DISABLE_DEBUG_MODE:BOOL=TRUE \
+    -DEVENT__DISABLE_TESTS:BOOL=TRUE \
+    -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
 
 
 # building openssl

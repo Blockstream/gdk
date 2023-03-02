@@ -24,9 +24,9 @@ macro(create_greenaddress_target)
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
         tor
-        PkgConfig::libevent
+        event_static
         PkgConfig::libsecp256k1
-        $<$<NOT:$<PLATFORM_ID:Windows>>:PkgConfig::libevent_pthreads>
+        $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
         Boost::boost
         Boost::log
         Boost::thread
@@ -126,8 +126,8 @@ macro(create_greenaddressstatic_target)
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
         tor
-        PkgConfig::libevent
-        $<$<NOT:$<PLATFORM_ID:Windows>>:PkgConfig::libevent_pthreads>
+        event_static
+        $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
         Boost::boost
         Boost::log
         Boost::thread
@@ -156,9 +156,9 @@ macro(create_greenaddressfull_target)
     add_dependencies(greenaddress-full gdk-rust)
     get_target_property(_gaIncludeDir greenaddress-objects INTERFACE_INCLUDE_DIRECTORIES)
     target_include_directories(greenaddress-full INTERFACE ${_gaIncludeDir})
-    set(_maybeLibeventPthreads "${libevent_LIBDIR}/libevent_pthreads.a")
-    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        set(_maybeLibeventPthreads "")
+    set(_maybeLibeventPthreads "")
+    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+        get_target_property(_maybeLibeventPthreads event_pthreads_static IMPORTED_LOCATION_RELEASE)
     endif()
     unset(_torLibList)
     foreach(_torLib IN LISTS _torLibs)

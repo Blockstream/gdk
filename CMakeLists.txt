@@ -66,20 +66,11 @@ find_package(websocketpp REQUIRED PATHS ${_weboscketppDir})
 join_path(_msgpackDir ${EXTERNAL-DEPS-DIR} "msgpack") 
 find_package(msgpack REQUIRED PATHS ${_msgpackDir})
 
+join_path(_libeventDir ${EXTERNAL-DEPS-DIR} "libevent" "build")
+find_package(Libevent REQUIRED PATHS ${_libeventDir})
 #### dependencies relying on pkg-config
 find_package(PkgConfig REQUIRED)
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
-# libevent
-join_path(_libeventPkgDir ${EXTERNAL-DEPS-DIR} "libevent" "build")
-list(APPEND CMAKE_PREFIX_PATH ${_libeventPkgDir})
-pkg_check_modules(libevent REQUIRED IMPORTED_TARGET libevent)
-if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    pkg_check_modules(libevent_pthreads REQUIRED IMPORTED_TARGET libevent_pthreads)
-else()
-    target_link_libraries(PkgConfig::libevent INTERFACE 
-        ws2_32
-    )
-endif()
 #sqlite
 join_path(_sqlitePkgDir ${EXTERNAL-DEPS-DIR} "sqlite" "build")
 list(APPEND CMAKE_PREFIX_PATH ${_sqlitePkgDir})

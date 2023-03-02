@@ -5,8 +5,8 @@ sqlite3=@sqlite3_LINK_LIBRARIES@
 gdk_rust=$<TARGET_FILE:gdk-rust>
 wally=@wallycore_LINK_LIBRARIES@
 secp256k1=@libsecp256k1_LINK_LIBRARIES@
-libevent=@libevent_LIBDIR@/libevent.a
-maybeEventThread=@_maybeLibeventPthreads@
+libevent=$<TARGET_FILE:event_static>
+eventpthreads=@_maybeLibeventPthreads@
 boost_log=@Boost_LIBRARY_DIRS@/libboost_log.a
 boost_chrono=@Boost_LIBRARY_DIRS@/libboost_chrono.a
 boost_date_time=@Boost_LIBRARY_DIRS@/libboost_date_time.a
@@ -18,7 +18,7 @@ zlib=@ZLIB_LIBRARIES@
 tors="@_torLibList@"
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $maybeEventThread $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors"
 
 
 if [ "$(uname)" = "Darwin" ]; then
