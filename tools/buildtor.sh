@@ -22,6 +22,9 @@ CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/tor/build --disable-system-torrc --di
 # patch for autoconf >= 2.70
 $SED -ie "s!^AC_PROG_CC_C99!!" configure.ac
 
+CFLAGS=$(echo $CFLAGS | $SED 's/-DNDEBUG//')
+CXXFLAGS=$(echo $CXXFLAGS | $SED 's/-DNDEBUG//')
+
 if [ \( "$1" = "--ndk" \) ]; then
     sh autogen.sh
     . ${GDK_SOURCE_ROOT}/tools/env.sh
