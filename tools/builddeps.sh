@@ -204,7 +204,7 @@ function prepare_sources {
     fi
     if [ ! -f ${source_filename} ]; then
         echo "downloading from ${source_url} ..."
-        curl -sL -o ${source_filename} ${source_url}
+        curl -sL --retry 3 -o ${source_filename} ${source_url}
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
         rm_downloaded="yes"
     fi
