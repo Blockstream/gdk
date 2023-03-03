@@ -39,8 +39,7 @@ namespace sdk {
         static void strip_non_satoshi_keys(nlohmann::json& amount_json);
 
         // Convert fiat cents to fiat + BTC amounts
-        static nlohmann::json convert_fiat_cents(
-            value_type cents, const std::string& fiat_currency, const std::string& fiat_rate);
+        static nlohmann::json convert_fiat_cents(value_type cents, const std::string& fiat_currency);
 
         // Get fiat cents from a fiat string
         static value_type get_fiat_cents(const std::string& fiat_str);

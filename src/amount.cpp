@@ -143,11 +143,10 @@ namespace sdk {
         }
     }
 
-    nlohmann::json amount::convert_fiat_cents(
-        value_type cents, const std::string& fiat_currency, const std::string& fiat_rate)
+    nlohmann::json amount::convert_fiat_cents(value_type cents, const std::string& fiat_currency)
     {
         const conversion_type fiat_decimal = conversion_type(cents) / COIN_VALUE_100;
-        return convert({ { "fiat", fmt(fiat_type(fiat_decimal)) } }, fiat_currency, fiat_rate);
+        return nlohmann::json({ { "fiat", fmt(fiat_type(fiat_decimal)) }, { "fiat_currency", fiat_currency } });
     }
 
     amount::value_type amount::get_fiat_cents(const std::string& fiat_str)

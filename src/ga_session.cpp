@@ -1601,7 +1601,7 @@ namespace sdk {
     nlohmann::json ga_session::convert_fiat_cents(session_impl::locker_t& locker, amount::value_type fiat_cents) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        return amount::convert_fiat_cents(fiat_cents, m_fiat_currency, m_fiat_rate);
+        return amount::convert_fiat_cents(fiat_cents, m_fiat_currency);
     }
 
     void ga_session::ensure_full_session()
