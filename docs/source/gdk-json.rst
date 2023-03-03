@@ -1152,6 +1152,17 @@ Describes the wallets enabled two factor methods, current spending limits, and t
   }
  }
 
+
+When the user has a fiat spending limit set instead of BTC, limits are returned as e.g:
+
+.. code-block:: json
+
+  "limits": {
+    "fiat": "0.01",
+    "fiat_currency": "EUR",
+    "is_fiat": true
+  }
+
 :twofactor_reset/days_remaining: The number of days remaining before the wallets two factor
                                  authentication is reset, or -1 if no reset procedure is underway.
 :twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.

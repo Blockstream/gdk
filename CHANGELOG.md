@@ -5,8 +5,13 @@
 ### Added
 
 ### Changed
+- GA_get_twofactor_config: Fiat pricing limits no longer return corresponding
+  converted BTC amounts. When "is_fiat" is `true`, the caller should convert
+  the amount themselves using GA_convert_amount if desired.
 
 ### Fixed
+- GA_get_twofactor_config: Fixed exception thrown when a fiat pricing source
+  is unavailable and a fiat pricing limit is set.
 
 ### Removed
 
