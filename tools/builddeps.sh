@@ -318,15 +318,13 @@ source_name="json-3.10.5"
 source_filename="json-3.10.5.tar.gz"
 source_hash="5daca6ca216495edf89d167f808d1d03c4a4d929cef7da5e10f135ae1540c7e4"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-mkdir -p tmp/${source_name}/build
-cd tmp/${source_name}/build
-cmake .. \
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DJSON_BuildTests:BOOL=OFF
-cmake --build . --target install
-cd -
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
 # building websocketpp
@@ -336,14 +334,12 @@ source_name="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652"
 source_filename="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz"
 source_hash="82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-mkdir -p tmp/${source_name}/build
-cd tmp/${source_name}/build
-cmake .. \
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
-cmake --build . --target install
-cd -
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
 # building msgpack
@@ -353,9 +349,7 @@ source_name="msgpack-cxx-4.1.1"
 source_filename="msgpack-4.1.1.tar.gz"
 source_hash="8115c5edcf20bc1408c798a6bdaec16c1e52b1c34859d4982a0fb03300438f0b"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-mkdir -p tmp/${source_name}/build
-cd tmp/${source_name}/build
-cmake .. \
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
@@ -363,8 +357,8 @@ cmake .. \
     -DMSGPACK_USE_STATIC_BOOST:BOOL=ON \
     -DMSGPACK_BUILD_DOCS:BOOL=OFF \
     -DMSGPACK_CXX14:BOOL=ON
-cmake --build . --target install
-cd -
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
 # building autobahn-cpp
@@ -378,9 +372,7 @@ rm -f tmp/${source_name}/cmake/Modules/FindWebsocketpp.cmake
 rm -f tmp/${source_name}/cmake/Modules/FindMsgpack.cmake
 ${SED} -ie "s/Boost REQUIRED COMPONENTS program_options system thread random/Boost COMPONENTS system thread/g" tmp/${source_name}/cmake/Includes/CMakeLists.txt
 ${SED} -ie "s/Threads REQUIRED/Threads/g" tmp/${source_name}/cmake/Includes/CMakeLists.txt
-mkdir -p tmp/${source_name}/build
-cd tmp/${source_name}/build
-cmake .. \
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
@@ -388,8 +380,8 @@ cmake .. \
     -DOPENSSL_ROOT_DIR:PATH=${GDK_BUILD_ROOT}/openssl/build \
     -DAUTOBAHN_BUILD_EXAMPLES:BOOL=OFF \
     -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/websocketpp;${GDK_BUILD_ROOT}/msgpack"
-cmake --build . --target install
-cd -
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
 # building ms-gsl
@@ -399,17 +391,15 @@ source_name="GSL-a3534567187d2edc428efd3f13466ff75fe5805c"
 source_filename="GSL-a3534567187d2edc428efd3f13466ff75fe5805c.tar.gz"
 source_hash="c0379cff645543d5076216bc5b22a3426de57796fc043527a24a6e494628d8a6"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-mkdir -p tmp/${source_name}/build
-cd tmp/${source_name}/build
-cmake .. \
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DGSL_STANDALONE_PROJECT:BOOL=OFF \
     -DGSL_TEST:BOOL=OFF \
     -DGSL_INSTALL:BOOL=ON
-cmake --build . --target install
-cd -
+cmake --build tmp/${source_name}/build
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
 rm -rf tmp

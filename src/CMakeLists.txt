@@ -95,9 +95,6 @@ set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
 )
 
 set_target_properties(greenaddress-objects PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
-if (ADD_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL Debug)
-    target_compile_options(greenaddress-objects PRIVATE --coverage)
-endif()
 
 
 # cmake_print_properties(TARGETS greenaddress-objects PROPERTIES

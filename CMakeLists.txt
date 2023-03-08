@@ -8,7 +8,6 @@ include(cmake/includes/greenaddress.cmake)
 ### project options
 option(ENABLE_TESTS "enable building tests" FALSE)
 option(SHARED_ONLY "build only shared library" FALSE)
-option(ADD_COVERAGE "add coverage report when in debug" FALSE)
 option(DEV_MODE "dev mode enables a faster developing-testing loop when working with the python-wheel" FALSE)
 set(PYTHON_REQUIRED_VERSION 3 CACHE STRING "required python version")
 
@@ -38,19 +37,7 @@ else()
 endif()
 set(Boost_NO_SYSTEM_PATHS ON)
 find_package(Boost 1.76.0 EXACT REQUIRED COMPONENTS thread log)
-if(CMAKE_VERSION VERSION_LESS_EQUAL 3.12)
-    ###NOTE: cmake is too old to recognize this boost version, targets and dependencies must be declared manually
-    add_library(Boost::thread IMPORTED INTERFACE)
-    set_target_properties(Boost::thread PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR}
-        INTERFACE_LINK_LIBRARIES "${Boost_LIBRARY_DIR_RELEASE}/libboost_thread.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_chrono.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_date_time.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_atomic.a;Threads::Threads"
-    )
-    add_library(Boost::log IMPORTED INTERFACE)
-    set_target_properties(Boost::log PROPERTIES
-        INTERFACE_INCLUDE_DIRECTORIES ${Boost_INCLUDE_DIR}
-        INTERFACE_LINK_LIBRARIES "${Boost_LIBRARY_DIR_RELEASE}/libboost_log.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_date_time.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_log_setup.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_filesystem.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_thread.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_regex.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_chrono.a;${Boost_LIBRARY_DIR_RELEASE}/libboost_atomic.a"
-    )
-elseif(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
+if(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
     #https://gitlab.kitware.com/cmake/cmake/-/issues/20638
     set_target_properties(Boost::log_setup PROPERTIES
         INTERFACE_LINK_LIBRARIES Boost::log
@@ -117,7 +104,7 @@ create_greenaddress_target()
 create_greenaddressfull_target()
 
 # build python wheel
-findPython()
+find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter Development )
 add_subdirectory(src/swig_python)
 
 # swift bindings

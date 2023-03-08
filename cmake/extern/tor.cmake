@@ -51,17 +51,10 @@ set(_torLibs
 add_library(tor INTERFACE IMPORTED)
 set(TOR_LIB_DIRS ${_libDirCore} ${_libDirLib} ${_libDirTrunnel} ${_libDirDonna} ${_libDirRef10} ${_libDirKeccak}) 
 join_path(TOR_INCLUDE_DIRS ${_torSrcDir} "src" "feature" "api")
-if (CMAKE_VERSION VERSION_LESS "3.12")
-    set_target_properties(tor PROPERTIES 
-        INTERFACE_INCLUDE_DIRECTORIES ${TOR_INCLUDE_DIRS}
-        INTERFACE_LINK_LIBRARIES "${_torLibs}"
-    )
-else()
-    target_include_directories(tor INTERFACE ${TOR_INCLUDE_DIRS})
-    target_link_libraries(tor
-        INTERFACE
-            ${_torLibs}
-            $<$<PLATFORM_ID:Windows>:ssp>
-            $<$<PLATFORM_ID:Windows>:iphlpapi>
-    )
-endif()
+target_include_directories(tor INTERFACE ${TOR_INCLUDE_DIRS})
+target_link_libraries(tor
+    INTERFACE
+        ${_torLibs}
+        $<$<PLATFORM_ID:Windows>:ssp>
+        $<$<PLATFORM_ID:Windows>:iphlpapi>
+)

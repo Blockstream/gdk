@@ -53,21 +53,6 @@ function(get_cmake_install_dir outvar lib_install_dir)
 endfunction()
 
 
-macro(findPython)
-if(CMAKE_VERSION VERSION_LESS_EQUAL 3.12)
-    set(Python_ADDITIONAL_VERSIONS 3.5 3.6 3.7 3.9)
-    find_package(PythonInterp)
-    message("python interp ${PYTHON_VERSION_STRING}")
-    find_package(PythonLibs)
-    set(Python_FOUND ${PythonLibs_FOUND})
-    set(Python_VERSION ${PYTHONLIBS_VERSION_STRING})
-    set(Python_EXECUTABLE ${PYTHON_EXECUTABLE})
-    set(Python_LIBRARIES ${PYTHON_LIBRARIES})
-else()
-    find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter Development )
-endif()
-endmacro()
-
 macro(create_gdkrust_target)
     join_path(_gdkRustSrcDir ${CMAKE_SOURCE_DIR} "subprojects" "gdk_rust")
     join_path(_gdkRustBuildDir ${CMAKE_CURRENT_BINARY_DIR} "gdk-rust")
@@ -82,15 +67,8 @@ macro(create_gdkrust_target)
     )
     add_library(gdk-rust STATIC IMPORTED GLOBAL)
     add_dependencies(gdk-rust cargo-cmd)
-    if(CMAKE_VERSION  VERSION_LESS_EQUAL 3.12)
-        set_target_properties(gdk-rust PROPERTIES
-            IMPORTED_LOCATION ${_gdkRustBuildDir}/${_gdkRustLibArtifact}
-            INTERFACE_INCLUDE_DIRECTORIES ${_gdkRustSrcDir}
-        )
-    else()
-        set_target_properties(gdk-rust PROPERTIES IMPORTED_LOCATION ${_gdkRustBuildDir}/${_gdkRustLibArtifact})
-        target_include_directories(gdk-rust INTERFACE ${_gdkRustSrcDir})
-    endif()
+    set_target_properties(gdk-rust PROPERTIES IMPORTED_LOCATION ${_gdkRustBuildDir}/${_gdkRustLibArtifact})
+    target_include_directories(gdk-rust INTERFACE ${_gdkRustSrcDir})
     target_link_libraries(gdk-rust
         INTERFACE
             $<$<PLATFORM_ID:Windows>:crypt32>

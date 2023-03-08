@@ -37,19 +37,14 @@ macro(create_greenaddress_target)
     )
     get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
     #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
-    if(CMAKE_VERSION VERSION_LESS_EQUAL 3.12)
-        set_target_properties(greenaddress PROPERTIES LINK_FLAGS "-Wl,--whole-archive ${_wallycoreLib} -Wl,--no-whole-archive")
+    set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
+    if(APPLE)
+        list(APPEND _gdkLinkOptions "-Wl,-force_load" "SHELL:${_wallycoreLib}")
     else()
-        set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
-        if(APPLE)
-            list(APPEND _gdkLinkOptions "-Wl,-force_load" "SHELL:${_wallycoreLib}")
-        else()
-            list(APPEND _gdkLinkOptions "LINKER:SHELL:--whole-archive" "SHELL:${_wallycoreLib}" "LINKER:SHELL:--no-whole-archive")
-        endif()
-        target_link_options(greenaddress PRIVATE "${_gdkLinkOptions}")
+        list(APPEND _gdkLinkOptions "LINKER:SHELL:--whole-archive" "SHELL:${_wallycoreLib}" "LINKER:SHELL:--no-whole-archive")
     endif()
+    target_link_options(greenaddress PRIVATE "${_gdkLinkOptions}")
     get_library_install_dir(_libInstallDir)
-    get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
     install(TARGETS greenaddress
         EXPORT "greenaddress-target"
         RUNTIME EXCLUDE_FROM_ALL
@@ -80,6 +75,7 @@ macro(create_greenaddress_target)
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
         EXCLUDE_FROM_ALL
     )
+    get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
     install(EXPORT "greenaddress-target"
         COMPONENT gdk-dev
         DESTINATION ${LIB_CMAKE_INSTALL_DIR}/cmake
@@ -136,12 +132,6 @@ macro(create_greenaddressstatic_target)
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
     )
     target_link_options(greenaddress-static INTERFACE "${GDK_LINK_OPTIONS}")
-    if(NOT CMAKE_VERSION VERSION_LESS_EQUAL 3.12)
-        target_link_options(greenaddress-static PRIVATE "${GDK_LINK_OPTIONS}")
-    endif()
-    if (ADD_COVERAGE AND CMAKE_BUILD_TYPE STREQUAL Debug)
-        target_link_options(greenaddress-static PUBLIC --coverage)
-    endif()
 endmacro()
 
 
@@ -176,9 +166,7 @@ macro(create_greenaddressfull_target)
         COMMAND ./archiver.sh
         COMMAND rm libgreenaddress-partial.a
     )
-    if(NOT CMAKE_VERSION VERSION_LESS_EQUAL 3.12)
-        target_link_options(greenaddress-full PRIVATE "${GDK_LINK_OPTIONS}")
-    endif()
+    target_link_options(greenaddress-full PRIVATE "${GDK_LINK_OPTIONS}")
     get_library_install_dir(_libInstallDir)
     get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
     install(TARGETS greenaddress-full

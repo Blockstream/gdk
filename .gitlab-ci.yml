@@ -3,7 +3,7 @@ cache:
   paths:
     - subprojects/packagecache/
 
-image: greenaddress/ci@sha256:ba2a76bb933f1da6573631597f947b1ff2f47e772674ab38c4e87e0eac6861b2
+image: greenaddress/ci@sha256:675d587569be9dffac3536e53fa31a06beebc19a644f05b06397703c3c5ed00c
 
 stages:
   - format
@@ -158,7 +158,7 @@ test_rust:
 
 
 build_clang_fedora:
-  image: greenaddress/fedora_ci@sha256:43d7204d8c5114da904c55dc294385c908703bf87f16a7515f6d3485f6542903
+  image: greenaddress/fedora_ci@sha256:8a92768750e9c8f108a96e41fc2c76b31ad28168268320251c3abfd407b9b51d
   tags:
     - ga
   stage: build
@@ -168,7 +168,7 @@ build_clang_fedora:
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: greenaddress/ubuntu_ci@sha256:6185896e7ac8cb25a56384f8ed57a865b6c170e8f2511ffdd51d72d4baa01915
+  image: greenaddress/ubuntu_ci@sha256:eb6fb71178c3691cb713fcd9a8947293a8718c21078412ec9c7dc8fbcf88ce99
   extends: .py_release
   stage: build
   script:
