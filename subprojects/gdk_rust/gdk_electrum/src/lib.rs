@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod account;
+mod client_blob;
 pub mod error;
 pub mod headers;
 pub mod interface;
@@ -807,7 +808,17 @@ impl ElectrumSession {
                 }
             }
         });
+
         self.handles.push(syncer_tipper_handle);
+
+        let user_wants_to_sync = self.user_wants_to_sync.clone();
+        let store = self.store()?;
+
+        let blob_handle = thread::spawn(move || {
+            let _ = client_blob::sync_blob(store, &user_wants_to_sync, sync_interval);
+        });
+
+        self.handles.push(blob_handle);
 
         Ok(())
     }
@@ -1879,7 +1890,7 @@ fn unblind_output(
     }
 }
 
-fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
+pub(crate) fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
     for _ in 0..(interval * 2) {
         if !user_wants_to_sync.load(Ordering::Relaxed) {
             // Threads should stop, close
