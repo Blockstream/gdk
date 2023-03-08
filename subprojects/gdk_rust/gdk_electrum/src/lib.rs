@@ -813,9 +813,15 @@ impl ElectrumSession {
 
         let user_wants_to_sync = self.user_wants_to_sync.clone();
         let store = self.store()?;
+        let login_data = self.get_wallet_hash_id()?;
 
         let blob_handle = thread::spawn(move || {
-            let _ = client_blob::sync_blob(store, &user_wants_to_sync, sync_interval);
+            let _ = client_blob::sync_blob(
+                store,
+                login_data.into(),
+                &user_wants_to_sync,
+                sync_interval,
+            );
         });
 
         self.handles.push(blob_handle);
