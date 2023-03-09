@@ -1,5 +1,6 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
 use gdk_common::{bitcoin, log, ureq, url};
 use log::info;
 use serde::Deserialize;
@@ -9,6 +10,8 @@ use super::{Error, LoginData, Store};
 const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
 
 const EMPTY_HMAC: Lazy<Hmac> = Lazy::new(|| Hmac::from_slice(&[0u8; 32]).unwrap());
+
+const EMPTY_HMAC_B64: &'static str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
 type Hmac = bitcoin::hashes::Hmac<bitcoin::hashes::sha256::Hash>;
 
@@ -57,7 +60,29 @@ impl BlobClient {
     /// return `None` if this client has never stored a blob on the server
     /// before.
     fn get_blob(&self) -> Result<Option<(Blob, Hmac)>, Error> {
-        todo!();
+        let response = self
+            .agent
+            .get(&format!("{}/get_client_blob", self.blob_server_url))
+            .query("client_id", self.client_id.as_str())
+            .query("sequence", "0")
+            .call()?;
+
+        let GetBlobResponse {
+            blob,
+            hmac,
+            ..
+        } = serde_cbor::from_reader(response.into_reader())?;
+
+        if hmac == EMPTY_HMAC_B64 {
+            return Ok(None);
+        }
+
+        let mut engine = HmacEngine::<sha256::Hash>::new(self.client_id.as_bytes());
+        engine.input(&base64::decode(hmac)?);
+
+        let hmac = Hmac::from_engine(engine);
+
+        Ok(Some((blob, hmac)))
     }
 
     /// Updates the last hmac received by the server.
@@ -76,6 +101,16 @@ impl From<LoginData> for ClientBlobId {
         Self {
             wallet_hash_id: login_data.wallet_hash_id,
         }
+    }
+}
+
+impl ClientBlobId {
+    fn as_str(&self) -> &str {
+        &self.wallet_hash_id
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        self.as_str().as_bytes()
     }
 }
 
