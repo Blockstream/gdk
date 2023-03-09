@@ -709,37 +709,10 @@ namespace sdk {
         const auto& hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
         const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
-        const auto& outputs = m_twofactor_data["transaction_outputs"];
         const auto& transaction_details = m_twofactor_data["transaction"];
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
         const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
-
-        if (is_liquid && signer->is_hardware()) {
-            // The hardware signer always recomputes the blinders,
-            // but if we have a blinded addressee it canont work.
-            // FIXME: add support for HWW that allow blinders to be chosen by the host.
-            for (const auto& addressee : transaction_details.at("addressees")) {
-                GDK_RUNTIME_ASSERT_MSG(
-                    !addressee.value("is_blinded", false), "HWW support for blinded addressee is not implemented");
-            }
-            // FIMXE: We skip re-blinding for the internal software signer here,
-            // since we have already done it. It should be possible to avoid blinding
-            // the tx twice in the general HWW case.
-            const auto& asset_commitments = get_sized_array(hw_reply, "asset_commitments", outputs.size());
-            const auto& value_commitments = get_sized_array(hw_reply, "value_commitments", outputs.size());
-            const auto& abfs = get_sized_array(hw_reply, "assetblinders", outputs.size());
-            const auto& vbfs = get_sized_array(hw_reply, "amountblinders", outputs.size());
-
-            size_t i = 0;
-            for (const auto& out : outputs) {
-                if (!out.at("is_fee")) {
-                    blind_output(*m_session, transaction_details, tx, i, out, h2b<33>(asset_commitments[i]),
-                        h2b<33>(value_commitments[i]), h2b_rev<32>(abfs[i]), h2b_rev<32>(vbfs[i]));
-                }
-                ++i;
-            }
-        }
 
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the
