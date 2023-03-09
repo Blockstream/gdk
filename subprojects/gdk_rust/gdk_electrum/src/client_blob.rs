@@ -77,10 +77,7 @@ impl BlobClient {
             return Ok(None);
         }
 
-        let mut engine = HmacEngine::<sha256::Hash>::new(self.client_id.as_bytes());
-        engine.input(&base64::decode(hmac)?);
-
-        let hmac = Hmac::from_engine(engine);
+        let hmac = self.to_hmac(&base64::decode(hmac)?);
 
         Ok(Some((blob, hmac)))
     }
@@ -88,6 +85,13 @@ impl BlobClient {
     /// Updates the last hmac received by the server.
     fn set_last_hmac(&mut self, hmac: Hmac) {
         self.last_hmac = Some(hmac);
+    }
+
+    /// Hmacs the given data using this client's ID as key.
+    fn to_hmac(&self, bytes: &[u8]) -> Hmac {
+        let mut engine = HmacEngine::<sha256::Hash>::new(self.client_id.as_bytes());
+        engine.input(bytes);
+        Hmac::from_engine(engine)
     }
 }
 
