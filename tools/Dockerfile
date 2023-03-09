@@ -15,11 +15,10 @@ ENV GDK_KEEP_DOWNLOADS=1
 
 
 FROM base AS builderandroid
-RUN mkdir -p /prebuild/armv7a /prebuild/armv8a /prebuild/x86 /prebuild/x86_64
-RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/armv7a && \
-    ./tools/builddeps.sh --ndk arm64-v8a --prefix /prebuild/armv8a && \
-    ./tools/builddeps.sh --ndk x86 --prefix /prebuild/x86 && \
-    ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/x86_64
+RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/android-armeabi-v7a && \
+    ./tools/builddeps.sh --ndk arm64-v8a --prefix /prebuild/android-arm64-v8a && \
+    ./tools/builddeps.sh --ndk x86 --prefix /prebuild/android-x86 && \
+    ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/android-x86_64
 
 FROM base AS builderlinux
 RUN mkdir -p /prebuild/gcc /prebuild/clang
@@ -38,10 +37,11 @@ COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bi
 COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
 COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
 
-COPY --from=builderandroid /prebuild/armv7a /prebuild/armv7a
-COPY --from=builderandroid /prebuild/armv8a /prebuild/armv8a
-COPY --from=builderandroid /prebuild/x86 /prebuild/x86
-COPY --from=builderandroid /prebuild/x86_64 /prebuild/x86_64
+COPY --from=builderandroid /prebuild/android-armeabi-v7a /prebuild/android-armeabi-v7a
+COPY --from=builderandroid /prebuild/android-arm64-v8a /prebuild/android-arm64-v8a
+COPY --from=builderandroid /prebuild/android-x86 /prebuild/android-x86
+COPY --from=builderandroid /prebuild/android-x86_64 /prebuild/android-x86_64
+
 
 COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
 COPY --from=builderlinux /prebuild/clang /prebuild/clang

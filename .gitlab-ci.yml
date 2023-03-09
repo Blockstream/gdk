@@ -128,6 +128,7 @@ test_clang_bullseye:
     - ctest
 
 
+
 test_rust:
   tags:
     - ga
@@ -164,7 +165,9 @@ build_clang_fedora:
   stage: build
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake -B build-clang -S .
+    - cmake -B build-clang -S .
+      -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu20.04:
@@ -173,55 +176,30 @@ build_gcc_ubuntu20.04:
   stage: build
   script:
     - source /root/.cargo/env
-    - mkdir build-gcc
-    - cd build-gcc
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc -DCMAKE_TOOLCHAIN_FILE=../cmake/profiles/gcc.cmake -DCMAKE_INSTALL_PREFIX=../$INSTALL_PATH ..
-    - cmake --build . -- -j 16
-    - cmake --build . --target python-wheel
-    - cmake --build . --target install/strip
-    - cmake -DCMAKE_INSTALL_COMPONENT=gdk-dev -P cmake_install.cmake
+    - cmake -B build-gcc -S .
+      -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
+    - cmake --build build-gcc --parallel 16
+    - cmake --build build-gcc --target python-wheel
+    - cmake --install build-gcc --prefix $INSTALL_PATH --strip
+    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-dev
+    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-cibuildwheel
 
 
 
-build_clang_ndk_armeabi-v7a:
+build-android:
   extends: .ndk_release
   stage: build
+  parallel:
+    matrix:
+      - PLATFORM: [android]
+        ARCH: [armeabi-v7a, arm64-v8a, x86, x86_64]
   script:
     - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/armv7a -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/android-armeabi-v7a.cmake -B build-android-armeabi-v7a -S .
-    - cmake --build build-android-armeabi-v7a --parallel 16
-    - cmake --install build-android-armeabi-v7a --prefix ${INSTALL_PATH} --component gdk-runtime --strip
-    - cmake --install build-android-armeabi-v7a --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_clang_ndk_arm64-v8a:
-  extends: .ndk_release
-  stage: build
-  script:
-    - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/armv8a -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/android-arm64-v8a.cmake -B build-android-arm64-v8a -S .
-    - cmake --build build-android-arm64-v8a --parallel 16
-    - cmake --install build-android-arm64-v8a --prefix ${INSTALL_PATH} --component gdk-runtime --strip
-    - cmake --install build-android-arm64-v8a --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_clang_ndk_x86:
-  extends: .ndk_release
-  stage: build
-  script:
-    - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/x86 -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/android-x86.cmake -DCMAKE_BUILD_TYPE=Release -B build-android-x86 -S .
-    - cmake --build build-android-x86 --parallel 16
-    - cmake --install build-android-x86 --prefix ${INSTALL_PATH} --component gdk-runtime --strip
-    - cmake --install build-android-x86 --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_clang_ndk_x86_64:
-  extends: .ndk_release
-  stage: build
-  script:
-    - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/x86_64 -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/android-x86_64.cmake -B build-android-x86_64 -S .
-    - cmake --build build-android-x86_64 --parallel 16
-    - cmake --install build-android-x86_64 --prefix ${INSTALL_PATH} --component gdk-runtime --strip
-    - cmake --install build-android-x86_64 --prefix ${INSTALL_PATH} --component gdk-dev
+    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/$PLATFORM-$ARCH -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$PLATFORM-$ARCH.cmake -B build -S .
+    - cmake --build build --parallel 16
+    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-runtime --strip
+    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-dev
 
 
 
@@ -240,15 +218,15 @@ build_clang_osx:
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DENABLE_TESTS:BOOL=TRUE -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake -DPYTHON_REQUIRED_VERSION=3.9 -B build-clang -S .
+    - cmake -B build-clang -S .
+      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
+      -DENABLE_TESTS:BOOL=TRUE
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
+      -DPYTHON_REQUIRED_VERSION=3.9
     - cmake --build build-clang --parallel 16
     - cmake --build build-clang --target python-wheel
     - cmake --install build-clang --prefix $INSTALL_PATH
     - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
-  cache:
-    key: "$CI_RUNNER_ID-$CI_JOB_NAME"
-    paths:
-      - $PREBUILT_SUBDIR
 
 build_clang_osx_m1:
   extends: 
@@ -265,15 +243,15 @@ build_clang_osx_m1:
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DENABLE_TESTS:BOOL=TRUE -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake -DPYTHON_REQUIRED_VERSION=3.9 -B build-clang -S .
+    - cmake -B build-clang -S .
+      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
+      -DENABLE_TESTS:BOOL=TRUE
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
+      -DPYTHON_REQUIRED_VERSION=3.9
     - cmake --build build-clang --parallel 16
     - cmake --build build-clang --target python-wheel
     - cmake --install build-clang --prefix $INSTALL_PATH
     - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
-  cache:
-    key: "$CI_RUNNER_ID-$CI_JOB_NAME"
-    paths:
-      - $PREBUILT_SUBDIR
 
 build_osx_ios:
   extends: .ios_release
@@ -286,7 +264,9 @@ build_osx_ios:
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake -B build-iphone -S .
+    - cmake -B build-iphone -S .
+      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
     - cmake --build build-iphone --parallel 16
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
@@ -303,7 +283,9 @@ build_osx_ios_sim:
     - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake -B build-iphonesim -S .
+    - cmake -B build-iphonesim -S .
+      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
     - cmake --build build-iphonesim --parallel 16
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
@@ -316,8 +298,9 @@ build_mingw64_windows:
   variables:
     INSTALL_PATH: "install-gdk"
   script:
-    - source /root/.cargo/env
-    - cmake -DEXTERNAL-DEPS-DIR=/prebuild/mingw-w64 -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/windows-mingw-w64.cmake -B build-windows -S .
+    - cmake -B build-windows -S .
+      -DEXTERNAL-DEPS-DIR=/prebuild/mingw-w64
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/windows-mingw-w64.cmake
     - cmake --build build-windows --parallel 16
     - cmake --install build-windows --prefix $INSTALL_PATH --component gdk-runtime --strip
     - cmake --install build-windows --prefix $INSTALL_PATH --component gdk-dev
@@ -374,10 +357,7 @@ package_release:
     - cd gdk_dist
     - /opt/process_release
   dependencies:
-    - build_clang_ndk_armeabi-v7a
-    - build_clang_ndk_arm64-v8a
-    - build_clang_ndk_x86_64
-    - build_clang_ndk_x86
+    - build-android
     - build_gcc_bullseye
     - build_gcc_ubuntu20.04
     - build_clang_osx
