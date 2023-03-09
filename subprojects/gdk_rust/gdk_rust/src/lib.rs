@@ -228,6 +228,7 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
         "decrypt_with_pin",
         "create_subaccount",
         "credentials_from_pin_data",
+        "set_master_blinding_key",
     ];
     let input_str = format!("{:?}", &input);
     let input_redacted = if methods_to_redact_in.contains(&method)
@@ -247,7 +248,8 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
         GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 
-    let methods_to_redact_out = vec!["credentials_from_pin_data", "decrypt_with_pin"];
+    let methods_to_redact_out =
+        vec!["credentials_from_pin_data", "decrypt_with_pin", "get_master_blinding_key"];
     let mut output_redacted = if methods_to_redact_out.contains(&method) {
         "redacted".to_string()
     } else {
