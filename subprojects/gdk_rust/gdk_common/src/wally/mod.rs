@@ -33,12 +33,17 @@ impl<'de> serde::Deserialize<'de> for MasterBlindingKey {
         use bitcoin::hashes::hex::FromHex;
         use std::convert::TryInto;
         let hex: String = serde::Deserialize::deserialize(deserializer)?;
-        let v = Vec::<u8>::from_hex(&hex).map_err(|e| {
+        let mut v = Vec::<u8>::from_hex(&hex).map_err(|e| {
             serde::de::Error::custom(format!("Master blinding key must be valid hex ({:?})", e))
         })?;
+        if v.len() == 32 {
+            // Handle both full and half-size blinding keys
+            v.splice(0..0, [0u8; 32]);
+        }
         Ok(MasterBlindingKey(
-            v.try_into()
-                .map_err(|_| serde::de::Error::custom("Master blinding key must be 64 bytes"))?,
+            v.try_into().map_err(|_| {
+                serde::de::Error::custom("Master blinding key must be 64 or 32 bytes")
+            })?,
         ))
     }
 }
