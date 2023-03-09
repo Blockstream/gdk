@@ -82,6 +82,35 @@ impl BlobClient {
         Ok(Some((blob, hmac)))
     }
 
+    /// Saves a new blob to the server. This can fail if another client (which
+    /// could be on another device) is updating the blob at the same time.
+    fn set_blob(&mut self, blob: impl AsRef<[u8]>) -> Result<(), Error> {
+        let blob_base64 = base64::encode(blob.as_ref());
+
+        let blob_hmac = self.to_hmac(blob_base64.as_bytes());
+
+        let previous_hmac = self
+            .last_hmac
+            .map(|hmac| format!("{hmac:x}"))
+            .unwrap_or_else(|| EMPTY_HMAC_B64.to_owned());
+
+        let response = self
+            .agent
+            .get(&format!("{}/set_client_blob", self.blob_server_url))
+            .query("client_id", self.client_id.as_str())
+            .query("sequence", "0")
+            .query("blob", &blob_base64)
+            .query("hmac", &format!("{blob_hmac:x}"))
+            .query("previous_hmac", &previous_hmac)
+            .call()?;
+
+        // TODO: check response.
+
+        self.last_hmac = Some(blob_hmac);
+
+        Ok(())
+    }
+
     /// Updates the last hmac received by the server.
     fn set_last_hmac(&mut self, hmac: Hmac) {
         self.last_hmac = Some(hmac);
