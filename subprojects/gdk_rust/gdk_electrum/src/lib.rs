@@ -56,6 +56,7 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 use std::{iter, thread};
 
+use crate::client_blob::BlobClient;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
@@ -814,14 +815,12 @@ impl ElectrumSession {
         let user_wants_to_sync = self.user_wants_to_sync.clone();
         let store = self.store()?;
         let login_data = self.get_wallet_hash_id()?;
+        let agent = self.build_request_agent()?;
+        let url = self.network.blob_server_url()?;
+        let blob_client = BlobClient::new(agent, url, login_data.into());
 
         let blob_handle = thread::spawn(move || {
-            let _ = client_blob::sync_blob(
-                store,
-                login_data.into(),
-                &user_wants_to_sync,
-                sync_interval,
-            );
+            let _ = client_blob::sync_blob(blob_client, store, &user_wants_to_sync);
         });
 
         self.handles.push(blob_handle);
