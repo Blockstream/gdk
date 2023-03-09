@@ -8,6 +8,7 @@ use gdk_common::wally::{make_str, read_str};
 use serde_json::Value;
 
 use std::ffi::CString;
+use std::io::Write;
 use std::os::raw::c_char;
 use std::str::FromStr;
 use std::sync::{Arc, Once};
@@ -393,7 +394,8 @@ impl log::Log for SimpleLogger {
     fn log(&self, record: &Record) {
         if self.enabled(record.metadata()) {
             let ts = SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards");
-            println!(
+            let _ = writeln!(
+                std::io::stdout(),
                 "{:02}.{:03} {} - {}",
                 ts.as_secs() % 60,
                 ts.subsec_millis(),
