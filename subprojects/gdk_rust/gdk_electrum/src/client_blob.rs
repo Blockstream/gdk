@@ -2,10 +2,10 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
 use gdk_common::{bitcoin, log, ureq, url};
-use log::info;
+use log::{info, warn};
 use serde::Deserialize;
 
-use super::{Error, LoginData, Store};
+use super::{Error, LoginData, RawStore, Store};
 
 const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
 
@@ -17,7 +17,7 @@ type Hmac = bitcoin::hashes::Hmac<bitcoin::hashes::sha256::Hash>;
 
 /// TODO: docs
 pub(super) fn sync_blob(
-    client: BlobClient,
+    mut client: BlobClient,
     store: Store,
     user_wants_to_sync: &AtomicBool,
 ) -> Result<(), Error> {
@@ -25,6 +25,20 @@ pub(super) fn sync_blob(
 
     // Get the blob from the server, or save the current one on the server if
     // it doesn't have one for this client id.
+    if let Some((raw_store_blob, _)) = client.get_blob()? {
+        let raw_store = serde_cbor::from_slice::<RawStore>(raw_store_blob.as_bytes())?;
+
+        let mut store = store.write()?;
+        store.store = raw_store;
+        store.flush_store()?;
+    } else {
+        let store = store.read()?;
+        let raw_store = serde_cbor::to_vec(&store.store)?;
+
+        if let Err(err) = client.set_blob(raw_store) {
+            warn!("Couldn't save store on blob server: {err:?}");
+        }
+    }
 
     todo!();
 }
@@ -150,6 +164,12 @@ impl ClientBlobId {
 // TODO: deserialize from hex string
 #[derive(Deserialize)]
 struct Blob(Vec<u8>);
+
+impl Blob {
+    fn as_bytes(&self) -> &[u8] {
+        &self.0
+    }
+}
 
 #[derive(Deserialize)]
 struct GetBlobResponse {

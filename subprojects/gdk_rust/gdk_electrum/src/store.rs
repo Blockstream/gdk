@@ -332,7 +332,7 @@ impl StoreMeta {
         Ok(())
     }
 
-    fn flush_store(&mut self) -> Result<(), Error> {
+    pub(super) fn flush_store(&mut self) -> Result<(), Error> {
         self.flush_serializable(Kind::Store)?;
         Ok(())
     }
