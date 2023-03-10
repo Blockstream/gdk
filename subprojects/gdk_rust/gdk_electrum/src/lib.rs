@@ -1895,7 +1895,7 @@ fn unblind_output(
     }
 }
 
-pub(crate) fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
+pub(crate) fn wait_or_close(user_wants_to_sync: &AtomicBool, interval: u32) -> bool {
     for _ in 0..(interval * 2) {
         if !user_wants_to_sync.load(Ordering::Relaxed) {
             // Threads should stop, close
