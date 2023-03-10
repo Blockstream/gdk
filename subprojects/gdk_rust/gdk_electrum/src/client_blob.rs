@@ -130,10 +130,16 @@ impl BlobClient {
 
         let blob_hmac = self.to_hmac(blob_base64.as_bytes());
 
+        let blob_hmac_str = blob_hmac.to_string();
+
         let previous_hmac = self
             .last_hmac
             .map(|hmac| format!("{hmac:x}"))
             .unwrap_or_else(|| EMPTY_HMAC_B64.to_owned());
+
+        if blob_hmac_str == previous_hmac {
+            return Ok(());
+        }
 
         let response = self
             .agent
@@ -141,7 +147,7 @@ impl BlobClient {
             .query("client_id", self.client_id.as_str())
             .query("sequence", "0")
             .query("blob", &blob_base64)
-            .query("hmac", &format!("{blob_hmac:x}"))
+            .query("hmac", &blob_hmac_str)
             .query("previous_hmac", &previous_hmac)
             .call()?;
 
