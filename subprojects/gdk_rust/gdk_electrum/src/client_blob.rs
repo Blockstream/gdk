@@ -1,4 +1,5 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::AtomicBool;
+use std::time::{Duration, Instant};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
 use gdk_common::{bitcoin, log, ureq, url};
@@ -7,11 +8,10 @@ use serde::Deserialize;
 
 use super::{Error, LoginData, RawStore, Store};
 
-const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
-
-const EMPTY_HMAC: Lazy<Hmac> = Lazy::new(|| Hmac::from_slice(&[0u8; 32]).unwrap());
 
 const EMPTY_HMAC_B64: &'static str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
 
 type Hmac = bitcoin::hashes::Hmac<bitcoin::hashes::sha256::Hash>;
 
@@ -38,6 +38,26 @@ pub(super) fn sync_blob(
         if let Err(err) = client.set_blob(raw_store) {
             warn!("Couldn't save store on blob server: {err:?}");
         }
+    }
+
+    while !wait_or_close(user_wants_to_sync, interval) {
+        let start = Instant::now();
+
+        if let Some((new_store_blob, _)) = client.get_blob()? {
+            let raw_store = serde_cbor::from_slice::<RawStore>(new_store_blob.as_bytes())?;
+
+            let mut store = store.write()?;
+            store.store = raw_store;
+            store.flush_store()?;
+        }
+
+        if let Some(remaining) = BLOBSERVER_SYNCING_INTERVAL.checked_sub(start.elapsed()) {
+            std::thread::sleep(remaining);
+        }
+
+        // TODO: we should have a channel that sends us a message every time
+        // the `RawStore` gets flushed. When that happens we send the new store
+        // to the blob server.
     }
 
     todo!();
@@ -72,7 +92,8 @@ impl BlobClient {
 
     /// Fetches the current `(Blob, Hmac)` pair from the blob server. It can
     /// return `None` if this client has never stored a blob on the server
-    /// before.
+    /// before or if the blob hasn't changed since the last time it was
+    /// fetched.
     fn get_blob(&self) -> Result<Option<(Blob, Hmac)>, Error> {
         let response = self
             .agent
@@ -92,6 +113,12 @@ impl BlobClient {
         }
 
         let hmac = self.to_hmac(&base64::decode(hmac)?);
+
+        if let Some(last) = self.last_hmac {
+            if hmac == last {
+                return Ok(None);
+            }
+        }
 
         Ok(Some((blob, hmac)))
     }
@@ -123,11 +150,6 @@ impl BlobClient {
         self.last_hmac = Some(blob_hmac);
 
         Ok(())
-    }
-
-    /// Updates the last hmac received by the server.
-    fn set_last_hmac(&mut self, hmac: Hmac) {
-        self.last_hmac = Some(hmac);
     }
 
     /// Hmacs the given data using this client's ID as key.
@@ -183,6 +205,10 @@ mod tests {
     use super::*;
     use gdk_common::ureq;
     use ureq::Agent;
+
+    const BLOBSERVER_STAGING: &'static str = "https://green-blobserver.staging.blockstream.com";
+    const BLOBSERVER_STAGING_ONION: &'static str =
+        "bloba2m6sogq7qxnxhxexxnphn2xh6h62kvywpekx4crrrg3sl3ttbqd.onion";
 
     #[test]
     fn blob_server_roundtrip() {}
