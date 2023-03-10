@@ -60,7 +60,7 @@ pub(super) fn sync_blob(
         // to the blob server.
     }
 
-    todo!();
+    Ok(())
 }
 
 /// A client used to manage all interactions with the blob server.
@@ -183,13 +183,15 @@ impl ClientBlobId {
     }
 }
 
-// TODO: deserialize from hex string
 #[derive(Deserialize)]
-struct Blob(Vec<u8>);
+struct Blob {
+    #[serde(deserialize_with = "deserialize_bytes_from_hex")]
+    bytes: Vec<u8>,
+}
 
 impl Blob {
     fn as_bytes(&self) -> &[u8] {
-        &self.0
+        &self.bytes
     }
 }
 
@@ -197,7 +199,22 @@ impl Blob {
 struct GetBlobResponse {
     blob: Blob,
     hmac: String,
-    sequence: u8,
+
+    #[serde(rename = "sequence")]
+    _sequence: u8,
+}
+
+/// Deserializes a Vec of bytes from a hex string.
+pub(super) fn deserialize_bytes_from_hex<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Vec<u8>, D::Error>
+where
+    D: serde::de::Deserializer<'de>,
+{
+    use bitcoin::hashes::hex::FromHex;
+    use serde::de::Error;
+    let hex = String::deserialize(deserializer)?;
+    Vec::<u8>::from_hex(&hex).map_err(D::Error::custom)
 }
 
 #[cfg(test)]
