@@ -2,7 +2,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 
-use gdk_common::electrum_client::{Client, ConfigBuilder, Socks5Config};
+use electrum_client::{Client, ConfigBuilder, Socks5Config};
+use gdk_common::electrum_client;
 use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
 use std::str::FromStr;
 
@@ -19,15 +20,7 @@ impl ElectrumUrl {
         // TODO: add support for socks5 credentials?
         if let Some(proxy) = proxy {
             if !proxy.trim().is_empty() {
-                use std::net::ToSocketAddrs;
-                // The electrum client currently panics if the proxy url is not
-                // well formed. Check that here before feeding it to
-                // `Socks5Config::new()`.
-                if proxy.to_socket_addrs().is_ok() {
-                    config = config.socks5(Some(Socks5Config::new(proxy)));
-                } else {
-                    return Err(Error::InvalidProxy(proxy.to_owned()));
-                }
+                config = config.socks5(Some(Socks5Config::new(proxy)));
             }
         }
 
@@ -210,11 +203,31 @@ mod test {
     fn invalid_proxy() {
         let url = ElectrumUrl::Plaintext(String::new());
 
-        let proxy = "socks5://3.4.5.6";
+        let invalid_proxy = "socks5://3.4.5.6";
 
         assert!(matches!(
-            url.build_client(Some(proxy), None),
-            Err(Error::InvalidProxy(p)) if p == proxy,
+            url.build_client(Some(invalid_proxy), None),
+
+            Err(Error::ClientError(electrum_client::Error::IOError(err)))
+                if err.kind() == std::io::ErrorKind::InvalidInput,
         ));
+    }
+
+    #[test]
+    fn valid_proxy() {
+        let url = ElectrumUrl::Plaintext(String::new());
+
+        // `build_client()` can still return an error, here we're just checking
+        // that the error it returns (if any) is not caused by an incorrectly
+        // formatted proxy.
+
+        for valid_proxy in ["127.0.0.1:9050", "socks5://127.0.0.1:9050"] {
+            assert!(!matches!(
+                url.build_client(Some(valid_proxy), None),
+
+                Err(Error::ClientError(electrum_client::Error::IOError(err)))
+                    if err.kind() == std::io::ErrorKind::InvalidInput,
+            ));
+        }
     }
 }
