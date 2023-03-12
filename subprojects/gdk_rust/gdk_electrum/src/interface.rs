@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::*;
 
-use electrum_client::{Client, ConfigBuilder, Socks5Config};
+use gdk_common::electrum_client::{Client, ConfigBuilder, Socks5Config};
 use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
 use std::str::FromStr;
 

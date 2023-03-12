@@ -562,6 +562,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin",
+ "electrum-client",
  "elements",
  "libc",
  "log",
@@ -585,7 +586,6 @@ version = "0.1.0"
 dependencies = [
  "base64",
  "block-modes",
- "electrum-client",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-pin-client",
@@ -638,7 +638,6 @@ dependencies = [
  "base64",
  "bitcoin",
  "electrsd",
- "electrum-client",
  "elements",
  "env_logger 0.10.0",
  "gdk-common",
@@ -657,7 +656,6 @@ name = "gdk-test"
 version = "0.1.0"
 dependencies = [
  "electrsd",
- "electrum-client",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-electrum",

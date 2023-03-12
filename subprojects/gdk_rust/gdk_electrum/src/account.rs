@@ -1099,7 +1099,7 @@ pub fn discover_account(
     account_xpub: &ExtendedPubKey,
     script_type: ScriptType,
 ) -> Result<bool, Error> {
-    use electrum_client::ElectrumApi;
+    use gdk_common::electrum_client::ElectrumApi;
 
     // build our own client so that the subscriptions are dropped at the end
     let client = electrum_url.build_client(proxy, None)?;

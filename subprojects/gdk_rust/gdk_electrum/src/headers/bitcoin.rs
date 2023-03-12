@@ -9,6 +9,7 @@ use gdk_common::bitcoin::consensus::{deserialize, serialize};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::{BlockHash, Txid};
 use gdk_common::bitcoin::{BlockHeader, Network};
+use gdk_common::electrum_client;
 use gdk_common::log::{info, warn};
 use gdk_common::once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -271,11 +272,11 @@ fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
 #[cfg(test)]
 mod test {
     use crate::headers::bitcoin::HeadersChain;
-    use electrum_client::GetMerkleRes;
     use gdk_common::bitcoin::consensus::encode::Decodable;
     use gdk_common::bitcoin::hash_types::BlockHash;
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::{BlockHeader, Network, Txid};
+    use gdk_common::electrum_client::GetMerkleRes;
     use std::io::Cursor;
     use tempfile::TempDir;
 

@@ -8,6 +8,7 @@ use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::bitcoin::hashes::hex::ToHex;
 use gdk_common::bitcoin::hashes::{sha256, sha256d, Hash};
+use gdk_common::electrum_client;
 use gdk_common::elements;
 use gdk_common::log::{debug, info, warn};
 use gdk_common::model::{

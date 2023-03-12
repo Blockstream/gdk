@@ -7,6 +7,7 @@ use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::secp256k1::{ecdsa::Signature, Message};
 use gdk_common::bitcoin::PublicKey;
+use gdk_common::electrum_client;
 use gdk_common::elements::opcodes::{self, Class, ClassifyContext};
 use gdk_common::elements::script::{self, Instruction};
 use gdk_common::elements::{BlockHash, BlockHeader, Script, TxMerkleNode, Txid};

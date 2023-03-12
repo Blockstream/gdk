@@ -41,6 +41,7 @@ use gdk_common::wally::{
 };
 use gdk_common::{be::*, State};
 
+use gdk_common::electrum_client;
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};

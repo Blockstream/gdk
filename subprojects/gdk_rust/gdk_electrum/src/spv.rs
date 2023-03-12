@@ -4,13 +4,13 @@ use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
-use gdk_common::bitcoin;
 use gdk_common::bitcoin::blockdata::constants::{
     max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
 };
 use gdk_common::bitcoin::BlockHash;
 use gdk_common::bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
 use gdk_common::once_cell::sync::Lazy;
+use gdk_common::{bitcoin, electrum_client};
 
 use gdk_common::network::NetworkParameters;
 
