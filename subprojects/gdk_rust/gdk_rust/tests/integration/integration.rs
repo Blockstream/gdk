@@ -4,7 +4,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
-use electrum_client::ElectrumApi;
+use electrsd::electrum_client::ElectrumApi;
 use gdk_common::bitcoin::util::bip32::DerivationPath;
 use gdk_common::bitcoin::Witness;
 use gdk_common::log::info;

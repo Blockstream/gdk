@@ -24,7 +24,7 @@ impl ElectrumUrl {
                 // well formed. Check that here before feeding it to
                 // `Socks5Config::new()`.
                 if proxy.to_socket_addrs().is_ok() {
-                    config = config.socks5(Some(Socks5Config::new(proxy)))?;
+                    config = config.socks5(Some(Socks5Config::new(proxy)));
                 } else {
                     return Err(Error::InvalidProxy(proxy.to_owned()));
                 }
@@ -33,7 +33,7 @@ impl ElectrumUrl {
 
         let timeout = timeout.unwrap_or(NETWORK_REQUEST_TIMEOUT.as_secs() as u8);
 
-        config = config.timeout(Some(timeout))?;
+        config = config.timeout(Some(timeout));
 
         let (url, config) = match self {
             ElectrumUrl::Tls(url, validate) => {
