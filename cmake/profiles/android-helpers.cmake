@@ -27,6 +27,6 @@ macro(initialize_android_environment)
         string(REPLACE "-g" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
         string(REPLACE "-g" "" CMAKE_ASM_FLAGS ${CMAKE_ASM_FLAGS})
     endif()
-    # ... another weird thing of the android.toolchain.cmake file... -O3 should be there but it isn't
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+    # ... another weird thing of the android.toolchain.cmake file... -O2 should be there but it isn't
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2")
 endmacro()

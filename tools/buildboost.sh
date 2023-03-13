@@ -56,7 +56,7 @@ EOF
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
-    gsed -i "s!B2_CXXFLAGS_RELEASE=.*!B2_CXXFLAGS_RELEASE=\"-O3 -s -isysroot $(xcrun --show-sdk-path)\"!" \
+    gsed -i "s!B2_CXXFLAGS_RELEASE=.*!B2_CXXFLAGS_RELEASE=\"-O2 -s -isysroot $(xcrun --show-sdk-path)\"!" \
           ${boost_src_home}/tools/build/src/engine/build.sh
     gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
           ${boost_src_home}/tools/build/src/engine/build.sh

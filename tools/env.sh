@@ -1,5 +1,5 @@
 export PATH=$NDK_TOOLSDIR/bin:$PATH_BASE
-export CFLAGS="$SDK_CFLAGS --sysroot=$NDK_TOOLSDIR/sysroot -O3"
+export CFLAGS="$SDK_CFLAGS --sysroot=$NDK_TOOLSDIR/sysroot -O2"
 export LDFLAGS="$SDK_LDFLAGS --sysroot=$NDK_TOOLSDIR/sysroot -fuse-ld=lld"
 export CPPFLAGS="$SDK_CFLAGS"
 export SYSROOT="$NDK_TOOLSDIR/sysroot"

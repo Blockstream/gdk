@@ -180,7 +180,7 @@ if [ ${BUILDTYPE} == "debug" ]; then
 else
     export CFLAGS="$CFLAGS -O2 -DNDEBUG"
     export CXXFLAGS="$CXXFLAGS -O2 -DNDEBUG"
-    # export CPPFLAGS="$CPPFLAGS -O3 -DNDEBUG" # tor seems to be annoyed by this variable ¯\_(ツ)_/¯
+    # export CPPFLAGS="$CPPFLAGS -O2 -DNDEBUG" # tor seems to be annoyed by this variable ¯\_(ツ)_/¯
 fi
 
 export CXX=$CXX_COMPILER

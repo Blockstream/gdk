@@ -7,6 +7,6 @@ if [ \( "$(uname)" = "Darwin" \) ]; then
     export SDK_PATH="$XCODE_PATH/Platforms/$PLATFORM.platform/Developer/SDKs/$PLATFORM.sdk"
     export SDK_CFLAGS="$SDK_CFLAGS -isysroot ${SDK_PATH} -mmacosx-version-min=10.13"
     export SDK_LDFLAGS="$SDK_LDFLAGS -isysroot ${SDK_PATH} -mmacosx-version-min=10.13"
-    export CFLAGS="${SDK_CFLAGS} -O3"
+    export CFLAGS="${SDK_CFLAGS} -O2"
     export LDFLAGS="${SDK_LDFLAGS}"
 fi

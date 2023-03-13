@@ -48,7 +48,7 @@ if [ "$1" = "--ndk" ]; then
     android_build_wally ${HOST_ARCH} ${NDK_TOOLSDIR} ${ANDROID_VERSION} ${CONFIGURE_ARGS}
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
-    export CFLAGS="${CFLAGS} ${EXTRA_FLAGS} -O3"
+    export CFLAGS="${CFLAGS} ${EXTRA_FLAGS} -O2"
     export LDFLAGS="${LDFLAGS} ${EXTRA_FLAGS}"
     export CC=${XCODE_DEFAULT_PATH}/clang
     export CXX=${XCODE_DEFAULT_PATH}/clang++
