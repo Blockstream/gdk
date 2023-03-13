@@ -341,29 +341,17 @@ checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "electrsd"
-version = "0.23.1"
+version = "0.23.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bd715f11ede020eb4f9e63009aa37d45cd9a6c3f3209a891301485f84784d57d"
+checksum = "f757b2bb46e9025cb0e11a8080d2a05179cdc60d7dd609b1ea02a927e39496e3"
 dependencies = [
  "bitcoin_hashes",
  "bitcoind",
- "electrum-client 0.12.0",
+ "electrum-client",
  "log",
+ "minreq",
  "nix",
- "ureq",
  "zip",
-]
-
-[[package]]
-name = "electrum-client"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "82a232d46710f8064b7bb2029d82819fc1f5fba053687e0e3bb47cc762af24f6"
-dependencies = [
- "bitcoin",
- "log",
- "serde",
- "serde_json",
 ]
 
 [[package]]
@@ -574,7 +562,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin",
- "electrum-client 0.13.0",
+ "electrum-client",
  "elements",
  "libc",
  "log",
@@ -981,6 +969,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b275950c28b37e794e8c55d88aeb5e139d0ce23fdbbeda68f8d7174abdf9e8fa"
 dependencies = [
  "adler",
+]
+
+[[package]]
+name = "minreq"
+version = "2.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4c785bc6027fd359756e538541c8624012ba3776d3d3fe123885643092ed4132"
+dependencies = [
+ "lazy_static",
+ "log",
+ "rustls",
+ "webpki",
+ "webpki-roots",
 ]
 
 [[package]]
