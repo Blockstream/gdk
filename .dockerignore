@@ -8,7 +8,7 @@
 !./tools/buildzlib.sh
 !./tools/bullseye_deps.sh
 !./tools/ubuntu_20.04_deps.sh
-!./tools/fedora37_deps.sh
+!./tools/fedora32_deps.sh
 !./tools/env.sh
 !./tools/requirements.txt
 !./cmake/profiles/
