@@ -86,6 +86,8 @@ static const nlohmann::json* json_cast(const GA_json* json) { return reinterpret
 
 static nlohmann::json** json_cast(GA_json** json) { return reinterpret_cast<nlohmann::json**>(json); }
 
+static nlohmann::json&& json_move(GA_json* json) { return std::move(*json_cast(json)); }
+
 template <typename T> static void json_convert(const nlohmann::json& json, const char* path, T* value)
 {
     GDK_RUNTIME_ASSERT(path);
@@ -283,13 +285,13 @@ GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, sessi
 GDK_DEFINE_C_FUNCTION_3(GA_validate, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::validate_call(*session, *json_cast(details))); })
 
-GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, const GA_json*, hw_device, const GA_json*,
-    details, struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::register_call(*session, *json_cast(hw_device), *json_cast(details))); })
-
-GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, const GA_json*, hw_device, const GA_json*, details,
+GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, GA_json*, hw_device, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::login_user_call(*session, *json_cast(hw_device), *json_cast(details))); })
+    { *call = make_call(new ga::sdk::register_call(*session, json_move(hw_device), json_move(details))); })
+
+GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, GA_json*, hw_device, GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::login_user_call(*session, json_move(hw_device), json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_set_watch_only, struct GA_session*, session, const char*, username, const char*, password,
     { session->set_wo_credentials(username, password); })
@@ -300,9 +302,8 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_watch_only_username, struct GA_session*, session,
 GDK_DEFINE_C_FUNCTION_2(GA_get_fee_estimates, struct GA_session*, session, GA_json**, estimates,
     { *json_cast(estimates) = new nlohmann::json(session->get_fee_estimates()); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_credentials, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::get_credentials_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_credentials, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::get_credentials_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_system_message, struct GA_session*, session, char**, message_text,
     { *message_text = to_c_string(session->get_system_message()); })
@@ -314,13 +315,13 @@ GDK_DEFINE_C_FUNCTION_3(GA_ack_system_message, struct GA_session*, session, cons
 GDK_DEFINE_C_FUNCTION_2(GA_get_twofactor_config, struct GA_session*, session, GA_json**, config,
     { *json_cast(config) = new nlohmann::json(session->get_twofactor_config()); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_create_transaction, struct GA_session*, session, const GA_json*, transaction_details,
+GDK_DEFINE_C_FUNCTION_3(GA_create_transaction, struct GA_session*, session, GA_json*, transaction_details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::create_transaction_call(*session, *json_cast(transaction_details))); })
+    { *call = make_call(new ga::sdk::create_transaction_call(*session, json_move(transaction_details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, const GA_json*, transaction_details,
+GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, GA_json*, transaction_details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::sign_transaction_call(*session, *json_cast(transaction_details))); })
+    { *call = make_call(new ga::sdk::sign_transaction_call(*session, json_move(transaction_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_create_swap_transaction, struct GA_session*, session, const GA_json*, swap_details,
     struct GA_auth_handler**, call,
@@ -330,20 +331,19 @@ GDK_DEFINE_C_FUNCTION_3(GA_complete_swap_transaction, struct GA_session*, sessio
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::complete_swap_transaction_call(*session, *json_cast(swap_details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_psbt_sign, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::psbt_sign_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_psbt_sign, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::psbt_sign_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_psbt_get_details, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::psbt_get_details_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_psbt_get_details, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::psbt_get_details_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_1(GA_send_nlocktimes, struct GA_session*, session, { session->send_nlocktimes(); })
 
 GDK_DEFINE_C_FUNCTION_3(
-    GA_set_csvtime, struct GA_session*, session, const GA_json*, locktime_details, struct GA_auth_handler**, call, {
+    GA_set_csvtime, struct GA_session*, session, GA_json*, locktime_details, struct GA_auth_handler**, call, {
         constexpr bool is_csv = true;
-        *call = make_call(new ga::sdk::locktime_call(*session, *json_cast(locktime_details), is_csv));
-    })
+        *call = make_call(new ga::sdk::locktime_call(*session, json_move(locktime_details), is_csv));
+    });
 
 GDK_DEFINE_C_FUNCTION_3(
     GA_set_nlocktime, struct GA_session*, session, const GA_json*, locktime_details, struct GA_auth_handler**, call, {
@@ -373,9 +373,8 @@ int GA_set_notification_handler(struct GA_session* session, GA_notification_hand
 GDK_DEFINE_C_FUNCTION_2(GA_remove_account, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::remove_account_call(*session)); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_create_subaccount, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::create_subaccount_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_create_subaccount, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::create_subaccount_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_subaccounts, struct GA_session*, session, const GA_json*, details,
     struct GA_auth_handler**, call,
@@ -387,32 +386,30 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t
 GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint32_t, subaccount, const char*, new_name,
     { session->rename_subaccount(subaccount, new_name); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_update_subaccount, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::update_subaccount_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_update_subaccount, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::update_subaccount_call(*session, json_move(details))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::get_transactions_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::get_transactions_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, const GA_json*, details,
+GDK_DEFINE_C_FUNCTION_3(GA_get_receive_address, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::get_receive_address_call(*session, *json_cast(details))); })
+    { *call = make_call(new ga::sdk::get_receive_address_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_previous_addresses, struct GA_session*, session, const GA_json*, details,
+GDK_DEFINE_C_FUNCTION_3(GA_get_previous_addresses, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::get_previous_addresses_call(*session, *json_cast(details))); })
+    { *call = make_call(new ga::sdk::get_previous_addresses_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::get_balance_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_get_balance, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::get_balance_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, const GA_json*, details,
+GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::get_unspent_outputs_call(*session, *json_cast(details))); })
+    { *call = make_call(new ga::sdk::get_unspent_outputs_call(*session, json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_set_unspent_outputs_status, struct GA_session*, session, const GA_json*, details,
+GDK_DEFINE_C_FUNCTION_3(GA_set_unspent_outputs_status, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::set_unspent_outputs_status_call(*session, *json_cast(details))); })
+    { *call = make_call(new ga::sdk::set_unspent_outputs_status_call(*session, json_move(details))); });
 
 GDK_DEFINE_C_FUNCTION_5(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, const char*, private_key,
     const char*, password, uint32_t, unused, GA_json**, utxos, {
@@ -429,13 +426,11 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_available_currencies, struct GA_session*, session
 GDK_DEFINE_C_FUNCTION_3(GA_convert_amount, struct GA_session*, session, const GA_json*, value_details, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->convert_amount(*json_cast(value_details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_encrypt_with_pin, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_encrypt_with_pin, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, json_move(details))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_decrypt_with_pin, struct GA_session*, session, const GA_json*, details,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::decrypt_with_pin_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_decrypt_with_pin, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::decrypt_with_pin_call(*session, json_move(details))); });
 
 GDK_DEFINE_C_FUNCTION_1(GA_disable_all_pin_logins, struct GA_session*, session, { session->disable_all_pin_logins(); })
 
@@ -470,14 +465,12 @@ GDK_DEFINE_C_FUNCTION_1(GA_destroy_auth_handler, struct GA_auth_handler*, call, 
 GDK_DEFINE_C_FUNCTION_2(GA_get_settings, struct GA_session*, session, struct GA_json**, settings,
     { *json_cast(settings) = new nlohmann::json(session->get_settings()); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_change_settings, struct GA_session*, session, const GA_json*, settings,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::change_settings_call(*session, *json_cast(settings))); })
+GDK_DEFINE_C_FUNCTION_3(GA_change_settings, struct GA_session*, session, GA_json*, settings, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::change_settings_call(*session, json_move(settings))); })
 
-GDK_DEFINE_C_FUNCTION_4(GA_change_settings_twofactor, struct GA_session*, session, const char*, method, const GA_json*,
-    twofactor_details, struct GA_auth_handler**, call, {
-        *call = make_call(new ga::sdk::change_settings_twofactor_call(*session, method, *json_cast(twofactor_details)));
-    })
+GDK_DEFINE_C_FUNCTION_4(GA_change_settings_twofactor, struct GA_session*, session, const char*, method, GA_json*,
+    twofactor_details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::change_settings_twofactor_call(*session, method, json_move(twofactor_details))); })
 
 GDK_DEFINE_C_FUNCTION_4(GA_twofactor_reset, struct GA_session*, session, const char*, email, uint32_t, is_dispute,
     struct GA_auth_handler**, call, {
@@ -498,16 +491,16 @@ GDK_DEFINE_C_FUNCTION_2(GA_twofactor_cancel_reset, struct GA_session*, session, 
 GDK_DEFINE_C_FUNCTION_3(GA_broadcast_transaction, struct GA_session*, session, const char*, transaction_hex, char**,
     tx_hash, { *tx_hash = to_c_string(session->broadcast_transaction(transaction_hex)); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_send_transaction, struct GA_session*, session, const GA_json*, transaction_details,
+GDK_DEFINE_C_FUNCTION_3(GA_send_transaction, struct GA_session*, session, GA_json*, transaction_details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::send_transaction_call(*session, *json_cast(transaction_details))); })
+    { *call = make_call(new ga::sdk::send_transaction_call(*session, json_move(transaction_details))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_sign_message, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::sign_message_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_sign_message, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::sign_message_call(*session, json_move(details))); });
 
-GDK_DEFINE_C_FUNCTION_3(GA_twofactor_change_limits, struct GA_session*, session, const GA_json*, limit_details,
+GDK_DEFINE_C_FUNCTION_3(GA_twofactor_change_limits, struct GA_session*, session, GA_json*, limit_details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::change_limits_call(*session, *json_cast(limit_details))); })
+    { *call = make_call(new ga::sdk::change_limits_call(*session, json_move(limit_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_bool, const GA_json*, json, const char*, path, uint32_t*, output, {
     bool v;

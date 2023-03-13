@@ -8,6 +8,8 @@
 - GA_get_twofactor_config: Fiat pricing limits no longer return corresponding
   converted BTC amounts. When "is_fiat" is `true`, the caller should convert
   the amount themselves using GA_convert_amount if desired.
+- FFI (All calls): Input JSON parameters are now moved internally and will be
+  empty when an API call returns. This only affects C and C++ callers.
 
 ### Fixed
 - GA_sign_transaction/GA_send_transaction: Fixed exception thrown when a fiat
