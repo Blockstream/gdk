@@ -100,50 +100,6 @@ build_gcc_bullseye:
     - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-cibuildwheel
 
 
-build_gcc_bullseye_debug:
-  tags:
-    - ga
-  stage: build
-  when: manual
-  script:
-    - source /root/.cargo/env
-    - cmake -B build-gcc-debug -S .
-        -DEXTERNAL-DEPS-DIR=/prebuild/gcc-debug
-        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
-        -DCMAKE_BUILD_TYPE=Debug
-        -DENABLE_TESTS:BOOL=TRUE
-    - cmake --build build-gcc-debug --parallel 16
-  artifacts:
-    expire_in: 2 hrs
-    paths:
-      - build-gcc-debug/tests
-      - build-gcc-debug/CTestTestfile.cmake
-
-test_gcc_bullseye_debug:
-  tags:
-    - ga
-  stage: test
-  needs: [build_gcc_bullseye_debug]
-  script:
-    - cd build-gcc-debug/
-    - ctest
-
-build_gcc_bullseye_devmode:
-  tags:
-    - ga
-  stage: build
-  script:
-    - source /root/.cargo/env
-    - cmake -B build-gcc-debug -S .
-        -DEXTERNAL-DEPS-DIR=/prebuild/gcc-debug
-        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
-        -DCMAKE_BUILD_TYPE=Debug
-        -DENABLE_TESTS:BOOL=TRUE
-        -DDEV_MODE:BOOL=TRUE
-    - cmake --build build-gcc-debug --target python-wheel --parallel 16
-
-
-
 build_clang_bullseye:
   tags:
     - ga
@@ -170,35 +126,6 @@ test_clang_bullseye:
   script:
     - cd build-clang
     - ctest
-
-
-build_clang_bullseye_debug:
-  tags:
-    - ga
-  stage: build
-  script:
-    - source /root/.cargo/env
-    - cmake -B build-clang-debug -S .
-        -DEXTERNAL-DEPS-DIR=/prebuild/clang-debug
-        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
-        -DCMAKE_BUILD_TYPE=Debug
-        -DENABLE_TESTS:BOOL=TRUE
-    - cmake --build build-clang-debug --parallel 16
-  artifacts:
-    expire_in: 2 hrs
-    paths:
-      - build-clang-debug/tests
-      - build-clang-debug/CTestTestfile.cmake
-
-test_clang_bullseye_debug:
-  tags:
-    - ga
-  stage: test
-  needs: [build_clang_bullseye_debug]
-  script:
-    - cd build-clang-debug
-    - ctest
-
 
 
 test_rust:
@@ -280,13 +207,6 @@ build_clang_ndk_arm64-v8a:
     - cmake --build build-android-arm64-v8a --parallel 16
     - cmake --install build-android-arm64-v8a --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-android-arm64-v8a --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_clang_ndk_arm64-v8a-debug:
-  extends: .ndk_release
-  stage: build
-  when: manual
-  script:
-    - echo "not working... sorry"
 
 build_clang_ndk_x86:
   extends: .ndk_release
@@ -376,20 +296,6 @@ build_osx_ios:
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
 
-build_osx_ios_debug:
-  extends: .osx_env
-  stage: build
-  when: manual
-  variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-debug"
-  script:
-    - cd $CI_PROJECT_DIR
-    - ./tools/clean.sh dirs
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake -DCMAKE_BUILD_TYPE=Debug -B build-iphone -S .
-    - cmake --build build-iphone --parallel 16
-
 
 build_osx_ios_sim:
   extends: .ios_release
@@ -406,21 +312,6 @@ build_osx_ios_sim:
     - cmake --build build-iphonesim --parallel 16
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_osx_ios_sim_debug:
-  extends: .osx_env
-  stage: build
-  when: manual
-  variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim-debug"
-  script:
-    - cd $CI_PROJECT_DIR
-    - ./tools/clean.sh dirs
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --buildtype debug --prefix $PREBUILT_DIR; fi
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake -DCMAKE_BUILD_TYPE=Debug -B build-iphonesim -S .
-    - cmake --build build-iphonesim-debug --parallel 16
-
 
 
 build_mingw64_windows:

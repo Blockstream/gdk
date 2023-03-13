@@ -34,16 +34,6 @@ COPY ./tools ./tools
 RUN mkdir -p /prebuild/gcc
 RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
 
-FROM base AS buildergcc-debug
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/gcc
-RUN ./tools/builddeps.sh --gcc --buildtype debug --prefix /prebuild/gcc-debug
-
-FROM base AS builderclang-debug
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/clang
-RUN ./tools/builddeps.sh --clang --buildtype debug --prefix /prebuild/clang-debug
-
 FROM base AS builderclang
 COPY ./tools ./tools
 RUN mkdir -p /prebuild/clang
@@ -69,9 +59,7 @@ COPY --from=builderx86 /prebuild/x86 /prebuild/x86
 COPY --from=builderx86_64 /prebuild/x86_64 /prebuild/x86_64
 
 COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
-COPY --from=buildergcc-debug /prebuild/gcc-debug /prebuild/gcc-debug
 COPY --from=builderclang /prebuild/clang /prebuild/clang
-COPY --from=builderclang-debug /prebuild/clang-debug /prebuild/clang-debug
 
 COPY --from=buildermingw /prebuild/mingw-w64 /prebuild/mingw-w64
 
