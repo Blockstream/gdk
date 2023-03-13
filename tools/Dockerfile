@@ -9,35 +9,23 @@ ENV ANDROID_NDK=/root/android-ndk-r23b
 ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 
 
-FROM base AS builderarmv7a
+FROM base AS builderandroid
 COPY ./tools ./tools
-RUN mkdir -p /prebuild/armv7a
-RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/armv7a
+RUN mkdir -p /prebuild/armv7a /prebuild/armv8a /prebuild/x86 /prebuild/x86_64
+ENV GDK_KEEP_DOWNLOADS=1
+RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/armv7a && \
+    ./tools/builddeps.sh --ndk arm64-v8a --prefix /prebuild/armv8a && \
+    ./tools/builddeps.sh --ndk x86 --prefix /prebuild/x86 && \
+    ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/x86_64 && \
+    rm -f /prebuild/*/*gz
 
-FROM base AS builderarmv8a
+FROM base AS builderlinux
 COPY ./tools ./tools
-RUN mkdir -p /prebuild/armv8a
-RUN ./tools/builddeps.sh --ndk arm64-v8a --prefix /prebuild/armv8a
-
-FROM base AS builderx86
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/x86
-RUN ./tools/builddeps.sh --ndk x86 --prefix /prebuild/x86
-
-FROM base AS builderx86_64
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/x86_64
-RUN ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/x86_64
-
-FROM base AS buildergcc
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/gcc
-RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
-
-FROM base AS builderclang
-COPY ./tools ./tools
-RUN mkdir -p /prebuild/clang
-RUN ./tools/builddeps.sh --clang --prefix /prebuild/clang
+RUN mkdir -p /prebuild/gcc /prebuild/clang
+ENV GDK_KEEP_DOWNLOADS=1
+RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc && \
+    ./tools/builddeps.sh --clang --prefix /prebuild/clang && \
+    rm -f /prebuild/*/*gz
 
 FROM base AS buildermingw
 COPY ./tools ./tools
@@ -53,13 +41,13 @@ COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bi
 COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
 COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
 
-COPY --from=builderarmv7a /prebuild/armv7a /prebuild/armv7a
-COPY --from=builderarmv8a /prebuild/armv8a /prebuild/armv8a
-COPY --from=builderx86 /prebuild/x86 /prebuild/x86
-COPY --from=builderx86_64 /prebuild/x86_64 /prebuild/x86_64
+COPY --from=builderandroid /prebuild/armv7a /prebuild/armv7a
+COPY --from=builderandroid /prebuild/armv8a /prebuild/armv8a
+COPY --from=builderandroid /prebuild/x86 /prebuild/x86
+COPY --from=builderandroid /prebuild/x86_64 /prebuild/x86_64
 
-COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
-COPY --from=builderclang /prebuild/clang /prebuild/clang
+COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
+COPY --from=builderlinux /prebuild/clang /prebuild/clang
 
 COPY --from=buildermingw /prebuild/mingw-w64 /prebuild/mingw-w64
 
