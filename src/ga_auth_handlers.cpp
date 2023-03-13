@@ -804,7 +804,7 @@ namespace sdk {
 
     void psbt_sign_call::initialize()
     {
-        if (m_net_params.is_electrum() || !m_net_params.is_liquid() || !get_signer()->is_hardware()) {
+        if (m_net_params.is_liquid() && !get_signer()->is_hardware()) {
             m_result = m_session->psbt_sign(m_details);
             m_state = state_type::done;
         } else {
@@ -818,12 +818,8 @@ namespace sdk {
         if (!m_initialized) {
             initialize();
             m_initialized = true;
-            return m_state;
         }
-
-        // TODO: hww interactions (anti exfil, set signing data, etc)
-        GDK_RUNTIME_ASSERT_MSG(false, "PSBT signing not implemented.");
-        return state_type::done;
+        return m_state;
     }
 
     //
