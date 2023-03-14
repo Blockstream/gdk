@@ -163,8 +163,6 @@ build_clang_fedora:
     - ga
   stage: build
   script:
-    - yum update
-    - yum -y install libstdc++-static
     - source /root/.cargo/env
     - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake -B build-clang -S .
     - cmake --build build-clang --parallel 16
