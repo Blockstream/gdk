@@ -15,6 +15,11 @@
 #include "utils.hpp"
 #include "validate.hpp"
 
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wshadow"
+#endif
+
 namespace {
 
 static boost::thread_specific_ptr<nlohmann::json> g_thread_error;
@@ -533,3 +538,7 @@ GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_json, const GA_json*, json, con
 
 GDK_DEFINE_C_FUNCTION_4(GA_gl_call, struct GA_session*, session, const char*, method, const GA_json*, params, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->gl_call(method, *json_cast(params))); })
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
