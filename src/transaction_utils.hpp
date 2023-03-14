@@ -32,7 +32,7 @@ namespace sdk {
         extern const std::string p2sh;
         extern const std::string p2wsh; // Actually p2sh-p2wsh
         extern const std::string csv;
-    }; // namespace address_type
+    } // namespace address_type
 
     const uint32_t NO_CHANGE_INDEX = 0xffffffff;
 

@@ -235,7 +235,7 @@ namespace sdk {
     auth_handler::state_type auth_handler_impl::get_state() const { return m_state; }
     auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
     const nlohmann::json& auth_handler_impl::get_twofactor_data() const { return m_twofactor_data; }
-    const std::string& auth_handler_impl::get_code() const { return m_code; };
+    const std::string& auth_handler_impl::get_code() const { return m_code; }
     const nlohmann::json& auth_handler_impl::get_hw_reply() const { return m_hw_reply; }
 
     session_impl& auth_handler_impl::get_session() const { return *m_session; }
@@ -369,7 +369,7 @@ namespace sdk {
         return get_current_handler()->get_twofactor_data();
     }
 
-    const std::string& auto_auth_handler::get_code() const { return get_current_handler()->get_code(); };
+    const std::string& auto_auth_handler::get_code() const { return get_current_handler()->get_code(); }
     const nlohmann::json& auto_auth_handler::get_hw_reply() const { return get_current_handler()->get_hw_reply(); }
     nlohmann::json&& auto_auth_handler::move_result() { return get_current_handler()->move_result(); }
 

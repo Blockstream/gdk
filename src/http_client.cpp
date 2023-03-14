@@ -165,10 +165,10 @@ namespace sdk {
         }
 
         ctx->set_verify_callback(
-            [pins, host_name, cert_expiry_threshold](bool preverified, asio::ssl::verify_context& ctx) {
+            [pins, host_name, cert_expiry_threshold](bool preverified, asio::ssl::verify_context& vctx) {
                 // Pre-verification includes checking for things like expired certificates
                 if (!preverified) {
-                    const int err = X509_STORE_CTX_get_error(ctx.native_handle());
+                    const int err = X509_STORE_CTX_get_error(vctx.native_handle());
                     GDK_LOG_SEV(log_level::error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
                     return false;
                 }
@@ -177,13 +177,13 @@ namespace sdk {
                 // certificate chain
                 // If no pins are specified skip the check altogether
                 const bool have_pins = !pins.empty() && !pins[0].empty();
-                if (have_pins && !check_cert_pins(pins, ctx, cert_expiry_threshold)) {
+                if (have_pins && !check_cert_pins(pins, vctx, cert_expiry_threshold)) {
                     GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check";
                     return false;
                 }
 
                 // Check the host name matches the target
-                return asio::ssl::rfc2818_verification{ host_name }(true, ctx);
+                return asio::ssl::rfc2818_verification{ host_name }(true, vctx);
             });
 
         return ctx;

@@ -478,7 +478,7 @@ namespace sdk {
             // TODO: change amount should be liquid specific (blinded)
             result["change_amount"][asset_id] = change_amount;
             result["change_index"][asset_id] = change_index;
-        };
+        }
 
         static void create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
             bool is_rbf, nlohmann::json& result, nlohmann::json::iterator addressees_p,

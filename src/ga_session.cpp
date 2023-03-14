@@ -2013,13 +2013,13 @@ namespace sdk {
         unblind_t unblinded;
         try {
             unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
-        } catch (const std::exception& ex) {
+        } catch (const std::exception&) {
             nonce = get_alternate_blinding_nonce(locker, utxo, nonce_commitment);
             if (!nonce.empty()) {
                 // Try the alternate nonce
                 try {
                     unblinded = asset_unblind_with_nonce(nonce, rangeproof, commitment, script, asset_tag);
-                } catch (const std::exception& ex) {
+                } catch (const std::exception&) {
                     nonce.clear();
                 }
             }
