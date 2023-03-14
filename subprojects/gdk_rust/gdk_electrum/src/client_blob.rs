@@ -2,7 +2,9 @@ use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
-use gdk_common::{bitcoin, log, ureq, url};
+use gdk_common::once_cell::sync::Lazy;
+use gdk_common::store::{Decryptable, Encryptable, ToCipher};
+use gdk_common::{aes, bitcoin, log, ureq, url};
 use log::{info, warn};
 use serde::Deserialize;
 
@@ -176,6 +178,15 @@ impl From<LoginData> for ClientBlobId {
         Self {
             wallet_hash_id: login_data.wallet_hash_id,
         }
+    }
+}
+
+impl ToCipher for &ClientBlobId {
+    fn to_cipher(self) -> gdk_common::Result<aes::Aes256GcmSiv> {
+        use aes::aead::NewAead;
+        let key_bytes = sha256::Hash::hash(&self.as_bytes()).into_inner();
+        let key = aes::Key::from_slice(&key_bytes);
+        Ok(aes::Aes256GcmSiv::new(&key))
     }
 }
 
