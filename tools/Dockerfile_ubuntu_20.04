@@ -1,25 +1,31 @@
-FROM ubuntu:20.04@sha256:bffb6799d706144f263f4b91e1226745ffb5643ea0ea89c2f709208e8d70c999 as base
+# Ubuntu image. Build with:
+# DOCKER_BUILDKIT=1 docker build . -t greenaddress/ubuntu_ci -f tools/Dockerfile_ubuntu_20.04
+#
+FROM ubuntu:20.04@sha256:3626dff0d616e8ee7065a9ac8c7117e904a4178725385910eeecd7f1872fc12d as base
 WORKDIR /root
-COPY ./tools/ubuntu_20.04_deps.sh ./tools/deps.sh
-COPY ./tools/requirements.txt /requirements.txt
+COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
+# Optionally copy dependency sources from the build directory if present
+COPY ./tools/requirements.txt ./*.tar.gz /root/
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
-RUN ./tools/deps.sh
+RUN ./tools/ubuntu_20.04_deps.sh
 
 FROM base AS buildergcc
-COPY ./tools ./tools
+ENV GDK_KEEP_DOWNLOADS=1
 RUN mkdir -p /prebuild/gcc
 RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
 
 FROM base AS builderclang
-COPY ./tools ./tools
+ENV GDK_KEEP_DOWNLOADS=1
 RUN mkdir -p /prebuild/clang
 RUN ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
 FROM base
 COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
 COPY --from=builderclang /prebuild/clang /prebuild/clang
+# Remove copied/downloaded dependency sources
+RUN rm -f /root/requirements.txt /root/*.tar.gz
 
 RUN chmod +xr /root
 WORKDIR /root/gdk

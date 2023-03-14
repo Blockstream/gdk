@@ -200,6 +200,7 @@ function prepare_sources {
     source_hash=$3
     rm_downloaded=""
     if [ -f ${source_filename} ]; then
+        echo "checking ${source_filename}..."
         echo "${source_hash}  ${source_filename}" | shasum -a 256 -c || rm ${source_filename}
     fi
     if [ ! -f ${source_filename} ]; then

@@ -12,3 +12,4 @@
 !./tools/env.sh
 !./tools/requirements.txt
 !./cmake/profiles/
+!./*.tar.gz

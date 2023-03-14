@@ -4,9 +4,8 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang git swig  cmake libssl-dev libtool-bin patchelf curl -yqq
-pip3 install --require-hashes -r /requirements.txt
-rm /requirements.txt
+apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv,-venv} python{,-dev}-is-python3 ninja-build clang git swig  cmake libssl-dev libtool-bin patchelf curl -yqq
+pip3 install --require-hashes -r ./tools/requirements.txt
 pip3 install build
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
