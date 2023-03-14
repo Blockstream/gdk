@@ -175,9 +175,6 @@ build_gcc_ubuntu20.04:
   stage: build
   script:
     - source /root/.cargo/env
-    - apt-get update
-    - apt-get install -y python3-venv
-    - pip3 install build
     - mkdir build-gcc
     - cd build-gcc
     - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc -DCMAKE_TOOLCHAIN_FILE=../cmake/profiles/gcc.cmake -DCMAKE_INSTALL_PREFIX=../$INSTALL_PATH ..
