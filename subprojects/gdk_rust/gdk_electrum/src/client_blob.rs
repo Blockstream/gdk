@@ -11,9 +11,9 @@ use serde::Deserialize;
 
 use super::{Error, LoginData, RawStore, Store};
 
-const EMPTY_HMAC_B64: &'static str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
-
 const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
+
+const EMPTY_HMAC: Lazy<Hmac> = Lazy::new(|| Hmac::from_slice(&[0u8; 32]).unwrap());
 
 type Hmac = bitcoin::hashes::Hmac<bitcoin::hashes::sha256::Hash>;
 
@@ -45,12 +45,14 @@ pub(super) fn sync_blob(
     while !wait_or_close(user_wants_to_sync, interval) {
         let start = Instant::now();
 
-        if let Some((new_store_blob, _)) = client.get_blob()? {
-            let raw_store = serde_cbor::from_slice::<RawStore>(new_store_blob.as_bytes())?;
-
-            let mut store = store.write()?;
-            store.store = raw_store;
-            store.flush_store()?;
+        match (client.get_blob()?, &client.last_hmac) {
+            (Some((new_store_blob, hmac)), Some(last_hmac)) if &hmac != last_hmac => {
+                let raw_store = serde_cbor::from_slice::<RawStore>(&new_store_blob)?;
+                let mut store = store.write()?;
+                store.store = raw_store;
+                store.flush_store()?;
+            }
+            _ => (),
         }
 
         if let Some(remaining) = BLOBSERVER_SYNCING_INTERVAL.checked_sub(start.elapsed()) {
@@ -120,18 +122,12 @@ impl BlobClient {
             blob,
             hmac,
             ..
-        } = serde_cbor::from_reader(response.into_reader())?;
-
-        if hmac == EMPTY_HMAC_B64 {
-            return Ok(None);
-        }
+        } = response.into_json()?;
 
         let hmac = Hmac::from_slice(&base64::decode(hmac)?)?;
 
-        if let Some(last) = self.last_hmac {
-            if hmac == last {
-                return Ok(None);
-            }
+        if hmac == *EMPTY_HMAC {
+            return Ok(None);
         }
 
         Ok(Some((blob.decrypt(&self.encryption_key)?, hmac)))
