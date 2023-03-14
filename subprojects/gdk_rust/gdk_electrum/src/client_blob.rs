@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::sync::atomic::AtomicBool;
 use std::time::{Duration, Instant};
 
@@ -9,7 +10,6 @@ use log::{info, warn};
 use serde::Deserialize;
 
 use super::{Error, LoginData, RawStore, Store};
-
 
 const EMPTY_HMAC_B64: &'static str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 
@@ -28,7 +28,7 @@ pub(super) fn sync_blob(
     // Get the blob from the server, or save the current one on the server if
     // it doesn't have one for this client id.
     if let Some((raw_store_blob, _)) = client.get_blob()? {
-        let raw_store = serde_cbor::from_slice::<RawStore>(raw_store_blob.as_bytes())?;
+        let raw_store = serde_cbor::from_slice::<RawStore>(&raw_store_blob)?;
 
         let mut store = store.write()?;
         store.store = raw_store;
@@ -73,6 +73,7 @@ pub(super) struct BlobClient {
 
     client_id: ClientBlobId,
     last_hmac: Option<Hmac>,
+    encryption_key: aes::Aes256GcmSiv,
 }
 
 impl BlobClient {
@@ -89,14 +90,25 @@ impl BlobClient {
             blob_server_url,
             client_id,
             last_hmac: None,
-        }
+            encryption_key,
+        };
+
+        let _ = client.init_hmac();
+
+        client
+    }
+
+    fn init_hmac(&mut self) -> Result<(), Error> {
+        self.last_hmac =
+            Some(self.get_blob()?.map(|(_blob, hmac)| hmac).unwrap_or_else(|| EMPTY_HMAC.clone()));
+
+        Ok(())
     }
 
     /// Fetches the current `(Blob, Hmac)` pair from the blob server. It can
     /// return `None` if this client has never stored a blob on the server
-    /// before or if the blob hasn't changed since the last time it was
-    /// fetched.
-    fn get_blob(&self) -> Result<Option<(Blob, Hmac)>, Error> {
+    /// before.
+    fn get_blob(&self) -> Result<Option<(Vec<u8>, Hmac)>, Error> {
         let response = self
             .agent
             .get(&format!("{}/get_client_blob", self.blob_server_url))
@@ -114,7 +126,7 @@ impl BlobClient {
             return Ok(None);
         }
 
-        let hmac = self.to_hmac(&base64::decode(hmac)?);
+        let hmac = Hmac::from_slice(&base64::decode(hmac)?)?;
 
         if let Some(last) = self.last_hmac {
             if hmac == last {
@@ -122,35 +134,43 @@ impl BlobClient {
             }
         }
 
-        Ok(Some((blob, hmac)))
+        Ok(Some((blob.decrypt(&self.encryption_key)?, hmac)))
     }
 
     /// Saves a new blob to the server. This can fail if another client (which
     /// could be on another device) is updating the blob at the same time.
     fn set_blob(&mut self, blob: impl AsRef<[u8]>) -> Result<(), Error> {
-        let blob_base64 = base64::encode(blob.as_ref());
+        if self.last_hmac.is_none() {
+            self.init_hmac()?;
+        }
 
-        let blob_hmac = self.to_hmac(blob_base64.as_bytes());
+        let blob = {
+            let (nonce, mut bytes) = blob.as_ref().to_owned().encrypt(&self.encryption_key)?;
+            bytes.splice(0..0, nonce);
+            base64::encode(&bytes)
+        };
 
-        let blob_hmac_str = blob_hmac.to_string();
+        let blob_hmac = self.to_hmac(blob.as_bytes());
 
-        let previous_hmac = self
-            .last_hmac
-            .map(|hmac| format!("{hmac:x}"))
-            .unwrap_or_else(|| EMPTY_HMAC_B64.to_owned());
+        let previous_hmac = self.last_hmac.as_ref().unwrap();
 
-        if blob_hmac_str == previous_hmac {
+        if &blob_hmac == previous_hmac {
             return Ok(());
         }
+
+        let b64_blob_hmac = base64::encode(Borrow::<[u8]>::borrow(&blob_hmac));
+        let b64_previous_hmac = base64::encode(Borrow::<[u8]>::borrow(previous_hmac));
+
+        info!("storing new blob on the server with hmac {b64_blob_hmac:?}");
 
         let response = self
             .agent
             .get(&format!("{}/set_client_blob", self.blob_server_url))
             .query("client_id", self.client_id.as_str())
             .query("sequence", "0")
-            .query("blob", &blob_base64)
-            .query("hmac", &blob_hmac_str)
-            .query("previous_hmac", &previous_hmac)
+            .query("blob", &blob)
+            .query("hmac", &b64_blob_hmac)
+            .query("previous_hmac", &b64_previous_hmac)
             .call()?;
 
         // TODO: check response.
@@ -201,18 +221,6 @@ impl ClientBlobId {
 }
 
 #[derive(Deserialize)]
-struct Blob {
-    #[serde(deserialize_with = "deserialize_bytes_from_hex")]
-    bytes: Vec<u8>,
-}
-
-impl Blob {
-    fn as_bytes(&self) -> &[u8] {
-        &self.bytes
-    }
-}
-
-#[derive(Deserialize)]
 struct GetBlobResponse {
     blob: Blob,
     hmac: String,
@@ -221,17 +229,28 @@ struct GetBlobResponse {
     _sequence: u8,
 }
 
-/// Deserializes a Vec of bytes from a hex string.
-pub(super) fn deserialize_bytes_from_hex<'de, D>(
+#[derive(Debug, Deserialize)]
+#[serde(transparent)]
+struct Blob {
+    #[serde(deserialize_with = "deserialize_bytes_from_b64")]
+    bytes: Vec<u8>,
+}
+
+impl Decryptable for Blob {
+    fn decrypt(self, cipher: &aes::Aes256GcmSiv) -> gdk_common::Result<Vec<u8>> {
+        self.bytes.decrypt(cipher)
+    }
+}
+
+/// Deserializes a Vec of bytes from its Base64 representation.
+pub(super) fn deserialize_bytes_from_b64<'de, D>(
     deserializer: D,
 ) -> std::result::Result<Vec<u8>, D::Error>
 where
     D: serde::de::Deserializer<'de>,
 {
-    use bitcoin::hashes::hex::FromHex;
     use serde::de::Error;
-    let hex = String::deserialize(deserializer)?;
-    Vec::<u8>::from_hex(&hex).map_err(D::Error::custom)
+    base64::decode(String::deserialize(deserializer)?).map_err(D::Error::custom)
 }
 
 #[cfg(test)]
