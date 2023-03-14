@@ -6,8 +6,7 @@ apt upgrade -yqq
 
 apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang{,-format,-tidy} git swig openjdk-11-jdk g++-mingw-w64-x86-64 curl cmake libssl-dev libtool-bin patchelf -yqq
 update-java-alternatives -s java-1.11.0-openjdk-amd64
-pip3 install --require-hashes -r /requirements.txt
-rm /requirements.txt
+pip3 install --require-hashes -r tools/requirements.txt
 
 curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
 echo "c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382 ndk.zip" | sha256sum --check
