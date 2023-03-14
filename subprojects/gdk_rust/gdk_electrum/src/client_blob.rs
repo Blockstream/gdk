@@ -251,6 +251,8 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use super::*;
     use gdk_common::ureq;
     use ureq::Agent;
@@ -260,5 +262,20 @@ mod tests {
         "bloba2m6sogq7qxnxhxexxnphn2xh6h62kvywpekx4crrrg3sl3ttbqd.onion";
 
     #[test]
-    fn blob_server_roundtrip() {}
+    fn blob_server_roundtrip() {
+        let id = ClientBlobId {
+            wallet_hash_id: "Client123".to_owned(),
+        };
+
+        let mut client =
+            BlobClient::new(Agent::new(), url::Url::from_str(BLOBSERVER_STAGING).unwrap(), id);
+
+        let data = "Hello, world!";
+
+        client.set_blob(data).unwrap();
+
+        let (returned, _) = client.get_blob().unwrap().unwrap();
+
+        assert_eq!(data, std::str::from_utf8(&returned).unwrap());
+    }
 }
