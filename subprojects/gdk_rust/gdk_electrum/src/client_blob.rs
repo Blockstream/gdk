@@ -169,7 +169,12 @@ impl BlobClient {
             .query("previous_hmac", &b64_previous_hmac)
             .call()?;
 
-        // TODO: check response.
+        if let SetBlobResponse::Err(SetBlobError {
+            error,
+        }) = response.into_json::<SetBlobResponse>()?
+        {
+            return Err(Error::BlobClientError(error));
+        }
 
         self.last_hmac = Some(blob_hmac);
 
@@ -223,6 +228,18 @@ struct GetBlobResponse {
 
     #[serde(rename = "sequence")]
     _sequence: u8,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum SetBlobResponse {
+    Ok(GetBlobResponse),
+    Err(SetBlobError),
+}
+
+#[derive(Deserialize)]
+struct SetBlobError {
+    error: String,
 }
 
 #[derive(Debug, Deserialize)]
