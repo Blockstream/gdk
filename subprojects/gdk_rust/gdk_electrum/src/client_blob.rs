@@ -17,7 +17,8 @@ const EMPTY_HMAC: Lazy<Hmac> = Lazy::new(|| Hmac::from_slice(&[0u8; 32]).unwrap(
 
 type Hmac = bitcoin::hashes::Hmac<bitcoin::hashes::sha256::Hash>;
 
-/// TODO: docs
+/// Periodically syncs the contents of the wallet's [`RawStore`] with the
+/// remote blob server.
 pub(super) fn sync_blob(
     mut client: BlobClient,
     store: Store,
@@ -85,7 +86,11 @@ pub(super) struct BlobClient {
     blob_server_url: url::Url,
 
     client_id: ClientBlobId,
+
     last_hmac: Option<Hmac>,
+
+    /// A cipher derived from the [`client_id`](Self::client_id) uses to
+    /// encrypt the contents of the blob before sending them to the serve.r
     encryption_key: aes::Aes256GcmSiv,
 }
 
@@ -247,7 +252,10 @@ struct GetBlobResponse {
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum SetBlobResponse {
+    /// The server returns a [`GetBlobResponse`] when it successfully updates
+    /// the blob.
     Ok(GetBlobResponse),
+
     Err(SetBlobError),
 }
 
@@ -256,6 +264,8 @@ struct SetBlobError {
     error: String,
 }
 
+/// An encrypted blob sent to the server. The first 12 bytes contain the random
+/// nonce used during the encryption process.
 #[derive(Debug, Deserialize)]
 #[serde(transparent)]
 struct Blob {
@@ -289,6 +299,7 @@ mod tests {
     use ureq::Agent;
 
     const BLOBSERVER_STAGING: &'static str = "https://green-blobserver.staging.blockstream.com";
+
     const BLOBSERVER_STAGING_ONION: &'static str =
         "bloba2m6sogq7qxnxhxexxnphn2xh6h62kvywpekx4crrrg3sl3ttbqd.onion";
 
