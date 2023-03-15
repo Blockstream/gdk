@@ -28,11 +28,7 @@ pub(super) fn sync_blob(
     // Get the blob from the server, or save the current one on the server if
     // it doesn't have one for this client id.
     if let Some((raw_store_blob, _)) = client.get_blob()? {
-        let raw_store = serde_cbor::from_slice::<RawStore>(&raw_store_blob)?;
-
-        let mut store = store.write()?;
-        store.store = raw_store;
-        store.flush_store()?;
+        update_store_from_blob(&store, raw_store_blob)?;
     } else {
         let store = store.read()?;
         let raw_store = serde_cbor::to_vec(&store.store)?;
@@ -47,10 +43,8 @@ pub(super) fn sync_blob(
 
         match (client.get_blob()?, &client.last_hmac) {
             (Some((new_store_blob, hmac)), Some(last_hmac)) if &hmac != last_hmac => {
-                let raw_store = serde_cbor::from_slice::<RawStore>(&new_store_blob)?;
-                let mut store = store.write()?;
-                store.store = raw_store;
-                store.flush_store()?;
+                update_store_from_blob(&store, new_store_blob)?;
+                continue;
             }
             _ => (),
         }
@@ -64,6 +58,17 @@ pub(super) fn sync_blob(
         // to the blob server.
     }
 
+    Ok(())
+}
+
+/// Updates the local contents of the store with the new value returned by the
+/// blob server.
+fn update_store_from_blob(store: &Store, new_store: Vec<u8>) -> Result<(), Error> {
+    let raw_store = serde_cbor::from_slice::<RawStore>(&new_store)?;
+    info!("received new store from blob server: {raw_store:?}");
+    let mut store = store.write()?;
+    store.store = raw_store;
+    store.flush_store()?;
     Ok(())
 }
 

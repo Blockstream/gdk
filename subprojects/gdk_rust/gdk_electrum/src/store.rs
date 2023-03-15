@@ -109,7 +109,7 @@ pub struct RawAccountCache {
 
 /// RawStore contains data that are not extractable from xpub+blockchain
 /// like wallet settings and memos
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct RawStore {
     /// wallet settings
     settings: Option<Settings>,
