@@ -71,23 +71,12 @@ test_format:
   script:
     - ./tools/format.sh && git diff --exit-code
 
-rust_audit:
-  tags:
-    - ga
-  stage: format
-  allow_failure: true
-  script:
-    - source /root/.cargo/env
-    - cd subprojects/gdk_rust/
-    - cargo audit -D warnings --ignore RUSTSEC-2021-0127
-
 
 
 build_gcc_bullseye:
   extends: .py_release
   stage: build
   script:
-    - source /root/.cargo/env
     - cmake -B build-gcc -S .
         -DEXTERNAL-DEPS-DIR=/prebuild/gcc
         -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
@@ -105,7 +94,6 @@ build_clang_bullseye:
     - ga
   stage: build
   script:
-    - source /root/.cargo/env
     - cmake -B build-clang -S .
         -DEXTERNAL-DEPS-DIR=/prebuild/clang
         -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
@@ -133,6 +121,7 @@ test_rust:
   tags:
     - ga
   needs: []
+  stage: test
   variables:
     OPENSSL_DIR: "/prebuild/clang/openssl/build/"
     WALLY_DIR: "/prebuild/clang/libwally-core/build/lib"
@@ -140,7 +129,6 @@ test_rust:
     RUST_BACKTRACE: "1"
     LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
   script:
-    - source /root/.cargo/env
     - cargo nextest run --profile ci --manifest-path subprojects/gdk_rust/Cargo.toml
     - grcov --binary-path subprojects/gdk_rust/target/debug/ -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml -p `pwd` subprojects/gdk_rust
   artifacts:
@@ -155,6 +143,16 @@ test_rust:
         path: coverage.xml
       junit: subprojects/gdk_rust/target/nextest/ci/junit.xml
   allow_failure: true
+
+rust_audit:
+  tags:
+    - ga
+  needs: []
+  stage: test
+  allow_failure: true
+  script:
+    - cd subprojects/gdk_rust/
+    - cargo audit -D warnings --ignore RUSTSEC-2021-0127
 
 
 
@@ -195,7 +193,6 @@ build-android:
       - PLATFORM: [android]
         ARCH: [armeabi-v7a, arm64-v8a, x86, x86_64]
   script:
-    - source /root/.cargo/env
     - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/$PLATFORM-$ARCH -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$PLATFORM-$ARCH.cmake -B build -S .
     - cmake --build build --parallel 16
     - cmake --install build --prefix ${INSTALL_PATH} --component gdk-runtime --strip

@@ -29,7 +29,14 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
+FROM rust:1.64-bullseye as builderrust
+RUN rustup component add rustfmt clippy llvm-tools-preview
+RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
+RUN cargo install cargo-audit grcov cargo-nextest
+
 FROM blockstream/esplora@sha256:dabc2501137dea9db6107e6c5c4d6d575616b2274dc278647f91ab9a4f75a848 AS esplora-base-image
+
+
 FROM base as final
 
 COPY --from=esplora-base-image /srv/explorer/electrs_bitcoin/bin/electrs /root/bin/electrs_bitcoin
@@ -47,6 +54,10 @@ COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
 COPY --from=builderlinux /prebuild/clang /prebuild/clang
 
 COPY --from=buildermingw /prebuild/mingw-w64 /prebuild/mingw-w64
+
+COPY --from=builderrust /usr/local/cargo /usr/local/cargo
+COPY --from=builderrust /usr/local/rustup /usr/local/rustup
+
 # Remove copied/downloaded dependency sources
 RUN rm -f /root/requirements.txt /root/*.tar.gz
 
@@ -56,6 +67,11 @@ ENV ELECTRS_EXEC=/root/bin/electrs_bitcoin
 ENV ELECTRS_LIQUID_EXEC=/root/bin/electrs_liquid
 ENV BITCOIND_EXEC=/root/bin/bitcoind
 ENV ELEMENTSD_EXEC=/root/bin/elementsd
+
+ENV CARGO_HOME=/usr/local/cargo
+ENV RUSTUP_HOME=/usr/local/rustup
+ENV RUST_VERSION=1.64.0
+ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 RUN chmod +xr /root
 WORKDIR /root/gdk

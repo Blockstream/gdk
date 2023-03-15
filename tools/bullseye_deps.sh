@@ -13,14 +13,6 @@ echo "c6e97f9c8cfe5b7be0a9e6c15af8e7a179475b7ded23e2d1c1fa0945d6fb4382 ndk.zip" 
 unzip ndk.zip
 rm ndk.zip
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
-
-source /root/.cargo/env
-rustup component add rustfmt clippy llvm-tools-preview
-rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
-cargo install cargo-audit
-cargo install grcov
-cargo install cargo-nextest
 
 mkdir /tmp/protoc && \
     cd /tmp/protoc && \
