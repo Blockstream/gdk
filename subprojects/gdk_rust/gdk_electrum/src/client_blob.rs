@@ -30,12 +30,7 @@ pub(super) fn sync_blob(
     if let Some((raw_store_blob, _)) = client.get_blob()? {
         update_store_from_blob(&store, raw_store_blob)?;
     } else {
-        let store = store.read()?;
-        let raw_store = serde_cbor::to_vec(&store.store)?;
-
-        if let Err(err) = client.set_blob(raw_store) {
-            warn!("Couldn't save store on blob server: {err:?}");
-        }
+        update_blob_from_store(&mut client, &store)?;
     }
 
     while !wait_or_close(user_wants_to_sync, interval) {
@@ -49,13 +44,11 @@ pub(super) fn sync_blob(
             _ => (),
         }
 
+        update_blob_from_store(&mut client, &store)?;
+
         if let Some(remaining) = BLOBSERVER_SYNCING_INTERVAL.checked_sub(start.elapsed()) {
             std::thread::sleep(remaining);
         }
-
-        // TODO: we should have a channel that sends us a message every time
-        // the `RawStore` gets flushed. When that happens we send the new store
-        // to the blob server.
     }
 
     Ok(())
@@ -69,6 +62,19 @@ fn update_store_from_blob(store: &Store, new_store: Vec<u8>) -> Result<(), Error
     let mut store = store.write()?;
     store.store = raw_store;
     store.flush_store()?;
+    Ok(())
+}
+
+/// Saves the local contents of the store to the remote blob server.
+fn update_blob_from_store(client: &mut BlobClient, store: &Store) -> Result<(), Error> {
+    let store = store.read()?;
+    let raw_store = serde_cbor::to_vec(&store.store)?;
+
+    if let Err(err) = client.set_blob(raw_store) {
+        warn!("Couldn't save store on blob server: {err:?}");
+        return Err(err);
+    }
+
     Ok(())
 }
 
@@ -140,6 +146,9 @@ impl BlobClient {
 
     /// Saves a new blob to the server. This can fail if another client (which
     /// could be on another device) is updating the blob at the same time.
+    ///
+    /// Returns early without calling the server if the hmac of the new blob
+    /// is the same as the last seen by this client.
     fn set_blob(&mut self, blob: impl AsRef<[u8]>) -> Result<(), Error> {
         if self.last_hmac.is_none() {
             self.init_hmac()?;
