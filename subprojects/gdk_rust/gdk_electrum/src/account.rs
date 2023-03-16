@@ -1743,4 +1743,40 @@ mod test {
         xpubs_equivalent(&t, &l).unwrap();
         assert!(xpubs_equivalent(&j, &o).is_err());
     }
+
+    #[test]
+    fn test_script_status() {
+        // The following test vectors were generated with an electrs server.
+
+        let inputs: [&[(&str, i32)]; 3] = [
+            &[("5aeab6d4c51cb9f7f808c3884410b4b3a6ec2ef0ab90d05af1411e5ef1264629", 2)],
+            &[
+                ("5aeab6d4c51cb9f7f808c3884410b4b3a6ec2ef0ab90d05af1411e5ef1264629", 2),
+                ("3774bced240ff74289b3d05f3d12467fd182744cd28cf7bce4f61648a9defaec", 0),
+            ],
+            &[
+                ("5aeab6d4c51cb9f7f808c3884410b4b3a6ec2ef0ab90d05af1411e5ef1264629", 2),
+                ("3774bced240ff74289b3d05f3d12467fd182744cd28cf7bce4f61648a9defaec", 103),
+            ],
+        ];
+
+        fn script_status(hex: &str) -> ScriptStatus {
+            <[u8; 32]>::from_hex(hex).unwrap().into()
+        }
+
+        let expected = [
+            script_status("beb13d2a759cf2f6e376338ced5f40c81e80929d8f4f51ca22e5c7d243f7fe25"),
+            script_status("5b7f40c0c8daa2db6457510b785a7373262845a7edb34c689ab7ab7bca9d92b2"),
+            script_status("89a73c3e525bb8a1a1313214d08b00b1095744f049ad60607ea4c241f6ec963c"),
+        ];
+
+        for (&txs, expected) in inputs.iter().zip(expected) {
+            let txs = txs.iter().map(|(txid, height)| {
+                let txid = BETxid::Bitcoin(bitcoin::Txid::from_hex(txid).unwrap());
+                (txid, *height)
+            });
+            let script_status = compute_script_status(txs);
+            assert_eq!(script_status, expected);
+        }
+    }
 }
