@@ -4,6 +4,7 @@ use std::convert::TryInto;
 use std::str::FromStr;
 
 use gdk_common::bitcoin::util::sighash::SighashCache;
+use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
 use gdk_common::bitcoin::blockdata::script;
@@ -1008,6 +1009,19 @@ impl Account {
         }
         Ok(all_valid)
     }
+}
+
+pub(crate) fn compute_script_status<Txs>(txs: Txs) -> ScriptStatus
+where
+    Txs: IntoIterator<Item = (BETxid, i32)>,
+{
+    let mut data = String::new();
+    for (txid, height) in txs {
+        data.push_str(&format!("{txid}:{height}:"));
+    }
+    let hash = bitcoin::hashes::sha256::Hash::hash(data.as_bytes());
+    let hash_arr: [u8; 32] = hash.as_ref().try_into().unwrap();
+    hash_arr.into()
 }
 
 /// Return the last (if any) and next account numbers for the given script type
