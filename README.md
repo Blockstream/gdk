@@ -34,8 +34,7 @@ For Mac OSX:
 
 Install Xcode and brew if not installed, then
 ```
-brew update && brew install ninja automake autoconf libtool gnu-sed python3 pkg-config swig (optional) gnu-getopt gnu-tar
-pip3 install --user meson
+brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig (optional) gnu-getopt gnu-tar
 xcode-select --install
 ```
 You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.X/bin`

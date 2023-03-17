@@ -258,7 +258,6 @@ build_osx_ios:
     INSTALL_PATH: "gdk-iphone"
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
     - cmake -B build-iphone -S .
@@ -277,7 +276,6 @@ build_osx_ios_sim:
     INSTALL_PATH: "gdk-iphone-sim"
   script:
     - cd $CI_PROJECT_DIR
-    - ./tools/clean.sh dirs
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --prefix $PREBUILT_DIR; fi
     - cmake -B build-iphonesim -S .
