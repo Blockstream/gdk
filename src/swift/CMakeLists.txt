@@ -3,6 +3,11 @@ if(NOT APPLE)
     return()
 endif()
 
+if(NOT ENABLE_SWIFT)
+    message("swift build disabled, skipping")
+    return()
+endif()
+
 find_program(SWIFT "swift")
 if(SWIFT-NOTFOUND)
     message("swift exec not found, skipping swift bindings")
@@ -22,7 +27,7 @@ add_custom_command(OUTPUT GreenAddress.swiftmodule
         -Xswiftc -I${_gdkBinPath} 
         -Xswiftc -L${_gdkBinPath}
         -Xswiftc -I${wallycore_INCLUDE_DIRS}
-    DEPENDS greenaddress-objects
+    DEPENDS greenaddress-full
 )
 add_custom_target(swift-cmd ALL
     DEPENDS GreenAddress.swiftmodule

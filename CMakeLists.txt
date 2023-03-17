@@ -9,6 +9,7 @@ include(cmake/includes/greenaddress.cmake)
 option(ENABLE_TESTS "enable building tests" FALSE)
 option(SHARED_ONLY "build only shared library" FALSE)
 option(DEV_MODE "dev mode enables a faster developing-testing loop when working with the python-wheel" FALSE)
+option(ENABLE_SWIFT "enable build of swift bindings" FALSE)
 set(PYTHON_REQUIRED_VERSION 3 CACHE STRING "required python version")
 
 ### avoiding in-build compilation, your local gdk folder would turn into a real mess

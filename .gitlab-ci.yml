@@ -263,6 +263,7 @@ build_osx_ios:
     - cmake -B build-iphone -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
+      -DENABLE_SWIFT:BOOL=TRUE
     - cmake --build build-iphone --parallel 16
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
@@ -281,6 +282,7 @@ build_osx_ios_sim:
     - cmake -B build-iphonesim -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
+      -DENABLE_SWIFT:BOOL=TRUE
     - cmake --build build-iphonesim --parallel 16
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-runtime --strip
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
