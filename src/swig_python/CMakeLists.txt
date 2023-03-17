@@ -8,7 +8,7 @@ macro(create_python_wheel_target)
             python -m build
         COMMAND touch python-wheel-canary-file
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
-        DEPENDS greenaddress
+        DEPENDS greenaddress-full
         COMMENT "building python-wheel"
     )
     add_custom_target(python-wheel

@@ -46,14 +46,14 @@ add_custom_command(OUTPUT ${_swigCFile}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     DEPENDS greenaddress-objects
 )
-add_custom_target(swig_java-cmd
+add_custom_target(swig-java-cmd
     DEPENDS ${_swigCFile}
 )
 
-add_library(swig_java OBJECT ${_swigCFile})
+add_library(swig-java-obj OBJECT ${_swigCFile})
 get_target_property(_gdkIncludes greenaddress-objects INTERFACE_INCLUDE_DIRECTORIES)
-target_include_directories(swig_java PRIVATE ${_gdkIncludes} ${JNI_INCLUDE_DIRS})
-target_compile_options(swig_java 
+target_include_directories(swig-java-obj PRIVATE ${_gdkIncludes} ${JNI_INCLUDE_DIRS})
+target_compile_options(swig-java-obj
     PRIVATE 
         "-fasynchronous-unwind-tables"
         "-fexceptions"
@@ -69,10 +69,13 @@ target_compile_options(swig_java
             # "-Wconversion"
         >
 )
-target_compile_definitions(swig_java PRIVATE _FORTIFY_SOURCE=2)
+target_compile_definitions(swig-java-obj PRIVATE _FORTIFY_SOURCE=2)
 
-add_dependencies(swig_java-cmd greenaddress-objects)
-add_dependencies(swig_java swig_java-cmd)
+add_dependencies(swig-java-cmd greenaddress-objects)
+add_dependencies(swig-java-obj swig-java-cmd)
+add_custom_target(java-bindings
+    DEPENDS greenaddress swig-java-obj greenaddress-syms
+)
 
 INSTALL(
     FILES
@@ -80,7 +83,8 @@ INSTALL(
     DESTINATION
         ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libgreenaddress
      COMPONENT
-        gdk-dev
+        gdk-java
+    EXCLUDE_FROM_ALL
 )
 INSTALL(
     FILES
@@ -88,5 +92,6 @@ INSTALL(
     DESTINATION
         ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libwally
      COMPONENT
-        gdk-dev
+        gdk-java
+    EXCLUDE_FROM_ALL
 )

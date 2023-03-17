@@ -5,9 +5,8 @@ include(CMakePrintHelpers)
 
 macro(create_greenaddress_target)
     add_library(greenaddress SHARED $<TARGET_OBJECTS:greenaddress-objects> $<TARGET_OBJECTS:sqlite3>)
-    if(TARGET swig_java)
-        target_sources(greenaddress PRIVATE $<TARGET_OBJECTS:swig_java>)
-        target_link_libraries(greenaddress PRIVATE swig_java)
+    if(TARGET swig-java-obj)
+        target_sources(greenaddress PRIVATE $<TARGET_OBJECTS:swig-java-obj>)
     endif()
     set_target_properties(greenaddress PROPERTIES
         VERSION ${PROJECT_VERSION}
@@ -52,6 +51,7 @@ macro(create_greenaddress_target)
         ARCHIVE EXCLUDE_FROM_ALL
         LIBRARY DESTINATION ${_libInstallDir}
                 COMPONENT gdk-runtime
+        OPTIONAL
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk
                 COMPONENT gdk-dev
                 EXCLUDE_FROM_ALL
@@ -180,6 +180,7 @@ macro(create_greenaddressfull_target)
         PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk
             COMPONENT gdk-dev
             EXCLUDE_FROM_ALL
+        OPTIONAL
     )
     install(EXPORT "greenaddress-full-target"
         COMPONENT gdk-dev

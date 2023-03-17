@@ -64,6 +64,8 @@ stages:
     paths:
     - $INSTALL_PATH
 
+
+
 test_format:
   tags:
     - ga
@@ -81,12 +83,10 @@ build_gcc_bullseye:
         -DEXTERNAL-DEPS-DIR=/prebuild/gcc
         -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
         -DCMAKE_BUILD_TYPE=Release
-        -DENABLE_TESTS:BOOL=TRUE
-    - cmake --build build-gcc --parallel 16
-    - cmake --build build-gcc --target python-wheel
+    - cmake --build build-gcc --target greenaddress-full --parallel 16
+    - cmake --build build-gcc --target python-wheel --parallel 16
     - cmake --install build-gcc --prefix $INSTALL_PATH --strip
     - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-dev
-    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-cibuildwheel
 
 
 build_clang_bullseye:
@@ -177,11 +177,7 @@ build_gcc_ubuntu20.04:
     - cmake -B build-gcc -S .
       -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
-    - cmake --build build-gcc --parallel 16
-    - cmake --build build-gcc --target python-wheel
-    - cmake --install build-gcc --prefix $INSTALL_PATH --strip
-    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-dev
-    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-cibuildwheel
+    - cmake --build build-gcc --target python-wheel --parallel 16
 
 
 
@@ -194,9 +190,9 @@ build-android:
         ARCH: [armeabi-v7a, arm64-v8a, x86, x86_64]
   script:
     - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/$PLATFORM-$ARCH -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$PLATFORM-$ARCH.cmake -B build -S .
-    - cmake --build build --parallel 16
-    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-runtime --strip
-    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-dev
+    - cmake --build build --target java-bindings --parallel 16
+    - cmake --install build --prefix ${INSTALL_PATH} --strip
+    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-java
 
 
 
@@ -217,12 +213,11 @@ build_clang_osx:
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DENABLE_TESTS:BOOL=TRUE
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
       -DPYTHON_REQUIRED_VERSION=3.9
-    - cmake --build build-clang --parallel 16
-    - cmake --build build-clang --target python-wheel
-    - cmake --install build-clang --prefix $INSTALL_PATH
+    - cmake --build build-clang --target greenaddress-full --parallel 16
+    - cmake --build build-clang --target python-wheel --parallel 16
+    - cmake --install build-clang --prefix $INSTALL_PATH --strip
     - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
 
 build_clang_osx_m1:
@@ -242,12 +237,11 @@ build_clang_osx_m1:
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DENABLE_TESTS:BOOL=TRUE
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
       -DPYTHON_REQUIRED_VERSION=3.9
-    - cmake --build build-clang --parallel 16
-    - cmake --build build-clang --target python-wheel
-    - cmake --install build-clang --prefix $INSTALL_PATH
+    - cmake --build build-clang --target greenaddress-full --parallel 16
+    - cmake --build build-clang --target python-wheel --parallel 16
+    - cmake --install build-clang --prefix $INSTALL_PATH --strip
     - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
 
 build_osx_ios:
@@ -265,7 +259,7 @@ build_osx_ios:
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
       -DENABLE_SWIFT:BOOL=TRUE
     - cmake --build build-iphone --parallel 16
-    - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-runtime --strip
+    - cmake --install build-iphone --prefix ${INSTALL_PATH} --strip
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
 
 
@@ -284,7 +278,7 @@ build_osx_ios_sim:
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
       -DENABLE_SWIFT:BOOL=TRUE
     - cmake --build build-iphonesim --parallel 16
-    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-runtime --strip
+    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --strip
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
 
 
@@ -299,7 +293,7 @@ build_mingw64_windows:
       -DEXTERNAL-DEPS-DIR=/prebuild/mingw-w64
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/windows-mingw-w64.cmake
     - cmake --build build-windows --parallel 16
-    - cmake --install build-windows --prefix $INSTALL_PATH --component gdk-runtime --strip
+    - cmake --install build-windows --prefix $INSTALL_PATH --strip
     - cmake --install build-windows --prefix $INSTALL_PATH --component gdk-dev
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
