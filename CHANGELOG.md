@@ -4,12 +4,23 @@
 
 ### Added
 
+- GA_login_user: add support for Electrum watch only. It is now possible to
+  login with a list of xpubs or descriptors.
+- GA_psbt_sign: add support for Liquid Electrum sessions.
+
 ### Changed
 - GA_get_twofactor_config: Fiat pricing limits no longer return corresponding
   converted BTC amounts. When "is_fiat" is `true`, the caller should convert
   the amount themselves using GA_convert_amount if desired.
 - FFI (All calls): Input JSON parameters are now moved internally and will be
   empty when an API call returns. This only affects C and C++ callers.
+- Singlesig: GA_create_transaction has now aligned behaviour with multisig:
+  previous workarounds to handle the differences between the session types
+  can be removed.
+- Liquid: Singlesig: allow 32 bytes master blinding keys, consistenly with
+  multisig.
+- Build: replace meson with cmake and make sqlite3 an external dependencies,
+  check the updated README for the new build instructions.
 
 ### Fixed
 - GA_sign_transaction/GA_send_transaction: Fixed exception thrown when a fiat
@@ -17,8 +28,12 @@
   source is unavailable). When this occurs, 2FA will be required.
 - GA_get_twofactor_config: Fixed exception thrown when a fiat pricing source
   is unavailable and a fiat spending limit is set.
+- Singlesig: fix handling of some invalid proxies.
+- Fix a bug in Android build.
+- Fix missing URL overrides in network parameters.
 
 ### Removed
+- Removed Python wheel for Ubuntu 18.04, replaced with wheel for Ubuntu 20.04
 
 ## Release 0.0.58 - 2023-02-06
 
