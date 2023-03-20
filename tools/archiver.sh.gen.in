@@ -3,8 +3,8 @@ set -e
 
 sqlite3=@sqlite3_LINK_LIBRARIES@
 gdk_rust=$<TARGET_FILE:gdk-rust>
-wally=@wallycore_LIBDIR@/libwallycore.a
-secp256k1=@libsecp256k1_LIBDIR@/libsecp256k1.a
+wally=@wallycore_LINK_LIBRARIES@
+secp256k1=@libsecp256k1_LINK_LIBRARIES@
 libevent=@libevent_LIBDIR@/libevent.a
 maybeEventThread=@_maybeLibeventPthreads@
 boost_log=@Boost_LIBRARY_DIRS@/libboost_log.a
