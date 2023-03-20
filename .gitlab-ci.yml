@@ -1,4 +1,4 @@
-image: greenaddress/ci@sha256:225849cffe78aa71b03b2c342414a98cb2d36b624e4770a81e99e308d81d2123
+image: greenaddress/ci@sha256:4b4de9a6a6b66c9928ee281af780d97266c8f674ce0c7ff4b6650d0b49f60ace
 
 stages:
   - format
@@ -43,7 +43,7 @@ stages:
     # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    PREBUILT_SUBDIR: "prebuilt-5"
+    PREBUILT_SUBDIR: "prebuilt-7"
 
 .ios_release:
   extends: .osx_env
@@ -151,7 +151,7 @@ rust_audit:
 
 
 build_clang_fedora:
-  image: greenaddress/fedora_ci@sha256:5202ce0d28f2a1f65001c6b4840a22d249355c513611ca932d39f58740c31816
+  image: greenaddress/fedora_ci@sha256:084dc2e8f8e68baa00218453e8e6c682340367f8626e38e6455d7e920b53a46f
   tags:
     - ga
   stage: build
@@ -163,7 +163,7 @@ build_clang_fedora:
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: greenaddress/ubuntu_ci@sha256:71e510d35419027fcd46d7f52ef27a43b15d1a9cafd6ee145915caf5b72e12f9
+  image: greenaddress/ubuntu_ci@sha256:2de6c58421acfa42211d10de12eb2db9ba2b74e76e75d5dec67c25e3bee7b2bc
   extends: .py_release
   stage: build
   script:
