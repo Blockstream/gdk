@@ -295,6 +295,7 @@ namespace sdk {
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
         std::unique_ptr<wamp_transport> m_wamp;
+        std::unique_ptr<wamp_transport> m_blobserver;
 
         // SPV header downloading
         std::shared_ptr<std::thread> m_spv_thread; // Header download thread

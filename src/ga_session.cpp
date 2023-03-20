@@ -306,6 +306,7 @@ namespace sdk {
     {
         const auto proxy = session_impl::connect_tor();
         m_wamp->connect(proxy);
+        m_blobserver->connect(proxy);
     }
 
     void ga_session::reconnect() { m_wamp->reconnect(); }
@@ -1013,12 +1014,13 @@ namespace sdk {
         }
 
         derive_wallet_identifiers(login_data, is_initial_login);
+        m_login_data["wallet_hash_id"] = login_data["wallet_hash_id"];
+        load_client_blob(locker, true);
 
         const bool reset_2fa_active = json_get_value(login_data, "reset_2fa_active", false);
-        const std::string server_hmac = login_data["client_blob_hmac"];
-        bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+        if (!reset_2fa_active && client_blob::is_zero_hmac(m_blob_hmac)) {
+            const std::string zero_hmac_base64 = m_blob_hmac;
 
-        if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
             // but only if the wallet isn't locked for a two factor reset.
             // Subaccount names
@@ -1038,9 +1040,12 @@ namespace sdk {
             m_blob.set_user_version(1); // Initial version
 
             // If this save fails due to a race, m_blob_hmac will be empty below
-            save_client_blob(locker, server_hmac);
-            // Our blob was enabled, either by us or another login we raced with
-            is_blob_on_server = true;
+            if (!save_client_blob(locker, zero_hmac_base64)) {
+                // Implies someone else wrote a non-zero blob to the server
+                // since we loaded the zero blob above. Load the server blob
+                // and use that
+                load_client_blob(locker, true);
+            }
 
             // Delete all cached txs since they may have memos embedded
             for (const auto& sa : login_data["subaccounts"]) {
@@ -1048,22 +1053,8 @@ namespace sdk {
             }
         }
 
-        get_cached_client_blob(server_hmac);
-
-        if (is_blob_on_server) {
-            // The server has a blob for this wallet. If we haven't got an
-            // up to date copy of it loaded yet, do so.
-            if (!is_initial_login && m_blob_hmac != server_hmac) {
-                // Re-login, and our blob has been updated on the server: re-load below
-                m_blob_hmac.clear();
-            }
-            if (m_blob_hmac.empty()) {
-                // No cached blob, or our cached blob is out of date:
-                // Load the latest blob from the server and cache it
-                load_client_blob(locker, true);
-            }
-            GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
-        }
+        // Must have a client blob from this point, unless 2fa reset is active
+        GDK_RUNTIME_ASSERT(reset_2fa_active || !m_blob_hmac.empty());
 
         if (is_initial_login) {
             m_cache->update_to_latest_minor_version();
@@ -1084,7 +1075,9 @@ namespace sdk {
         m_wamp->subscribe(
             "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
 
-        m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
+        const std::string client_id = m_login_data["wallet_hash_id"];
+        const std::string blob_topic = "new.blob." + client_id;
+        m_blobserver->subscribe(blob_topic, [this](nlohmann::json event) {
             const uint64_t seq = event.at("sequence");
             if (seq != 0) {
                 // Ignore client blobs whose sequence numbers we don't understand
@@ -1143,7 +1136,14 @@ namespace sdk {
         // Load the latest blob from the server
         GDK_LOG_SEV(log_level::info) << "Fetching client blob from server";
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        auto ret = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
+        const nlohmann::json params{ { "client_id", m_login_data["wallet_hash_id"] }, { "sequence", "0" } };
+        auto ret = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(params).get()));
+        if (client_blob::is_zero_hmac(ret["hmac"])) {
+            m_blob_hmac = ret["hmac"];
+            m_blob_outdated = false; // Blob is now current with the servers view
+            GDK_LOG_SEV(log_level::info) << "Server blob is null";
+            return;
+        }
         const auto server_blob = base64_to_bytes(ret["blob"]);
         if (!m_watch_only) {
             // Verify the servers hmac
@@ -1168,12 +1168,13 @@ namespace sdk {
 
         const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
-
-        auto result = m_wamp->call(locker, "login.set_client_blob", blob_b64.get(), 0, saved.second, old_hmac);
+        const nlohmann::json params{ { "client_id", m_login_data["wallet_hash_id"] }, { "blob", blob_b64.get() },
+            { "sequence", "0" }, { "hmac", saved.second }, { "previous_hmac", old_hmac } };
+        auto result = m_blobserver->call(locker, "set_client_blob", mp_cast(params).get());
         blob_b64.reset();
-        if (!wamp_cast<bool>(result)) {
-            // Raced with another update on the server, caller should try again
-            GDK_LOG_SEV(log_level::info) << "Save client blob race, retrying";
+        const nlohmann::json result_json = wamp_cast_json(result);
+        if (result_json.contains("error")) {
+            GDK_LOG_SEV(log_level::info) << "Save client blob failed: " << result_json;
             return false;
         }
         // Blob has been saved on the server, cache it locally
@@ -1437,6 +1438,7 @@ namespace sdk {
         }
 
         derive_wallet_identifiers(login_data, is_initial_login);
+        m_login_data["wallet_hash_id"] = login_data["wallet_hash_id"];
 
         const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 
