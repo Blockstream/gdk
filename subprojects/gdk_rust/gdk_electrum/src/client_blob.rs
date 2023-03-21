@@ -303,14 +303,20 @@ where
 
 #[cfg(test)]
 mod tests {
+    use gdk_common::model::{LoadStoreOpt, Pricing, Settings};
+    use gdk_common::session::Session;
+    use gdk_common::NetworkParameters;
     use std::str::FromStr;
 
     use super::*;
+    use crate::store::Kind;
+    use crate::ElectrumSession;
     use gdk_common::ureq;
     use ureq::Agent;
 
     const BLOBSERVER_STAGING: &'static str = "https://green-blobserver.staging.blockstream.com";
 
+    #[allow(dead_code)]
     const BLOBSERVER_STAGING_ONION: &'static str =
         "bloba2m6sogq7qxnxhxexxnphn2xh6h62kvywpekx4crrrg3sl3ttbqd.onion";
 
@@ -330,5 +336,77 @@ mod tests {
         let (returned, _) = client.get_blob().unwrap().unwrap();
 
         assert_eq!(data, std::str::from_utf8(&returned).unwrap());
+    }
+
+    #[test]
+    fn restore_settings() -> Result<(), Box<dyn std::error::Error>> {
+        let state_dir = tempfile::TempDir::new()?;
+
+        let network_parameters = {
+            let mut p = NetworkParameters::default();
+            p.electrum_url = Some("blockstream.info:700".to_owned());
+            p.blob_server_url = BLOBSERVER_STAGING.to_owned();
+            p.state_dir = state_dir.path().display().to_string();
+            p
+        };
+
+        let load_opts = serde_json::from_value::<LoadStoreOpt>(json! {{
+            "master_xpub": "tpubD8G8MPH9RK9uk4EV97RxhzaY8SJPUWXnViHUwji92i8B7vYdht797PPDrJveeathnKxonJe8SbaScAC1YJ8xAzZbH9UvywrzpQTQh5pekkk",
+        }})?;
+
+        let settings = Settings {
+            unit: "foo".to_owned(),
+            required_num_blocks: 13,
+            altimeout: 42,
+            pricing: Pricing::default(),
+            sound: true,
+        };
+
+        let mut session = ElectrumSession::new(network_parameters.clone())?;
+        session.load_store(&load_opts)?;
+        session.connect(&json! {{}})?;
+
+        // Modify the store.
+        {
+            let store = session.store()?;
+            let mut store = store.write().unwrap();
+            store.insert_settings(settings.clone())?;
+        }
+
+        // Wait for the blob to be sent to the server.
+        std::thread::sleep(BLOBSERVER_SYNCING_INTERVAL + Duration::from_secs(5));
+
+        // Disconnect.
+        session.disconnect()?;
+
+        // Remove the store.
+        {
+            let store = session.store()?;
+            let mut store = store.write().unwrap();
+            store.remove_file(Kind::Store);
+        }
+
+        // The store is kept in memory, so we need to drop the session to
+        // verify that the store is reloaded from the blob.
+        drop(session);
+
+        // Create a new session.
+        let mut session = ElectrumSession::new(network_parameters)?;
+        session.load_store(&load_opts)?;
+        session.connect(&json! {{}})?;
+
+        // Wait for the settings to be restored from the blob server.
+        std::thread::sleep(BLOBSERVER_SYNCING_INTERVAL + Duration::from_secs(5));
+
+        // Get the settings.
+        let restored_settings = {
+            let store = session.store()?;
+            let store = store.read().unwrap();
+            store.get_settings().unwrap()
+        };
+
+        assert_eq!(restored_settings, settings);
+
+        Ok(())
     }
 }
