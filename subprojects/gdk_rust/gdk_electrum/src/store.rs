@@ -289,7 +289,7 @@ impl StoreMeta {
         path
     }
 
-    fn remove_file(&mut self, kind: Kind) {
+    pub(crate) fn remove_file(&mut self, kind: Kind) {
         let path = self.file_path(kind);
         if path.exists() {
             std::fs::remove_file(&path).unwrap();
@@ -433,8 +433,8 @@ impl StoreMeta {
         self.store.memos.get(&txid.into_bitcoin())
     }
 
-    pub fn insert_settings(&mut self, settings: Option<Settings>) -> Result<(), Error> {
-        self.store.settings = settings;
+    pub fn insert_settings(&mut self, settings: Settings) -> Result<(), Error> {
+        self.store.settings = Some(settings);
         self.flush_store()?;
         Ok(())
     }

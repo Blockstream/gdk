@@ -1149,7 +1149,7 @@ impl ElectrumSession {
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
         let mut settings = self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?;
         settings.update(value);
-        self.store()?.write()?.insert_settings(Some(settings.clone()))?;
+        self.store()?.write()?.insert_settings(settings.clone())?;
         self.notify.settings(&settings);
         Ok(())
     }

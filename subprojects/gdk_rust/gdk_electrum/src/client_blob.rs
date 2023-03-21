@@ -1,5 +1,5 @@
 use std::borrow::Borrow;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
@@ -11,7 +11,16 @@ use serde::Deserialize;
 
 use super::{Error, LoginData, RawStore, Store};
 
+#[cfg(not(test))]
 const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(60);
+
+#[cfg(test)]
+const BLOBSERVER_SYNCING_INTERVAL: Duration = Duration::from_secs(5);
+
+/// Once we polled the server we'll have some time to wait before we poll
+/// again. This controls how often we check if the user wants to close the
+/// thread within that time period.
+const CHECK_THREAD_STOP: Duration = Duration::from_secs(3);
 
 const EMPTY_HMAC: Lazy<Hmac> = Lazy::new(|| Hmac::from_slice(&[0u8; 32]).unwrap());
 
@@ -34,7 +43,7 @@ pub(super) fn sync_blob(
         update_blob_from_store(&mut client, &store)?;
     }
 
-    while !wait_or_close(user_wants_to_sync, interval) {
+    loop {
         let start = Instant::now();
 
         match (client.get_blob()?, &client.last_hmac) {
@@ -47,12 +56,14 @@ pub(super) fn sync_blob(
 
         update_blob_from_store(&mut client, &store)?;
 
-        if let Some(remaining) = BLOBSERVER_SYNCING_INTERVAL.checked_sub(start.elapsed()) {
-            std::thread::sleep(remaining);
+        while start.elapsed() < BLOBSERVER_SYNCING_INTERVAL {
+            if !user_wants_to_sync.load(Ordering::Relaxed) {
+                info!("closing client blob thread");
+                return Ok(());
+            }
+            std::thread::sleep(CHECK_THREAD_STOP);
         }
     }
-
-    Ok(())
 }
 
 /// Updates the local contents of the store with the new value returned by the
