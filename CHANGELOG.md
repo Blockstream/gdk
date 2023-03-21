@@ -5,13 +5,26 @@
 ### Added
 
 ### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.58.post1 - 2023-03-21
+
+### Added
+
+### Changed
 - GA_get_twofactor_config: Fiat pricing limits no longer return corresponding
   converted BTC amounts. When "is_fiat" is `true`, the caller should convert
   the amount themselves using GA_convert_amount if desired.
+- Liquid: Singlesig: allow 32 bytes master blinding keys, consistently with
+  multisig.
 
 ### Fixed
 - GA_get_twofactor_config: Fixed exception thrown when a fiat pricing source
   is unavailable and a fiat pricing limit is set.
+- Singlesig: fix handling of some invalid proxies.
 
 ### Removed
 
