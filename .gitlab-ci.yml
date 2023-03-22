@@ -43,7 +43,6 @@ stages:
     # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    NUM_JOBS: 16
     PREBUILT_SUBDIR: "prebuilt-5"
 
 .ios_release:
@@ -205,7 +204,7 @@ build_clang_osx:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
@@ -229,7 +228,7 @@ build_clang_osx_m1:
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --clang --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
@@ -248,7 +247,7 @@ build_osx_ios:
   script:
     - cd $CI_PROJECT_DIR
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphone static --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphone static --prefix $PREBUILT_DIR; fi
     - cmake -B build-iphone -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
@@ -267,7 +266,7 @@ build_osx_ios_sim:
   script:
     - cd $CI_PROJECT_DIR
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --iphonesim static --prefix $PREBUILT_DIR; fi
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphonesim static --prefix $PREBUILT_DIR; fi
     - cmake -B build-iphonesim -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake

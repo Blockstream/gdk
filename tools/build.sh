@@ -27,7 +27,7 @@ function build_dependencies() {
         echo "using external-deps-dir dependencies from ${EXTERNAL_DEPS_DIR}"
     else
         echo "building external dependencies in ${EXTERNAL_DEPS_DIR}"
-        NUM_JOBS=$parallel ./tools/builddeps.sh --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR} $*
+        ./tools/builddeps.sh --parallel $parallel --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR} $*
     fi
 }
 

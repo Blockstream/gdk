@@ -1,14 +1,6 @@
 #!/usr/bin/env bash
 set -e
 
-if [ -z "${NUM_JOBS}" ]; then
-    if [ -f /proc/cpuinfo ]; then
-        NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
-    fi
-    NUM_JOBS=${NUM_JOBS:-4}
-fi
-export NUM_JOBS
-
 have_cmd()
 {
     command -v "$1" >/dev/null 2>&1
@@ -95,6 +87,7 @@ while true; do
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --compiler-version) COMPILER_VERSION="-$2"; shift 2 ;;
         --prefix ) GDK_BUILD_ROOT="$2"; shift 2 ;;
+        --parallel ) NUM_JOBS="$2"; shift 2 ;;
         -- ) shift; break ;;
         *) break ;;
     esac
@@ -104,6 +97,15 @@ if [ -z ${GDK_BUILD_ROOT} ]; then
     echo "please specify a destination folder with --prefix"
     exit 1
 fi
+
+if [ -z "${NUM_JOBS}" ]; then
+    if [ -f /proc/cpuinfo ]; then
+        NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
+    fi
+    NUM_JOBS=${NUM_JOBS:-4}
+fi
+export NUM_JOBS
+
 
 C_COMPILER=""
 CXX_COMPILER=""
@@ -323,7 +325,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DJSON_BuildTests:BOOL=OFF
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
@@ -338,7 +340,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
@@ -357,7 +359,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DMSGPACK_USE_STATIC_BOOST:BOOL=ON \
     -DMSGPACK_BUILD_DOCS:BOOL=OFF \
     -DMSGPACK_CXX14:BOOL=ON
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
@@ -380,7 +382,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DOPENSSL_ROOT_DIR:PATH=${GDK_BUILD_ROOT}/openssl/build \
     -DAUTOBAHN_BUILD_EXAMPLES:BOOL=OFF \
     -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/websocketpp;${GDK_BUILD_ROOT}/msgpack"
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 
@@ -398,7 +400,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DGSL_STANDALONE_PROJECT:BOOL=OFF \
     -DGSL_TEST:BOOL=OFF \
     -DGSL_INSTALL:BOOL=ON
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 

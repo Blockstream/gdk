@@ -52,6 +52,7 @@ $ ./tools/builddeps.sh <options> --prefix <absolute-destination-path>
     - ``x86``
     - ``x86_64``
 - ``--buildtype debug``: in case gdk must be built in debug mode
+- ``--parallel <jobs>``: set the number of parallel process that the build-system can spawn, default to CPU count.
 for example:
 ```bash
 $ ./tools/builddeps.sh --clang --prefix $HOME/prebuilt/clang
@@ -67,7 +68,7 @@ $ tools/build.sh <options>
 - ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms
 - ``--enable-tests``: builds test that can be easily launched using ``ctest`` (if your cmake is <= 3.20 you need to ``cd`` into the build directory, otherwise just use ``--test-dir``)
 - ``--python-version <version>``: builds python-wheels. ``<version>`` can be something as simple as ``3``, you let cmake pick the 3.X version present in your system for you
-- ``--parallel <jobs>``: set the number of paralle process that the build-system can spawn, default to CPU count.
+- ``--parallel <jobs>``: set the number of parallel process that the build-system can spawn, default to CPU count.
 - ``--external-deps-dir <path>`` the folder specificied under ``--prefix`` option when running ``tools/buildddeps.sh``
 - ``--install <path>``: have the script invoke ``cmake --install`` and install all\* artifacts produced into ``<path>``
 for example
