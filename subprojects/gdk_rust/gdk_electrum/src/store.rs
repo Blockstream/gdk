@@ -24,7 +24,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 pub type Store = Arc<RwLock<StoreMeta>>;
 
@@ -357,6 +357,9 @@ impl StoreMeta {
     }
 
     pub(super) fn flush_store(&mut self) -> Result<(), Error> {
+        if let Ok(from_epoch) = SystemTime::now().duration_since(UNIX_EPOCH) {
+            self.store.timestamp = from_epoch;
+        }
         self.flush_serializable(Kind::Store)?;
         Ok(())
     }
