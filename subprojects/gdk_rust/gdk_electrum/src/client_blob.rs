@@ -35,26 +35,31 @@ pub(super) fn sync_blob(
 ) -> Result<(), Error> {
     info!("starting client blob thread");
 
-    // Get the blob from the server, or save the current one on the server if
-    // it doesn't have one for this client id.
-    if let Some((raw_store_blob, _)) = client.get_blob()? {
-        update_store_from_blob(&store, raw_store_blob)?;
-    } else {
-        update_blob_from_store(&mut client, &store)?;
-    }
+    let mut sync_blob = || match client.get_blob()? {
+        // The server doesn't have a blob for this client id => upload the
+        // current store.
+        None => update_blob_from_store(&mut client, &store),
+
+        Some((store_blob, hmac)) => {
+            match &client.last_hmac {
+                // The blob on the server has not changed since the previous
+                // iteration => upload the current store.
+                Some(last) if &hmac == last => update_blob_from_store(&mut client, &store),
+
+                // The blob on the server has changed since the previous
+                // iteration or the client has never synced with the server =>
+                // update the local store.
+                _ => update_store_from_blob(&mut client, &store, &store_blob),
+            }
+        }
+    };
 
     loop {
         let start = Instant::now();
 
-        match (client.get_blob()?, &client.last_hmac) {
-            (Some((new_store_blob, hmac)), Some(last_hmac)) if &hmac != last_hmac => {
-                update_store_from_blob(&store, new_store_blob)?;
-                continue;
-            }
-            _ => (),
+        if let Err(err) = sync_blob() {
+            warn!("error syncing blob: {}", err);
         }
-
-        update_blob_from_store(&mut client, &store)?;
 
         while start.elapsed() < BLOBSERVER_SYNCING_INTERVAL {
             if !user_wants_to_sync.load(Ordering::Relaxed) {
@@ -67,27 +72,33 @@ pub(super) fn sync_blob(
 }
 
 /// Updates the local contents of the store with the new value returned by the
-/// blob server.
-fn update_store_from_blob(store: &Store, new_store: Vec<u8>) -> Result<(), Error> {
-    let raw_store = serde_cbor::from_slice::<RawStore>(&new_store)?;
+/// blob server. If the blob server has an older version of the store, it will
+/// be updated with the local contents.
+fn update_store_from_blob(
+    client: &mut BlobClient,
+    store: &Store,
+    store_blob: &[u8],
+) -> Result<(), Error> {
+    let raw_store = serde_cbor::from_slice::<RawStore>(store_blob)?;
+
     info!("received new store from blob server: {raw_store:?}");
-    let mut store = store.write()?;
-    store.store = raw_store;
-    store.flush_store()?;
-    Ok(())
+
+    if let Err(Error::StoreTimestamp(_, _)) = store.write()?.update_store(raw_store) {
+        info!("store on blob server is out of date, updating it");
+        update_blob_from_store(client, store)
+    } else {
+        Ok(())
+    }
 }
 
 /// Saves the local contents of the store to the remote blob server.
 fn update_blob_from_store(client: &mut BlobClient, store: &Store) -> Result<(), Error> {
-    let store = store.read()?;
-    let raw_store = serde_cbor::to_vec(&store.store)?;
+    let raw_store = serde_cbor::to_vec(&store.read()?.store)?;
 
-    if let Err(err) = client.set_blob(raw_store) {
+    client.set_blob(raw_store).map_err(|err| {
         warn!("Couldn't save store on blob server: {err:?}");
-        return Err(err);
-    }
-
-    Ok(())
+        err
+    })
 }
 
 /// A client used to manage all interactions with the blob server.
