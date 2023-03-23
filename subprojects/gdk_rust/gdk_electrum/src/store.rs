@@ -24,7 +24,7 @@ use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 pub type Store = Arc<RwLock<StoreMeta>>;
 
@@ -117,9 +117,33 @@ pub struct RawStore {
     /// transaction memos (account_num -> txid -> memo)
     memos: HashMap<Txid, String>,
 
-    // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
+    // additional fields should always be appended at the end as an `Option` to
+    // retain db backwards compatibility
+    //
     /// account settings
     accounts_settings: Option<HashMap<u32, AccountSettings>>,
+
+    /// Timestamp of the last time the store was flushed to disk as an offset
+    /// from the Unix epoch, used to determine if a new `RawStore` returned by
+    /// the blob server should be merged or discarded.
+    ///
+    /// To see why this is necessary, imagine the following scenario:
+    ///
+    /// 1. The user changes the settings of the wallet while connected to the
+    ///    internet, updating the `RawStore` on the server. Let's call these
+    ///    "Settings A".
+    ///
+    /// 2. The user goes offline and changes the settings again, this time the
+    ///    `RawStore` is updated locally but not on the server. Let's call
+    ///    these "Settings B".
+    ///
+    /// 3. The user closes the session and some time later starts a new
+    ///    one. The `RawStore` is downloaded from the server which sends
+    ///    "Settings A". If we didn't have this timestamp, we would blindly
+    ///    overwrite the locally stored "Settings B" with "Settings A", even
+    ///    though "Settings B" is newer.
+    #[serde(default)]
+    timestamp: Duration,
 }
 
 pub struct StoreMeta {
@@ -424,6 +448,7 @@ impl StoreMeta {
     pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
+        println!("inserting memo {} for txid {:?}", memo, txid);
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
