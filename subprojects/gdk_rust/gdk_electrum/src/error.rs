@@ -178,6 +178,9 @@ pub enum Error {
     #[error("attempt to access the store without calling load_store first")]
     StoreNotLoaded,
 
+    #[error("attempt to update the store with an older timestamp (current: {0}, new: {1})")]
+    StoreTimestamp(u64, u64),
+
     #[error("Transaction not found ({0})")]
     TxNotFound(BETxid),
 

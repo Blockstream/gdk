@@ -356,7 +356,18 @@ impl StoreMeta {
         Ok(())
     }
 
-    pub(super) fn flush_store(&mut self) -> Result<(), Error> {
+    pub(super) fn update_store(&mut self, new_store: RawStore) -> Result<(), Error> {
+        if new_store.timestamp < self.store.timestamp {
+            let current = self.store.timestamp.as_secs();
+            let new = new_store.timestamp.as_secs();
+            Err(Error::StoreTimestamp(current, new))
+        } else {
+            self.store = new_store;
+            self.flush_store()
+        }
+    }
+
+    fn flush_store(&mut self) -> Result<(), Error> {
         if let Ok(from_epoch) = SystemTime::now().duration_since(UNIX_EPOCH) {
             self.store.timestamp = from_epoch;
         }
