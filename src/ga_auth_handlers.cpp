@@ -1727,8 +1727,20 @@ namespace sdk {
         m_twofactor_required = m_state == state_type::request_code;
 
         if (!m_net_params.is_liquid() && !m_net_params.is_electrum()) {
-            const uint64_t limit
-                = m_twofactor_required ? m_session->get_spending_limits()["satoshi"].get<uint64_t>() : 0;
+            auto user_limits = m_twofactor_required ? m_session->get_spending_limits() : nlohmann::json({});
+            amount::value_type limit = 0;
+            if (user_limits.value("is_fiat", false)) {
+                try {
+                    user_limits = m_session->convert_amount(user_limits);
+                } catch (const std::exception& ex) {
+                    // If the fiat limit cannot be converted, require 2FA
+                    GDK_LOG_SEV(log_level::warning) << "2FA limit unavailable: " << ex.what();
+                    user_limits.clear();
+                }
+            }
+            if (user_limits.contains("satoshi")) {
+                limit = user_limits["satoshi"].get<amount::value_type>();
+            }
             const uint64_t satoshi = m_tx_details.at("satoshi").at("btc");
             const uint64_t fee = m_tx_details.at("fee");
             const uint32_t change_index = m_tx_details.at("change_index").at("btc");

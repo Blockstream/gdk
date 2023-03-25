@@ -10,8 +10,11 @@
   the amount themselves using GA_convert_amount if desired.
 
 ### Fixed
+- GA_sign_transaction/GA_send_transaction: Fixed exception thrown when a fiat
+  spending limit is set but cannot be used (for example, because the pricing
+  source is unavailable). When this occurs, 2FA will be required.
 - GA_get_twofactor_config: Fixed exception thrown when a fiat pricing source
-  is unavailable and a fiat pricing limit is set.
+  is unavailable and a fiat spending limit is set.
 
 ### Removed
 
