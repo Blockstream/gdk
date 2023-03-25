@@ -59,6 +59,7 @@ macro(create_greenaddress_target)
     )
     install(
         FILES
+            ${wallycore_INCLUDE_DIRS}/wally.hpp
             ${wallycore_INCLUDE_DIRS}/wally_address.h
             ${wallycore_INCLUDE_DIRS}/wally_anti_exfil.h
             ${wallycore_INCLUDE_DIRS}/wally_bip32.h
@@ -66,10 +67,12 @@ macro(create_greenaddress_target)
             ${wallycore_INCLUDE_DIRS}/wally_bip39.h
             ${wallycore_INCLUDE_DIRS}/wally_core.h
             ${wallycore_INCLUDE_DIRS}/wally_crypto.h
+            ${wallycore_INCLUDE_DIRS}/wally_descriptor.h
             ${wallycore_INCLUDE_DIRS}/wally_elements.h
             ${wallycore_INCLUDE_DIRS}/wally_map.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt_members.h
+            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_script.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
         COMPONENT gdk-dev
@@ -192,6 +195,7 @@ macro(create_greenaddressfull_target)
     )
     install(
         FILES 
+            ${wallycore_INCLUDE_DIRS}/wally.hpp
             ${wallycore_INCLUDE_DIRS}/wally_address.h
             ${wallycore_INCLUDE_DIRS}/wally_anti_exfil.h
             ${wallycore_INCLUDE_DIRS}/wally_bip32.h
@@ -199,7 +203,12 @@ macro(create_greenaddressfull_target)
             ${wallycore_INCLUDE_DIRS}/wally_bip39.h
             ${wallycore_INCLUDE_DIRS}/wally_core.h
             ${wallycore_INCLUDE_DIRS}/wally_crypto.h
+            ${wallycore_INCLUDE_DIRS}/wally_descriptor.h
             ${wallycore_INCLUDE_DIRS}/wally_elements.h
+            ${wallycore_INCLUDE_DIRS}/wally_map.h
+            ${wallycore_INCLUDE_DIRS}/wally_psbt.h
+            ${wallycore_INCLUDE_DIRS}/wally_psbt_members.h
+            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_script.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
         COMPONENT gdk-dev
