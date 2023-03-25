@@ -119,6 +119,7 @@ macro(create_greenaddressstatic_target)
         PkgConfig::wallycore
         PkgConfig::libsecp256k1
         gdk-rust
+        PkgConfig::sqlite3
         Microsoft.GSL::GSL
         autobahn-cpp
         msgpackc-cxx
