@@ -55,11 +55,12 @@ if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o x,b: -l enable-tests,clang,gcc,devmode,mingw-w64,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
+        -v ) verbose_flag=" -v"; shift 2 ;;
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
@@ -124,10 +125,10 @@ cmake -B $bld_root -S . \
     -DPYTHON_REQUIRED_VERSION=$python_version \
     -DDEV_MODE:BOOL=$devmode
 
-cmake --build $bld_root --parallel $parallel
+cmake --build $bld_root --parallel $parallel$verbose_flag
 
 if $enable_python ; then
-    cmake --build $bld_root --target python-wheel
+    cmake --build $bld_root --target python-wheel$verbose_flag
 fi
 
 if $install ; then
