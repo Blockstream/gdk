@@ -1,7 +1,7 @@
 # Debian (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t greenaddress/ci -f tools/Dockerfile
 #
-FROM debian:bullseye@sha256:45ee40a844048c2f6d0105899c1a17733530b56d481612608aab5e2e4048570b as base
+FROM debian:bullseye@sha256:d0bf7d85ad1e61ab3520b1d22d1e2a136799defd4e0d1e3f998d3b9045f38551 as base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
