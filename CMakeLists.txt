@@ -63,11 +63,12 @@ find_package(Microsoft.GSL REQUIRED PATHS ${_msgGslDir})
 join_path(_weboscketppDir ${EXTERNAL-DEPS-DIR} "websocketpp") 
 find_package(websocketpp REQUIRED PATHS ${_weboscketppDir})
 # msgpack
-join_path(_msgpackDir ${EXTERNAL-DEPS-DIR} "msgpack") 
+join_path(_msgpackDir ${EXTERNAL-DEPS-DIR} "msgpack")
 find_package(msgpack REQUIRED PATHS ${_msgpackDir})
 
 join_path(_libeventDir ${EXTERNAL-DEPS-DIR} "libevent" "build")
 find_package(Libevent REQUIRED PATHS ${_libeventDir})
+
 #### dependencies relying on pkg-config
 find_package(PkgConfig REQUIRED)
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
