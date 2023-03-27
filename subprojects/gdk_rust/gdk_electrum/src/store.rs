@@ -23,6 +23,7 @@ use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::mpsc;
 use std::sync::{Arc, RwLock};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
@@ -154,6 +155,10 @@ pub struct StoreMeta {
     cipher: Aes256GcmSiv,
     last: HashMap<Kind, sha256::Hash>,
     to_remove: bool,
+
+    /// Used to send a notification to the client blob thread when the
+    /// `RawStore` gets flushed.
+    sender: mpsc::SyncSender<()>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -280,6 +285,7 @@ impl StoreMeta {
         path: P,
         xpub: &ExtendedPubKey,
         id: NetworkId,
+        sender: mpsc::SyncSender<()>,
     ) -> Result<StoreMeta, Error> {
         let cipher = xpub.to_cipher()?;
         let cache = RawCache::new(path.as_ref(), &cipher);
@@ -299,6 +305,7 @@ impl StoreMeta {
             path,
             last: HashMap::new(),
             to_remove: false,
+            sender,
         };
         Ok(store)
     }
@@ -372,6 +379,7 @@ impl StoreMeta {
             self.store.timestamp = from_epoch;
         }
         self.flush_serializable(Kind::Store)?;
+        self.sender.send(())?;
         Ok(())
     }
 
@@ -604,14 +612,16 @@ mod tests {
         .unwrap();
         let txid_btc = txid.ref_bitcoin().unwrap();
 
+        let (sender, _receiver) = mpsc::sync_channel(32);
+
         {
-            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+            let mut store = StoreMeta::new(&dir, &xpub, id, sender.clone()).unwrap();
             store.make_account(0, xpub, true).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let store = StoreMeta::new(&dir, &xpub, id).unwrap();
+        let store = StoreMeta::new(&dir, &xpub, id, sender).unwrap();
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));

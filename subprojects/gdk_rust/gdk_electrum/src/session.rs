@@ -44,6 +44,7 @@ impl Session for ElectrumSession {
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
             xr_cache: ExchangeRatesCache::default(),
             available_currencies: None,
+            store_update_recv: None,
             first_sync: Arc::new(AtomicBool::new(true)),
         })
     }

@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
@@ -32,6 +33,7 @@ pub(super) fn sync_blob(
     mut client: BlobClient,
     store: Store,
     user_wants_to_sync: &AtomicBool,
+    store_update_recv: mpsc::Receiver<()>,
 ) -> Result<(), Error> {
     info!("starting client blob thread");
 
@@ -66,7 +68,13 @@ pub(super) fn sync_blob(
                 info!("closing client blob thread");
                 return Ok(());
             }
-            std::thread::sleep(CHECK_THREAD_STOP);
+
+            // If we receive a message on the channel it means that the
+            // store has been updated and we should stop waiting and sync it
+            // with the blob server.
+            if let Ok(()) = store_update_recv.recv_timeout(CHECK_THREAD_STOP) {
+                break;
+            }
         }
     }
 }

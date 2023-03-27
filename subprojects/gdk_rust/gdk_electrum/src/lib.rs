@@ -53,6 +53,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::path::PathBuf;
 use std::str::FromStr;
+use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use std::{iter, thread};
 
@@ -146,6 +147,10 @@ pub struct ElectrumSession {
     /// The keys are exchange names, the values are all the currencies that a
     /// given exchange has data for.
     available_currencies: Option<HashMap<String, Vec<Currency>>>,
+
+    /// Temporarily stores the receiver end of the channel used to notify the
+    /// blob server thread that the store has been updated.
+    store_update_recv: Option<mpsc::Receiver<()>>,
 
     first_sync: Arc<AtomicBool>,
 }
@@ -353,9 +358,11 @@ impl ElectrumSession {
             path.push(wallet_hash_id);
 
             info!("Store root path: {:?}", path);
-            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
+            let (sender, recv) = mpsc::sync_channel::<()>(32);
+            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id(), sender)?;
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
+            self.store_update_recv = Some(recv);
         }
         self.master_xpub = Some(opt.master_xpub);
         self.master_xpub_fingerprint =
@@ -817,10 +824,14 @@ impl ElectrumSession {
         let login_data = self.get_wallet_hash_id()?;
         let agent = self.build_request_agent()?;
         let url = self.network.blob_server_url()?;
+        let store_update_recv =
+            self.store_update_recv.take().ok_or_else(|| Error::StoreNotLoaded)?;
+
         let blob_client = BlobClient::new(agent, url, login_data.into());
 
         let blob_handle = thread::spawn(move || {
-            let _ = client_blob::sync_blob(blob_client, store, &user_wants_to_sync);
+            let _ =
+                client_blob::sync_blob(blob_client, store, &user_wants_to_sync, store_update_recv);
         });
 
         self.handles.push(blob_handle);
