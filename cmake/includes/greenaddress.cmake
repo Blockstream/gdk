@@ -23,7 +23,7 @@ macro(create_greenaddress_target)
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        tor
+        tor::tor
         event_static
         PkgConfig::libsecp256k1
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
@@ -125,7 +125,7 @@ macro(create_greenaddressstatic_target)
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        tor
+        tor::tor
         event_static
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
         Boost::boost

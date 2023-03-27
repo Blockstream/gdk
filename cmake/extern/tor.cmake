@@ -5,8 +5,7 @@ join_path(_libDirTrunnel ${_torSrcDir} "src" "trunnel")
 join_path(_libDirDonna ${_torSrcDir} "src" "ext" "ed25519" "donna")
 join_path(_libDirRef10 ${_torSrcDir} "src" "ext" "ed25519" "ref10")
 join_path(_libDirKeccak ${_torSrcDir} "src" "ext" "keccak-tiny")
-set(_torLibs
-    ${_libDirCore}/libtor-app.a
+set(_torInternals
     ${_libDirLib}/libtor-buf.a
     ${_libDirLib}/libtor-compress.a
     ${_libDirLib}/libtor-confmgt.a
@@ -47,14 +46,29 @@ set(_torLibs
     ${_libDirLib}/libtor-wallclock.a
     ${_libDirTrunnel}/libor-trunnel.a
 )
+set(_torApp ${_libDirCore}/libtor-app.a)
 
-add_library(tor INTERFACE IMPORTED)
+
 set(TOR_LIB_DIRS ${_libDirCore} ${_libDirLib} ${_libDirTrunnel} ${_libDirDonna} ${_libDirRef10} ${_libDirKeccak}) 
 join_path(TOR_INCLUDE_DIRS ${_torSrcDir} "src" "feature" "api")
-target_include_directories(tor INTERFACE ${TOR_INCLUDE_DIRS})
-target_link_libraries(tor
+
+add_library(tor::internals INTERFACE IMPORTED)
+target_link_libraries(tor::internals
     INTERFACE
-        ${_torLibs}
+        ${_torInternals}
         $<$<PLATFORM_ID:Windows>:ssp>
         $<$<PLATFORM_ID:Windows>:iphlpapi>
 )
+
+add_library(tor::tor STATIC IMPORTED)
+set_target_properties(tor::tor PROPERTIES
+    IMPORTED_LOCATION ${_torApp}
+)
+target_include_directories(tor::tor INTERFACE ${TOR_INCLUDE_DIRS})
+target_link_libraries(tor::tor
+    INTERFACE
+        tor::internals
+        event_static
+)
+
+list(APPEND _torLibs ${_torInternals} ${_torApp})
