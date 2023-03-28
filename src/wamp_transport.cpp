@@ -338,7 +338,7 @@ namespace sdk {
         m_run_thread = std::thread([this] { m_io.run(); });
         m_reconnect_thread = std::thread([this] { reconnect_handler(); });
 
-        if (!is_tls_connection(server)) {
+        if (!is_tls_connection(m_server)) {
             m_client = std::make_unique<client>();
             m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
             m_client->init_asio(&m_io);
