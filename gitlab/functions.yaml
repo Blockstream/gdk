@@ -1,0 +1,46 @@
+.build_setup:
+  stage: build
+  variables:
+    DOCKER_HOST: tcp://localhost:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_BUILDKIT: 1
+  image: docker:20.10.12
+  services:
+    - docker:20.10.12-dind
+  tags:
+    - cloud
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - unknown_failure
+      - stuck_or_timeout_failure
+  rules:
+    - if: $CI_COMMIT_BRANCH
+      when: manual
+      changes:
+        paths:
+          - tools/buildboost.sh
+          - tools/builddeps.sh
+          - tools/buildlibwally-core.sh
+          - tools/buildopenssl.sh
+          - tools/buildsqlite3.sh
+          - tools/buildtor.sh
+          - tools/requirements.txt
+          - $DOCKERFILE
+          - $DEPS_SH
+          - $ENV_FILE
+        compare_to: master
+  script:
+    - docker pull ${IMAGE}:latest || true
+    - >
+      docker build
+      -f ${DOCKERFILE}
+      --network=host
+      --build-arg BUILDKIT_INLINE_CACHE=1
+      --cache-from ${IMAGE}:latest
+      -t ${IMAGE}:$CI_COMMIT_SHA
+      -t ${IMAGE}:latest
+      .
+    - docker push ${IMAGE}:${CI_COMMIT_SHA}
+    - if [ ${CI_COMMIT_BRANCH} == "master" ]; then docker push ${IMAGE}:latest; fi

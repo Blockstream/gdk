@@ -7,7 +7,15 @@ stages:
   - deploy
   - publish
 
+include:
+  - gitlab/**.yaml
 
+## disables MR-triggered pipelines and allows only branch-triggered pipelines
+workflow:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      when: never
+    - when: always
 
 .ndk_release:
   tags:
