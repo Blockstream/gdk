@@ -380,6 +380,10 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_create_transaction)
     }
 
+    public func blindTransaction(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_blind_transaction)
+    }
+
     public func signTransaction(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_sign_transaction)
     }

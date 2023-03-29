@@ -529,6 +529,19 @@ GDK_API int GA_create_transaction(
     struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
 
 /**
+ * Blind a transaction.
+ *
+ * :param session: The session to use.
+ * :param transaction_details: The :ref:`create-tx-details` for blinding.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: When calling from C/C++, the parameter ``transaction_details`` will be emptied when the call completes.
+ */
+GDK_API int GA_blind_transaction(
+    struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
+
+/**
  * Sign the user's inputs to a transaction.
  *
  * :param session: The session to use.

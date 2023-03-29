@@ -944,28 +944,6 @@ namespace sdk {
         const bool is_liquid = m_net_params.is_liquid();
         if (m_result.empty()) {
             // Initial call: Create the transaction from the provided details
-            if (is_liquid && m_details.contains("addressees")) {
-                std::set<std::string> asset_ids;
-                for (const auto& addressee : m_details.at("addressees")) {
-                    if (addressee.contains("asset_id")) {
-                        asset_ids.insert(std::string(addressee.at("asset_id")));
-                    }
-                }
-                if (asset_ids.size() > 1
-                    || (asset_ids.size() == 1 && *asset_ids.begin() != m_net_params.policy_asset())) {
-                    // Sending multiple assets, or a non-LBTC send (including L-BTC fees)
-                    // Erase the change details from previous call to avoid
-                    // blinding being done incorrectly.
-                    // Note we don't remove "change_subaccount" as that is set by callers
-                    // to indicate they want their change sent to another subaccount.
-                    // TODO: fix this by splitting out blinding into a separate step,
-                    // rather than blinding the tx in create_transaction.
-                    m_details.erase("change_address");
-                    m_details.erase("change_amount");
-                    m_details.erase("change_index");
-                    m_details.erase("have_change");
-                }
-            }
             m_result = m_session->create_transaction(m_details);
             return check_change_outputs();
         }
@@ -978,7 +956,6 @@ namespace sdk {
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
             if (!addr.value("is_blinded", false)) {
-                unblind_address(m_net_params, addr); // Remove fake blinding
                 blind_address(m_net_params, addr, public_keys.at(i));
                 ++i;
             }
@@ -1021,6 +998,38 @@ namespace sdk {
         // We have unblinded change outputs, request the blinding keys
         signal_hw_request(hw_request::get_blinding_public_keys);
         m_twofactor_data.emplace("scripts", std::move(scripts));
+        return m_state;
+    }
+
+    //
+    // Blind transaction
+    //
+    blind_transaction_call::blind_transaction_call(session& session, nlohmann::json details)
+        : auth_handler_impl(session, "blind_transaction")
+        , m_details(std::move(details))
+    {
+    }
+
+    auth_handler::state_type blind_transaction_call::call_impl()
+    {
+        if (!m_net_params.is_liquid() || !json_get_value(m_details, "error").empty()
+            || json_get_value(m_details, "blinded", false)) {
+            m_result = std::move(m_details);
+            return state_type::done;
+        }
+
+        if (m_hw_request == hw_request::blind_tx) {
+            // HWW has blinded the tx, return it
+            m_result = get_hw_reply();
+            return state_type::done;
+        }
+
+        // Update the transaction details to re-create "transaction_outputs" with blinding info
+        const bool is_liquid = m_net_params.is_liquid();
+        wally_tx_ptr tx = tx_from_hex(m_details.at("transaction"), tx_flags(is_liquid));
+        update_tx_info(*m_session, tx, m_details);
+        signal_hw_request(hw_request::blind_tx);
+        m_twofactor_data.emplace("details", std::move(m_details));
         return m_state;
     }
 

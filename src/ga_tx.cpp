@@ -256,7 +256,7 @@ namespace sdk {
                 // the overall fee rate of the pair to the desired rate,
                 // so that miners are incentivized to mine both together).
                 const amount new_fee_rate = amount(result.at("fee_rate"));
-                const auto new_fee = get_tx_fee(tx, min_fee_rate, new_fee_rate);
+                const auto new_fee = get_tx_fee(net_params, tx, min_fee_rate, new_fee_rate);
                 const amount network_fee = new_fee <= old_fee ? amount() : new_fee;
                 result["network_fee"] = network_fee.value();
             }
@@ -586,7 +586,7 @@ namespace sdk {
                     = have_change_p != result.end() ? json_get_value(*have_change_p, policy_asset, false) : false;
                 if (have_change_output) {
                     const auto change_address = result.at("change_address").at(policy_asset).at("address");
-                    add_tx_output(net_params, result, tx, change_address);
+                    add_tx_output(net_params, result, tx, change_address, 0, policy_asset, true);
                     change_index = tx->num_outputs - 1;
                 }
             }
@@ -621,15 +621,12 @@ namespace sdk {
                 auto change_address = session.get_receive_address(details);
 
                 if (is_liquid && !is_electrum) {
-                    // set a temporary blinding key, will be changed later through the resolvers. we need
-                    // to have one because all our create_transaction logic relies on being able to blind
-                    // the tx for a few things (fee estimation for instance).
-                    blind_address(net_params, change_address, FAKE_BLINDING_KEY);
+                    // Mark the address as unblinded, we will blind it later
                     change_address["is_blinded"] = false;
                 }
 
                 add_paths(session, change_address);
-                result["change_address"][asset_id] = change_address;
+                result["change_address"][asset_id] = std::move(change_address);
             }
 
             const bool include_fee = asset_id == policy_asset && !is_partial;
@@ -644,31 +641,21 @@ namespace sdk {
                 amount change, required_with_fee;
 
                 if (include_fee) {
-                    // add fee output so is also part of size calculations
                     if (is_liquid) {
+                        // Add the fee output so is included in the weight calculation
                         constexpr amount::value_type dummy_amount = 1;
                         if (!have_fee_output) {
-                            if (send_all && addressees_p->at(0).value("asset_id", policy_asset) == asset_id) {
-                                // the output commitment will be corrected below. this is a placeholder for the
-                                // blinding.
-                                set_tx_output_commitment(tx, 0, asset_id, dummy_amount);
-                            }
                             fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
                             have_fee_output = true;
                         }
-                        update_tx_info(session, tx, result);
-                        std::vector<nlohmann::json> used = json_get_value<decltype(used)>(result, "used_utxos");
-                        used.insert(used.end(), current_used_utxos.begin(), current_used_utxos.end());
                         if (!manual_selection) {
-                            result["used_utxos"] = used;
+                            auto& used = result["used_utxos"];
+                            for (auto& current : current_used_utxos) {
+                                used.push_back(current);
+                            }
                         }
-                        const auto blinded = blind_ga_transaction(session, result);
-                        const auto fee_tx = tx_from_hex(blinded["transaction"], tx_flags(is_liquid));
-                        fee = get_tx_fee(fee_tx, min_fee_rate, user_fee_rate);
-                    } else {
-                        fee = get_tx_fee(tx, min_fee_rate, user_fee_rate);
                     }
-
+                    fee = get_tx_fee(net_params, tx, min_fee_rate, user_fee_rate);
                     fee += network_fee;
                 }
 
@@ -746,10 +733,11 @@ namespace sdk {
                 // output to collect it, then loop again in case the amount
                 // this increases the fee by requires more UTXOs.
                 const auto change_address = result.at("change_address").at(asset_id).at("address");
-                add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id);
+                add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id, true);
                 have_change_output = true;
                 change_index = tx->num_outputs - 1;
                 if (is_liquid && include_fee) {
+                    GDK_RUNTIME_ASSERT(fee_index != NO_CHANGE_INDEX);
                     std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
                     std::swap(fee_index, change_index);
                 }
@@ -953,10 +941,6 @@ namespace sdk {
 
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 randomise_inputs(tx, used_utxos);
-            }
-
-            if (is_liquid && json_get_value(result, "error").empty()) {
-                result = blind_ga_transaction(session, result);
             }
         }
 

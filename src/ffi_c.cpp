@@ -319,6 +319,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_create_transaction, struct GA_session*, session, GA_j
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::create_transaction_call(*session, json_move(transaction_details))); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_blind_transaction, struct GA_session*, session, GA_json*, transaction_details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::blind_transaction_call(*session, json_move(transaction_details))); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_sign_transaction, struct GA_session*, session, GA_json*, transaction_details,
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::sign_transaction_call(*session, json_move(transaction_details))); })

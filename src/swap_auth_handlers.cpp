@@ -201,8 +201,14 @@ namespace sdk {
         }
         if (!json_get_value(m_create_details, "error").empty()) {
             m_result = std::move(m_create_details);
-            return state_type::done; // Create transaction returned an error, do not attempt to sign
+            return state_type::done; // Create/blind tx returned an error, do not attempt to sign
         }
+        if (!json_get_value(m_create_details, "blinded", false)) {
+            // Call blind_transaction to blind the callers side
+            add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
+            return state_type::make_call;
+        }
+
         // Call sign_transaction to sign the callers side
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
         m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
@@ -222,7 +228,7 @@ namespace sdk {
             // Call result is our new receive address
             m_receive_address = std::move(next_handler->move_result());
         } else if (m_create_details.empty()) {
-            // Call result is our created tx
+            // Call result is our created/blinded tx
             m_create_details = std::move(next_handler->move_result());
         } else if (!m_is_signed) {
             // Call result is our signed tx
@@ -314,6 +320,10 @@ namespace sdk {
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
+        } else if (!json_get_value(m_create_details, "blinded", false)) {
+            // Call blind_transaction to blind the callers side
+            add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
+            return state_type::make_call;
         }
         return state_type::done;
     }
@@ -324,7 +334,7 @@ namespace sdk {
             // Call result is our new receive address
             m_receive_address = std::move(next_handler->move_result());
         } else if (m_create_details.empty()) {
-            // Call result is our created tx
+            // Call result is our created/blinded tx
             m_create_details = std::move(next_handler->move_result());
             m_result = m_create_details;
         } else {

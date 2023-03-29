@@ -156,6 +156,8 @@ namespace sdk {
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
+    size_t varbuff_get_length(size_t script_len);
+
     std::vector<unsigned char> script_push_from_bytes(byte_span_t data);
 
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash);

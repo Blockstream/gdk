@@ -97,6 +97,9 @@ namespace sdk {
         case hw_request::get_blinding_nonces:
             action = "get_blinding_nonces";
             break;
+        case hw_request::blind_tx:
+            action = "blind_tx";
+            break;
         case hw_request::none:
         default:
             GDK_RUNTIME_ASSERT(false);
@@ -479,6 +482,10 @@ namespace sdk {
             }
             handler->resolve_hw_reply(std::move(result));
             return true;
+        } else if (have_master_blinding_key && request == hw_request::blind_tx) {
+            // Host unblinding: Blind a transaction
+            handler->resolve_hw_reply(blind_ga_transaction(get_session(), required_data.at("details")));
+            return true;
         } else if (request == hw_request::get_xpubs) {
             const auto& paths = required_data.at("paths");
             if (!is_hardware || are_all_paths_cached(signer, paths)) {
@@ -506,6 +513,8 @@ namespace sdk {
             }
         } else if (request == hw_request::get_master_blinding_key) {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
+        } else if (request == hw_request::blind_tx) {
+            result = blind_ga_transaction(get_session(), required_data["details"]);
         } else if (request == hw_request::sign_tx) {
             auto sigs = sign_ga_transaction(
                 get_session(), required_data.at("transaction"), required_data.at("signing_inputs"))

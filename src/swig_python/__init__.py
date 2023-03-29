@@ -228,6 +228,9 @@ class Session(object):
     def create_transaction(self, transaction_details):
         return Call(create_transaction(self.session_obj, self._to_json(transaction_details)))
 
+    def blind_transaction(self, transaction_details):
+        return Call(blind_transaction(self.session_obj, self._to_json(transaction_details)))
+
     def sign_transaction(self, transaction_details):
         return Call(sign_transaction(self.session_obj, self._to_json(transaction_details)))
 

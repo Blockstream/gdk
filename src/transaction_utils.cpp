@@ -108,7 +108,7 @@ static std::vector<unsigned char> output_script_for_address(
     if (!error.empty()) {
         // Overwite any existing error in the transaction as addressees
         // are entered and should be corrected first.
-        result["error"] = error;
+        set_tx_error(result, error, true);
         // Create a dummy script so that the caller gets back a reasonable
         // estimate of the tx size/fee etc when the address is corrected.
         std::vector<unsigned char>(HASH160_LEN).swap(script);
@@ -371,11 +371,45 @@ namespace sdk {
         return witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
     }
 
-    amount get_tx_fee(const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate)
+    static size_t get_tx_adjusted_weight(const network_parameters& net_params, const wally_tx_ptr& tx)
+    {
+        size_t weight = tx_get_weight(tx);
+        if (net_params.is_liquid()) {
+            // Add the weight of any missing blinding data
+            const auto num_inputs = tx->num_inputs ? tx->num_inputs : 1; // Assume at least 1 input
+            const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
+            size_t blinding_weight = 0;
+
+            for (size_t i = 0; i < tx->num_outputs; ++i) {
+                auto& output = tx->outputs[i];
+                if (!output.script) {
+                    GDK_RUNTIME_ASSERT(i + 1 == tx->num_outputs);
+                    continue; // Fee: Must be the last output
+                }
+                GDK_RUNTIME_ASSERT(output.asset_len);
+                GDK_RUNTIME_ASSERT(output.value_len);
+                if (!output.nonce) {
+                    blinding_weight += WALLY_TX_ASSET_CT_NONCE_LEN * 4;
+                }
+                if (!output.surjectionproof_len) {
+                    blinding_weight += sjp_size;
+                }
+                if (!output.rangeproof_len) {
+                    // FIXME: Expose secp256k1_rangeproof_max_size through wally
+                    blinding_weight += varbuff_get_length(ASSET_RANGEPROOF_MAX_LEN);
+                }
+            }
+            weight += blinding_weight;
+        }
+        return weight;
+    }
+
+    amount get_tx_fee(
+        const network_parameters& net_params, const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate)
     {
         const amount rate = fee_rate < min_fee_rate ? min_fee_rate : fee_rate;
-
-        const size_t vsize = tx_get_vsize(tx);
+        const size_t weight = get_tx_adjusted_weight(net_params, tx);
+        const size_t vsize = (weight + 3) / 4;
         const auto fee = static_cast<double>(vsize) * rate.value() / 1000.0;
         const auto rounded_fee = static_cast<amount::value_type>(std::ceil(fee));
         return amount(rounded_fee);
@@ -390,20 +424,24 @@ namespace sdk {
         return script;
     }
 
-    void set_tx_error(nlohmann::json& result, const std::string& error)
+    void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite)
     {
-        auto error_p = result.find("error");
-        if (error_p == result.end() || error_p->get<std::string>().empty()) {
-            result["error"] = error;
+        auto& e = result["error"];
+        if (overwrite || e.empty() || e.get<std::string>().empty()) {
+            e = error;
         }
     }
 
     amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id)
+        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change)
     {
+        std::string old_error = json_get_value(result, "error");
         std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
-
         if (net_params.is_liquid()) {
+            if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
+                // This is an unblinded change output, allow it
+                result["error"] = old_error;
+            }
             const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
             const auto asset_bytes = h2b_rev(asset_id, 0x1);
             tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
@@ -557,14 +595,14 @@ namespace sdk {
             set_tx_error(result, res::id_invalid_amount);
         }
 
-        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex);
+        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex, false);
     }
 
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
         result["transaction"] = valid ? tx_to_hex(tx, tx_flags(net_params.is_liquid())) : std::string();
-        const auto weight = tx_get_weight(tx);
+        const auto weight = get_tx_adjusted_weight(net_params, tx);
         result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
         result["transaction_weight"] = valid ? weight : 0;
         const uint32_t tx_vsize = valid ? tx_vsize_from_weight(weight) : 0;
@@ -676,7 +714,7 @@ namespace sdk {
                     // Insert our change meta-data for the change output
                     const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
-                    if (is_liquid) {
+                    if (is_liquid && change_address.value("is_blinded", false)) {
                         output["blinding_key"] = blinding_key_from_addr(change_address.at("address"));
                     }
                 } else {
@@ -720,7 +758,7 @@ namespace sdk {
                 if (has_amp_inputs && !is_fee) {
                     if (is_blinded) {
                         output["blinding_nonce"] = addressee.at("blinding_nonce");
-                    } else {
+                    } else if (output.contains("blinding_key")) {
                         const auto blinding_pubkey = h2b(output.at("blinding_key"));
                         const auto eph_private_key = h2b(output.at("eph_private_key"));
                         output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_private_key)));

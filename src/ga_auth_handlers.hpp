@@ -138,6 +138,16 @@ namespace sdk {
         nlohmann::json m_details;
     };
 
+    class blind_transaction_call : public auth_handler_impl {
+    public:
+        blind_transaction_call(session& session, nlohmann::json details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class get_subaccounts_call : public auth_handler_impl {
     public:
         get_subaccounts_call(session& session, nlohmann::json details);

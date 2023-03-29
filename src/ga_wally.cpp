@@ -282,6 +282,14 @@ namespace sdk {
         out.resize(written);
     }
 
+    size_t varbuff_get_length(size_t script_len)
+    {
+        unsigned char dummy[1];
+        size_t written;
+        GDK_VERIFY(wally_varbuff_get_length(dummy, script_len, &written));
+        return written;
+    }
+
     std::vector<unsigned char> script_push_from_bytes(byte_span_t data)
     {
         std::vector<unsigned char> ret(data.size() + 5); // 5 = OP_PUSHDATA4 + 4 byte size
