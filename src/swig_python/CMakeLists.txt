@@ -8,9 +8,15 @@ macro(create_python_wheel_target)
             python -m build
         COMMAND touch python-wheel-canary-file
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
-        DEPENDS greenaddress-full
+        DEPENDS
+            greenaddress-full
+            ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/swig_gasdk.i
+            ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/greenaddress/__init__.py
+            ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/README.md
+            ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/pyproject.toml
+            ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py
         COMMENT "building python-wheel"
-    )
+)
     add_custom_target(python-wheel
         DEPENDS python-wheel-canary-file
     )
@@ -76,9 +82,9 @@ if(APPLE)
     set(_pythonLFlags "${_pythonLFlags} -framework Security")
 endif()
 
-file(COPY __init__.py DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/greenaddress/)
-file(COPY swig_gasdk.i DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress)
-file(COPY README.md DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/greenaddress)
+configure_file(__init__.py ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/greenaddress/__init__.py COPYONLY)
+configure_file(swig_gasdk.i ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/swig_gasdk.i COPYONLY)
+configure_file(README.md ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/README.md COPYONLY)
 configure_file(pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/pyproject.toml)
 
 if(DEV_MODE)

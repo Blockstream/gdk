@@ -44,7 +44,7 @@ find_tool(_buildJavaSwig "swig.sh")
 add_custom_command(OUTPUT ${_swigCFile}
     COMMAND ${_buildJavaSwig} ${SED} ${SWIG_EXECUTABLE} ${Java_JAVAC_EXECUTABLE} ${Java_JAR_EXECUTABLE} ${_swigCFile} ${_swigDestDir} swig_gasdk.i jni_extra.java_in ${_hackyGDKInclude} ${WALLYCORE_JAR} ${_requiredJavaVersion}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS greenaddress-objects
+    DEPENDS greenaddress-objects swig_gasdk.i jni_extra.java_in
 )
 add_custom_target(swig-java-cmd
     DEPENDS ${_swigCFile}
