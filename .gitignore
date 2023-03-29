@@ -3,19 +3,10 @@
 #
 
 !.gitignore
-/result*
-/build
-target/release
-target/debug
 /build-gcc*/
 /build-clang*/
-/*/*/*/.build/
-/subprojects/*
-!subprojects/gdk_rust*
 /subprojects/gdk_rust/gdk_electrum/target
 /subprojects/gdk_rust/gdk_rpc/target
-!subprojects/*meson*
-!subprojects/*wrap*
 *.orig
 *.rej
 *.swp
@@ -35,5 +26,4 @@ docs/build
 /TAGS
 /tor
 *~
-target/
 gdk-python/
