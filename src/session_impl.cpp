@@ -371,11 +371,7 @@ namespace sdk {
 
     nlohmann::json session_impl::create_transaction(const nlohmann::json& details)
     {
-        try {
-            return create_ga_transaction(*this, details);
-        } catch (const user_error& e) {
-            return nlohmann::json({ { "error", e.what() } });
-        }
+        return create_ga_transaction(*this, details);
     }
 
     nlohmann::json session_impl::psbt_sign(const nlohmann::json& details)
