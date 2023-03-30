@@ -98,8 +98,7 @@ set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
 )
 
 set_target_properties(greenaddress-objects PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
-
-
-# cmake_print_properties(TARGETS greenaddress-objects PROPERTIES
-#     POSITION_INDEPENDENT_CODE CXX_VISIBILITY_PRESET C_VISIBILITY_PRESET VISIBILITY_INLINES_HIDDEN
-# )
+# with only purpose of sequencing rust and c++ builds and avoid CPU/RAM overload
+if(ENABLE_RUSTCPP)
+    add_dependencies(greenaddress-objects gdk-rust)
+endif()
