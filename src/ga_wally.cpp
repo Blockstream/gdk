@@ -766,6 +766,7 @@ namespace sdk {
             private_key.size(), asset.data(), asset.size(), abf.data(), abf.size(), vbf.data(), vbf.size(),
             commitment.data(), commitment.size(), extra.data(), extra.size(), generator.data(), generator.size(),
             min_value, exp, min_bits, rangeproof.data(), rangeproof.size(), &written));
+        GDK_RUNTIME_ASSERT(written <= rangeproof.size());
         rangeproof.resize(written);
         return rangeproof;
     }
@@ -778,6 +779,7 @@ namespace sdk {
         GDK_VERIFY(wally_explicit_rangeproof(value, nonce_hash.data(), nonce_hash.size(), vbf.data(), vbf.size(),
             commitment.data(), commitment.size(), generator.data(), generator.size(), rangeproof.data(),
             rangeproof.size(), &written));
+        GDK_RUNTIME_ASSERT(written <= rangeproof.size());
         rangeproof.resize(written);
         return rangeproof;
     }
@@ -806,6 +808,7 @@ namespace sdk {
             output_abf.size(), output_generator.data(), output_generator.size(), bytes.data(), bytes.size(),
             asset.data(), asset.size(), abf.data(), abf.size(), generator.data(), generator.size(), surjproof.data(),
             surjproof.size(), &written));
+        GDK_RUNTIME_ASSERT(written <= surjproof.size());
         surjproof.resize(written);
         return surjproof;
     }
