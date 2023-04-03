@@ -22,7 +22,7 @@ macro(initialize_android_environment)
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE BOTH)
 
     # it's weird but it's necessary... can probably be removed when ANDROID_USE_LEGACY_TOOLCHAIN_FILE == False
-    if(CMAKE_BUILD_TYPE STREQUAL Release)
+    if(CMAKE_BUILD_TYPE STREQUAL Release AND ANDROID_USE_LEGACY_TOOLCHAIN_FILE)
         string(REPLACE "-g" "" CMAKE_C_FLAGS ${CMAKE_C_FLAGS})
         string(REPLACE "-g" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
         string(REPLACE "-g" "" CMAKE_ASM_FLAGS ${CMAKE_ASM_FLAGS})

@@ -269,6 +269,7 @@ cmake --build tmp/${source_name}/build --target zlibstatic zlib
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
 # no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
 find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type l -delete
+find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type f -delete
 find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dylib*" -type f -delete
 find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dll*" -type f -delete
 # https://github.com/madler/zlib/issues/652
