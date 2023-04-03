@@ -99,6 +99,9 @@ namespace sdk {
     // Update the json tx size/fee rate information from tx
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
 
+    // Get the output index of an assets change, or NO_CHANGE_INDEX
+    uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id);
+
     // Update the json tx representation with info from tx
     void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result);
 

@@ -637,6 +637,15 @@ namespace sdk {
         return asset_final_vbf(input_values, num_inputs, abfs, vbfs);
     }
 
+    uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id)
+    {
+        const auto index_p = result.find("change_index");
+        if (index_p != result.end()) {
+            return index_p->value(asset_id, NO_CHANGE_INDEX);
+        }
+        return NO_CHANGE_INDEX;
+    }
+
     void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const auto& net_params = session.get_network_parameters();
@@ -679,11 +688,7 @@ namespace sdk {
                 const bool is_fee = o.script == nullptr && o.script_len == 0u;
                 const auto script_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
 
-                const bool have_change = result.find("have_change") != result.end()
-                    ? result.at("have_change").value(asset_id, false)
-                    : false;
-                const uint32_t change_index
-                    = have_change ? result.at("change_index").at(asset_id).get<uint32_t>() : NO_CHANGE_INDEX;
+                const uint32_t change_index = get_tx_change_index(result, asset_id);
 
                 amount::value_type satoshi = o.satoshi;
                 if (is_liquid) {

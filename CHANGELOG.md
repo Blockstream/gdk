@@ -22,6 +22,7 @@
 - Watch Only: Fix old-style watch-only sessions fetching UTXOs and balances.
 
 ### Removed
+- GA_create_transaction (and sign/send): The `has_change` element has been removed.
 
 ## Release 0.0.61 - 2023-04-18
 

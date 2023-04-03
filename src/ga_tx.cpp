@@ -360,7 +360,7 @@ namespace sdk {
                 result["is_redeposit"] = is_redeposit;
                 result["addressees"] = addressees;
 
-                result["have_change"][policy_asset] = change_index != NO_CHANGE_INDEX;
+                result["change_index"][policy_asset] = change_index;
                 if (change_index == NO_CHANGE_INDEX && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
                         if (json_get_value(in, "is_relevant", false)) {
@@ -581,9 +581,7 @@ namespace sdk {
             uint32_t fee_index = NO_CHANGE_INDEX;
 
             if (is_rbf) {
-                const auto have_change_p = result.find("have_change");
-                have_change_output
-                    = have_change_p != result.end() ? json_get_value(*have_change_p, policy_asset, false) : false;
+                have_change_output = get_tx_change_index(result, asset_id) != NO_CHANGE_INDEX;
                 if (have_change_output) {
                     const auto change_address = result.at("change_address").at(policy_asset).at("address");
                     add_tx_output(net_params, result, tx, change_address, 0, policy_asset, true);
@@ -741,7 +739,6 @@ namespace sdk {
                     std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
                     std::swap(fee_index, change_index);
                 }
-                result["have_change"][asset_id] = have_change_output;
                 result["change_index"][asset_id] = change_index;
             }
 
@@ -770,7 +767,6 @@ namespace sdk {
             if (!manual_selection) {
                 result["used_utxos"] = used_utxos;
             }
-            result["have_change"][asset_id] = have_change_output;
             result["satoshi"][asset_id] = required_total.value();
 
             update_tx_info(session, tx, result);

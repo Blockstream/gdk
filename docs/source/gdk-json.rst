@@ -674,9 +674,6 @@ Sign transaction JSON
   "error": "",
   "fee": 208,
   "fee_rate": 1000,
-  "have_change": {
-    "btc": true
-  },
   "is_redeposit": false,
   "is_sweep": false,
   "network_fee": 0,
@@ -827,9 +824,6 @@ Send transaction JSON
   "error": "",
   "fee": 208,
   "fee_rate": 1000,
-  "have_change": {
-    "btc": true
-  },
   "is_redeposit": false,
   "is_sweep": false,
   "network_fee": 0,
