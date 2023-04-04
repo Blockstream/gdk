@@ -772,7 +772,8 @@ namespace sdk {
         }
 
         template <typename T>
-        static void set_override(nlohmann::json& ret, const std::string& key, const nlohmann::json& src, T default_)
+        static void set_override(
+            nlohmann::json& ret, const std::string& key, const nlohmann::json& src, const T& default_)
         {
             // Use the users provided value, else the registered value, else `default_`
             ret[key] = src.value(key, ret.value(key, default_));
@@ -780,19 +781,25 @@ namespace sdk {
 
         static auto get_network_overrides(const nlohmann::json& user_overrides, nlohmann::json& defaults)
         {
+            const std::string empty;
             // Set override-able settings from the users parameters
+            set_override(defaults, "asset_registry_onion_url", user_overrides, empty);
+            set_override(defaults, "asset_registry_url", user_overrides, empty);
+            set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
+            set_override(defaults, "electrum_onion_url", user_overrides, empty);
             set_override(defaults, "electrum_tls", user_overrides, false);
-            set_override(defaults, "electrum_url", user_overrides, std::string());
+            set_override(defaults, "electrum_url", user_overrides, empty);
+            set_override(defaults, "pin_server_onion_url", user_overrides, empty);
+            set_override(defaults, "pin_server_url", user_overrides, empty);
+            set_override(defaults, "price_onion_url", user_overrides, empty);
+            set_override(defaults, "price_url", user_overrides, empty);
+            set_override(defaults, "proxy", user_overrides, empty);
+            set_override(defaults, "spv_enabled", user_overrides, false);
             set_override(defaults, "spv_multi", user_overrides, false);
             set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
-            set_override(defaults, "spv_enabled", user_overrides, false);
             set_override(defaults, "use_tor", user_overrides, false);
-            set_override(defaults, "user_agent", user_overrides, std::string());
-            set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
-            set_override(defaults, "proxy", user_overrides, std::string());
-            set_override(defaults, "price_url", user_overrides, std::string());
-            set_override(defaults, "price_onion_url", user_overrides, std::string());
-            defaults["state_dir"] = gdk_config().value("datadir", std::string()) + "/state";
+            set_override(defaults, "user_agent", user_overrides, empty);
+            defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;
         }
     } // namespace
