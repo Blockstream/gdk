@@ -601,7 +601,6 @@ namespace sdk {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
         result["transaction"] = valid ? tx_to_hex(tx, tx_flags(net_params.is_liquid())) : std::string();
         const auto weight = get_tx_adjusted_weight(net_params, tx);
-        result["transaction_size"] = valid ? tx_get_length(tx, WALLY_TX_FLAG_USE_WITNESS) : 0;
         result["transaction_weight"] = valid ? weight : 0;
         const uint32_t tx_vsize = valid ? tx_vsize_from_weight(weight) : 0;
         result["transaction_vsize"] = tx_vsize;

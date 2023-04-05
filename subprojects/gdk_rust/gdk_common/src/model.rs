@@ -342,7 +342,7 @@ pub struct TransactionMeta {
     pub weight: usize,
     #[serde(rename = "transaction_vsize")]
     pub vsize: usize,
-    #[serde(rename = "transaction_size")]
+    #[serde(skip)]
     pub size: usize,
     // The utxos used in the transaction
     #[serde(default)]
@@ -601,6 +601,7 @@ pub struct TxListItem {
     pub fee_rate: u64,
     pub inputs: Vec<GetTxInOut>,
     pub outputs: Vec<GetTxInOut>,
+    #[serde(skip)]
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,
@@ -1093,6 +1094,7 @@ pub struct TransactionDetails {
     pub txhash: String,
     pub transaction_locktime: u32,
     pub transaction_version: u32,
+    #[serde(skip)]
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,

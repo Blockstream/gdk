@@ -86,12 +86,16 @@ Some data returned when creating a transaction may be read by the user:
                    to ``"true"`` when ``"addressees_read_only"`` is true
                    and also when ``"send_all"`` = ``"true"`` (the amount to
                    send is automatically calculated in this case).
-:calculated_fee_rate: The exact fee rate for the transaction, which may
-                      differ slightly from the requested ``"fee_rate"``.
-:transaction: The hex-encoded resulting transaction.
-:transaction_size: The size of ``"transaction"`` in bytes.
-:transaction_vsize: The virtual size of the ``"transaction"`` in vbytes.
-:transaction_weight: The weight on ``"transaction"`` in segwit weight units.
+:transaction: The hex-encoded resulting transaction. This may be partially
+              complete or contain dummy data, e.g. missing blinding data or
+              signatures before it is fully completed and signed. The vsize
+              and weight elements described below are adjusted with reasonable
+              estimates for any missing data until the transaction is fully signed.
+:transaction_vsize: The expected final vsize of the ``"transaction"`` in vbytes.
+:transaction_weight: The expected final weight of ``"transaction"`` in segwit weight units.
+:calculated_fee_rate: The expected fee rate for the final signed transaction. This
+                      may differ slightly from the requested ``"fee_rate"`` due
+                      to variance in the size of witness data such as signatures.
 :used_utxos: An array of the ``"utxos"`` elements that are used by the transaction.
 
 .. _addressee:

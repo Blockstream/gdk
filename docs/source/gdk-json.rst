@@ -429,7 +429,6 @@ Describes a users transaction history returned by `GA_get_transactions`.
           "btc": -101000207
         },
         "spv_verified": "disabled",
-        "transaction_size": 375,
         "transaction_vsize": 206,
         "transaction_weight": 824,
         "txhash": "0a934eaa5c8a7c961c1c3aef51a49d11d7d9a04a839620ec6e796156b429c7b4",
@@ -456,7 +455,6 @@ Describes a users transaction history returned by `GA_get_transactions`.
     transaction. Negative numbers represent outgoing amounts, positive incoming.
 :spv_verified: The SPV status of the transaction, one of ``"in_progress"``, ``"verified"``,
     ``"not_verified"``, ``"disabled"``, ``"not_longest"`` or ``"unconfirmed"``.
-:transaction_size: The size of the transaction in bytes.
 :transaction_vsize: The size of the transaction in vbytes.
 :transaction_weight: The weight of the transaction.
 :txhash: The txid of the transaction.
@@ -621,7 +619,6 @@ users wallet. Returned by `GA_get_transaction_details`.
   {
     "transaction": "02000000000101ab0dec345ed48b0761411306eae50f90dd34f3c8598e48f1c3ad324a862bc72b0000000000feffffff02f4958b4400000000160014a0573f94da51090f3225ddccab864bf3add1019300e1f5050000000017a914fda46ba3f2fc040df40d8cb8543b3dcdc168b6fa870247304402201420ca8bb17c74eef87d7c26a1bed69ddaec8f389df06f3d0233edf0070eec69022051e7bf1efb00a198a5c9958811246f19a1071ac6b68fa9c2f3d91d7a080a56fa012102be66aba37c4c48c85b6eea4d0d7c6ba0e22803438d3f1e29bc8e6e352786335fb0010000",
     "transaction_locktime": 432,
-    "transaction_size": 223,
     "transaction_version": 2,
     "transaction_vsize": 142,
     "transaction_weight": 565,
@@ -712,7 +709,6 @@ Sign transaction JSON
       "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
   ],
-  "transaction_size": 379,
   "transaction_version": 2,
   "transaction_vsize": 208,
   "transaction_weight": 829,
@@ -837,7 +833,6 @@ Send transaction JSON
       "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
   ],
-  "transaction_size": 225,
   "transaction_version": 2,
   "transaction_vsize": 169,
   "transaction_weight": 675,

@@ -23,6 +23,8 @@
 
 ### Removed
 - GA_create_transaction (and sign/send): The `has_change` element has been removed.
+- GA_create_transaction (and blind/sign/send): The `transaction_size` element
+  has been removed. It can instead be computed from the `transaction` element.
 - GA_sign_transaction (and blind/send): The `utxos` element is now removed when the
   handler returns, as it is only used for transaction creation.
 
