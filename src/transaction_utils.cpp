@@ -109,9 +109,11 @@ static std::vector<unsigned char> output_script_for_address(
         // Overwite any existing error in the transaction as addressees
         // are entered and should be corrected first.
         set_tx_error(result, error, true);
-        // Create a dummy script so that the caller gets back a reasonable
-        // estimate of the tx size/fee etc when the address is corrected.
-        std::vector<unsigned char>(HASH160_LEN).swap(script);
+        if (script.empty()) {
+            // Create a dummy script so that the caller gets back a reasonable
+            // estimate of the tx size/fee etc when the address is corrected.
+            std::vector<unsigned char>(HASH160_LEN).swap(script);
+        }
     }
 
     return script;
