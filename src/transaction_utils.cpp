@@ -452,7 +452,7 @@ namespace sdk {
     size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
     {
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        auto asset_bytes = h2b_rev(net_params.policy_asset(), 0x1);
+        auto asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
         tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
         return tx->num_outputs - 1;
     }
@@ -661,9 +661,11 @@ namespace sdk {
             size_t addressee_index = 0;
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 const auto& o = tx->outputs[i];
-                std::string asset_id = "btc";
                 auto addressee = nlohmann::json::object();
-                const bool is_blinded = is_liquid && o.asset && *o.asset != 1 && o.value && *o.value != 1;
+                GDK_RUNTIME_ASSERT(!is_liquid || o.asset);
+                const bool is_blinded = is_liquid && *o.asset != 1 && o.value && *o.value != 1;
+                std::string asset_id;
+
                 if (is_blinded) {
                     // Find the addressee with the same index as the current output
                     for (const auto& addr : result.at("addressees")) {
@@ -672,16 +674,11 @@ namespace sdk {
                         }
                     }
                     GDK_RUNTIME_ASSERT(!addressee.empty());
-                }
-                if (is_liquid) {
-                    if (o.asset && o.asset_len) {
-                        asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
-                        if (is_blinded) {
-                            asset_id = addressee.at("asset_id");
-                        }
-                    } else {
-                        asset_id = net_params.policy_asset();
-                    }
+                    asset_id = addressee.at("asset_id");
+                } else if (is_liquid) {
+                    asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+                } else {
+                    asset_id = net_params.get_policy_asset();
                 }
                 const bool is_fee = o.script == nullptr && o.script_len == 0u;
                 const auto script_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};

@@ -201,12 +201,13 @@ namespace sdk {
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
+        // FIXME: Support bump/CPFP for liquid
         static std::pair<bool, bool> check_bump_tx(
             session_impl& session, const std::set<uint32_t>& subaccounts, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
             const bool is_electrum = net_params.is_electrum();
-            const std::string policy_asset("btc"); // FIXME: Bump/CPFP for liquid
+            const auto policy_asset = net_params.get_policy_asset();
 
             if (result.find("previous_transaction") == result.end()) {
                 return std::make_pair(false, false);
@@ -773,7 +774,7 @@ namespace sdk {
         {
             const auto& net_params = session.get_network_parameters();
             const bool is_liquid = net_params.is_liquid();
-            const auto policy_asset = is_liquid ? net_params.policy_asset() : std::string("btc");
+            const auto policy_asset = net_params.get_policy_asset();
 
             const auto subaccounts = get_tx_subaccounts(result);
             const bool is_partial = json_get_value(result, "is_partial", false);

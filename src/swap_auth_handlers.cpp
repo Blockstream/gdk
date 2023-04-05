@@ -302,7 +302,7 @@ namespace sdk {
             // Get the input UTXOs
             auto maker_input = liquidex_get_maker_input(m_tx, proposal_input);
             nlohmann::json::array_t used_utxos = { std::move(maker_input) };
-            std::set<std::string> asset_ids{ maker_asset_id, taker_asset_id, m_net_params.policy_asset() };
+            std::set<std::string> asset_ids{ maker_asset_id, taker_asset_id, m_net_params.get_policy_asset() };
             for (const auto& asset_id : asset_ids) {
                 add_asset_utxos(utxos, asset_id, used_utxos);
             }

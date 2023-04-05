@@ -1369,11 +1369,8 @@ namespace sdk {
 
     void get_balance_call::compute_balance()
     {
-        const bool is_liquid = m_net_params.is_liquid();
-        const auto policy_asset = is_liquid ? m_net_params.policy_asset() : std::string("btc");
-
         // Compute the balance data from returned UTXOs
-        nlohmann::json balance({ { policy_asset, 0 } });
+        nlohmann::json balance({ { m_net_params.get_policy_asset(), 0 } });
 
         for (const auto& asset : m_result["unspent_outputs"].items()) {
             if (asset.key() == "error") {

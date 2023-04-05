@@ -609,7 +609,7 @@ namespace sdk {
 
     amount session_impl::get_dust_threshold(const std::string& asset_id_hex) const
     {
-        if (m_net_params.is_liquid() && asset_id_hex != m_net_params.policy_asset()) {
+        if (m_net_params.is_liquid() && asset_id_hex != m_net_params.get_policy_asset()) {
             return amount(1); // No dust threshold for assets
         }
         // BTC and L-BTC use the same threshold. For Liquid, txs are ~10x larger,

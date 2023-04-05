@@ -1757,7 +1757,6 @@ namespace sdk {
 
         // FIXME: replace "pointer" with "subaccount"; pointer should only be used
         // for the final path element in a derivation
-        const auto policy_asset = m_net_params.is_liquid() ? m_net_params.policy_asset() : std::string("btc");
         nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
             { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
             { "recovery_xpub", recovery_xpub }, { "required_ca", required_ca }, { "hidden", is_hidden },

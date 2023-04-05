@@ -46,7 +46,7 @@ namespace sdk {
         std::string get_pin_server_public_key() const;
         std::string pub_key() const;
         std::string gait_onion() const;
-        std::string policy_asset() const;
+        std::string get_policy_asset() const;
         std::string bip21_prefix() const;
         std::string bech32_prefix() const;
         std::string blech32_prefix() const;

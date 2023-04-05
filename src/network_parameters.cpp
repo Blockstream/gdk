@@ -885,7 +885,7 @@ namespace sdk {
     std::string network_parameters::get_pin_server_public_key() const { return m_details.at("pin_server_public_key"); }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
-    std::string network_parameters::policy_asset() const { return m_details.value("policy_asset", std::string()); }
+    std::string network_parameters::get_policy_asset() const { return m_details.value("policy_asset", "btc"); }
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
     std::string network_parameters::blech32_prefix() const { return m_details.value("blech32_prefix", std::string()); }
