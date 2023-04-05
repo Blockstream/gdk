@@ -936,22 +936,20 @@ namespace sdk {
         : auth_handler_impl(session, "create_transaction")
         , m_details(std::move(details))
     {
-        m_details["error"] = std::string(); // Clear any previous error
     }
 
     auth_handler::state_type create_transaction_call::call_impl()
     {
-        const bool is_liquid = m_net_params.is_liquid();
         if (m_result.empty()) {
             // Initial call: Create the transaction from the provided details
+            m_details["error"] = std::string(); // Clear any previous error
             m_result = m_session->create_transaction(m_details);
             return check_change_outputs();
         }
 
-        // Otherwise, we have been called after resolving our blinding keys
-        const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
-
+        // Otherwise, we have been called after resolving our blinding keys:
         // Blind any unblinded change addresseses
+        const auto& public_keys = get_hw_reply().at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
@@ -963,14 +961,6 @@ namespace sdk {
 
         // Update the transaction
         m_result = m_session->create_transaction(m_result);
-
-        if (is_liquid && m_result.contains("transaction_outputs")) {
-            for (const auto& out : m_result.at("transaction_outputs")) {
-                // Check we have replaced the fake blinding key
-                GDK_RUNTIME_ASSERT(out.value("blinding_key", "") != FAKE_BLINDING_KEY);
-            }
-        }
-
         return check_change_outputs();
     }
 

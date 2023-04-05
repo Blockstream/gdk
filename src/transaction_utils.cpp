@@ -153,10 +153,6 @@ namespace sdk {
 
     static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
-    // Fake blinding key, its corresponding private key is 1
-    // TODO: refactor blinding to not use this constant
-    const std::string FAKE_BLINDING_KEY("0279be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798");
-
     static auto base58_address_from_bytes(unsigned char version, byte_span_t script_or_pubkey)
     {
         std::array<unsigned char, HASH160_LEN + 1> addr_bytes;

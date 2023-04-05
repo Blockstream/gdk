@@ -36,8 +36,6 @@ namespace sdk {
 
     const uint32_t NO_CHANGE_INDEX = 0xffffffff;
 
-    extern const std::string FAKE_BLINDING_KEY;
-
     bool is_segwit_address_type(const nlohmann::json& utxo);
 
     std::string get_address_from_public_key(
