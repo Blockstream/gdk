@@ -742,31 +742,6 @@ Sign transaction JSON
     }
   ],
   "utxo_strategy": "default",
-  "utxos": {
-    "btc": [
-      {
-        "address_type": "csv",
-        "block_height": 201,
-        "expiry_height": 52041,
-        "is_internal": false,
-        "pointer": 1,
-        "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
-        "pt_idx": 0,
-        "satoshi": 50000,
-        "script_type": 15,
-        "sequence": 4294967293,
-        "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-        "subaccount": 0,
-        "subtype": 51840,
-        "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
-        "user_path": [
-          1,
-          1
-        ],
-        "user_status": 0
-      }
-    ]
-  }
   }
 
 
@@ -890,31 +865,6 @@ Send transaction JSON
     }
   ],
   "utxo_strategy": "default",
-  "utxos": {
-    "btc": [
-      {
-        "address_type": "csv",
-        "block_height": 201,
-        "expiry_height": 52041,
-        "is_internal": false,
-        "pointer": 1,
-        "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
-        "pt_idx": 0,
-        "satoshi": 50000,
-        "script_type": 15,
-        "sequence": 4294967293,
-        "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-        "subaccount": 0,
-        "subtype": 51840,
-        "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
-        "user_path": [
-          1,
-          1
-        ],
-        "user_status": 0
-      }
-    ]
-  }
   }
 
 .. _create-swap-tx-details:

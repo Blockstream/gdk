@@ -66,7 +66,7 @@ namespace sdk {
 
     class sign_transaction_call : public auth_handler_impl {
     public:
-        sign_transaction_call(session& session, nlohmann::json tx_details);
+        sign_transaction_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
@@ -75,7 +75,7 @@ namespace sdk {
         void sign_user_inputs(const std::shared_ptr<signer>& signer);
         void on_next_handler_complete(auth_handler* next_handler) override;
 
-        nlohmann::json m_tx_details;
+        nlohmann::json m_details;
         bool m_initialized;
         bool m_user_signed;
         bool m_server_signed;
@@ -282,7 +282,7 @@ namespace sdk {
 
     class send_transaction_call final : public auth_handler_impl {
     public:
-        send_transaction_call(session& session, nlohmann::json tx_details, bool sign_only = false);
+        send_transaction_call(session& session, nlohmann::json details, bool sign_only = false);
 
         void request_code(const std::string& method) override;
 
@@ -292,7 +292,7 @@ namespace sdk {
         void initialize();
         void create_twofactor_data();
 
-        nlohmann::json m_tx_details;
+        nlohmann::json m_details;
         nlohmann::json m_limit_details;
         uint64_t m_bump_amount;
         const std::string m_type; // "send", or "sign" if sign_only == true

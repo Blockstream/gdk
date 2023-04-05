@@ -582,9 +582,9 @@ namespace sdk {
     //
     // Sign tx
     //
-    sign_transaction_call::sign_transaction_call(session& session, nlohmann::json tx_details)
+    sign_transaction_call::sign_transaction_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "sign_transaction")
-        , m_tx_details(std::move(tx_details))
+        , m_details(std::move(details))
         , m_initialized(false)
         , m_user_signed(false)
         , m_server_signed(false)
@@ -593,13 +593,15 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
+        m_details.erase("utxos"); // Not needed anymore
+
         if (!m_twofactor_data.contains("signing_inputs")) {
             // Compute the data we need for the hardware to sign the transaction
             signal_hw_request(hw_request::sign_tx);
-            m_twofactor_data["transaction"] = m_tx_details;
+            m_twofactor_data["transaction"] = m_details;
 
             // We need the inputs, augmented with types, scripts and paths
-            auto signing_inputs = get_ga_signing_inputs(m_tx_details);
+            auto signing_inputs = get_ga_signing_inputs(m_details);
             for (auto& input : signing_inputs) {
                 if (input.value("skip_signing", false)) {
                     continue;
@@ -611,7 +613,7 @@ namespace sdk {
             }
 
             // FIXME: Do not duplicate the transaction_outputs in required_data
-            m_twofactor_data["transaction_outputs"] = m_tx_details["transaction_outputs"];
+            m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
             m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
         }
     }
@@ -659,12 +661,12 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        if (json_get_value(m_tx_details, "is_sweep", false)) {
+        if (json_get_value(m_details, "is_sweep", false)) {
             // Sweep tx. Sign the tx in software.
             // TODO: Once tx aggregation is implemented, merge the sweep logic
             // with general tx construction to allow HW devices to sign individual
             // inputs (currently HW expects to sign all tx inputs)
-            m_result = m_session->user_sign_transaction(m_tx_details);
+            m_result = m_session->user_sign_transaction(m_details);
             return state_type::done;
         }
 
@@ -679,7 +681,7 @@ namespace sdk {
             return m_state;
         }
 
-        const std::vector<std::string> sign_with = json_get_value<decltype(sign_with)>(m_tx_details, "sign_with");
+        const std::vector<std::string> sign_with = json_get_value<decltype(sign_with)>(m_details, "sign_with");
         const bool user_sign
             = sign_with.empty() || std::find(sign_with.begin(), sign_with.end(), "user") != sign_with.end();
         const bool server_sign = std::find(sign_with.begin(), sign_with.end(), "green-backend") != sign_with.end();
@@ -1002,8 +1004,10 @@ namespace sdk {
 
     auth_handler::state_type blind_transaction_call::call_impl()
     {
+
         if (!m_net_params.is_liquid() || !json_get_value(m_details, "error").empty()
             || json_get_value(m_details, "blinded", false)) {
+            m_details.erase("utxos"); // Not needed anymore
             m_result = std::move(m_details);
             return state_type::done;
         }
@@ -1015,6 +1019,7 @@ namespace sdk {
         }
 
         // Update the transaction details to re-create "transaction_outputs" with blinding info
+        m_details.erase("utxos"); // Not needed anymore
         const bool is_liquid = m_net_params.is_liquid();
         wally_tx_ptr tx = tx_from_hex(m_details.at("transaction"), tx_flags(is_liquid));
         update_tx_info(*m_session, tx, m_details);
@@ -1707,9 +1712,9 @@ namespace sdk {
     //
     // Send transaction
     //
-    send_transaction_call::send_transaction_call(session& session, nlohmann::json tx_details, bool sign_only)
+    send_transaction_call::send_transaction_call(session& session, nlohmann::json details, bool sign_only)
         : auth_handler_impl(session, sign_only ? "sign_transaction" : "send_transaction")
-        , m_tx_details(std::move(tx_details))
+        , m_details(std::move(details))
         , m_bump_amount(0)
         , m_type(sign_only ? "sign" : "send")
         , m_twofactor_required(false)
@@ -1722,6 +1727,8 @@ namespace sdk {
 
     void send_transaction_call::initialize()
     {
+        m_details.erase("utxos"); // Not needed anymore
+
         signal_2fa_request(m_type + "_raw_tx");
         m_twofactor_required = m_state == state_type::request_code;
 
@@ -1740,9 +1747,9 @@ namespace sdk {
             if (user_limits.contains("satoshi")) {
                 limit = user_limits["satoshi"].get<amount::value_type>();
             }
-            const uint64_t satoshi = m_tx_details.at("satoshi").at("btc");
-            const uint64_t fee = m_tx_details.at("fee");
-            const uint32_t change_index = m_tx_details.at("change_index").at("btc");
+            const uint64_t satoshi = m_details.at("satoshi").at("btc");
+            const uint64_t fee = m_details.at("fee");
+            const uint32_t change_index = m_details.at("change_index").at("btc");
 
             m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
                 { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
@@ -1750,8 +1757,8 @@ namespace sdk {
             // If this transaction has a previous transaction, i.e. it is replacing a previous transaction
             // for example by RBF, then define m_bump_amount as the additional cost of this transaction
             // compared to the original
-            const auto previous_transaction = m_tx_details.find("previous_transaction");
-            if (previous_transaction != m_tx_details.end()) {
+            const auto previous_transaction = m_details.find("previous_transaction");
+            if (previous_transaction != m_details.end()) {
                 const auto previous_fee = previous_transaction->at("fee").get<uint64_t>();
                 GDK_RUNTIME_ASSERT(previous_fee < fee);
                 m_bump_amount = fee - previous_fee;
@@ -1833,9 +1840,9 @@ namespace sdk {
 
         // TODO: Add the recipient to twofactor_data for more server verification
         if (m_type == "send") {
-            m_result = m_session->send_transaction(m_tx_details, m_twofactor_data);
+            m_result = m_session->send_transaction(m_details, m_twofactor_data);
         } else {
-            m_result = m_session->service_sign_transaction(m_tx_details, m_twofactor_data);
+            m_result = m_session->service_sign_transaction(m_details, m_twofactor_data);
         }
         return state_type::done;
     }
