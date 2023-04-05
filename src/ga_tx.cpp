@@ -480,7 +480,7 @@ namespace sdk {
             result["change_index"][asset_id] = change_index;
         }
 
-        static void create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
+        static amount create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
             bool is_rbf, nlohmann::json& result, nlohmann::json::iterator addressees_p,
             nlohmann::json::array_t& reordered_addressees, session_impl& session, wally_tx_ptr& tx,
             const std::set<std::string>& asset_ids, std::vector<nlohmann::json>& used_utxos)
@@ -595,8 +595,6 @@ namespace sdk {
             const amount dust_threshold = session.get_dust_threshold(asset_id);
             const amount user_fee_rate = amount(result.at("fee_rate"));
             const amount min_fee_rate = session.get_min_fee_rate();
-            const amount old_fee_rate = amount(json_get_value(result, "old_fee_rate", 0u));
-            const amount old_fee = amount(json_get_value(result, "old_fee", 0u));
             const amount network_fee = amount(json_get_value(result, "network_fee", 0u));
 
             bool force_add_utxo = false;
@@ -768,22 +766,7 @@ namespace sdk {
                 result["used_utxos"] = used_utxos;
             }
             result["satoshi"][asset_id] = required_total.value();
-
-            update_tx_info(session, tx, result);
-
-            if (is_rbf && json_get_value(result, "error").empty()) {
-                // Check if rbf requirements are met. When the user input a fee rate for the
-                // replacement, the transaction will be created according to the fee rate itself
-                // and the transaction construction policies. As a result it may occur that rbf
-                // requirements are not met, but, in general, it is not possible to check it
-                // before the transaction is actually constructed.
-                const uint32_t vsize = result.at("transaction_vsize");
-                const amount calculated_fee_rate = amount(result.at("calculated_fee_rate"));
-                const amount bandwidth_fee = vsize * min_fee_rate / 1000;
-                if (fee < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
-                    set_tx_error(result, res::id_invalid_replacement_fee_rate);
-                }
-            }
+            return fee;
         }
 
         static void create_ga_transaction_impl(session_impl& session, nlohmann::json& result)
@@ -927,10 +910,30 @@ namespace sdk {
                     }
                 });
             }
+            amount fee;
             if (!is_partial || asset_ids.find(policy_asset) != asset_ids.end()) {
                 // do fee output + L-BTC outputs
-                create_tx_outputs(policy_asset, policy_asset, is_partial, is_rbf, result, addressees_p,
+                fee = create_tx_outputs(policy_asset, policy_asset, is_partial, is_rbf, result, addressees_p,
                     reordered_addressees, session, tx, asset_ids, used_utxos);
+            }
+
+            update_tx_info(session, tx, result);
+
+            if (is_rbf && json_get_value(result, "error").empty()) {
+                // Check if rbf requirements are met. When the user input a fee rate for the
+                // replacement, the transaction will be created according to the fee rate itself
+                // and the transaction construction policies. As a result it may occur that rbf
+                // requirements are not met, but, in general, it is not possible to check it
+                // before the transaction is actually constructed.
+                const amount old_fee = amount(json_get_value(result, "old_fee", 0u));
+                const amount old_fee_rate = amount(json_get_value(result, "old_fee_rate", 0u));
+                const amount calculated_fee_rate = amount(result.at("calculated_fee_rate"));
+                const amount min_fee_rate = session.get_min_fee_rate();
+                const uint32_t vsize = result.at("transaction_vsize");
+                const amount bandwidth_fee = vsize * min_fee_rate / 1000;
+                if (fee < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
+                    set_tx_error(result, res::id_invalid_replacement_fee_rate);
+                }
             }
 
             result["addressees"] = std::move(reordered_addressees);
