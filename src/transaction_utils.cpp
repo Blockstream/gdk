@@ -717,9 +717,6 @@ namespace sdk {
                     // Insert our change meta-data for the change output
                     const auto& change_address = result.at("change_address").at(asset_id);
                     output.insert(change_address.begin(), change_address.end());
-                    if (is_liquid && change_address.value("is_blinded", false)) {
-                        output["blinding_key"] = blinding_key_from_addr(change_address.at("address"));
-                    }
                 } else {
                     if (!is_blinded) {
                         // Go to the next not blinded addressee
