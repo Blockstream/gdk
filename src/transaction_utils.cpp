@@ -653,7 +653,7 @@ namespace sdk {
         const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 
         // Note that outputs may be empty if the constructed tx is incomplete
-        std::vector<nlohmann::json> outputs;
+        nlohmann::json::array_t outputs;
         if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
             outputs.reserve(tx->num_outputs);
             const bool has_amp_inputs = tx_has_amp_inputs(session, result);
@@ -765,10 +765,10 @@ namespace sdk {
                     }
                 }
 
-                outputs.emplace_back(output);
+                outputs.emplace_back(std::move(output));
             }
         }
-        result["transaction_outputs"] = outputs;
+        result["transaction_outputs"] = std::move(outputs);
     }
 
     static bool is_wallet_input(const nlohmann::json& utxo)
