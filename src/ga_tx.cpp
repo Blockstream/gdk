@@ -891,14 +891,13 @@ namespace sdk {
 
             std::set<std::string> asset_ids;
             for (auto& addressee : *addressees_p) {
-                const std::string asset_id_hex = validate_tx_addressee(session, result, addressee);
+                asset_ids.emplace(validate_tx_addressee(session, result, addressee));
                 if (!json_get_value(result, "error").empty()) {
                     if (!result.contains("used_utxos")) {
                         result.emplace("used_utxos", std::vector<nlohmann::json>());
                     }
                     return;
                 }
-                asset_ids.insert(asset_id_hex);
             }
 
             nlohmann::json::array_t reordered_addressees;

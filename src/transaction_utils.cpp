@@ -435,17 +435,17 @@ namespace sdk {
     {
         std::string old_error = json_get_value(result, "error");
         std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
-        if (net_params.is_liquid()) {
-            if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
-                // This is an unblinded change output, allow it
-                result["error"] = old_error;
-            }
-            const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-            const auto asset_bytes = h2b_rev(asset_id, 0x1);
-            tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
-        } else {
+        if (!net_params.is_liquid()) {
             tx_add_raw_output(tx, satoshi, script);
+            return amount(satoshi);
         }
+        if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
+            // This is an unblinded change output, allow it
+            result["error"] = old_error;
+        }
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        const auto asset_bytes = h2b_rev(asset_id, 0x1);
+        tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
         return amount(satoshi);
     }
 
@@ -469,6 +469,8 @@ namespace sdk {
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
+        const auto blech32_prefix = net_params.blech32_prefix();
 
         try {
             std::string address = json_get_value(addressee, "address");
@@ -516,15 +518,24 @@ namespace sdk {
             auto asset_id_hex = asset_id_from_json(net_params, addressee);
 
             if (isupper(address)) {
-                const bool is_liquid = net_params.is_liquid();
                 // Convert uppercase b(l)ech32 addresses to lowercase
                 if (boost::istarts_with(address, net_params.bech32_prefix() + "1")
-                    || (is_liquid && boost::istarts_with(address, net_params.blech32_prefix() + "1"))) {
+                    || (is_liquid && boost::istarts_with(address, blech32_prefix + "1"))) {
                     boost::to_lower(address);
                     addressee["address"] = address;
                 }
             }
 
+            if (!is_blinded) {
+                // Fetch the blinding key from the confidential address
+                std::string blinding_key;
+                if (boost::starts_with(address, blech32_prefix)) {
+                    blinding_key = b2h(confidential_addr_segwit_to_ec_public_key(address, blech32_prefix));
+                } else {
+                    blinding_key = b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
+                }
+                addressee["blinding_key"] = std::move(blinding_key);
+            }
             return asset_id_hex;
         } catch (const std::exception& e) {
             set_tx_error(result, e.what());
@@ -698,15 +709,6 @@ namespace sdk {
                 nlohmann::json output{ { "satoshi", satoshi }, { "script", script_hex },
                     { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", asset_id } };
 
-                auto&& blinding_key_from_addr = [&net_params](const std::string& address) {
-                    const auto blech32_prefix = net_params.blech32_prefix();
-                    if (boost::starts_with(address, blech32_prefix)) {
-                        return b2h(confidential_addr_segwit_to_ec_public_key(address, blech32_prefix));
-                    } else {
-                        return b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
-                    }
-                };
-
                 if (is_fee) {
                     // Nothing to do
                 } else if (i == change_index) {
@@ -740,7 +742,7 @@ namespace sdk {
                                 output["commitment"] = addressee.at("commitment");
                             }
                         } else {
-                            output["blinding_key"] = blinding_key_from_addr(address);
+                            output["blinding_key"] = addressee.at("blinding_key");
                         }
                     }
                 }
