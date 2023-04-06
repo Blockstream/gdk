@@ -318,7 +318,7 @@ namespace sdk {
         throw std::runtime_error("get_transaction_details not implemented");
     }
 
-    nlohmann::json ga_lightning::create_transaction(const nlohmann::json& details)
+    void ga_lightning::create_transaction(nlohmann::json& details)
     {
         throw std::runtime_error("create_transaction not implemented");
     }

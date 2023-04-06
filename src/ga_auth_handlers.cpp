@@ -944,8 +944,9 @@ namespace sdk {
     {
         if (m_result.empty()) {
             // Initial call: Create the transaction from the provided details
-            m_details["error"] = std::string(); // Clear any previous error
-            m_result = m_session->create_transaction(m_details);
+            m_result.swap(m_details);
+            m_result["error"] = std::string(); // Clear any previous error
+            m_session->create_transaction(m_result);
             return check_change_outputs();
         }
 
@@ -962,7 +963,7 @@ namespace sdk {
         }
 
         // Update the transaction
-        m_result = m_session->create_transaction(m_result);
+        m_session->create_transaction(m_result);
         return check_change_outputs();
     }
 

@@ -1045,20 +1045,17 @@ namespace sdk {
         addr["is_blinded"] = false;
     }
 
-    nlohmann::json create_ga_transaction(session_impl& session, const nlohmann::json& details)
+    void create_ga_transaction(session_impl& session, nlohmann::json& details)
     {
-        // Copy all inputs into our result (they will be overridden below as needed)
-        nlohmann::json result(details);
         try {
             // Wrap the actual processing in try/catch
             // The idea here is that result is populated with as much detail as possible
             // before returning any error to allow the caller to make iterative changes
             // fixes each error
-            create_ga_transaction_impl(session, result);
+            create_ga_transaction_impl(session, details);
         } catch (const std::exception& e) {
-            set_tx_error(result, e.what());
+            set_tx_error(details, e.what());
         }
-        return result;
     }
 
     void add_input_signature(

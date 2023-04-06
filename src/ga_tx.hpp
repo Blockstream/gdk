@@ -18,7 +18,7 @@ namespace sdk {
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
     void unblind_address(const network_parameters& net_params, nlohmann::json& addr);
 
-    nlohmann::json create_ga_transaction(session_impl& session, const nlohmann::json& details);
+    void create_ga_transaction(session_impl& session, nlohmann::json& details);
 
     void add_input_signature(
         const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
