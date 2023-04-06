@@ -343,7 +343,7 @@ GDK_DEFINE_C_FUNCTION_3(
     GA_set_csvtime, struct GA_session*, session, GA_json*, locktime_details, struct GA_auth_handler**, call, {
         constexpr bool is_csv = true;
         *call = make_call(new ga::sdk::locktime_call(*session, json_move(locktime_details), is_csv));
-    });
+    })
 
 GDK_DEFINE_C_FUNCTION_3(
     GA_set_nlocktime, struct GA_session*, session, const GA_json*, locktime_details, struct GA_auth_handler**, call, {
@@ -387,7 +387,7 @@ GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint3
     { session->rename_subaccount(subaccount, new_name); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_update_subaccount, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::update_subaccount_call(*session, json_move(details))); });
+    call, { *call = make_call(new ga::sdk::update_subaccount_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_transactions, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::get_transactions_call(*session, json_move(details))); })
@@ -409,7 +409,7 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, GA_
 
 GDK_DEFINE_C_FUNCTION_3(GA_set_unspent_outputs_status, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::set_unspent_outputs_status_call(*session, json_move(details))); });
+    { *call = make_call(new ga::sdk::set_unspent_outputs_status_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_5(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, const char*, private_key,
     const char*, password, uint32_t, unused, GA_json**, utxos, {
@@ -427,10 +427,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_convert_amount, struct GA_session*, session, const GA
     output, { *json_cast(output) = new nlohmann::json(session->convert_amount(*json_cast(value_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_encrypt_with_pin, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, json_move(details))); });
+    call, { *call = make_call(new ga::sdk::encrypt_with_pin_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_decrypt_with_pin, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::decrypt_with_pin_call(*session, json_move(details))); });
+    call, { *call = make_call(new ga::sdk::decrypt_with_pin_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_1(GA_disable_all_pin_logins, struct GA_session*, session, { session->disable_all_pin_logins(); })
 
@@ -493,10 +493,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_broadcast_transaction, struct GA_session*, session, c
 
 GDK_DEFINE_C_FUNCTION_3(GA_send_transaction, struct GA_session*, session, GA_json*, transaction_details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::send_transaction_call(*session, json_move(transaction_details))); });
+    { *call = make_call(new ga::sdk::send_transaction_call(*session, json_move(transaction_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_sign_message, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
-    { *call = make_call(new ga::sdk::sign_message_call(*session, json_move(details))); });
+    { *call = make_call(new ga::sdk::sign_message_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_twofactor_change_limits, struct GA_session*, session, GA_json*, limit_details,
     struct GA_auth_handler**, call,
