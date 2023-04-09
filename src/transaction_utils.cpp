@@ -517,10 +517,14 @@ namespace sdk {
     }
 
     static amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change)
+        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change,
+        bool is_fee)
     {
         std::string old_error = json_get_value(result, "error");
-        std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
+        std::vector<unsigned char> script;
+        if (!is_fee) {
+            script = output_script_for_address(net_params, address, result);
+        }
         if (!net_params.is_liquid()) {
             tx_add_raw_output(tx, satoshi, script);
             return amount(satoshi);
@@ -596,7 +600,7 @@ namespace sdk {
             set_tx_error(result, res::id_invalid_amount);
         }
 
-        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex, false);
+        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex, false, false);
     }
 
     size_t add_tx_change_output(
@@ -604,15 +608,15 @@ namespace sdk {
     {
         const auto& net_params = session.get_network_parameters();
         const auto change_address = result.at("change_address").at(asset_id).at("address");
-        add_tx_output(net_params, result, tx, change_address, 0, asset_id, true);
+        add_tx_output(net_params, result, tx, change_address, 0, asset_id, true, false);
         return tx->num_outputs - 1;
     }
 
-    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
+    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx)
     {
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        auto asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
-        tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
+        const auto& net_params = session.get_network_parameters();
+        auto policy_asset = net_params.get_policy_asset();
+        add_tx_output(net_params, result, tx, std::string(), 0, policy_asset, false, true);
         return tx->num_outputs - 1;
     }
 

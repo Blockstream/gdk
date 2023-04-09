@@ -631,10 +631,9 @@ namespace sdk {
 
                 if (include_fee) {
                     if (is_liquid) {
-                        // Add the fee output so is included in the weight calculation
-                        constexpr amount::value_type dummy_amount = 1;
                         if (!have_fee_output) {
-                            fee_index = add_tx_fee_output(net_params, tx, dummy_amount);
+                            // Add a dummy fee output for the weight calculation
+                            fee_index = add_tx_fee_output(session, result, tx);
                             have_fee_output = true;
                         }
                         if (!manual_selection) {
