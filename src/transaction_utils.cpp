@@ -535,7 +535,8 @@ namespace sdk {
         }
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
-        tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
+        const uint32_t index = tx->num_outputs; // Append to outputs
+        tx_add_elements_raw_output_at(tx, index, script, asset_bytes, ct_value, {}, {}, {});
         return amount(satoshi);
     }
 
