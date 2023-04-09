@@ -16,7 +16,6 @@ namespace sdk {
 
     void blind_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
-    void unblind_address(const network_parameters& net_params, nlohmann::json& addr);
 
     void create_ga_transaction(session_impl& session, nlohmann::json& details);
 

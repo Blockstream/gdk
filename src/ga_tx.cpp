@@ -1032,18 +1032,6 @@ namespace sdk {
         addr["is_blinded"] = true;
     }
 
-    void unblind_address(const network_parameters& net_params, nlohmann::json& addr)
-    {
-        const std::string blech32_prefix = net_params.blech32_prefix();
-        auto& address = addr.at("address");
-        if (boost::starts_with(address.get<std::string>(), blech32_prefix)) {
-            address = confidential_addr_to_addr_segwit(address, blech32_prefix, net_params.bech32_prefix());
-        } else {
-            address = confidential_addr_to_addr(address, net_params.blinded_prefix());
-        }
-        addr["is_blinded"] = false;
-    }
-
     void create_ga_transaction(session_impl& session, nlohmann::json& details)
     {
         try {
