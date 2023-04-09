@@ -28,7 +28,7 @@ using namespace ga::sdk;
 
 // Note that if id_nonconfidential_addresses_not is returned in 'error', this
 // call still returns the resulting script. This behaviour is used by
-// add_tx_addressee when adding preblinded outputs (where is_blinded=true).
+// add_tx_addressee_output when adding preblinded outputs (where is_blinded=true).
 static std::vector<unsigned char> output_script_for_address(
     const network_parameters& net_params, std::string address, std::string& error)
 {
@@ -430,33 +430,6 @@ namespace sdk {
         }
     }
 
-    amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change)
-    {
-        std::string old_error = json_get_value(result, "error");
-        std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
-        if (!net_params.is_liquid()) {
-            tx_add_raw_output(tx, satoshi, script);
-            return amount(satoshi);
-        }
-        if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
-            // This is an unblinded change output, allow it
-            result["error"] = old_error;
-        }
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        const auto asset_bytes = h2b_rev(asset_id, 0x1);
-        tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
-        return amount(satoshi);
-    }
-
-    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
-    {
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        auto asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
-        tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
-        return tx->num_outputs - 1;
-    }
-
     void set_tx_output_commitment(
         wally_tx_ptr& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi)
     {
@@ -465,7 +438,7 @@ namespace sdk {
         tx_elements_output_commitment_set(tx, index, asset_bytes, ct_value, {}, {}, {});
     }
 
-    // TODO: Merge this validation with add_tx_addressee to avoid re-parsing?
+    // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
@@ -543,8 +516,27 @@ namespace sdk {
         return std::string();
     }
 
-    amount add_tx_addressee(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee,
-        const std::string& asset_id_hex)
+    static amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
+        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change)
+    {
+        std::string old_error = json_get_value(result, "error");
+        std::vector<unsigned char> script = output_script_for_address(net_params, address, result);
+        if (!net_params.is_liquid()) {
+            tx_add_raw_output(tx, satoshi, script);
+            return amount(satoshi);
+        }
+        if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
+            // This is an unblinded change output, allow it
+            result["error"] = old_error;
+        }
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        const auto asset_bytes = h2b_rev(asset_id, 0x1);
+        tx_add_elements_raw_output(tx, script, asset_bytes, ct_value, {}, {}, {});
+        return amount(satoshi);
+    }
+
+    amount add_tx_addressee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx,
+        nlohmann::json& addressee, const std::string& asset_id_hex)
     {
         const auto& net_params = session.get_network_parameters();
         std::string address = addressee.at("address"); // Assume its a standard address
@@ -605,6 +597,23 @@ namespace sdk {
         }
 
         return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex, false);
+    }
+
+    size_t add_tx_change_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id)
+    {
+        const auto& net_params = session.get_network_parameters();
+        const auto change_address = result.at("change_address").at(asset_id).at("address");
+        add_tx_output(net_params, result, tx, change_address, 0, asset_id, true);
+        return tx->num_outputs - 1;
+    }
+
+    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi)
+    {
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        auto asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
+        tx_add_elements_raw_output(tx, {}, asset_bytes, ct_value, {}, {}, {});
+        return tx->num_outputs - 1;
     }
 
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)

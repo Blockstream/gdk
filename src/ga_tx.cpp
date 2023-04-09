@@ -507,7 +507,7 @@ namespace sdk {
             for (auto& addressee : *addressees_p) {
                 const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                 if (addressee_asset_id == asset_id) {
-                    required_total += add_tx_addressee(session, result, tx, addressee, asset_id);
+                    required_total += add_tx_addressee_output(session, result, tx, addressee, asset_id);
                     reordered_addressees.push_back(addressee);
                     // If addressee has an index, we are inserting the addressee in the
                     // transaction at that index, thus change indexes after the index must
@@ -584,9 +584,7 @@ namespace sdk {
             if (is_rbf) {
                 have_change_output = get_tx_change_index(result, asset_id) != NO_CHANGE_INDEX;
                 if (have_change_output) {
-                    const auto change_address = result.at("change_address").at(policy_asset).at("address");
-                    add_tx_output(net_params, result, tx, change_address, 0, policy_asset, true);
-                    change_index = tx->num_outputs - 1;
+                    change_index = add_tx_change_output(session, result, tx, policy_asset);
                 }
             }
 
@@ -723,10 +721,8 @@ namespace sdk {
                 // We have more than the dust amount of change. Add a change
                 // output to collect it, then loop again in case the amount
                 // this increases the fee by requires more UTXOs.
-                const auto change_address = result.at("change_address").at(asset_id).at("address");
-                add_tx_output(net_params, result, tx, change_address, is_liquid ? 1 : 0, asset_id, true);
+                change_index = add_tx_change_output(session, result, tx, asset_id);
                 have_change_output = true;
-                change_index = tx->num_outputs - 1;
                 if (is_liquid && include_fee) {
                     GDK_RUNTIME_ASSERT(fee_index != NO_CHANGE_INDEX);
                     std::swap(tx->outputs[fee_index], tx->outputs[change_index]);

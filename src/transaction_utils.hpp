@@ -75,21 +75,22 @@ namespace sdk {
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
 
-    // Add an output to a tx given its address
-    amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change);
-
-    // Add a fee output to a tx, returns the index in tx->outputs
-    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi);
-
     void set_tx_output_commitment(
         wally_tx_ptr& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi);
 
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    amount add_tx_addressee(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee,
-        const std::string& asset_id_hex);
+    amount add_tx_addressee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx,
+        nlohmann::json& addressee, const std::string& asset_id_hex);
+
+    // Add an output from a JSON change output, returns the index in tx->outputs
+    // Note the output is zero valued and is expected to be updated later
+    size_t add_tx_change_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id);
+
+    // Add a fee output to a tx, returns the index in tx->outputs
+    size_t add_tx_fee_output(const network_parameters& net_params, wally_tx_ptr& tx, amount::value_type satoshi);
 
     vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
         const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs);
