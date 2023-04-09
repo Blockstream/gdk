@@ -600,7 +600,6 @@ namespace sdk {
 
             bool force_add_utxo = false;
 
-            const bool is_electrum = net_params.is_electrum();
             const auto subaccounts = get_tx_subaccounts(result);
             bool have_change_addr = result.find("change_address") != result.end();
             if (have_change_addr) {
@@ -616,11 +615,6 @@ namespace sdk {
                 const uint32_t change_subaccount = result.at("change_subaccount");
                 nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
                 auto change_address = session.get_receive_address(details);
-
-                if (is_liquid && !is_electrum) {
-                    // Mark the address as unblinded, we will blind it later
-                    change_address["is_blinded"] = false;
-                }
 
                 add_paths(session, change_address);
                 result["change_address"][asset_id] = std::move(change_address);
@@ -1019,6 +1013,7 @@ namespace sdk {
     void blind_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex)
     {
+        GDK_RUNTIME_ASSERT(addr.at("is_blinded") == false);
         const std::string bech32_prefix = net_params.bech32_prefix();
         auto& address = addr.at("address");
         addr["unblinded_address"] = address;

@@ -1933,6 +1933,7 @@ namespace sdk {
     static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unblinded)
     {
         if (mark_unblinded) {
+            utxo["is_blinded"] = false;
             utxo["confidential"] = true;
             utxo.erase("error");
         }
@@ -2785,7 +2786,9 @@ namespace sdk {
                 || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
 
             address["blinding_script"] = b2h(scriptpubkey_p2sh_p2wsh_from_bytes(server_script));
-            // The blinding key will be added later once fetched from the sessions signer
+            // Mark the address as unblinded. It will be blinded by the caller
+            // at a later time by asking the sessions signer to do so.
+            address["is_blinded"] = false;
         }
     }
 
