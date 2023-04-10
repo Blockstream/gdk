@@ -70,7 +70,7 @@ namespace sdk {
 
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(
-        const network_parameters& net_params, const std::string& address, bool confidential = true);
+        const network_parameters& net_params, const std::string& address, bool allow_unconfidential);
 
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);

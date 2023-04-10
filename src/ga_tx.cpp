@@ -285,15 +285,13 @@ namespace sdk {
                 }
 
                 for (const auto& output : outputs) {
-                    const std::string output_addr = output.at("address");
-                    if (!output_addr.empty()) {
+                    const std::string out_addr = output.at("address");
+                    if (!out_addr.empty()) {
                         // Validate address matches the transaction scriptpubkey
-                        const auto spk_from_address = scriptpubkey_from_address(net_params, output_addr);
-                        const auto& o = tx->outputs[out_index];
-                        const auto spk_from_tx = gsl::make_span(o.script, o.script_len);
-                        GDK_RUNTIME_ASSERT(static_cast<size_t>(spk_from_tx.size()) == spk_from_address.size());
-                        GDK_RUNTIME_ASSERT(
-                            std::equal(spk_from_address.begin(), spk_from_address.end(), spk_from_tx.begin()));
+                        const bool allow_unconfidential = false;
+                        const auto spk = scriptpubkey_from_address(net_params, out_addr, allow_unconfidential);
+                        GDK_RUNTIME_ASSERT(tx->outputs[out_index].script_len == spk.size());
+                        GDK_RUNTIME_ASSERT(!memcmp(tx->outputs[out_index].script, &spk[0], spk.size()));
                     }
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
@@ -305,10 +303,10 @@ namespace sdk {
                             const auto pubkeys = session.pubkeys_from_utxo(output);
                             address = get_address_from_public_key(net_params, pubkeys.at(0), address_type);
                         } else {
-                            const auto output_script = session.output_script_from_utxo(output);
-                            address = get_address_from_script(net_params, output_script, address_type);
+                            const auto out_script = session.output_script_from_utxo(output);
+                            address = get_address_from_script(net_params, out_script, address_type);
                         }
-                        GDK_RUNTIME_ASSERT(output_addr == address);
+                        GDK_RUNTIME_ASSERT(out_addr == address);
                     }
 
                     bool is_change = false;

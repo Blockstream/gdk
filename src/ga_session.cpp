@@ -2519,12 +2519,13 @@ namespace sdk {
         do {
             const nlohmann::json result = get_previous_addresses(details);
             for (auto& address : result.at("list")) {
-                const auto scriptpubkey = scriptpubkey_from_address(m_net_params, address.at("address"), false);
+                const bool allow_unconfidential = true;
+                const auto spk = scriptpubkey_from_address(m_net_params, address.at("address"), allow_unconfidential);
                 const uint32_t branch = json_get_value(address, "branch", 1);
                 const uint32_t pointer = address.at("pointer");
                 const uint32_t subtype = json_get_value(address, "subtype", 0);
                 const uint32_t script_type = address.at("script_type");
-                encache_scriptpubkey_data(scriptpubkey, subaccount, branch, pointer, subtype, script_type);
+                encache_scriptpubkey_data(spk, subaccount, branch, pointer, subtype, script_type);
             }
             if (result.contains("last_pointer")) {
                 details["last_pointer"] = result.at("last_pointer");

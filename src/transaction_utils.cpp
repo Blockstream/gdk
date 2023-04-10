@@ -389,11 +389,11 @@ namespace sdk {
     }
 
     std::vector<unsigned char> scriptpubkey_from_address(
-        const network_parameters& net_params, const std::string& address, bool confidential)
+        const network_parameters& net_params, const std::string& address, bool allow_unconfidential)
     {
         std::string error;
-        std::vector<unsigned char> script = output_script_for_address(net_params, address, error);
-        GDK_RUNTIME_ASSERT(error.empty() || (!confidential && error == res::id_nonconfidential_addresses_not));
+        auto script = output_script_for_address(net_params, address, error);
+        GDK_RUNTIME_ASSERT(error.empty() || (allow_unconfidential && error == res::id_nonconfidential_addresses_not));
         return script;
     }
 
@@ -585,8 +585,9 @@ namespace sdk {
         output["asset_id"] = asset_id;
         output["satoshi"] = 0;
         std::string error;
-        auto scriptpubkey = output_script_for_address(net_params, output.at("address"), error);
-        output["scriptpubkey"] = b2h(scriptpubkey);
+        const bool allow_unconfidential = true; // Change may not yet be blinded
+        const auto spk = scriptpubkey_from_address(net_params, output.at("address"), allow_unconfidential);
+        output["scriptpubkey"] = b2h(spk);
         add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
     }
