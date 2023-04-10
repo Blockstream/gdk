@@ -3,6 +3,9 @@
 ## Release 0.0.63
 
 ### Added
+- Liquid: Transaction blinding is now performed using a new call
+  GA_blind_transaction, which should be called after creating and before
+  signing the tx.
 
 ### Changed
 - FFI (validate_call): Input JSON parameters are now moved internally and will be
@@ -10,6 +13,9 @@
 - GA_validate: When validating addressees, the entered amount is also validated
   and converted into satoshis. Additionally, the scriptpubkey and blinding public
   key are extracted from the address and returned where applicable.
+- GA_sign_transaction/GA_send_transaction: The "script" element of the returned
+  "transaction_outputs" elements has been renamed to "scriptpubkey" to reflect
+  its contents more accurately.
 
 ### Fixed
 

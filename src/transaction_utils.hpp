@@ -104,6 +104,9 @@ namespace sdk {
     // Update the json tx representation with info from tx
     void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result);
 
+    // Update the transaction_outputs json tx element with blinding details
+    void update_tx_blinding_info(session_impl& session, nlohmann::json& result);
+
     // Compute the subaccounts a tx uses from its inputs
     std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details);
 

@@ -1019,11 +1019,9 @@ namespace sdk {
             return state_type::done;
         }
 
-        // Update the transaction details to re-create "transaction_outputs" with blinding info
-        m_details.erase("utxos"); // Not needed anymore
-        const bool is_liquid = m_net_params.is_liquid();
-        wally_tx_ptr tx = tx_from_hex(m_details.at("transaction"), tx_flags(is_liquid));
-        update_tx_info(*m_session, tx, m_details);
+        m_details.erase("utxos"); // Not needed for blinding;
+        // Update the "transaction_outputs" element with blinding info
+        update_tx_blinding_info(*m_session, m_details);
         signal_hw_request(hw_request::blind_tx);
         m_twofactor_data.emplace("details", std::move(m_details));
         return m_state;

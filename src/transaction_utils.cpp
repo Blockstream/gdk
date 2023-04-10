@@ -660,7 +660,6 @@ namespace sdk {
         nlohmann::json::array_t outputs;
         if (valid && json_get_value(result, "error").empty() && result.find("addressees") != result.end()) {
             outputs.reserve(tx->num_outputs);
-            const bool has_amp_inputs = tx_has_amp_inputs(session, result);
 
             size_t addressee_index = 0;
             for (size_t i = 0; i < tx->num_outputs; ++i) {
@@ -685,7 +684,7 @@ namespace sdk {
                     asset_id = net_params.get_policy_asset();
                 }
                 const bool is_fee = o.script == nullptr && o.script_len == 0u;
-                const auto script_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
+                const auto scriptpubkey_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
 
                 const uint32_t change_index = get_tx_change_index(result, asset_id);
 
@@ -700,7 +699,7 @@ namespace sdk {
                     }
                 }
 
-                nlohmann::json output{ { "satoshi", satoshi }, { "script", script_hex },
+                nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", scriptpubkey_hex },
                     { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", asset_id } };
 
                 if (is_fee) {
@@ -725,26 +724,36 @@ namespace sdk {
                     output.insert(addressee.begin(), addressee.end());
                 }
 
-                if (is_liquid && !is_fee && !output.contains("eph_private_key")
-                    && !output.contains("nonce_commitment")) {
-                    auto ephemeral_keypair = get_ephemeral_keypair();
-                    output["eph_private_key"] = b2h(ephemeral_keypair.first);
-                }
-
-                if (has_amp_inputs && !is_fee) {
-                    if (is_blinded) {
-                        output["blinding_nonce"] = addressee.at("blinding_nonce");
-                    } else if (output.contains("blinding_key")) {
-                        const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                        const auto eph_private_key = h2b(output.at("eph_private_key"));
-                        output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_private_key)));
-                    }
-                }
-
                 outputs.emplace_back(std::move(output));
             }
         }
         result["transaction_outputs"] = std::move(outputs);
+    }
+
+    void update_tx_blinding_info(session_impl& session, nlohmann::json& result)
+    {
+        const auto& net_params = session.get_network_parameters();
+        GDK_RUNTIME_ASSERT(net_params.is_liquid());
+
+        const bool has_amp_inputs = tx_has_amp_inputs(session, result);
+
+        for (auto& output : result.at("transaction_outputs")) {
+            if (output.value("scriptpubkey", std::string()).empty()) {
+                continue; // Fee output
+            }
+            if (!output.contains("eph_private_key") && !output.contains("nonce_commitment")) {
+                // Generate an ephemeral keypair for blinding and store its private key
+                output["eph_private_key"] = b2h(get_ephemeral_keypair().first);
+            }
+            if (has_amp_inputs) {
+                if (output.contains("blinding_key") && !output.contains("blinding_nonce")) {
+                    // Generate the blinding nonce, required for AMPv1
+                    const auto blinding_pubkey = h2b(output.at("blinding_key"));
+                    const auto eph_private_key = h2b(output.at("eph_private_key"));
+                    output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_private_key)));
+                }
+            }
+        }
     }
 
     static bool is_wallet_input(const nlohmann::json& utxo)

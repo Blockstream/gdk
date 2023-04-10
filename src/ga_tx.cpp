@@ -1310,7 +1310,7 @@ namespace sdk {
         }
 
         const auto asset_id = h2b_rev(output.at("asset_id"));
-        const auto script = h2b(output.at("script"));
+        const auto scriptpubkey = h2b(output.at("scriptpubkey"));
         const uint64_t value = output.at("satoshi");
 
         const auto& o = tx->outputs[index];
@@ -1336,7 +1336,7 @@ namespace sdk {
             constexpr int ct_exponent = 0;
             constexpr int ct_bits = 52;
             rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment,
-                script, generator, 1, ct_exponent, ct_bits);
+                scriptpubkey, generator, 1, ct_exponent, ct_bits);
         }
 
         std::vector<unsigned char> surjectionproof;
