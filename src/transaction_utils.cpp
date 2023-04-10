@@ -722,23 +722,7 @@ namespace sdk {
                         }
                     }
                     GDK_RUNTIME_ASSERT(!addressee.empty());
-                    const auto& address = addressee.at("address");
-                    output["address"] = address;
-                    if (is_liquid) {
-                        if (is_blinded) {
-                            // The case of an existing blinded output
-                            output["assetblinder"] = addressee.at("assetblinder");
-                            output["nonce_commitment"] = addressee.at("nonce_commitment");
-                            if (addressee.contains("amountblinder")) {
-                                output["amountblinder"] = addressee.at("amountblinder");
-                            }
-                            if (addressee.contains("commitment")) {
-                                output["commitment"] = addressee.at("commitment");
-                            }
-                        } else {
-                            output["blinding_key"] = addressee.at("blinding_key");
-                        }
-                    }
+                    output.insert(addressee.begin(), addressee.end());
                 }
 
                 if (is_liquid && !is_fee && !output.contains("eph_private_key")
