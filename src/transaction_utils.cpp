@@ -516,36 +516,39 @@ namespace sdk {
         return std::string();
     }
 
-    static amount add_tx_output(const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx,
-        const std::string& address, amount::value_type satoshi, const std::string& asset_id, bool is_change,
-        bool is_fee)
+    static amount add_tx_output(
+        const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx, const nlohmann::json& output)
     {
         std::string old_error = json_get_value(result, "error");
+        const amount::value_type satoshi = output.at("satoshi").get<amount::value_type>();
         std::vector<unsigned char> script;
-        if (!is_fee) {
-            script = output_script_for_address(net_params, address, result);
+        if (!output.value("is_fee", false)) {
+            script = output_script_for_address(net_params, output.at("address"), result);
         }
         if (!net_params.is_liquid()) {
             tx_add_raw_output(tx, satoshi, script);
             return amount(satoshi);
         }
-        if (is_change && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
+        if (output.value("is_change", false)
+            && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
             // This is an unblinded change output, allow it
             result["error"] = old_error;
         }
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
-        const auto asset_bytes = h2b_rev(asset_id, 0x1);
         const uint32_t index = tx->num_outputs; // Append to outputs
+        const auto asset_id = asset_id_from_json(net_params, output);
+        const auto asset_bytes = h2b_rev(asset_id, 0x1);
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
         tx_add_elements_raw_output_at(tx, index, script, asset_bytes, ct_value, {}, {}, {});
         return amount(satoshi);
     }
 
-    amount add_tx_addressee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx,
-        nlohmann::json& addressee, const std::string& asset_id_hex)
+    amount add_tx_addressee_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
         std::string address = addressee.at("address"); // Assume its a standard address
         const bool is_blinded = addressee.value("is_blinded", false);
+        const auto asset_id_hex = asset_id_from_json(net_params, addressee);
 
         if (is_blinded) {
             // The case of an existing blinded output
@@ -601,23 +604,27 @@ namespace sdk {
             set_tx_error(result, res::id_invalid_amount);
         }
 
-        return add_tx_output(net_params, result, tx, address, satoshi.value(), asset_id_hex, false, false);
+        return add_tx_output(net_params, result, tx, addressee);
     }
 
     size_t add_tx_change_output(
         session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id)
     {
         const auto& net_params = session.get_network_parameters();
-        const auto change_address = result.at("change_address").at(asset_id).at("address");
-        add_tx_output(net_params, result, tx, change_address, 0, asset_id, true, false);
+        auto& output = result.at("change_address").at(asset_id);
+        output["is_change"] = true;
+        output["asset_id"] = asset_id;
+        output["satoshi"] = 0;
+        add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
     }
 
     size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx)
     {
         const auto& net_params = session.get_network_parameters();
-        auto policy_asset = net_params.get_policy_asset();
-        add_tx_output(net_params, result, tx, std::string(), 0, policy_asset, false, true);
+        nlohmann::json output{ { "satoshi", 0 }, { "script", nlohmann::json::array() }, { "is_change", false },
+            { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
+        add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
     }
 

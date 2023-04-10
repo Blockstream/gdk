@@ -351,8 +351,9 @@ namespace sdk {
                     } else {
                         // We paid to someone else, so this output really was
                         // change. Save the change address to re-use it.
-                        result["change_address"][policy_asset] = output;
-                        add_paths(session, result["change_address"][policy_asset]);
+                        auto& change_address = result["change_address"][policy_asset];
+                        change_address = output;
+                        add_paths(session, change_address);
                     }
                     // Save the change subaccount whether we found change or not
                     result["change_subaccount"] = output.at("subaccount");
@@ -507,7 +508,7 @@ namespace sdk {
             for (auto& addressee : *addressees_p) {
                 const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                 if (addressee_asset_id == asset_id) {
-                    required_total += add_tx_addressee_output(session, result, tx, addressee, asset_id);
+                    required_total += add_tx_addressee_output(session, result, tx, addressee);
                     reordered_addressees.push_back(addressee);
                     // If addressee has an index, we are inserting the addressee in the
                     // transaction at that index, thus change indexes after the index must
@@ -598,24 +599,24 @@ namespace sdk {
 
             bool force_add_utxo = false;
 
-            const auto subaccounts = get_tx_subaccounts(result);
-            bool have_change_addr = result.find("change_address") != result.end();
-            if (have_change_addr) {
-                const auto asset_change_address = result.at("change_address").value(asset_id, nlohmann::json::object());
-                have_change_addr = !asset_change_address.empty();
-            }
-            if (!have_change_addr && !is_partial) {
-                // No previously generated change address found, so generate one.
-                // Find out where to send any change
-                if (!result.contains("change_subaccount")) {
-                    result["change_subaccount"] = get_single_subaccount(subaccounts);
+            if (!is_partial) {
+                if (auto& change_address = result["change_address"][asset_id]; change_address.empty()) {
+                    // No previously generated change address found, so generate one.
+                    if (!result.contains("change_subaccount")) {
+                        // Find out where to send any change
+                        try {
+                            const auto subaccounts = get_tx_subaccounts(result);
+                            result["change_subaccount"] = get_single_subaccount(subaccounts);
+                        } catch (const std::exception&) {
+                            result["change_address"].erase(asset_id);
+                            throw;
+                        }
+                    }
+                    const uint32_t change_subaccount = result.at("change_subaccount");
+                    nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
+                    change_address = session.get_receive_address(details);
+                    add_paths(session, change_address);
                 }
-                const uint32_t change_subaccount = result.at("change_subaccount");
-                nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
-                auto change_address = session.get_receive_address(details);
-
-                add_paths(session, change_address);
-                result["change_address"][asset_id] = std::move(change_address);
             }
 
             const bool include_fee = asset_id == policy_asset && !is_partial;
@@ -767,6 +768,8 @@ namespace sdk {
 
             const auto subaccounts = get_tx_subaccounts(result);
             const bool is_partial = json_get_value(result, "is_partial", false);
+
+            result["transaction_outputs"] = nlohmann::json::array();
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;

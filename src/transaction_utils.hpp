@@ -81,8 +81,8 @@ namespace sdk {
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    amount add_tx_addressee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx,
-        nlohmann::json& addressee, const std::string& asset_id_hex);
+    amount add_tx_addressee_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee);
 
     // Add an output from a JSON change output, returns the index in tx->outputs
     // Note the output is zero valued and is expected to be updated later
