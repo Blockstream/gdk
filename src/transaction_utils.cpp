@@ -466,9 +466,9 @@ namespace sdk {
                 addressee["address"] = address;
                 if (auto p = bip21.find("amount"); p != bip21.end()) {
                     // Note liquid amounts are also encoded just as BTC amounts
-                    const nlohmann::json uri_amount = { { "btc", p->get<std::string>() } };
-                    addressee["satoshi"] = session.convert_amount(uri_amount)["satoshi"];
                     amount::strip_non_satoshi_keys(addressee);
+                    addressee.erase("satoshi");
+                    addressee["btc"] = p->get<std::string>();
                 }
                 addressee["bip21-params"] = std::move(bip21);
             }
@@ -484,11 +484,8 @@ namespace sdk {
                 return error;
             }
 
-            // Validate the asset (or lack of it)
-            asset_id_from_json(net_params, addressee);
-
+            // Convert all-uppercase b(l)ech32 addresses to lowercase
             if (isupper(address)) {
-                // Convert uppercase b(l)ech32 addresses to lowercase
                 if (boost::istarts_with(address, net_params.bech32_prefix() + "1")
                     || (is_liquid && boost::istarts_with(address, blech32_prefix + "1"))) {
                     boost::to_lower(address);
@@ -496,7 +493,20 @@ namespace sdk {
                 }
             }
 
-            if (!is_blinded) {
+            // Validate the asset (or lack of it)
+            asset_id_from_json(net_params, addressee);
+
+            // Validate and convert the amount to satoshi
+            try {
+                addressee["satoshi"] = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
+                amount::strip_non_satoshi_keys(addressee);
+            } catch (const user_error& ex) {
+                return ex.what();
+            } catch (const std::exception& ex) {
+                return res::id_invalid_amount;
+            }
+
+            if (is_liquid && !is_blinded) {
                 // Fetch the blinding key from the confidential address
                 std::string blinding_key;
                 if (boost::starts_with(address, blech32_prefix)) {
@@ -583,23 +593,13 @@ namespace sdk {
             return amount(satoshi);
         }
 
-        // Process the users entered value, if any
-        amount satoshi;
-        try {
-            satoshi = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
-            // Transactions with outputs below the dust threshold (except OP_RETURN)
-            // are not relayed by network nodes
-            if (!result.value("send_all", false) && satoshi.value() < session.get_dust_threshold(asset_id_hex)) {
+        if (!result.value("send_all", false)) {
+            const auto satoshi = addressee["satoshi"].get<amount::value_type>();
+            if (satoshi < session.get_dust_threshold(asset_id_hex)) {
+                // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
                 set_tx_error(result, res::id_invalid_amount);
             }
-            amount::strip_non_satoshi_keys(addressee);
-            addressee["satoshi"] = satoshi.value(); // Sets to 0 if not present
-        } catch (const user_error& ex) {
-            set_tx_error(result, ex.what());
-        } catch (const std::exception& ex) {
-            set_tx_error(result, res::id_invalid_amount);
         }
-
         return add_tx_output(net_params, result, tx, addressee);
     }
 

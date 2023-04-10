@@ -1870,10 +1870,9 @@ To validate addressees, for example prior to calling `GA_create_transaction`:
 :addressees: An array of :ref:`addressee` elements.
 
 Validation includes that the address is correct and supported by the network,
-and for Liquid, that ``"asset_id"`` is present and a valid hex asset identifier.
-Currently the ``"satoshi"`` element is not checked although this may change in
-the future. To avoid potential breakage callers should add a non-dust satoshi
-amount if one is not present.
+and that the amount given is valid. The given amount in whatever denomination
+will be converted into ``"satoshi"`` in the returned addressee. For Liquid, a
+valid hex ``"asset_id"`` must be present.
 
 
 To validate a LiquiDEX version 1 proposal:
