@@ -439,7 +439,7 @@ namespace sdk {
     }
 
     // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
-    std::string validate_tx_addressee(session_impl& session, nlohmann::json& result, nlohmann::json& addressee)
+    std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_liquid = net_params.is_liquid();
@@ -450,7 +450,7 @@ namespace sdk {
             if (address.empty()) {
                 throw user_error(res::id_invalid_address);
             }
-            const bool is_blinded = addressee.value("is_blinded", false);
+            const bool is_blinded = is_liquid && addressee.value("is_blinded", false);
 
             // BIP21
             auto uri = parse_bitcoin_uri(net_params, address);
@@ -476,19 +476,16 @@ namespace sdk {
             // Validate the address
             std::string error;
             output_script_for_address(net_params, address, error);
+            if (is_blinded && error == res::id_nonconfidential_addresses_not) {
+                // Existing outputs which are already blinded are OK
+                error.clear();
+            }
             if (!error.empty()) {
-                if (error == res::id_nonconfidential_addresses_not && is_blinded) {
-                    // Existing outputs which are already blinded are OK
-                    error.clear();
-                }
-                if (!error.empty()) {
-                    set_tx_error(result, error);
-                    return std::string();
-                }
+                return error;
             }
 
-            // Validate the asset (or lack of it) and return it
-            auto asset_id_hex = asset_id_from_json(net_params, addressee);
+            // Validate the asset (or lack of it)
+            asset_id_from_json(net_params, addressee);
 
             if (isupper(address)) {
                 // Convert uppercase b(l)ech32 addresses to lowercase
@@ -509,9 +506,8 @@ namespace sdk {
                 }
                 addressee["blinding_key"] = std::move(blinding_key);
             }
-            return asset_id_hex;
         } catch (const std::exception& e) {
-            set_tx_error(result, e.what());
+            return e.what();
         }
         return std::string();
     }

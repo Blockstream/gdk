@@ -43,8 +43,7 @@ namespace sdk {
 
         for (auto& addressee : m_details["addressees"]) {
             nlohmann::json result;
-            validate_tx_addressee(*m_session, result, addressee);
-            std::string error = json_get_value(result, "error");
+            std::string error = validate_tx_addressee(*m_session, addressee);
             if (!error.empty()) {
                 errors.emplace_back(std::move(error));
             }

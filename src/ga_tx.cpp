@@ -883,13 +883,14 @@ namespace sdk {
 
             std::set<std::string> asset_ids;
             for (auto& addressee : *addressees_p) {
-                asset_ids.emplace(validate_tx_addressee(session, result, addressee));
-                if (!json_get_value(result, "error").empty()) {
+                if (auto error = validate_tx_addressee(session, addressee); !error.empty()) {
+                    set_tx_error(result, error);
                     if (!result.contains("used_utxos")) {
                         result.emplace("used_utxos", std::vector<nlohmann::json>());
                     }
                     return;
                 }
+                asset_ids.emplace(asset_id_from_json(net_params, addressee));
             }
 
             nlohmann::json::array_t reordered_addressees;
