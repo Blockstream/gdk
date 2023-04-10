@@ -8,7 +8,8 @@
 - FFI (validate_call): Input JSON parameters are now moved internally and will be
   empty when an API call returns. This only affects C and C++ callers.
 - GA_validate: When validating addressees, the entered amount is also validated
-  and concerted into satoshis.
+  and converted into satoshis. Additionally, the scriptpubkey and blinding public
+  key are extracted from the address and returned where applicable.
 
 ### Fixed
 

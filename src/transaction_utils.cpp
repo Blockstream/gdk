@@ -93,31 +93,6 @@ static std::vector<unsigned char> output_script_for_address(
     }
     return {};
 }
-
-static std::vector<unsigned char> output_script_for_address(
-    const network_parameters& net_params, const std::string& address, nlohmann::json& result)
-{
-    std::vector<unsigned char> script;
-    std::string error;
-    try {
-        script = output_script_for_address(net_params, address, error);
-    } catch (const std::exception& e) {
-        error = res::id_invalid_address;
-    }
-
-    if (!error.empty()) {
-        // Overwite any existing error in the transaction as addressees
-        // are entered and should be corrected first.
-        set_tx_error(result, error, true);
-        if (script.empty()) {
-            // Create a dummy script so that the caller gets back a reasonable
-            // estimate of the tx size/fee etc when the address is corrected.
-            std::vector<unsigned char>(HASH160_LEN).swap(script);
-        }
-    }
-
-    return script;
-}
 } // namespace
 
 namespace ga {
@@ -475,7 +450,7 @@ namespace sdk {
 
             // Validate the address
             std::string error;
-            output_script_for_address(net_params, address, error);
+            auto scriptpubkey = output_script_for_address(net_params, address, error);
             if (is_blinded && error == res::id_nonconfidential_addresses_not) {
                 // Existing outputs which are already blinded are OK
                 error.clear();
@@ -483,6 +458,7 @@ namespace sdk {
             if (!error.empty()) {
                 return error;
             }
+            addressee["scriptpubkey"] = b2h(scriptpubkey);
 
             // Convert all-uppercase b(l)ech32 addresses to lowercase
             if (isupper(address)) {
@@ -529,7 +505,7 @@ namespace sdk {
         const amount::value_type satoshi = output.at("satoshi").get<amount::value_type>();
         std::vector<unsigned char> script;
         if (!output.value("is_fee", false)) {
-            script = output_script_for_address(net_params, output.at("address"), result);
+            script = h2b(output.at("scriptpubkey"));
         }
         if (!net_params.is_liquid()) {
             tx_add_raw_output(tx, satoshi, script);
@@ -558,10 +534,7 @@ namespace sdk {
 
         if (is_blinded) {
             // The case of an existing blinded output
-            std::string error;
-            auto script = output_script_for_address(net_params, address, error);
-            GDK_RUNTIME_ASSERT(error.empty() || error == res::id_nonconfidential_addresses_not);
-
+            auto scriptpubkey = h2b(addressee.at("scriptpubkey"));
             const auto asset_id = h2b_rev(asset_id_hex);
             const amount::value_type satoshi = addressee.at("satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
@@ -588,8 +561,8 @@ namespace sdk {
             }
 
             const uint32_t index = addressee.at("index");
-            tx_add_elements_raw_output_at(
-                tx, index, script, asset_commitment, value_commitment, nonce_commitment, surjectionproof, rangeproof);
+            tx_add_elements_raw_output_at(tx, index, scriptpubkey, asset_commitment, value_commitment, nonce_commitment,
+                surjectionproof, rangeproof);
             return amount(satoshi);
         }
 
@@ -611,6 +584,9 @@ namespace sdk {
         output["is_change"] = true;
         output["asset_id"] = asset_id;
         output["satoshi"] = 0;
+        std::string error;
+        auto scriptpubkey = output_script_for_address(net_params, output.at("address"), error);
+        output["scriptpubkey"] = b2h(scriptpubkey);
         add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
     }
@@ -618,7 +594,7 @@ namespace sdk {
     size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx)
     {
         const auto& net_params = session.get_network_parameters();
-        nlohmann::json output{ { "satoshi", 0 }, { "script", nlohmann::json::array() }, { "is_change", false },
+        nlohmann::json output{ { "satoshi", 0 }, { "scriptpubkey", nlohmann::json::array() }, { "is_change", false },
             { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
         add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
