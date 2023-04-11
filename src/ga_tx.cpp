@@ -908,6 +908,7 @@ namespace sdk {
                     reordered_addressees, session, tx, asset_ids, used_utxos);
             }
 
+            result["addressees"] = std::move(reordered_addressees);
             update_tx_info(session, tx, result);
 
             if (is_rbf && json_get_value(result, "error").empty()) {
@@ -926,8 +927,6 @@ namespace sdk {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
                 }
             }
-
-            result["addressees"] = std::move(reordered_addressees);
 
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 randomise_inputs(tx, used_utxos);
