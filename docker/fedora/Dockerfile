@@ -7,7 +7,8 @@ COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
 # Optionally copy dependency sources from the build directory if present
 COPY ./tools/requirements.txt ./*.tar.gz /root/
-RUN ./tools/fedora32_deps.sh
+COPY ./docker/fedora/deps.sh ./docker/fedora/deps.sh
+RUN ./docker/fedora/deps.sh
 
 FROM base AS buildergcc
 ENV GDK_KEEP_DOWNLOADS=1

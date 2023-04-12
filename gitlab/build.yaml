@@ -3,20 +3,17 @@ build_gdk-debian-ci:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-debian-ci
-    DOCKERFILE: tools/Dockerfile
-    DEPS_SH: tools/bullseye_deps.sh
+    DOCKER_BUILD_CONTEXT: docker/debian
     ENV_FILE: tools/env.sh
 
 build_gdk-ubuntu-builder:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-ubuntu-builder
-    DOCKERFILE: tools/Dockerfile_ubuntu_20.04
-    DEPS_SH: tools/ubuntu_20.04_deps.sh
+    DOCKER_BUILD_CONTEXT: docker/ubuntu
 
 build_gdk-fedora-builder:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-fedora-builder
-    DOCKERFILE: tools/Dockerfile_fedora32
-    DEPS_SH: tools/fedora32_deps.sh
+    DOCKER_BUILD_CONTEXT: docker/fedora

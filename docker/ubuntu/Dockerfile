@@ -7,9 +7,8 @@ COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
 # Optionally copy dependency sources from the build directory if present
 COPY ./tools/requirements.txt ./*.tar.gz /root/
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
-RUN ./tools/ubuntu_20.04_deps.sh
+COPY ./docker/ubuntu/deps.sh ./docker/ubuntu/deps.sh
+RUN ./docker/ubuntu/deps.sh
 
 FROM base AS buildergcc
 ENV GDK_KEEP_DOWNLOADS=1

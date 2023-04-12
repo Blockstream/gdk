@@ -7,7 +7,8 @@ COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
 # Optionally copy dependency sources from the build directory if present
 COPY ./tools/requirements.txt ./*.tar.gz /root/
-RUN ./tools/bullseye_deps.sh
+COPY ./docker/debian/deps.sh ./docker/debian/deps.sh
+RUN ./docker/debian/deps.sh
 
 ENV ANDROID_NDK=/root/android-ndk-r23b
 ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64

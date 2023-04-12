@@ -1,6 +1,7 @@
 image: blockstream/gdk-debian-ci@sha256:e8038587d41403cdea58c51b4b2955f808d91c931ef07b80aa6abad47a9f6e62
 
 stages:
+  - docker_build
   - format
   - build
   - test
@@ -75,6 +76,7 @@ test_format:
   tags:
     - ga
   stage: format
+  needs: []
   script:
     - ./tools/format.sh && git diff --exit-code
 
@@ -363,6 +365,7 @@ package_release:
     - build_osx_ios
     - build_osx_ios_sim
     - apidocs
+    - test_clang_bullseye # waiting for tests to pass
 
 cp_gcloud:
   image: blockstream/gcloud-docker-tf:1.1.7
