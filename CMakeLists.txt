@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(gdk VERSION 0.0.58 LANGUAGES C CXX)
+project(gdk VERSION 0.0.59 LANGUAGES C CXX)
 
 include(cmake/includes/helpers.cmake)
 include(cmake/includes/greenaddress.cmake)

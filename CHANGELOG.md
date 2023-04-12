@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.0.59
+## Release 0.0.60
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.59 - 2023-04-12
 
 ### Added
 
