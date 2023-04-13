@@ -209,8 +209,11 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
  *|     The call handlers result is :ref:`validate-result`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call
+ *completes.
  */
-GDK_API int GA_validate(struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Create a new user wallet.

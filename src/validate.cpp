@@ -1,17 +1,19 @@
 #include "validate.hpp"
+
 #include "containers.hpp"
 #include "exception.hpp"
 #include "ga_auth_handlers.hpp"
 #include "transaction_utils.hpp"
+#include <utility>
 
 namespace ga {
 namespace sdk {
     //
     // Validate
     //
-    validate_call::validate_call(session& session, const nlohmann::json& details)
+    validate_call::validate_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "validate")
-        , m_details(details)
+        , m_details(std::move(details))
     {
     }
 

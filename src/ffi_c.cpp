@@ -282,8 +282,8 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_assets, struct GA_session*, session, const GA_jso
 GDK_DEFINE_C_FUNCTION_3(GA_validate_asset_domain_name, struct GA_session*, session, const GA_json*, params, GA_json**,
     output, { *json_cast(output) = new nlohmann::json(session->validate_asset_domain_name(*json_cast(params))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_validate, struct GA_session*, session, const GA_json*, details, struct GA_auth_handler**,
-    call, { *call = make_call(new ga::sdk::validate_call(*session, *json_cast(details))); })
+GDK_DEFINE_C_FUNCTION_3(GA_validate, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::validate_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_4(GA_register_user, struct GA_session*, session, GA_json*, hw_device, GA_json*, details,
     struct GA_auth_handler**, call,

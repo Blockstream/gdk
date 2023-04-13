@@ -9,7 +9,7 @@ namespace ga {
 namespace sdk {
     class validate_call : public auth_handler_impl {
     public:
-        validate_call(session& session, const nlohmann::json& details);
+        validate_call(session& session, nlohmann::json details);
 
     private:
         state_type call_impl() override;
