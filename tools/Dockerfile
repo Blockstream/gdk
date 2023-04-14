@@ -29,7 +29,7 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
-FROM rust:1.64-bullseye as builderrust
+FROM rust:1.68-bullseye as builderrust
 RUN rustup component add rustfmt clippy llvm-tools-preview
 RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
 RUN cargo install cargo-audit grcov cargo-nextest
