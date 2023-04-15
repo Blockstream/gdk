@@ -1,4 +1,4 @@
-image: greenaddress/gdk-debian-builder@sha256:9eb09b2c26991ab21803925796112c2b7b8e1edde5b6e23a49100e93b6051856
+image: blockstream/gdk-debian-ci@sha256:10011af34d3601058e76e0433f43823b8fe395115b1d8cd52d26a27b657711be
 
 stages:
   - format
