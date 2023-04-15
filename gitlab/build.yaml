@@ -1,5 +1,5 @@
 # CI builder images only on changes to their Dockerfiles or tags?
-build_gdk_debian_ci:
+build_gdk-debian-ci:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-debian-ci
@@ -7,14 +7,14 @@ build_gdk_debian_ci:
     DEPS_SH: tools/bullseye_deps.sh
     ENV_FILE: tools/env.sh
 
-build_gdk_builder_ubuntu:
+build_gdk-ubuntu-builder:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-ubuntu-builder
     DOCKERFILE: tools/Dockerfile_ubuntu_20.04
     DEPS_SH: tools/ubuntu_20.04_deps.sh
 
-build_gdk_builder_fedora:
+build_gdk-fedora-builder:
   extends: .build_setup
   variables:
     IMAGE: blockstream/gdk-fedora-builder

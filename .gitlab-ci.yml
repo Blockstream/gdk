@@ -349,7 +349,7 @@ package_release:
     - find gdk-python/ -name *.whl -exec mv {} gdk_dist/share/python \;
     - cd gdk_dist
     - /opt/process_release
-  dependencies:
+  needs:
     - build-android
     - build_gcc_bullseye
     - build_gcc_ubuntu20.04
@@ -371,7 +371,7 @@ cp_gcloud:
     - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
     - gcloud auth activate-service-account --key-file=$TMPF
     - gsutil cp -r $CI_PROJECT_DIR/gdk_dist gs://green-gdk-builds/$CI_PROJECT_NAME-$CI_COMMIT_SHA
-  dependencies:
+  needs:
   - package_release
 
 cp_gcloud_master:
