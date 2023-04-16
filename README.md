@@ -1,8 +1,3 @@
-[![pipeline status](https://gl.blockstream.io/blockstream/green/gdk/badges/main/pipeline.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/commits/main)
-[![coverage report](https://gl.blockstream.io/blockstream/green/gdk/badges/main/coverage.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/commits/main)
-[![Latest Release](https://gl.blockstream.io/blockstream/green/gdk/-/badges/release.svg)](https://gl.blockstream.io/blockstream/green/gdk/-/releases)
-
-
 # Green C/C++ SDK
 
 GDK is a cross-platform, cross-language library for Blockstream Green wallets.
