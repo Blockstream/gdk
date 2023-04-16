@@ -8,7 +8,7 @@ apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-co
 pip3 install --require-hashes -r ./tools/requirements.txt
 pip3 install build
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.68.0
 source /root/.cargo/env
 
 mkdir /tmp/protoc && \

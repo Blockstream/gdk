@@ -72,7 +72,7 @@ ENV ELEMENTSD_EXEC=/root/bin/elementsd
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.64.0
+ENV RUST_VERSION=1.68.0
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 RUN chmod +xr /root

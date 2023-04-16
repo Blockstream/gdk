@@ -6,7 +6,7 @@ dnf install -yq @development-tools autoconf pkg-config libtool ninja-build clang
 
 pip install --require-hashes -r tools/requirements.txt
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.64.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.68.0
 source /root/.cargo/env
 
 mkdir /tmp/protoc && \
