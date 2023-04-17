@@ -47,18 +47,21 @@ workflow:
 
     ##### WARNING!!!!
     # $PREBUILT_SUBDIR is the folder for the DIY caching system we have in place in mac machines
-    # whenever a change in the dependencies happens, plase increase the suffix to initialize a new version of the cache
+    # BUILD_IDX is your life belt in case you messed the CI up during the prebuild phase and the PREBUILT_DIR folder
+    # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
     # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    PREBUILT_SUBDIR: "prebuilt-10"
+    BUILD_IDX: "0"
+  before_script:
+    - idx=($(shasum tools/* cmake/profiles/* | shasum))
+    - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
+
 
 .ios_release:
   extends: .osx_env
   tags:
     - osx-ia
-  before_script:
-    - mkdir $CI_PROJECT_DIR/$INSTALL_PATH
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 day
@@ -205,14 +208,14 @@ build_clang_osx:
   tags:
     - osx-ia
   stage: build
-  variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
   script:
     - cd $CI_PROJECT_DIR
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
@@ -229,14 +232,14 @@ build_clang_osx_m1:
   tags:
     - osx-m1
   stage: build
-  variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-m1"
   script:
     - cd $CI_PROJECT_DIR
     - python3 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-m1"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
@@ -250,12 +253,13 @@ build_osx_ios:
   extends: .ios_release
   stage: build
   variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios"
     INSTALL_PATH: "gdk-iphone"
   script:
     - cd $CI_PROJECT_DIR
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphone static --prefix $PREBUILT_DIR; fi
+    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
     - cmake -B build-iphone -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
@@ -269,12 +273,13 @@ build_osx_ios_sim:
   extends: .ios_release
   stage: build
   variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim"
     INSTALL_PATH: "gdk-iphone-sim"
   script:
     - cd $CI_PROJECT_DIR
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphonesim static --prefix $PREBUILT_DIR; fi
+    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
     - cmake -B build-iphonesim -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
