@@ -11,6 +11,8 @@ namespace sdk {
     class network_parameters;
     class session_impl;
 
+    void utxo_add_paths(session_impl& session, nlohmann::json& utxo);
+
     std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
         const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash);
 

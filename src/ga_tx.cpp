@@ -53,33 +53,6 @@ namespace sdk {
             return output.contains("amountblinder") || output.contains("blinding_key");
         }
 
-        static void add_paths(session_impl& session, nlohmann::json& utxo)
-        {
-            const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
-            const uint32_t pointer = utxo.at("pointer");
-            const bool is_internal = utxo.value("is_internal", false);
-
-            if (utxo.find("user_path") == utxo.end()) {
-                // Populate the full user path for h/w signing
-                utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer, is_internal);
-            }
-
-            if (session.get_network_parameters().is_electrum()) {
-                // Electrum sessions currently only support single sig
-                return;
-            }
-
-            if (utxo.find("service_xpub") == utxo.end()) {
-                // Populate the service xpub for h/w signing
-                utxo["service_xpub"] = session.get_service_xpub(subaccount);
-            }
-
-            if (utxo.find("recovery_xpub") == utxo.end() && session.has_recovery_pubkeys_subaccount(subaccount)) {
-                // Populate the recovery xpub for h/w signing
-                utxo["recovery_xpub"] = session.get_recovery_xpub(subaccount);
-            }
-        }
-
         static bool has_utxo(const wally_tx_ptr& tx, const nlohmann::json& utxo)
         {
             const auto txhash = h2b_rev(utxo.at("txhash"));
@@ -129,7 +102,7 @@ namespace sdk {
                     utxo["prevout_script"] = b2h(script);
                 }
                 const auto script = h2b(utxo.at("prevout_script"));
-                add_paths(session, utxo);
+                utxo_add_paths(session, utxo);
 
                 if (is_segwit_address_type(utxo)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
@@ -351,7 +324,7 @@ namespace sdk {
                         // change. Save the change address to re-use it.
                         auto& change_address = result["change_address"][policy_asset];
                         change_address = output;
-                        add_paths(session, change_address);
+                        utxo_add_paths(session, change_address);
                     }
                     // Save the change subaccount whether we found change or not
                     result["change_subaccount"] = output.at("subaccount");
@@ -613,7 +586,6 @@ namespace sdk {
                     const uint32_t change_subaccount = result.at("change_subaccount");
                     nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
                     change_address = session.get_receive_address(details);
-                    add_paths(session, change_address);
                 }
             }
 
@@ -979,6 +951,33 @@ namespace sdk {
             }
         }
     } // namespace
+
+    void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
+    {
+        const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
+        const uint32_t pointer = utxo.at("pointer");
+        const bool is_internal = utxo.value("is_internal", false);
+
+        if (utxo.find("user_path") == utxo.end()) {
+            // Populate the full user path for h/w signing
+            utxo["user_path"] = session.get_subaccount_full_path(subaccount, pointer, is_internal);
+        }
+
+        if (session.get_network_parameters().is_electrum()) {
+            // Electrum sessions currently only support single sig
+            return;
+        }
+
+        if (utxo.find("service_xpub") == utxo.end()) {
+            // Populate the service xpub for h/w signing
+            utxo["service_xpub"] = session.get_service_xpub(subaccount);
+        }
+
+        if (utxo.find("recovery_xpub") == utxo.end() && session.has_recovery_pubkeys_subaccount(subaccount)) {
+            // Populate the recovery xpub for h/w signing
+            utxo["recovery_xpub"] = session.get_recovery_xpub(subaccount);
+        }
+    }
 
     std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
         const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash)

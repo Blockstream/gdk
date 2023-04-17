@@ -2762,8 +2762,6 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(address["address"] == server_address);
         }
 
-        address["user_path"] = get_subaccount_full_path(address["subaccount"], address["pointer"], false);
-
         if (addr_type == address_type::csv) {
             // Make sure the csv value used is in our csv buckets. If isn't,
             // coins held in such scripts may not be recoverable.
@@ -2791,6 +2789,7 @@ namespace sdk {
             // at a later time by asking the sessions signer to do so.
             address["is_blinded"] = false;
         }
+        utxo_add_paths(*this, address);
     }
 
     nlohmann::json ga_session::get_previous_addresses(const nlohmann::json& details)

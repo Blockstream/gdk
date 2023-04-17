@@ -11,6 +11,7 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
+#include "ga_tx.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
@@ -227,7 +228,9 @@ namespace sdk {
 
     nlohmann::json ga_rust::get_receive_address(const nlohmann::json& details)
     {
-        return rust_call("get_receive_address", details, m_session);
+        auto addr = rust_call("get_receive_address", details, m_session);
+        utxo_add_paths(*this, addr);
+        return addr;
     }
 
     nlohmann::json ga_rust::get_previous_addresses(const nlohmann::json& details)
