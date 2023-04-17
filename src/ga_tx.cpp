@@ -1133,6 +1133,73 @@ namespace sdk {
         return result;
     }
 
+    static void blind_output(session_impl& session, const nlohmann::json& details, const wally_tx_ptr& tx,
+        uint32_t index, const nlohmann::json& output, const std::array<unsigned char, 33>& generator,
+        const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
+        const std::array<unsigned char, 32>& vbf)
+    {
+        const auto& net_params = session.get_network_parameters();
+        GDK_RUNTIME_ASSERT(net_params.is_liquid());
+        GDK_RUNTIME_ASSERT(!output.at("is_fee"));
+
+        const bool is_partial = json_get_value(details, "is_partial", false);
+        const std::string error = json_get_value(details, "error");
+        if (!error.empty()) {
+            GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
+            GDK_RUNTIME_ASSERT_MSG(false, error);
+        }
+
+        // FIXME: Compute these up front
+        std::vector<unsigned char> input_assets;
+        std::vector<unsigned char> input_abfs;
+        std::vector<unsigned char> input_ags;
+        for (const auto& utxo : details["used_utxos"]) {
+            const auto asset_id = h2b_rev(utxo["asset_id"]);
+            input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
+            const auto utxo_abf = h2b_rev(utxo["assetblinder"]);
+            input_abfs.insert(input_abfs.end(), std::begin(utxo_abf), std::end(utxo_abf));
+            const auto asset_generator = asset_generator_from_bytes(asset_id, utxo_abf);
+            input_ags.insert(input_ags.end(), std::begin(asset_generator), std::end(asset_generator));
+        }
+
+        const auto asset_id = h2b_rev(output.at("asset_id"));
+        const auto scriptpubkey = h2b(output.at("scriptpubkey"));
+        const uint64_t value = output.at("satoshi");
+
+        const auto& o = tx->outputs[index];
+        std::vector<unsigned char> eph_public_key;
+        std::vector<unsigned char> rangeproof;
+
+        bool have_matched_commitments = false;
+        if (o.rangeproof && o.rangeproof_len && is_blinded(o)) {
+            have_matched_commitments
+                = o.asset_len == generator.size() && !memcmp(o.asset, generator.data(), o.asset_len);
+            have_matched_commitments
+                &= o.value_len == value_commitment.size() && !memcmp(o.value, value_commitment.data(), o.value_len);
+        }
+        if (have_matched_commitments) {
+            // Rangeproof already created for the same commitments
+            eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
+            rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
+        } else {
+            const auto blinding_pubkey = h2b(output.at("blinding_key"));
+            const auto eph_private_key = h2b(output.at("eph_private_key"));
+            eph_public_key = ec_public_key_from_private_key(eph_private_key);
+
+            rangeproof = asset_rangeproof(
+                value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment, scriptpubkey, generator);
+        }
+
+        std::vector<unsigned char> surjectionproof;
+        if (!is_partial) {
+            surjectionproof = asset_surjectionproof(
+                asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
+        }
+
+        tx_elements_output_commitment_set(
+            tx, index, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
+    }
+
     nlohmann::json blind_ga_transaction(session_impl& session, const nlohmann::json& details)
     {
         const auto& net_params = session.get_network_parameters();
@@ -1277,73 +1344,6 @@ namespace sdk {
         }
         update_tx_size_info(net_params, tx, result);
         return result;
-    }
-
-    void blind_output(session_impl& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& output, const std::array<unsigned char, 33>& generator,
-        const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
-        const std::array<unsigned char, 32>& vbf)
-    {
-        const auto& net_params = session.get_network_parameters();
-        GDK_RUNTIME_ASSERT(net_params.is_liquid());
-        GDK_RUNTIME_ASSERT(!output.at("is_fee"));
-
-        const bool is_partial = json_get_value(details, "is_partial", false);
-        const std::string error = json_get_value(details, "error");
-        if (!error.empty()) {
-            GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
-            GDK_RUNTIME_ASSERT_MSG(false, error);
-        }
-
-        // FIXME: Compute these up front
-        std::vector<unsigned char> input_assets;
-        std::vector<unsigned char> input_abfs;
-        std::vector<unsigned char> input_ags;
-        for (const auto& utxo : details["used_utxos"]) {
-            const auto asset_id = h2b_rev(utxo["asset_id"]);
-            input_assets.insert(input_assets.end(), std::begin(asset_id), std::end(asset_id));
-            const auto utxo_abf = h2b_rev(utxo["assetblinder"]);
-            input_abfs.insert(input_abfs.end(), std::begin(utxo_abf), std::end(utxo_abf));
-            const auto asset_generator = asset_generator_from_bytes(asset_id, utxo_abf);
-            input_ags.insert(input_ags.end(), std::begin(asset_generator), std::end(asset_generator));
-        }
-
-        const auto asset_id = h2b_rev(output.at("asset_id"));
-        const auto scriptpubkey = h2b(output.at("scriptpubkey"));
-        const uint64_t value = output.at("satoshi");
-
-        const auto& o = tx->outputs[index];
-        std::vector<unsigned char> eph_public_key;
-        std::vector<unsigned char> rangeproof;
-
-        bool have_matched_commitments = false;
-        if (o.rangeproof && o.rangeproof_len && is_blinded(o)) {
-            have_matched_commitments
-                = o.asset_len == generator.size() && !memcmp(o.asset, generator.data(), o.asset_len);
-            have_matched_commitments
-                &= o.value_len == value_commitment.size() && !memcmp(o.value, value_commitment.data(), o.value_len);
-        }
-        if (have_matched_commitments) {
-            // Rangeproof already created for the same commitments
-            eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
-            rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
-        } else {
-            const auto blinding_pubkey = h2b(output.at("blinding_key"));
-            const auto eph_private_key = h2b(output.at("eph_private_key"));
-            eph_public_key = ec_public_key_from_private_key(eph_private_key);
-
-            rangeproof = asset_rangeproof(
-                value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment, scriptpubkey, generator);
-        }
-
-        std::vector<unsigned char> surjectionproof;
-        if (!is_partial) {
-            surjectionproof = asset_surjectionproof(
-                asset_id, abf, generator, get_random_bytes<32>(), input_assets, input_abfs, input_ags);
-        }
-
-        tx_elements_output_commitment_set(
-            tx, index, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
     }
 
     nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)

@@ -25,11 +25,6 @@ namespace sdk {
     std::vector<sig_and_sighash_t> get_signatures_from_input(
         const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, bool is_liquid);
 
-    void blind_output(session_impl& session, const nlohmann::json& details, const wally_tx_ptr& tx, uint32_t index,
-        const nlohmann::json& output, const std::array<unsigned char, 33>& generator,
-        const std::array<unsigned char, 33>& value_commitment, const std::array<unsigned char, 32>& abf,
-        const std::array<unsigned char, 32>& vbf);
-
     nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout);
 
     std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details);
