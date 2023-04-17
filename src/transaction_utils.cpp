@@ -349,12 +349,15 @@ namespace sdk {
         size_t weight = tx_get_weight(tx);
         if (net_params.is_liquid()) {
             // Add the weight of any missing blinding data
+            const auto policy_asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
             const auto num_inputs = tx->num_inputs ? tx->num_inputs : 1; // Assume at least 1 input
             const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
             size_t blinding_weight = 0;
 
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 auto& output = tx->outputs[i];
+                uint64_t satoshi = 0;
+
                 if (!output.script) {
                     GDK_RUNTIME_ASSERT(i + 1 == tx->num_outputs);
                     continue; // Fee: Must be the last output
@@ -367,9 +370,28 @@ namespace sdk {
                 if (!output.surjectionproof_len) {
                     blinding_weight += sjp_size;
                 }
+                if (output.value[0] == 1) {
+                    // An explicit value; use it for a better estimate
+                    auto conf_value = gsl::make_span(output.value, output.value_len);
+                    satoshi = tx_confidential_value_to_satoshi(conf_value);
+                    // Add the difference between the explicit and blinded value size
+                    blinding_weight -= WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN * 4;
+                    blinding_weight += WALLY_TX_ASSET_CT_VALUE_LEN * 4;
+                }
                 if (!output.rangeproof_len) {
-                    // FIXME: Expose secp256k1_rangeproof_max_size through wally
-                    blinding_weight += varbuff_get_length(ASSET_RANGEPROOF_MAX_LEN);
+                    if (!satoshi) {
+                        // We don't know the value, or its a zero placeholder;
+                        // assume its the maximum for estimation purposes.
+                        if (output.asset_len == policy_asset_bytes.size()
+                            && !memcmp(output.asset, policy_asset_bytes.data(), output.asset_len)) {
+                            // L-BTC: Limited by the policy asset coin supply
+                            satoshi = amount::get_max_satoshi();
+                        } else {
+                            // Asset: Any valid uint64 value is possible
+                            satoshi = std::numeric_limits<uint64_t>::max();
+                        }
+                    }
+                    blinding_weight += varbuff_get_length(asset_rangeproof_max_size(satoshi));
                 }
             }
             weight += blinding_weight;
