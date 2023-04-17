@@ -787,6 +787,10 @@ pub struct AddressPointer {
     pub pointer: u32, // child_number in bip32 terminology
     pub user_path: Vec<ChildNumber>,
     pub is_internal: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_blinded: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub unblinded_address: Option<String>,
 }
 
 // This one is simple enough to derive a serializer

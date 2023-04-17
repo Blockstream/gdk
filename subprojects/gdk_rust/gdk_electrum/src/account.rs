@@ -242,6 +242,13 @@ impl Account {
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
+        let (is_blinded, unblinded_address, blinding_key) = match address {
+            BEAddress::Elements(ref a) => {
+                let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
+                (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
+            }
+            _ => (None, None, None),
+        };
         let script_pubkey = &address.script_pubkey();
         acc_store.scripts.insert(account_path.clone(), script_pubkey.clone());
         acc_store.paths.insert(script_pubkey.clone(), account_path.clone());
@@ -249,19 +256,17 @@ impl Account {
             None => None,
             Some(_pubkey) => Some(script_pubkey.to_hex()),
         };
-        let blinding_key_hex: Option<String> = match &address.blinding_pubkey() {
-            None => None,
-            Some(pubkey) => Some(pubkey.to_string()),
-        };
         Ok(AddressPointer {
             subaccount: self.account_num,
             address_type: self.script_type.to_string(),
             address: address.to_string(),
             script_pubkey: script_pubkey_hex,
-            blinding_key: blinding_key_hex,
+            blinding_key: blinding_key,
             pointer: pointer,
             user_path: user_path.into(),
             is_internal: is_internal,
+            is_blinded: is_blinded,
+            unblinded_address: unblinded_address,
         })
     }
 
