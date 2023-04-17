@@ -313,7 +313,9 @@ namespace sdk {
 
     std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
         byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
-        byte_span_t generator, uint64_t min_value, int exp, int min_bits);
+        byte_span_t generator, uint64_t min_value = 1, int exp = 0, int min_bits = 52);
+
+    size_t asset_rangeproof_max_size(uint64_t value, int min_bits = 52);
 
     std::vector<unsigned char> explicit_rangeproof(
         uint64_t value, byte_span_t nonce_hash, byte_span_t vbf, byte_span_t commitment, byte_span_t generator);

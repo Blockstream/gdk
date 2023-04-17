@@ -1332,10 +1332,8 @@ namespace sdk {
             const auto eph_private_key = h2b(output.at("eph_private_key"));
             eph_public_key = ec_public_key_from_private_key(eph_private_key);
 
-            constexpr int ct_exponent = 0;
-            constexpr int ct_bits = 52;
-            rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment,
-                scriptpubkey, generator, 1, ct_exponent, ct_bits);
+            rangeproof = asset_rangeproof(
+                value, blinding_pubkey, eph_private_key, asset_id, abf, vbf, value_commitment, scriptpubkey, generator);
         }
 
         std::vector<unsigned char> surjectionproof;

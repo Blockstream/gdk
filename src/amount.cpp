@@ -40,6 +40,8 @@ namespace sdk {
     {
     }
 
+    amount::value_type amount::get_max_satoshi() { return SATOSHI_MAX; }
+
     nlohmann::json amount::convert(
         const nlohmann::json& amount_json, const std::string& fiat_currency, const std::string& fiat_rate)
     {

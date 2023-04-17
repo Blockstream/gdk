@@ -47,6 +47,9 @@ namespace sdk {
         // Format a number string to include 'dp' decimal places
         static std::string format_amount(const std::string& value_str, size_t dp);
 
+        // Get the maximum number of satoshi for a BTC/L-BTC amount
+        static value_type get_max_satoshi();
+
         amount& operator=(value_type v)
         {
             m_value = v;

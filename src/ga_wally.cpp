@@ -764,6 +764,13 @@ namespace sdk {
         return commitment;
     }
 
+    size_t asset_rangeproof_max_size(uint64_t value, int min_bits)
+    {
+        size_t written;
+        GDK_VERIFY(wally_asset_rangeproof_get_maximum_len(value, min_bits, &written));
+        return written;
+    }
+
     std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
         byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
         byte_span_t generator, uint64_t min_value, int exp, int min_bits)
