@@ -952,6 +952,35 @@ GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth
 GDK_API int GA_twofactor_change_limits(
     struct GA_session* session, GA_json* limit_details, struct GA_auth_handler** call);
 
+/**
+ * Encode CBOR into (potentially multi-part) UR-encoding.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`bcur-encode` containing the CBOR data to encode.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`bcur-encoded`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ */
+GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
+
+/**
+ * Decode (potentially multi-part) UR-encoded data to CBOR.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`bcur-decode` containing the the first URI to decode.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`bcur-decoded`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * For multi-part data, the call hander will request further parts using
+ * ``"request_code"`` with a method of ``"data"``. see: `auth-handler-status`.
+ *
+ * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ */
+GDK_API int GA_bcur_decode(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
+
 #ifndef SWIG
 /**
  * Free a string returned by the api.

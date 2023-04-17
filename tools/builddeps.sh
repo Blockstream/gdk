@@ -439,4 +439,14 @@ export SQLITE_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${SQLITE_SRCDIR}
 
 
+# build bc-ur
+name="bcur"
+source_url="https://github.com/BlockchainCommons/bc-ur/archive/refs/tags/0.3.0.tar.gz"
+source_name="bc-ur-0.3.0"
+source_filename="bc-ur-0.3.0.tar.gz"
+source_hash="2b9455766ce84ae9f7013c9a72d749034dddefb3f515145d585c732f17e7fa94"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+export BCUR_SRCDIR=`pwd`/tmp/${source_name}
+build ${name} ${BCUR_SRCDIR}
+
 rm -rf tmp

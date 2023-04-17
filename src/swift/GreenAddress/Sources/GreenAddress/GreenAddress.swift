@@ -470,6 +470,14 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_twofactor_change_limits)
     }
 
+    public func bcurEncode(details: [String: Any]) throws -> TwoFactorCall{
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_bcur_encode)
+    }
+
+    public func bcurDecode(details: [String: Any]) throws -> TwoFactorCall{
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_bcur_decode)
+    }
+
     public func setCSVTime(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_set_csvtime)
     }

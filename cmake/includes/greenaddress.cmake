@@ -35,6 +35,9 @@ macro(create_greenaddress_target)
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
     )
+    if(TARGET bc-ur)
+        target_link_libraries(greenaddress PRIVATE bc-ur)
+    endif()
     get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
     #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
     set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
@@ -138,6 +141,9 @@ macro(create_greenaddressstatic_target)
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
     )
+    if(TARGET bc-ur)
+        target_link_libraries(greenaddress-static PRIVATE bc-ur)
+    endif()
     target_link_options(greenaddress-static INTERFACE "${GDK_LINK_OPTIONS}")
 endmacro()
 

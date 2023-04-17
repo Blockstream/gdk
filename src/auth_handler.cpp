@@ -64,6 +64,8 @@ namespace sdk {
 
     void auth_handler::signal_2fa_request(const std::string& /*action*/) { GDK_RUNTIME_ASSERT(false); }
 
+    void auth_handler::signal_data_request() { GDK_RUNTIME_ASSERT(false); }
+
     void auth_handler::set_error(const std::string& /*error_message*/) { GDK_RUNTIME_ASSERT(false); }
 
     void auth_handler::request_code_impl(const std::string& /*method*/) { GDK_RUNTIME_ASSERT(false); }
@@ -120,6 +122,13 @@ namespace sdk {
         m_state = !m_methods || m_methods->empty() ? state_type::make_call : state_type::request_code;
     }
 
+    void auth_handler_impl::signal_data_request()
+    {
+        m_methods.reset(new std::vector<std::string>{ "data" });
+        signal_2fa_request("data");
+        m_auth_data = nlohmann::json::object();
+    }
+
     void auth_handler_impl::set_error(const std::string& error_message)
     {
         GDK_LOG_SEV(log_level::warning) << m_name << " call exception: " << error_message;
@@ -144,8 +153,8 @@ namespace sdk {
 
     void auth_handler_impl::request_code_impl(const std::string& method)
     {
-        // For gauth request code is a no-op
-        if (method != "gauth") {
+        // For gauth or data, request code is a no-op
+        if (method != "gauth" && method != "data") {
             m_auth_data = m_session->auth_handler_request_code(method, m_action, m_twofactor_data);
         }
 
@@ -237,6 +246,10 @@ namespace sdk {
 
     auth_handler::state_type auth_handler_impl::get_state() const { return m_state; }
     auth_handler::hw_request auth_handler_impl::get_hw_request() const { return m_hw_request; }
+    bool auth_handler_impl::is_data_request() const
+    {
+        return m_methods && m_methods->size() == 1u && m_methods->front() == "data";
+    }
     const nlohmann::json& auth_handler_impl::get_twofactor_data() const { return m_twofactor_data; }
     const std::string& auth_handler_impl::get_code() const { return m_code; }
     const nlohmann::json& auth_handler_impl::get_hw_reply() const { return m_hw_reply; }
@@ -366,7 +379,7 @@ namespace sdk {
     {
         return get_current_handler()->get_hw_request();
     }
-
+    bool auto_auth_handler::is_data_request() const { return get_current_handler()->is_data_request(); }
     const nlohmann::json& auto_auth_handler::get_twofactor_data() const
     {
         return get_current_handler()->get_twofactor_data();
@@ -408,6 +421,13 @@ namespace sdk {
             // TODO: Intrusive handler processing
             // Allow the next-to-last handler to fetch results from its sub-handler
             get_current_handler()->on_next_handler_complete(last_handler.get());
+            return true; // Continue processing the current handler
+        }
+
+        if (state == state_type::request_code && handler->is_data_request()) {
+            // A request for more data from the caller. Handle it internally,
+            // the caller just sees resolve_code for "data" with the details.
+            handler->request_code("data");
             return true; // Continue processing the current handler
         }
 

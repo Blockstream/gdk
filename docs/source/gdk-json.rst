@@ -1130,6 +1130,83 @@ When the user has a fiat spending limit set instead of BTC, limits are returned 
 :twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
 
+.. _bcur-encode:
+
+BCUR Encode JSON
+----------------
+
+Contains CBOR data to encode into UR format using `GA_bcur_encode`.
+
+.. code-block:: json
+
+ {
+    "ur_type": "crypto-seed",
+    "data": "A20150C7098580125E2AB0981253468B2DBC5202D8641947DA",
+    "max_fragment_len": 100
+ }
+
+:ur_type: The type of the CBOR-encoded data.
+:data: CBOR-encoded data in hexadecimal format.
+:max_fragment_len: The maximum size of each UR-encoded fragment to return.
+
+Where ``data`` is longer than ``max_fragment_len``, the result is a multi-part
+encoding using approximately 3 times the minimum number of fragments needed to
+decode the data, split into parts of size ``max_fragment_len`` or less.
+
+In this case, the caller must provide all retrned parts to any decoder, e.g. by
+generating an animated QR code from them.
+
+.. _bcur-encoded:
+
+BCUR Encoded fragments JSON
+---------------------------
+
+Contains UR format data encoded using `GA_bcur_encode`.
+
+.. code-block:: json
+
+ {
+    "parts": ["ur:crypto-seed/oeadgdstaslplabghydrpfmkbggufgludprfgmaotpiecffltnlpqdenos"]
+ }
+
+:parts: The resulting array of UR-encoded fragments representing the input CBOR.
+
+
+.. _bcur-decode:
+
+BCUR Decode JSON
+----------------
+
+Contains UR encoded data to decode into CBOR using `GA_bcur_decode`.
+
+.. code-block:: json
+
+ {
+    "part": "ur:crypto-seed/oeadgdstaslplabghydrpfmkbggufgludprfgmaotpiecffltnlpqdenos"
+ }
+
+:part: The UR-encoded string for an individual part. For multi-part decoding, the
+    parts can be provided in any order.
+
+
+.. _bcur-decoded:
+
+BCUR Decoded data JSON
+----------------------
+
+Contains CBOR data decoded from UR format using `GA_bcur_decode`.
+
+.. code-block:: json
+
+ {
+    "ur_type": "crypto-seed",
+    "data": "A20150C7098580125E2AB0981253468B2DBC5202D8641947DA"
+ }
+
+:ur-type: The type of the decoded data as specified when it was encoded.
+:data: The resulting CBOR-encoded data in hexadecimal format.
+
+
 .. _settings:
 
 Settings JSON
@@ -1526,7 +1603,9 @@ Auth handler status JSON
 
 Describes the status of a GA_auth_handler. Returned by `GA_auth_handler_get_status`.
 
-The data returned depends on the current state of the handler, as follows:
+All status JSON contains a ``"name"`` element with the name of the handler being invoked.
+
+The remaining data returned depends on the current state of the handler, as follows:
 
 * ``"done"``:
 
@@ -1576,7 +1655,8 @@ The data returned depends on the current state of the handler, as follows:
   }
 
 :action: The action being processed.
-:methods: A list of the two factor methods the user has enabled.
+:methods: A list of available two factor methods the user has enabled, or the
+    single element ``"data"`` if the call requires more data to continue.
 
 * ``"resolve_code"`` (two factor):
 
@@ -1612,6 +1692,21 @@ The data returned depends on the current state of the handler, as follows:
 
 :action: The action being processed.
 :required_data: Contains the data the HWW must provide, see :ref:`hw-resolve-overview`.
+
+* ``"resolve_code"`` (request for additional data):
+
+.. code-block:: json
+
+  {
+    "status": "resolve_code",
+    "action": "data",
+    "method": "data",
+    "auth_data": {}
+  }
+
+:action: Always "data".
+:method: Always "data".
+:auth_data: Method-specific ancillary data for processing the additional data request.
 
 
 .. _reconnect:

@@ -51,6 +51,7 @@ namespace sdk {
         virtual nlohmann::json get_status() const = 0;
         virtual state_type get_state() const = 0;
         virtual hw_request get_hw_request() const = 0;
+        virtual bool is_data_request() const = 0;
         virtual const nlohmann::json& get_twofactor_data() const = 0;
         virtual const std::string& get_code() const = 0;
         virtual const nlohmann::json& get_hw_reply() const = 0;
@@ -68,6 +69,7 @@ namespace sdk {
     protected:
         virtual void signal_hw_request(hw_request request);
         virtual void signal_2fa_request(const std::string& action);
+        virtual void signal_data_request();
         virtual void set_error(const std::string& error_message);
 
         virtual void request_code_impl(const std::string& method);
@@ -88,6 +90,7 @@ namespace sdk {
         nlohmann::json get_status() const final;
         state_type get_state() const final;
         hw_request get_hw_request() const final;
+        bool is_data_request() const final;
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
         const nlohmann::json& get_hw_reply() const final;
@@ -100,6 +103,7 @@ namespace sdk {
     protected:
         void signal_hw_request(hw_request request) final;
         void signal_2fa_request(const std::string& action) final;
+        void signal_data_request() final;
         void set_error(const std::string& error_message) final;
 
         void request_code_impl(const std::string& method) final;
@@ -138,6 +142,7 @@ namespace sdk {
         nlohmann::json get_status() const final;
         state_type get_state() const final;
         hw_request get_hw_request() const final;
+        bool is_data_request() const final;
         const nlohmann::json& get_twofactor_data() const final;
         const std::string& get_code() const final;
         const nlohmann::json& get_hw_reply() const final;

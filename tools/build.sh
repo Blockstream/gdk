@@ -42,6 +42,7 @@ enable_tests=FALSE # cmake bool format
 python_version=3
 enable_python=false
 no_deps_rebuild=false
+bcur=TRUE
 parallel=$(cat /proc/cpuinfo | grep ^processor | wc -l)
 devmode=FALSE # cmake bool
 verbose=false
@@ -57,7 +58,7 @@ if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,no-deps-rebuild,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,no-deps-rebuild,disable-bcur,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -65,6 +66,7 @@ while true; do
         -v ) verbose=true; shift 2 ;;
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
+        --disable-bcur ) bcur=FALSE; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
         --no-deps-rebuild ) no_deps_rebuild=true; shift ;;
         --devmode ) devmode=TRUE; shift ;;
@@ -128,7 +130,8 @@ cmake_options="-B $bld_root -S . \
     -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$cmake_profile \
     -DCMAKE_BUILD_TYPE=$cmake_build_type \
     -DENABLE_TESTS:BOOL=$enable_tests \
-    -DDEV_MODE:BOOL=$devmode"
+    -DDEV_MODE:BOOL=$devmode \
+    -DENABLE_BCUR:BOOL=$bcur"
 
 if $enable_python ; then
     if [[ $python_version == "venv" ]]; then

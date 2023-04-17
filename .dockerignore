@@ -1,4 +1,5 @@
 **
+!./tools/buildbcur.sh
 !./tools/buildboost.sh
 !./tools/builddeps.sh
 !./tools/buildlibevent.sh

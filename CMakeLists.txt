@@ -11,6 +11,7 @@ option(SHARED_ONLY "build only shared library" FALSE)
 option(DEV_MODE "dev mode enables a faster developing-testing loop when working with the python-wheel" FALSE)
 option(ENABLE_SWIFT "enable build of swift bindings" FALSE)
 OPTION(ENABLE_RUSTCPP "enable dependency of C++ over Rust" TRUE)
+OPTION(ENABLE_BCUR "enable support QR code encoding/decoding" TRUE)
 set(PYTHON_REQUIRED_VERSION 3 CACHE STRING "required python version")
 
 ### avoiding in-build compilation, your local gdk folder would turn into a real mess
@@ -88,6 +89,8 @@ pkg_check_modules(libsecp256k1 REQUIRED IMPORTED_TARGET libsecp256k1)
 include(cmake/extern/autobahn.cmake)
 # tor - no package manager files whatsoever
 include(cmake/extern/tor.cmake)
+# bc-ur - no package manager files whatsoever
+include(cmake/extern/bcur.cmake)
 
 
 ####################################################################

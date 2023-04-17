@@ -16,9 +16,10 @@ openssl_ssl=@OPENSSL_SSL_LIBRARY@
 openssl_crypto=@OPENSSL_CRYPTO_LIBRARY@
 zlib=@ZLIB_LIBRARIES@
 tors="@_torLibList@"
+bc_ur="@BCUR_LIBRARIES@"
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors $bc_ur"
 
 
 if [ "$(uname)" = "Darwin" ]; then

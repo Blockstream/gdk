@@ -37,7 +37,10 @@ class Call(object):
         return methods[0]
 
     def _resolve_code(self, method):
-        # Default implementation just uses localtest dummy 2fa code
+        if isinstance(method, dict):
+            # Caller must provide their own handler for data requests
+            raise RuntimeError(f'Unhandled data request {method}')
+        # 2FA: Default implementation just uses localtest dummy 2fa code
         return '555555'
 
     def request_code(self, method):
@@ -62,6 +65,9 @@ class Call(object):
                 if 'required_data' in status:
                     # Hardware device authorization requested
                     code = resolve_code_fn(status['required_data'])
+                elif status['method'] == 'data':
+                    # Caller data requested
+                    code = resolve_code_fn(status)
                 else:
                     # Twofactor authorization requested
                     code = resolve_code_fn(status['method'])
@@ -302,6 +308,12 @@ class Session(object):
 
     def twofactor_change_limits(self, details):
         return Call(twofactor_change_limits(self.session_obj, self._to_json(details)))
+
+    def bcur_encode(self, details):
+        return Call(bcur_encode(self.session_obj, self._to_json(details)))
+
+    def bcur_decode(self, details):
+        return Call(bcur_decode(self.session_obj, self._to_json(details)))
 
     def http_request(self, params):
         return json.loads(http_request(self.session_obj, self._to_json(params)))

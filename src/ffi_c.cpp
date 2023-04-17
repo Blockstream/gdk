@@ -3,6 +3,7 @@
 
 #include "amount.hpp"
 #include "assertion.hpp"
+#include "bcur_auth_handlers.hpp"
 #include "boost_wrapper.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
@@ -505,6 +506,12 @@ GDK_DEFINE_C_FUNCTION_3(GA_sign_message, struct GA_session*, session, GA_json*, 
 GDK_DEFINE_C_FUNCTION_3(GA_twofactor_change_limits, struct GA_session*, session, GA_json*, limit_details,
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::change_limits_call(*session, json_move(limit_details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_bcur_encode, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::bcur_encoder_call(*session, json_move(details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_bcur_decode, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::bcur_decoder_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_bool, const GA_json*, json, const char*, path, uint32_t*, output, {
     bool v;

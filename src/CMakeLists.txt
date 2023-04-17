@@ -9,6 +9,7 @@ add_library(greenaddress-objects OBJECT
     amount.cpp
     assertion.cpp
     auth_handler.cpp
+    bcur_auth_handlers.cpp
     client_blob.cpp
     containers.cpp
     exception.cpp
@@ -89,6 +90,7 @@ target_include_directories(greenaddress-objects SYSTEM PRIVATE
     $<TARGET_PROPERTY:Boost::boost,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:OpenSSL::SSL,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:ZLIB::ZLIB,INTERFACE_INCLUDE_DIRECTORIES>
+    ${BCUR_INCLUDE_DIR}
 )
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
     ${CMAKE_SOURCE_DIR}/include/greenlight.h
