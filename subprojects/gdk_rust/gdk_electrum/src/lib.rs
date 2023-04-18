@@ -320,8 +320,19 @@ impl ElectrumSession {
         details: &DecryptWithPinDetails,
     ) -> Result<serde_json::Value, Error> {
         let decrypted = self.inner_decrypt_with_pin(details)?;
-        serde_json::from_slice(&decrypted)
-            .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))
+        if let Ok(plaintext) = serde_json::from_slice(&decrypted) {
+            Ok(plaintext)
+        } else {
+            // Some pin_data encrypt the bare mnemonic, not a json
+            // Unfortunately this means that we will have some false positives returned as
+            // credential json
+            Ok(json!({
+                "mnemonic": std::str::from_utf8(&decrypted)
+                    .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))?
+                    .to_string(),
+                "bip39_passphrase": "".to_string(),
+            }))
+        }
     }
 
     pub fn credentials_from_pin_data(
