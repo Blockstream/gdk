@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.0.61
+## Release 0.0.62
 
 ### Added
 
@@ -9,6 +9,11 @@
 ### Fixed
 
 ### Removed
+
+## Release 0.0.61 - 2023-04-18
+
+### Fixed
+- Allow GA_decrypt_with_pin to decrypt pin_data created with GA_set_pin.
 
 ## Release 0.0.60 - 2023-04-18
 
