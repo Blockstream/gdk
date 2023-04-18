@@ -189,9 +189,11 @@ namespace sdk {
         }
         if (m_create_details.empty()) {
             // Call create_transaction to create the swap tx
-            nlohmann::json addressee = { { "address", m_receive_address.at("address") } };
+            nlohmann::json addressee = std::move(m_receive_address);
+            m_receive_address["used"] = true; // Make sure m_receive_address.empty() isn't true
+            addressee.erase("is_blinded"); // FIXME: untangle blinded vs confidential
             addressee.update(receive);
-            std::vector<nlohmann::json> addressees{ std::move(addressee) };
+            nlohmann::json::array_t addressees{ std::move(addressee) };
             std::vector<nlohmann::json> used_utxos{ send };
             nlohmann::json utxos{ { send.at("asset_id"), used_utxos } };
             nlohmann::json create_details = { { "addressees", std::move(addressees) }, { "is_partial", true },
@@ -308,9 +310,11 @@ namespace sdk {
             }
 
             auto maker_addressee = liquidex_get_maker_addressee(m_net_params, m_tx, proposal_output);
-            nlohmann::json taker_addressee = { { "address", m_receive_address.at("address") },
-                { "asset_id", maker_asset_id }, // Taker is receiving the makers asset
-                { "satoshi", proposal_input.at("satoshi") } };
+            nlohmann::json taker_addressee = std::move(m_receive_address);
+            m_receive_address["used"] = true; // Make sure m_receive_address.empty() isn't true
+            taker_addressee.erase("is_blinded"); // FIXME: untangle blinded vs confidential
+            taker_addressee["asset_id"] = maker_asset_id; // Taker is receiving the makers asset
+            taker_addressee["satoshi"] = proposal_input.at("satoshi");
             nlohmann::json::array_t addressees = { std::move(maker_addressee), std::move(taker_addressee) };
 
             nlohmann::json create_details
