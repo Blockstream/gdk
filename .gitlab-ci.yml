@@ -51,7 +51,7 @@ workflow:
     # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    PREBUILT_SUBDIR: "prebuilt-9"
+    PREBUILT_SUBDIR: "prebuilt-10"
 
 .ios_release:
   extends: .osx_env
