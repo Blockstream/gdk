@@ -447,6 +447,8 @@ namespace sdk {
         const auto status = get_status();
         const auto& required_data = status.at("required_data");
         const bool have_master_blinding_key = signer->has_master_blinding_key();
+        // The internal software wallet must have a master blinding key
+        GDK_RUNTIME_ASSERT(!signer->is_liquid() || have_master_blinding_key || is_hardware);
         nlohmann::json result;
 
         if (request == hw_request::get_master_blinding_key) {
@@ -513,8 +515,6 @@ namespace sdk {
             }
         } else if (request == hw_request::get_master_blinding_key) {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
-        } else if (request == hw_request::blind_tx) {
-            result = blind_ga_transaction(get_session(), required_data["details"]);
         } else if (request == hw_request::sign_tx) {
             auto sigs = sign_ga_transaction(
                 get_session(), required_data.at("transaction"), required_data.at("signing_inputs"))
