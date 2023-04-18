@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.0.60
+## Release 0.0.61
 
 ### Added
 
@@ -9,6 +9,11 @@
 ### Fixed
 
 ### Removed
+
+## Release 0.0.60 - 2023-04-18
+
+### Fixed
+- Fix artifacts for OSX builds.
 
 ## Release 0.0.59 - 2023-04-12
 
