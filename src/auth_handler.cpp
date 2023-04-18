@@ -486,7 +486,7 @@ namespace sdk {
             return true;
         } else if (have_master_blinding_key && request == hw_request::blind_tx) {
             // Host unblinding: Blind a transaction
-            handler->resolve_hw_reply(blind_ga_transaction(get_session(), required_data.at("details")));
+            handler->resolve_hw_reply(blind_ga_transaction(get_session(), std::move(required_data.at("details"))));
             return true;
         } else if (request == hw_request::get_xpubs) {
             const auto& paths = required_data.at("paths");

@@ -35,7 +35,7 @@ namespace sdk {
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs);
     nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details);
 
-    nlohmann::json blind_ga_transaction(session_impl& session, const nlohmann::json& details);
+    nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details);
 
 } // namespace sdk
 } // namespace ga

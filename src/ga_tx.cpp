@@ -1199,17 +1199,10 @@ namespace sdk {
             tx, index, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
     }
 
-    nlohmann::json blind_ga_transaction(session_impl& session, const nlohmann::json& details)
+    nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details)
     {
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
-
-        uint32_t num_blinded_addressees = 0;
-        for (auto& addressee : details.at("addressees")) {
-            if (json_get_value(addressee, "is_blinded", false)) {
-                ++num_blinded_addressees;
-            }
-        }
 
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
@@ -1217,15 +1210,34 @@ namespace sdk {
             throw user_error(error);
         }
 
+        const auto& used_utxos = details.at("used_utxos");
+        auto& transaction_outputs = details.at("transaction_outputs");
+
         constexpr bool is_liquid = true;
         const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
         const bool is_partial = json_get_value(details, "is_partial", false);
+        const bool has_amp_inputs = tx_has_amp_inputs(session, details);
 
-        std::vector<unsigned char> input_abfs;
-        std::vector<unsigned char> input_vbfs;
+        // We must have at least a regular output and a fee output, unless partial
+        GDK_RUNTIME_ASSERT(transaction_outputs.size() >= (is_partial ? 1 : 2));
+        const auto num_fees = std::count_if(transaction_outputs.begin(), transaction_outputs.end(),
+            [](const auto& o) { return o.value("is_fee", false); });
+        if (is_partial) {
+            // We must not have a fee output as the transaction is incomplete
+            GDK_RUNTIME_ASSERT(num_fees == 0);
+        } else {
+            // We must have a fee output, and it must be the last one
+            GDK_RUNTIME_ASSERT(num_fees == 1 && transaction_outputs.back().value("is_fee", false));
+        }
+        std::vector<unsigned char> input_abfs, input_vbfs;
         std::vector<uint64_t> input_values;
-        size_t num_inputs{ 0 };
-        for (const auto& utxo : details.at("used_utxos")) {
+        size_t num_inputs = 0;
+
+        input_abfs.reserve(used_utxos.size() * BLINDING_FACTOR_LEN);
+        input_vbfs.reserve(used_utxos.size() * BLINDING_FACTOR_LEN);
+        input_values.reserve(used_utxos.size());
+
+        for (const auto& utxo : used_utxos) {
             if (!input_contributes_to_last_vbf(utxo)) {
                 continue;
             }
@@ -1236,37 +1248,25 @@ namespace sdk {
             input_values.emplace_back(utxo.at("satoshi"));
             ++num_inputs;
         }
-
-        size_t num_outputs{ 0 };
-        const auto& transaction_outputs = details.at("transaction_outputs");
+        // We must have at least one input in the tx
+        GDK_RUNTIME_ASSERT(num_inputs);
 
         for (const auto& output : transaction_outputs) {
-            if (output.at("is_fee")) {
-                continue;
-            }
-            if (output_contributes_to_last_vbf(output)) {
+            if (!output.value("is_fee", false) && output_contributes_to_last_vbf(output)) {
                 input_values.emplace_back(output.at("satoshi"));
             }
-            ++num_outputs;
         }
-
-        GDK_RUNTIME_ASSERT(num_inputs && num_outputs);
-
-        const bool has_amp_inputs = tx_has_amp_inputs(session, details);
 
         // Blinding factors that contribute to the last vbf
         std::vector<abf_t> output_abfs;
         std::vector<vbf_t> output_vbfs;
 
-        std::vector<std::string> blinding_nonces;
+        nlohmann::json::array_t blinding_nonces;
+        blinding_nonces.reserve(transaction_outputs.size());
         size_t i = 0;
 
         for (const auto& output : transaction_outputs) {
-            // IMPORTANT: we assume the fee is always the last output
-            if (output.at("is_fee")) {
-                if (has_amp_inputs) {
-                    blinding_nonces.emplace_back(std::string{});
-                }
+            if (output.value("is_fee", false)) {
                 break;
             }
 
@@ -1286,7 +1286,7 @@ namespace sdk {
             }
 
             vbf_t vbf{ 0 };
-            if (is_partial || (i < num_outputs - 1)) {
+            if (is_partial || i < transaction_outputs.size() - 2) {
                 if (contributes_to_last_vbf) {
                     const std::string vbf_hex = json_get_value(output, "amountblinder");
                     vbf = vbf_hex.empty() ? get_random_bytes<32>() : h2b_rev<32>(vbf_hex);
@@ -1301,9 +1301,14 @@ namespace sdk {
                 const std::vector<std::string> scalars = json_get_value<decltype(scalars)>(details, "scalars");
                 // For now we don't want to attempt to support general cases. Here we want to restrict our
                 // capabilities to avoid some footguns.
-                GDK_RUNTIME_ASSERT(scalars.size() == 0 || scalars.size() == num_blinded_addressees);
-                for (const auto& scalar : scalars) {
-                    vbf = ec_scalar_add(vbf, h2b(scalar));
+                if (scalars.size()) {
+                    const auto& a = details.at("addressees");
+                    const size_t num_blinded_addressees
+                        = std::count_if(a.begin(), a.end(), [](const auto& a) { return a.value("is_blinded", false); });
+                    GDK_RUNTIME_ASSERT(scalars.size() == num_blinded_addressees);
+                    for (const auto& scalar : scalars) {
+                        vbf = ec_scalar_add(vbf, h2b(scalar));
+                    }
                 }
                 output_vbfs.emplace_back(vbf);
             }
@@ -1326,23 +1331,25 @@ namespace sdk {
             ++i;
         }
 
-        nlohmann::json result(details);
         size_t j = 0;
-        for (i = 0; i < num_outputs; ++i) {
+        for (i = 0; i < transaction_outputs.size() - (is_partial ? 0 : 1); ++i) {
             if (!output_contributes_to_last_vbf(transaction_outputs.at(i))) {
                 continue;
             }
-            auto& output = result["transaction_outputs"].at(i);
+            auto& output = transaction_outputs.at(i);
             output["assetblinder"] = b2h_rev(output_abfs.at(j));
             output["amountblinder"] = b2h_rev(output_vbfs.at(j));
             ++j;
         }
-        result["blinded"] = true;
+        details["blinded"] = true;
         if (has_amp_inputs) {
-            result["blinding_nonces"] = blinding_nonces;
+            if (!is_partial) {
+                blinding_nonces.emplace_back(std::string{}); // Add an empty fee nonce
+            }
+            details["blinding_nonces"] = std::move(blinding_nonces);
         }
-        update_tx_size_info(net_params, tx, result);
-        return result;
+        update_tx_size_info(net_params, tx, details);
+        return details;
     }
 
     nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)
