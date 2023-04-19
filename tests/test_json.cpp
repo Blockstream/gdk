@@ -56,6 +56,23 @@ int main()
     GDK_RUNTIME_ASSERT(!obj.is_null());
     GDK_RUNTIME_ASSERT(obj.is_object());
 
+    // A moved json object is empty and null, and is not an object
+    nlohmann::json moved_from = { { "foo", "bar" } };
+    nlohmann::json moved_to;
+    moved_to = std::move(moved_from);
+    GDK_RUNTIME_ASSERT(moved_from.empty());
+    GDK_RUNTIME_ASSERT(moved_from.is_null());
+    GDK_RUNTIME_ASSERT(!moved_from.is_object());
+    // The moved to object contains the moved from data
+    GDK_RUNTIME_ASSERT(moved_to.at("foo") == "bar");
+    // The moved from object can continue to be used without re-assigning an
+    // empty object to it (i.e. move on this object is not destructive; the
+    // object remains valid, just empty and null). In particular, we can
+    // continue to set values and call members on it.
+    GDK_RUNTIME_ASSERT(!moved_from.contains("foo"));
+    moved_from["foo"] = "bar";
+    GDK_RUNTIME_ASSERT(moved_from.value("foo", "") == "bar");
+
     // References to blank string values are not empty() and have a size() of 1
     // This is because the reference is to the holding json object, not the
     // string directly (you must convert to the string to check emptyness).
