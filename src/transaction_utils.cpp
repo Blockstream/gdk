@@ -644,23 +644,6 @@ namespace sdk {
         }
     }
 
-    vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
-        const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs)
-    {
-        auto&& flatten_into = [](auto& bfs, const auto& out_bfs) {
-            std::for_each(std::begin(out_bfs), std::end(out_bfs),
-                [&bfs](const auto& bf) { bfs.insert(bfs.end(), std::begin(bf), std::end(bf)); });
-        };
-
-        std::vector<unsigned char> abfs(std::begin(input_abfs), std::end(input_abfs));
-        flatten_into(abfs, output_abfs);
-
-        std::vector<unsigned char> vbfs(std::begin(input_vbfs), std::end(input_vbfs));
-        flatten_into(vbfs, output_vbfs);
-
-        return asset_final_vbf(input_values, num_inputs, abfs, vbfs);
-    }
-
     uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id)
     {
         const auto index_p = result.find("change_index");

@@ -92,9 +92,6 @@ namespace sdk {
     // Add a fee output to a tx, returns the index in tx->outputs
     size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx);
 
-    vbf_t generate_final_vbf(byte_span_t input_abfs, byte_span_t input_vbfs, uint64_span_t input_values,
-        const std::vector<abf_t>& output_abfs, const std::vector<vbf_t>& output_vbfs, uint32_t num_inputs);
-
     // Update the json tx size/fee rate information from tx
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
 
