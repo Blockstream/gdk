@@ -938,6 +938,14 @@ namespace sdk {
         return priv_key;
     }
 
+    abf_vbf_t asset_blinding_key_to_abf_vbf(byte_span_t blinding_key, byte_span_t hash_prevouts, uint32_t output_index)
+    {
+        abf_vbf_t ret;
+        GDK_VERIFY(wally_asset_blinding_key_to_abf_vbf(blinding_key.data(), blinding_key.size(), hash_prevouts.data(),
+            hash_prevouts.size(), output_index, ret.data(), ret.size()));
+        return ret;
+    }
+
     //
     // Transactions
     //
@@ -1065,6 +1073,13 @@ namespace sdk {
         size_t written;
         GDK_VERIFY(wally_tx_get_weight(tx.get(), &written));
         return written;
+    }
+
+    std::array<unsigned char, SHA256_LEN> tx_get_hash_prevouts(const wally_tx_ptr& tx)
+    {
+        std::array<unsigned char, SHA256_LEN> ret;
+        GDK_VERIFY(wally_tx_get_hash_prevouts(tx.get(), 0, 0xffffffff, ret.data(), ret.size()));
+        return ret;
     }
 
     void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script)

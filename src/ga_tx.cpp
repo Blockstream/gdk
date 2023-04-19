@@ -1120,6 +1120,7 @@ namespace sdk {
 
     nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details)
     {
+
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
 
@@ -1134,6 +1135,8 @@ namespace sdk {
 
         constexpr bool is_liquid = true;
         const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
+        const auto hash_prevouts = tx_get_hash_prevouts(tx);
+        const auto master_blinding_key = session.get_nonnull_signer()->get_master_blinding_key();
         const bool is_partial = json_get_value(details, "is_partial", false);
         const bool has_amp_inputs = tx_has_amp_inputs(session, details);
 
@@ -1200,10 +1203,19 @@ namespace sdk {
                 values.emplace_back(value);
             }
 
-            abf_t abf{ 0 };
+            abf_vbf_t abf_vbf;
+            if (for_final_vbf) {
+                abf_vbf = asset_blinding_key_to_abf_vbf(master_blinding_key, hash_prevouts, i);
+            }
+
+            abf_t abf;
             const std::string abf_hex = json_get_value(output, "assetblinder");
             if (for_final_vbf) {
-                abf = abf_hex.empty() ? get_random_bytes<32>() : h2b_rev<32>(abf_hex);
+                if (abf_hex.empty()) {
+                    memcpy(abf.data(), abf_vbf.data(), abf.size());
+                } else {
+                    abf = h2b_rev<32>(abf_hex);
+                }
                 output["assetblinder"] = b2h_rev(abf);
                 abfs.insert(abfs.end(), std::begin(abf), std::end(abf));
             } else {
@@ -1215,7 +1227,11 @@ namespace sdk {
             if (is_partial || i < transaction_outputs.size() - 2) {
                 if (for_final_vbf) {
                     const std::string vbf_hex = json_get_value(output, "amountblinder");
-                    vbf = vbf_hex.empty() ? get_random_bytes<32>() : h2b_rev<32>(vbf_hex);
+                    if (vbf_hex.empty()) {
+                        memcpy(vbf.data(), abf_vbf.data() + abf.size(), vbf.size());
+                    } else {
+                        vbf = h2b_rev<32>(vbf_hex);
+                    }
                 }
                 // Leave the vbf to 0, below this value will not be used.
             } else {

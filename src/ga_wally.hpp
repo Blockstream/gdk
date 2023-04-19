@@ -63,6 +63,7 @@ namespace sdk {
     using asset_id_t = std::array<unsigned char, ASSET_TAG_LEN>;
     using vbf_t = std::array<unsigned char, 32>;
     using abf_t = std::array<unsigned char, 32>;
+    using abf_vbf_t = std::array<unsigned char, WALLY_ABF_VBF_LEN>;
     using unblind_t = std::tuple<asset_id_t, vbf_t, abf_t, uint64_t>;
     using cvalue_t = std::array<unsigned char, WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN>;
     using blinding_key_t = std::array<unsigned char, HMAC_SHA512_LEN>;
@@ -352,6 +353,8 @@ namespace sdk {
 
     priv_key_t asset_blinding_key_to_ec_private_key(byte_span_t blinding_key, byte_span_t script);
 
+    abf_vbf_t asset_blinding_key_to_abf_vbf(byte_span_t blinding_key, byte_span_t hash_prevouts, uint32_t output_index);
+
     //
     // Transactions
     //
@@ -392,6 +395,8 @@ namespace sdk {
     GA_USE_RESULT size_t tx_get_vsize(const wally_tx_ptr& tx);
 
     GA_USE_RESULT size_t tx_get_weight(const wally_tx_ptr& tx);
+
+    std::array<unsigned char, SHA256_LEN> tx_get_hash_prevouts(const wally_tx_ptr& tx);
 
     void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script);
 
