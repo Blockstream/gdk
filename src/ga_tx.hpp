@@ -16,6 +16,8 @@ namespace sdk {
     std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
         const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash);
 
+    nlohmann::json get_blinding_factors(const blinding_key_t& master_blinding_key, const nlohmann::json& details);
+
     void blind_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
 
@@ -35,7 +37,7 @@ namespace sdk {
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs);
     nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details);
 
-    nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details);
+    void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 
 } // namespace sdk
 } // namespace ga

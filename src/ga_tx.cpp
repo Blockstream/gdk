@@ -1118,24 +1118,78 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details)
+    static std::array<unsigned char, SHA256_LEN> hash_prevouts_from_utxos(const nlohmann::json& details)
+    {
+        const auto& used_utxos = details.at("used_utxos");
+        std::vector<unsigned char> txhashes;
+        std::vector<uint32_t> output_indices;
+        txhashes.reserve(used_utxos.size() * WALLY_TXHASH_LEN);
+        output_indices.reserve(used_utxos.size());
+        for (const auto& utxo : used_utxos) {
+            const auto txhash_bin = h2b_rev(utxo.at("txhash"));
+            txhashes.insert(txhashes.end(), txhash_bin.begin(), txhash_bin.end());
+            output_indices.emplace_back(utxo.at("pt_idx"));
+        }
+        return get_hash_prevouts(txhashes, output_indices);
+    }
+
+    nlohmann::json get_blinding_factors(const blinding_key_t& master_blinding_key, const nlohmann::json& details)
+    {
+        const auto& transaction_outputs = details.at("transaction_outputs");
+
+        const auto hash_prevouts = hash_prevouts_from_utxos(details);
+        const bool is_partial = details.at("is_partial");
+
+        nlohmann::json::array_t abfs, vbfs;
+        abfs.reserve(transaction_outputs.size());
+        vbfs.reserve(transaction_outputs.size());
+
+        for (size_t i = 0; i < transaction_outputs.size(); ++i) {
+            auto& output = transaction_outputs[i];
+            bool need_bf = output.contains("amountblinder") || output.contains("blinding_key");
+
+            abf_vbf_t abf_vbf;
+            if (need_bf) {
+                abf_vbf = asset_blinding_key_to_abf_vbf(master_blinding_key, hash_prevouts, i);
+            }
+
+            if (need_bf && json_get_value(output, "assetblinder").empty()) {
+                abfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data(), BLINDING_FACTOR_LEN)));
+            } else {
+                abfs.emplace_back(std::string());
+            }
+            // Skip final vbf for non-partial txs; it is calculated by gdk
+            need_bf = need_bf and (is_partial or i != transaction_outputs.size() - 1);
+            if (need_bf && json_get_value(output, "amountblinder").empty()) {
+                vbfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data() + BLINDING_FACTOR_LEN, BLINDING_FACTOR_LEN)));
+            } else {
+                vbfs.emplace_back(std::string());
+            }
+        }
+        return {
+            { "assetblinders", std::move(abfs) },
+            { "amountblinders", std::move(vbfs) },
+        };
+    }
+
+    void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data)
     {
         const auto& net_params = session.get_network_parameters();
-        GDK_RUNTIME_ASSERT(net_params.is_liquid());
+        const bool is_liquid = net_params.is_liquid();
+        GDK_RUNTIME_ASSERT(is_liquid);
 
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
             GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
             throw user_error(error);
         }
+        const auto& assetblinders = blinding_data.at("assetblinders");
+        const auto& amountblinders = blinding_data.at("amountblinders");
 
         const auto& used_utxos = details.at("used_utxos");
         auto& transaction_outputs = details.at("transaction_outputs");
 
-        constexpr bool is_liquid = true;
         const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
-        const auto hash_prevouts = tx_get_hash_prevouts(tx);
-        const auto master_blinding_key = session.get_nonnull_signer()->get_master_blinding_key();
         const bool is_partial = json_get_value(details, "is_partial", false);
         const bool blinding_nonces_required = details.at("blinding_nonces_required");
 
@@ -1185,10 +1239,15 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(num_inputs);
 
         nlohmann::json::array_t blinding_nonces;
-        blinding_nonces.reserve(transaction_outputs.size());
+        if (blinding_nonces_required) {
+            blinding_nonces.reserve(transaction_outputs.size());
+        }
 
-        for (size_t i = 0; i < transaction_outputs.size() - (is_partial ? 0 : 1); ++i) {
+        for (size_t i = 0; i < transaction_outputs.size(); ++i) {
             auto& output = transaction_outputs[i];
+            if (output.value("is_fee", false)) {
+                continue;
+            }
             const auto asset_id = h2b_rev(output.at("asset_id"));
             const uint64_t value = output.at("satoshi");
 
@@ -1202,16 +1261,11 @@ namespace sdk {
                 values.emplace_back(value);
             }
 
-            abf_vbf_t abf_vbf;
-            if (for_final_vbf) {
-                abf_vbf = asset_blinding_key_to_abf_vbf(master_blinding_key, hash_prevouts, i);
-            }
-
             abf_t abf;
             const std::string abf_hex = json_get_value(output, "assetblinder");
             if (for_final_vbf) {
                 if (abf_hex.empty()) {
-                    memcpy(abf.data(), abf_vbf.data(), abf.size());
+                    abf = h2b_rev<32>(assetblinders.at(i));
                 } else {
                     abf = h2b_rev<32>(abf_hex);
                 }
@@ -1227,7 +1281,7 @@ namespace sdk {
                 if (for_final_vbf) {
                     const std::string vbf_hex = json_get_value(output, "amountblinder");
                     if (vbf_hex.empty()) {
-                        memcpy(vbf.data(), abf_vbf.data() + abf.size(), vbf.size());
+                        vbf = h2b_rev<32>(amountblinders.at(i));
                     } else {
                         vbf = h2b_rev<32>(vbf_hex);
                     }
@@ -1274,14 +1328,8 @@ namespace sdk {
             std::vector<unsigned char> eph_public_key;
             std::vector<unsigned char> rangeproof;
 
-            bool have_matched_commitments = false;
-            if (o.rangeproof && o.rangeproof_len && is_blinded(o)) {
-                have_matched_commitments
-                    = o.asset_len == generator.size() && !memcmp(o.asset, generator.data(), o.asset_len);
-                have_matched_commitments
-                    &= o.value_len == value_commitment.size() && !memcmp(o.value, value_commitment.data(), o.value_len);
-            }
-            if (have_matched_commitments) {
+            if (is_blinded(o) && !memcmp(o.asset, generator.data(), o.asset_len)
+                && !memcmp(o.value, value_commitment.data(), o.value_len)) {
                 // Rangeproof already created for the same commitments
                 eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
                 rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
@@ -1324,8 +1372,8 @@ namespace sdk {
             }
             details["blinding_nonces"] = std::move(blinding_nonces);
         }
+        // Update tx size information with the exact proof sizes
         update_tx_size_info(net_params, tx, details);
-        return details;
     }
 
     nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)

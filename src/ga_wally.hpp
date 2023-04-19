@@ -396,7 +396,7 @@ namespace sdk {
 
     GA_USE_RESULT size_t tx_get_weight(const wally_tx_ptr& tx);
 
-    std::array<unsigned char, SHA256_LEN> tx_get_hash_prevouts(const wally_tx_ptr& tx);
+    std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices);
 
     void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script);
 

@@ -1075,10 +1075,11 @@ namespace sdk {
         return written;
     }
 
-    std::array<unsigned char, SHA256_LEN> tx_get_hash_prevouts(const wally_tx_ptr& tx)
+    std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices)
     {
         std::array<unsigned char, SHA256_LEN> ret;
-        GDK_VERIFY(wally_tx_get_hash_prevouts(tx.get(), 0, 0xffffffff, ret.data(), ret.size()));
+        GDK_VERIFY(wally_get_hash_prevouts(
+            txids.data(), txids.size(), output_indices.data(), output_indices.size(), ret.data(), ret.size()));
         return ret;
     }
 
