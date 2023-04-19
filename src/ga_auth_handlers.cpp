@@ -992,8 +992,12 @@ namespace sdk {
         if (m_hw_request == hw_request::blind_tx) {
             // HWW has blinded the tx, return it
             m_result = get_hw_reply();
+            m_result.erase("blinding_nonces_required");
             return state_type::done;
         }
+        // For txs containing AMP v1 inputs, ask the HWW to return the
+        // nonces the service requires.
+        m_details["blinding_nonces_required"] = tx_has_amp_inputs(*m_session, m_details);
         // Ask the HWW to blind the tx
         signal_hw_request(hw_request::blind_tx);
         m_twofactor_data.emplace("details", std::move(m_details));

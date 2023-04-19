@@ -1120,7 +1120,6 @@ namespace sdk {
 
     nlohmann::json blind_ga_transaction(session_impl& session, nlohmann::json details)
     {
-
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
 
@@ -1138,7 +1137,7 @@ namespace sdk {
         const auto hash_prevouts = tx_get_hash_prevouts(tx);
         const auto master_blinding_key = session.get_nonnull_signer()->get_master_blinding_key();
         const bool is_partial = json_get_value(details, "is_partial", false);
-        const bool has_amp_inputs = tx_has_amp_inputs(session, details);
+        const bool blinding_nonces_required = details.at("blinding_nonces_required");
 
         // We must have at least a regular output and a fee output, unless partial
         GDK_RUNTIME_ASSERT(transaction_outputs.size() >= (is_partial ? 1 : 2));
@@ -1291,8 +1290,8 @@ namespace sdk {
                 auto eph_keypair = get_ephemeral_keypair();
                 eph_public_key = std::move(eph_keypair.second);
                 const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                if (has_amp_inputs) {
-                    // Generate the blinding nonce, required for AMPv1
+                if (blinding_nonces_required) {
+                    // Generate the blinding nonce for the caller
                     GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
                     output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_keypair.first)));
                 }
@@ -1311,13 +1310,13 @@ namespace sdk {
             tx_elements_output_commitment_set(
                 tx, i, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
 
-            if (has_amp_inputs) {
+            if (blinding_nonces_required) {
                 blinding_nonces.emplace_back(output.at("blinding_nonce"));
             }
         }
 
         details["blinded"] = true;
-        if (has_amp_inputs) {
+        if (blinding_nonces_required) {
             if (!is_partial) {
                 blinding_nonces.emplace_back(std::string{}); // Add an empty fee nonce
             }
