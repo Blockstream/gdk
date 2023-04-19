@@ -1276,11 +1276,17 @@ namespace sdk {
                 eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
                 rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
             } else {
+                GDK_RUNTIME_ASSERT(!output.contains("nonce_commitment"));
+                auto eph_keypair = get_ephemeral_keypair();
+                eph_public_key = std::move(eph_keypair.second);
                 const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                const auto eph_private_key = h2b(output.at("eph_private_key"));
-                eph_public_key = ec_public_key_from_private_key(eph_private_key);
+                if (has_amp_inputs) {
+                    // Generate the blinding nonce, required for AMPv1
+                    GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
+                    output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_keypair.first)));
+                }
 
-                rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf,
+                rangeproof = asset_rangeproof(value, blinding_pubkey, eph_keypair.first, asset_id, abf, vbf,
                     value_commitment, scriptpubkey, generator);
             }
 

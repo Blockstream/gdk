@@ -752,32 +752,6 @@ namespace sdk {
         result["transaction_outputs"] = std::move(outputs);
     }
 
-    void update_tx_blinding_info(session_impl& session, nlohmann::json& result)
-    {
-        const auto& net_params = session.get_network_parameters();
-        GDK_RUNTIME_ASSERT(net_params.is_liquid());
-
-        const bool has_amp_inputs = tx_has_amp_inputs(session, result);
-
-        for (auto& output : result.at("transaction_outputs")) {
-            if (output.value("scriptpubkey", std::string()).empty()) {
-                continue; // Fee output
-            }
-            if (!output.contains("eph_private_key") && !output.contains("nonce_commitment")) {
-                // Generate an ephemeral keypair for blinding and store its private key
-                output["eph_private_key"] = b2h(get_ephemeral_keypair().first);
-            }
-            if (has_amp_inputs) {
-                if (output.contains("blinding_key") && !output.contains("blinding_nonce")) {
-                    // Generate the blinding nonce, required for AMPv1
-                    const auto blinding_pubkey = h2b(output.at("blinding_key"));
-                    const auto eph_private_key = h2b(output.at("eph_private_key"));
-                    output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_private_key)));
-                }
-            }
-        }
-    }
-
     static bool is_wallet_input(const nlohmann::json& utxo)
     {
         if (!json_get_value(utxo, "private_key").empty()) {

@@ -978,10 +978,13 @@ namespace sdk {
 
     auth_handler::state_type blind_transaction_call::call_impl()
     {
+        if (!m_details.empty()) {
+            m_details.erase("utxos"); // Not needed for blinding
+        }
 
         if (!m_net_params.is_liquid() || !json_get_value(m_details, "error").empty()
             || json_get_value(m_details, "blinded", false)) {
-            m_details.erase("utxos"); // Not needed anymore
+            // Already blinded, or non-Liquid network: return the details as-is
             m_result = std::move(m_details);
             return state_type::done;
         }
@@ -991,10 +994,7 @@ namespace sdk {
             m_result = get_hw_reply();
             return state_type::done;
         }
-
-        m_details.erase("utxos"); // Not needed for blinding;
-        // Update the "transaction_outputs" element with blinding info
-        update_tx_blinding_info(*m_session, m_details);
+        // Ask the HWW to blind the tx
         signal_hw_request(hw_request::blind_tx);
         m_twofactor_data.emplace("details", std::move(m_details));
         return m_state;
