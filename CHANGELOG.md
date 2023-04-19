@@ -36,6 +36,10 @@
   has been removed. It can instead be computed from the `transaction` element.
 - GA_sign_transaction (and blind/send): The `utxos` element is now removed when the
   handler returns, as it is only used for transaction creation.
+- GA_create_transaction(Liquid/AMP): For transactions involving AMP subaccounts,
+  the required blinding nonces for outputs are no longer available in the
+  individual "transaction_outputs" elements. Instead they should be fetched from
+  "blinding_nonces" in the top-level transaction details if required.
 
 ## Release 0.0.61 - 2023-04-18
 

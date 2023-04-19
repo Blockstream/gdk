@@ -1285,15 +1285,21 @@ namespace sdk {
                 // Rangeproof already created for the same commitments
                 eph_public_key.assign(o.nonce, o.nonce + o.nonce_len);
                 rangeproof.assign(o.rangeproof, o.rangeproof + o.rangeproof_len);
+                if (blinding_nonces_required) {
+                    // Add the pre-blinded outputs blinding nonce
+                    GDK_RUNTIME_ASSERT(output.contains("blinding_nonce"));
+                    blinding_nonces.emplace_back(std::move(output.at("blinding_nonce")));
+                }
             } else {
                 GDK_RUNTIME_ASSERT(!output.contains("nonce_commitment"));
                 auto eph_keypair = get_ephemeral_keypair();
                 eph_public_key = std::move(eph_keypair.second);
                 const auto blinding_pubkey = h2b(output.at("blinding_key"));
+                GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
                 if (blinding_nonces_required) {
                     // Generate the blinding nonce for the caller
-                    GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
-                    output["blinding_nonce"] = b2h(sha256(ecdh(blinding_pubkey, eph_keypair.first)));
+                    const auto nonce = sha256(ecdh(blinding_pubkey, eph_keypair.first));
+                    blinding_nonces.emplace_back(b2h(nonce));
                 }
 
                 rangeproof = asset_rangeproof(value, blinding_pubkey, eph_keypair.first, asset_id, abf, vbf,
@@ -1309,10 +1315,6 @@ namespace sdk {
 
             tx_elements_output_commitment_set(
                 tx, i, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
-
-            if (blinding_nonces_required) {
-                blinding_nonces.emplace_back(output.at("blinding_nonce"));
-            }
         }
 
         details["blinded"] = true;

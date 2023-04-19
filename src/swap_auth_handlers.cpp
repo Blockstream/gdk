@@ -215,9 +215,8 @@ namespace sdk {
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
         m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
         nlohmann::json::array_t sign_with = { "user" };
-
-        if (!m_net_params.is_electrum() && !tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
-            sign_with.emplace_back("green-backend");
+        if (!m_net_params.is_electrum() && !m_create_details.contains("blinding_nonces")) {
+            sign_with.emplace_back("green-backend"); // Not an AMP tx, ask backend to sign
         }
         m_create_details["sign_with"] = std::move(sign_with);
         add_next_handler(new sign_transaction_call(m_session_parent, m_create_details));
@@ -245,9 +244,10 @@ namespace sdk {
             auto proposal = nlohmann::json({ { "version", LIQUIDEX_VERSION },
                 { "transaction", std::move(result["transaction"]) }, { "inputs", std::move(inputs) },
                 { "outputs", std::move(outputs) }, { "scalars", std::move(scalars) } });
-            if (tx_has_amp_inputs(*m_session_parent.get_nonnull_impl(), m_create_details)) {
+            if (auto p = result.find("blinding_nonces"); p != result.end()) {
+                // AMP: Make the prevout script and blinding nonce available
                 proposal["inputs"][0]["script"] = std::move(tx_inputs.at(0).at("prevout_script"));
-                proposal["outputs"][0]["blinding_nonce"] = std::move(tx_outputs.at(0).at("blinding_nonce"));
+                proposal["outputs"][0]["blinding_nonce"] = p->at(0);
             }
             m_result[LIQUIDEX_STR] = nlohmann::json::object();
             m_result[LIQUIDEX_STR]["proposal"] = std::move(proposal);
