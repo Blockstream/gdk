@@ -219,7 +219,7 @@ build_clang_osx:
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
-      -DPYTHON_REQUIRED_VERSION=3.9
+      -DPython_FIND_VIRTUALENV=ONLY
     - cmake --build build-clang --target greenaddress-full --parallel 16
     - cmake --build build-clang --target python-wheel --parallel 16
     - cmake --install build-clang --prefix $INSTALL_PATH --strip
@@ -243,7 +243,7 @@ build_clang_osx_m1:
     - cmake -B build-clang -S .
       -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
       -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
-      -DPYTHON_REQUIRED_VERSION=3.9
+      -DPython_FIND_VIRTUALENV=ONLY
     - cmake --build build-clang --target greenaddress-full --parallel 16
     - cmake --build build-clang --target python-wheel --parallel 16
     - cmake --install build-clang --prefix $INSTALL_PATH --strip

@@ -5,7 +5,7 @@ macro(create_python_wheel_target)
             CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
             CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
             CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
-            python -m build
+            ${Python_EXECUTABLE} -m build
         COMMAND touch python-wheel-canary-file
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
         DEPENDS
