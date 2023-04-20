@@ -1,5 +1,6 @@
 .build_setup:
   stage: docker_build
+  needs: []
   variables:
     DOCKER_HOST: tcp://localhost:2375
     DOCKER_TLS_CERTDIR: ""

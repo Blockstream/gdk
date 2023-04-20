@@ -1,12 +1,12 @@
-image: blockstream/gdk-debian-ci@sha256:e8038587d41403cdea58c51b4b2955f808d91c931ef07b80aa6abad47a9f6e62
+image: blockstream/gdk-debian-ci@sha256:8c907501397134ed470e7add52cfeb29743899cefaccead7299c3c75cfb45acd
 
 stages:
-  - docker_build
   - format
   - build
   - test
   - deploy
   - publish
+  - docker_build
 
 include:
   - gitlab/**.yaml
@@ -164,7 +164,7 @@ rust_audit:
 
 
 build_clang_fedora:
-  image: blockstream/gdk-fedora-builder@sha256:3cd863693ac292388f9cb96e45068c15a88478c10f1903b7bbaa4db753e3a592
+  image: blockstream/gdk-fedora-builder@sha256:e8d48cfea943fd27110484375cb47c63db16f96a22d06f27e783f9fa782935bd
   tags:
     - ga
   stage: build
@@ -176,7 +176,7 @@ build_clang_fedora:
     - cmake --build build-clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: blockstream/gdk-ubuntu-builder@sha256:c8e102d026036670dbe427aa316786b331def913d95e16c0aefb0365eabd7fe5
+  image: blockstream/gdk-ubuntu-builder@sha256:984f85cf761c27857f15183767d335f217a76b58fde6944a68e5479ac4e32eec
   extends: .py_release
   stage: build
   script:
