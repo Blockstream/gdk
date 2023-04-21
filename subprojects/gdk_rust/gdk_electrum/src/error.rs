@@ -129,6 +129,9 @@ pub enum Error {
     #[error("non confidential address")]
     NonConfidentialAddress,
 
+    #[error("Invalid proxy socket: {0}")]
+    InvalidProxySocket(String),
+
     #[error("{}", match .0 {
         gdk_pin_client::Error::InvalidPin
         | gdk_pin_client::Error::Decryption(_) => "id_invalid_pin",

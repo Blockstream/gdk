@@ -5,6 +5,7 @@ use crate::error::*;
 use electrum_client::{Client, ConfigBuilder, Socks5Config};
 use gdk_common::electrum_client;
 use gdk_common::network::NETWORK_REQUEST_TIMEOUT;
+use std::net::ToSocketAddrs;
 use std::str::FromStr;
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -20,6 +21,9 @@ impl ElectrumUrl {
         // TODO: add support for socks5 credentials?
         if let Some(proxy) = proxy {
             if !proxy.trim().is_empty() {
+                if proxy.replacen("socks5://", "", 1).to_socket_addrs().is_err() {
+                    return Err(Error::InvalidProxySocket(proxy.to_string()));
+                }
                 config = config.socks5(Some(Socks5Config::new(proxy)));
             }
         }
@@ -202,14 +206,11 @@ mod test {
     #[test]
     fn invalid_proxy() {
         let url = ElectrumUrl::Plaintext(String::new());
-
-        let invalid_proxy = "socks5://3.4.5.6";
+        let invalid_proxy = "invalid_proxy";
 
         assert!(matches!(
-            url.build_client(Some(invalid_proxy), None),
-
-            Err(Error::ClientError(electrum_client::Error::IOError(err)))
-                if err.kind() == std::io::ErrorKind::InvalidInput,
+            url.build_client(Some(&invalid_proxy), None),
+            Err(Error::InvalidProxySocket(p)) if p == invalid_proxy
         ));
     }
 
@@ -221,12 +222,10 @@ mod test {
         // that the error it returns (if any) is not caused by an incorrectly
         // formatted proxy.
 
-        for valid_proxy in ["127.0.0.1:9050", "socks5://127.0.0.1:9050"] {
+        for valid_proxy in ["127.0.0.1:9050", "socks5://127.0.0.1:9050", "localhost:9050"] {
             assert!(!matches!(
                 url.build_client(Some(valid_proxy), None),
-
-                Err(Error::ClientError(electrum_client::Error::IOError(err)))
-                    if err.kind() == std::io::ErrorKind::InvalidInput,
+                Err(Error::InvalidProxySocket(_))
             ));
         }
     }
