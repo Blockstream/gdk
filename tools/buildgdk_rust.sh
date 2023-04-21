@@ -53,6 +53,8 @@ elif [[ ${TRIPLE} == "aarch64-apple-ios" ]]; then
     LD_ARCH="-arch arm64 -platform_version ios ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
 elif [[ ${TRIPLE} == "x86_64-apple-ios" ]]; then
     LD_ARCH="-arch x86_64 -platform_version ios-simulator ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
+elif [[ ${TRIPLE} == "aarch64-apple-ios-sim" ]]; then
+    LD_ARCH="-arch arm64 -platform_version ios-simulator ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
 fi
 
 # behaving correctly when no-op

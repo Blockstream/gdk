@@ -254,6 +254,8 @@ build_clang_osx_m1:
 build_osx_ios:
   extends: .ios_release
   stage: build
+  tags:
+    - osx-m1
   variables:
     INSTALL_PATH: "gdk-iphone"
   script:
@@ -271,7 +273,7 @@ build_osx_ios:
     - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
 
 
-build_osx_ios_sim:
+build_osx_ios_sim_x86_64:
   extends: .ios_release
   stage: build
   variables:
@@ -290,6 +292,25 @@ build_osx_ios_sim:
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --strip
     - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
 
+build_osx_ios_sim_arm64:
+  extends: .ios_release
+  tags:
+    - osx-m1
+  stage: build
+  variables:
+    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim-arm64"
+    INSTALL_PATH: "gdk-iphone-sim-arm64"
+  script:
+    - cd $CI_PROJECT_DIR
+    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphonesim static --prefix $PREBUILT_DIR; fi
+    - cmake -B build-iphonesim -S .
+      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
+      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
+      -DENABLE_SWIFT:BOOL=TRUE
+    - cmake --build build-iphonesim --parallel 16
+    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --strip
+    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
 
 build_mingw64_windows:
   tags:
@@ -353,6 +374,7 @@ package_release:
     - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
     - tar -czf gdk_dist/gdk-iphone.tar.gz gdk-iphone --remove-files
     - tar -czf gdk_dist/gdk-iphone-sim.tar.gz gdk-iphone-sim --remove-files
+    - tar -czf gdk_dist/gdk-iphone-sim-arm64.tar.gz gdk-iphone-sim-arm64 --remove-files
     - find gdk-python/ -name *.whl -exec mv {} gdk_dist/share/python \;
     - cd gdk_dist
     - /opt/process_release
@@ -363,7 +385,8 @@ package_release:
     - build_clang_osx
     - build_clang_osx_m1
     - build_osx_ios
-    - build_osx_ios_sim
+    - build_osx_ios_sim_x86_64
+    - build_osx_ios_sim_arm64
     - apidocs
     - test_clang_bullseye # waiting for tests to pass
 

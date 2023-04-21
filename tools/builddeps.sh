@@ -26,8 +26,11 @@ function set_cross_build_env() {
             export SDK_CPU=arm64
             ;;
         iphonesim)
-            export SDK_ARCH=x86_64
-            export SDK_CPU=x86_64
+            export SDK_ARCH="$(uname -m)"
+            export SDK_CPU="$(uname -m)"
+            if [ "$SDK_ARCH" = "arm64" ]; then
+                export SDK_ARCH="aarch64"
+            fi
             ;;
         x86_64)
             export SDK_ARCH=$HOST_ARCH
@@ -147,7 +150,6 @@ elif [ ${BUILD} == "--ndk" ]; then
 elif [ ${BUILD} == "--iphone" ]; then
     set_cross_build_env ios iphone
     . tools/ios_env.sh $BUILD
-    export PATH=$XCODE_IOS_PATH:$PATH_BASE
     export AR=ar
     C_COMPILER=${XCODE_DEFAULT_PATH}/clang
     CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++
@@ -157,7 +159,6 @@ elif [ ${BUILD} == "--iphone" ]; then
 elif [ ${BUILD} == "--iphonesim" ]; then
     set_cross_build_env ios iphonesim
     . tools/ios_env.sh $BUILD
-    export PATH=$XCODE_IOS_PATH:$PATH_BASE
     export AR=ar
     C_COMPILER=${XCODE_DEFAULT_PATH}/clang
     CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++

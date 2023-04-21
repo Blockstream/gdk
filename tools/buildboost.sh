@@ -72,12 +72,12 @@ ${XCODE_DEFAULT_PATH}/clang++
 <compileflags>-std=c++14
 <compileflags>"${SDK_CFLAGS}"
 $EXTRA_COMPILE_FLAGS
-<compileflags>"-miphoneos-version-min=11.0"
+<compileflags>"${IOS_MIN_VERSION}"
 <compileflags>"-isysroot ${IOS_SDK_PATH}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
-<linkflags>"-miphoneos-version-min=11.0"
+<linkflags>"${IOS_MIN_VERSION}"
 $EXTRA_LINK_FLAGS
 <linkflags>"-isysroot ${IOS_SDK_PATH}"
 <target-os>iphone
