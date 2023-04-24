@@ -323,15 +323,8 @@ impl ElectrumSession {
         if let Ok(plaintext) = serde_json::from_slice(&decrypted) {
             Ok(plaintext)
         } else {
-            // Some pin_data encrypt the bare mnemonic, not a json
-            // Unfortunately this means that we will have some false positives returned as
-            // credential json
-            Ok(json!({
-                "mnemonic": std::str::from_utf8(&decrypted)
-                    .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))?
-                    .to_string(),
-                "bip39_passphrase": "".to_string(),
-            }))
+            let credentials = bare_mnemonic_from_utf8(&decrypted)?;
+            Ok(serde_json::to_value(credentials)?)
         }
     }
 
@@ -343,13 +336,7 @@ impl ElectrumSession {
         if let Ok(credentials) = serde_json::from_slice(&decrypted) {
             Ok(credentials)
         } else {
-            // Some pin_data encrypt the bare mnemonic, not a json
-            Ok(Credentials {
-                mnemonic: std::str::from_utf8(&decrypted)
-                    .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))?
-                    .to_string(),
-                bip39_passphrase: "".to_string(),
-            })
+            bare_mnemonic_from_utf8(&decrypted)
         }
     }
 
@@ -1756,6 +1743,28 @@ fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
     false
 }
 
+// Some pin_data encrypt the bare mnemonic, not a json.
+// If we cannot deserialize the plaintext into a json,
+// we attempt to deserialize it into a bare mnemonic.
+// For old pin_data that does have the hmac,
+// it could happen that the decryption is successfully even with a wrong key.
+// However the chance that the pin_data does not have a hmac,
+// decryption is successful with a wrong key and
+// the plaintext it's a valid utf8 is practically negligible,
+// so here we return an InvalidPin error.
+fn bare_mnemonic_from_utf8(decrypted: &[u8]) -> Result<Credentials, Error> {
+    let mnemonic = std::str::from_utf8(&decrypted)
+        .map_err(|_| Error::PinClient(gdk_pin_client::Error::InvalidPin))?
+        .to_string();
+    if mnemonic.chars().any(|c| !c.is_ascii_alphabetic() && !c.is_whitespace()) {
+        return Err(Error::PinClient(gdk_pin_client::Error::InvalidPin));
+    }
+    Ok(Credentials {
+        mnemonic,
+        bip39_passphrase: "".to_string(),
+    })
+}
+
 #[cfg(feature = "testing")]
 impl ElectrumSession {
     pub fn filter_events(&self, event: &str) -> Vec<Value> {
@@ -1788,5 +1797,15 @@ mod test {
         .unwrap();
 
         assert!(map.len() > 0);
+    }
+
+    #[test]
+    fn test_bare_mnemonic() {
+        let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+        assert!(bare_mnemonic_from_utf8(&mnemonic.as_bytes()).is_ok());
+        assert!(bare_mnemonic_from_utf8(&format!("{} ", mnemonic).as_bytes()).is_ok());
+        assert!(bare_mnemonic_from_utf8(&format!("{}\n", mnemonic).as_bytes()).is_ok());
+        assert!(bare_mnemonic_from_utf8(&format!("{}.", mnemonic).as_bytes()).is_err());
+        assert!(bare_mnemonic_from_utf8(b"\x00\x9f\x92\x96").is_err());
     }
 }
