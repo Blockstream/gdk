@@ -766,7 +766,7 @@ Send transaction JSON
   "addressees_read_only": false,
   "amount_read_only": false,
   "available_total": 50000,
-  "blinded": true,
+  "is_blinded": true,
   "calculated_fee_rate": 1230,
   "change_address": {
     "btc": {

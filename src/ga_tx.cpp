@@ -1365,7 +1365,7 @@ namespace sdk {
                 tx, i, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
         }
 
-        details["blinded"] = true;
+        details["is_blinded"] = true;
         if (blinding_nonces_required) {
             if (!is_partial) {
                 blinding_nonces.emplace_back(std::string{}); // Add an empty fee nonce

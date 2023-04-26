@@ -757,7 +757,6 @@ namespace sdk {
         }
 
         m_result.swap(m_twofactor_data["transaction"]);
-        m_result["blinded"] = true;
         update_tx_size_info(m_net_params, tx, m_result);
     }
 
@@ -983,7 +982,8 @@ namespace sdk {
         }
         const bool is_liquid = m_net_params.is_liquid();
 
-        if (!is_liquid || !json_get_value(m_details, "error").empty() || json_get_value(m_details, "blinded", false)) {
+        if (!is_liquid || !json_get_value(m_details, "error").empty()
+            || json_get_value(m_details, "is_blinded", false)) {
             // Already blinded, or non-Liquid network: return the details as-is
             m_result = std::move(m_details);
             return state_type::done;

@@ -210,7 +210,7 @@ namespace sdk {
             m_result = std::move(m_create_details);
             return state_type::done; // Create/blind tx returned an error, do not attempt to sign
         }
-        if (!json_get_value(m_create_details, "blinded", false)) {
+        if (!json_get_value(m_create_details, "is_blinded", false)) {
             // Call blind_transaction to blind the callers side
             add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
             return state_type::make_call;
@@ -329,7 +329,7 @@ namespace sdk {
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
-        } else if (!json_get_value(m_create_details, "blinded", false)) {
+        } else if (!json_get_value(m_create_details, "is_blinded", false)) {
             // Call blind_transaction to blind the callers side
             add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
             return state_type::make_call;
