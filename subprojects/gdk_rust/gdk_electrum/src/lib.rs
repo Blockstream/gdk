@@ -697,26 +697,12 @@ impl ElectrumSession {
         let syncer_tipper_handle = thread::spawn(move || {
             info!("starting syncer & tipper thread");
 
-            let update_tip = |client: &Client, do_update: bool| match tipper.tip(&client, do_update)
-            {
-                Ok(Some((height, header))) => {
-                    // This is a new block
-                    if do_update {
-                        notify.block_from_header(height, &header);
-                    }
-                    Ok(Some(height))
-                }
-                Ok(None) => Ok(None), // nothing to update
-                Err(e) => {
-                    gdk_common::log::error!("exception in tipper {:?}", e);
-                    Err(e)
-                }
-            };
+            let mut txs_to_notify = vec![];
 
             loop {
                 match url.build_client(proxy.as_deref(), None) {
                     Ok(client) => {
-                        let tip_before_sync = match update_tip(&client, false) {
+                        let tip_before_sync = match tipper.server_tip(&client) {
                             Ok(height) => height,
                             Err(Error::Common(BtcEncodingError(_)))
                             | Err(Error::Common(ElementsEncodingError(_))) => {
@@ -724,7 +710,8 @@ impl ElectrumSession {
                                 // do not sync further.
                                 break;
                             }
-                            Err(_) => {
+                            Err(e) => {
+                                gdk_common::log::error!("exception in tipper {e:?}");
                                 continue;
                             }
                         };
@@ -737,10 +724,7 @@ impl ElectrumSession {
                                 // transactions that were sent or received before
                                 // login.
                                 if !first_sync.load(Ordering::Relaxed) {
-                                    for ntf in tx_ntfs.iter() {
-                                        info!("there are new transactions");
-                                        notify.updated_txs(ntf);
-                                    }
+                                    txs_to_notify.extend(tx_ntfs);
                                 }
                                 first_sync.store(false, Ordering::Relaxed);
                             }
@@ -750,26 +734,29 @@ impl ElectrumSession {
                             }
                         }
 
-                        let tip_after_sync = match update_tip(&client, true) {
+                        let tip_after_sync = match tipper.server_tip(&client) {
                             Ok(height) => height,
                             Err(_) => {
                                 continue;
                             }
                         };
 
-                        let should_resync = match (tip_before_sync, tip_after_sync) {
-                            (None, Some(_)) => true,
-                            (Some(before), Some(after)) if before != after => true,
-                            _ => false,
-                        };
-
-                        if should_resync {
+                        if tip_before_sync != tip_after_sync {
                             // If a block arrives while we are syncing
                             // transactions, transactions might be returned as
                             // unconfirmed even if they belong to the newly
                             // notified block. Sync again to ensure
                             // consistency.
                             continue;
+                        }
+                        if let Ok(Some((height, header))) =
+                            tipper.update_cache_if_needed(tip_after_sync.0, tip_after_sync.1)
+                        {
+                            notify.block_from_header(height, &header);
+                        }
+                        while let Some(ntf) = txs_to_notify.pop() {
+                            info!("New tx notification: {}", ntf.txid);
+                            notify.updated_txs(&ntf);
                         }
                     }
 
@@ -1220,17 +1207,17 @@ pub fn keys_from_credentials(
 }
 
 impl Tipper {
-    pub fn tip(
-        &self,
-        client: &Client,
-        update_cache: bool,
-    ) -> Result<Option<(u32, BEBlockHeader)>, Error> {
+    pub fn server_tip(&self, client: &Client) -> Result<(u32, BEBlockHeader), Error> {
         let header = client.block_headers_subscribe_raw()?;
         let new_height = header.height as u32;
         let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
-        if !update_cache {
-            return Ok(Some((new_height, new_header)));
-        }
+        Ok((new_height, new_header))
+    }
+    pub fn update_cache_if_needed(
+        &self,
+        new_height: u32,
+        new_header: BEBlockHeader,
+    ) -> Result<Option<(u32, BEBlockHeader)>, Error> {
         let do_update = match &self.store.read()?.cache.tip_ {
             None => true,
             Some((current_height, current_header)) => {
