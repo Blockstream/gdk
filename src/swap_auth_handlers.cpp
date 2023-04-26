@@ -63,7 +63,12 @@ namespace sdk {
                 const auto generator = asset_generator_from_bytes(asset, abf);
                 const auto commitment = asset_value_commitment(satoshi, vbf, generator);
                 const auto nonce_hash = get_random_bytes<32>();
-                res[i]["value_blind_proof"] = b2h(explicit_rangeproof(satoshi, nonce_hash, vbf, commitment, generator));
+                try {
+                    res[i]["value_blind_proof"]
+                        = b2h(explicit_rangeproof(satoshi, nonce_hash, vbf, commitment, generator));
+                } catch (const std::exception&) {
+                    throw user_error("zero value or unblinded utxos cannot be swapped");
+                }
                 // This must be aggregated and removed
                 res[i]["scalar"] = b2h(asset_scalar_offset(satoshi, abf, vbf));
             }

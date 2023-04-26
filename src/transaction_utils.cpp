@@ -560,11 +560,16 @@ namespace sdk {
             const auto asset_id = h2b_rev(asset_id_hex);
             const amount::value_type satoshi = addressee.at("satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
-
+            if (std::all_of(abf.begin(), abf.end(), [](auto b) { return b == 0; })) {
+                throw user_error("pre-blinded input asset is not blinded");
+            }
             const auto asset_commitment = asset_generator_from_bytes(asset_id, abf);
             std::array<unsigned char, 33> value_commitment;
             if (addressee.contains("amountblinder")) {
                 const auto vbf = h2b_rev(addressee.at("amountblinder"));
+                if (std::all_of(vbf.begin(), vbf.end(), [](auto b) { return b == 0; })) {
+                    throw user_error("pre-blinded input value is not blinded");
+                }
                 value_commitment = asset_value_commitment(satoshi, vbf, asset_commitment);
             } else {
                 value_commitment = h2b<33>(addressee.at("commitment"));
