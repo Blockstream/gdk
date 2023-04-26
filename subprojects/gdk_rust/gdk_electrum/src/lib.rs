@@ -713,29 +713,6 @@ impl ElectrumSession {
                 }
             };
 
-            let sync = |client: &Client| {
-                match syncer.sync(&client) {
-                    Ok(tx_ntfs) => {
-                        state_updater.update_if_needed(true);
-                        // Skip sending transaction notifications if it's the
-                        // first call to sync. This allows us to _not_ notify
-                        // transactions that were sent or received before
-                        // login.
-                        if !first_sync.load(Ordering::Relaxed) {
-                            for ntf in tx_ntfs.iter() {
-                                info!("there are new transactions");
-                                notify.updated_txs(ntf);
-                            }
-                        }
-                        first_sync.store(false, Ordering::Relaxed);
-                    }
-                    Err(e) => {
-                        state_updater.update_if_needed(false);
-                        warn!("Error during sync, {:?}", e)
-                    }
-                }
-            };
-
             loop {
                 match url.build_client(proxy.as_deref(), None) {
                     Ok(client) => {
@@ -752,7 +729,26 @@ impl ElectrumSession {
                             }
                         };
 
-                        sync(&client);
+                        match syncer.sync(&client) {
+                            Ok(tx_ntfs) => {
+                                state_updater.update_if_needed(true);
+                                // Skip sending transaction notifications if it's the
+                                // first call to sync. This allows us to _not_ notify
+                                // transactions that were sent or received before
+                                // login.
+                                if !first_sync.load(Ordering::Relaxed) {
+                                    for ntf in tx_ntfs.iter() {
+                                        info!("there are new transactions");
+                                        notify.updated_txs(ntf);
+                                    }
+                                }
+                                first_sync.store(false, Ordering::Relaxed);
+                            }
+                            Err(e) => {
+                                state_updater.update_if_needed(false);
+                                warn!("Error during sync, {:?}", e)
+                            }
+                        }
 
                         let tip_after_sync = match update_tip(&client, true) {
                             Ok(height) => height,
