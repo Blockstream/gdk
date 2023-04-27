@@ -1,6 +1,6 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
-use crate::Error;
+use crate::{Error, ScriptStatuses};
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
@@ -100,6 +100,11 @@ pub struct RawAccountCache {
     /// used to establish if an account has some transactions without waiting for the syncer to
     /// download transactions.
     pub bip44_discovered: bool,
+
+    /// Maps scripts to their current script status.
+    ///
+    /// NOTE: is Option to keep cache backwards-compatibility, remove if breaking cache
+    pub script_statuses: Option<ScriptStatuses>,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -511,6 +516,7 @@ impl RawAccountCache {
             paths: Default::default(),
             scripts: Default::default(),
             heights: Default::default(),
+            script_statuses: Default::default(),
             unblinded: Default::default(),
             indexes: Default::default(),
             xpub,

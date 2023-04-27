@@ -347,7 +347,7 @@ checksum = "f757b2bb46e9025cb0e11a8080d2a05179cdc60d7dd609b1ea02a927e39496e3"
 dependencies = [
  "bitcoin_hashes",
  "bitcoind",
- "electrum-client",
+ "electrum-client 0.13.0",
  "log",
  "minreq",
  "nix",
@@ -359,6 +359,18 @@ name = "electrum-client"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43224a43201a58034759d2682c603607d98ea0ff459a8d3622e0616b2badcd5c"
+dependencies = [
+ "bitcoin",
+ "log",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "electrum-client"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1a9bf0b1265b34ba0f92f3986dd2cca9a1c9e7eed7a341da2cd02d4c4dc2dcd8"
 dependencies = [
  "bitcoin",
  "byteorder",
@@ -562,7 +574,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin",
- "electrum-client",
+ "electrum-client 0.14.0",
  "elements",
  "libc",
  "log",

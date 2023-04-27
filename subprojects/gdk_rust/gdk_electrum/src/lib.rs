@@ -40,7 +40,7 @@ use gdk_common::wally::{
 };
 use gdk_common::{be::*, State};
 
-use gdk_common::electrum_client;
+use gdk_common::electrum_client::{self, ScriptStatus};
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
@@ -73,6 +73,8 @@ use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 pub const GAP_LIMIT: u32 = 20;
+
+type ScriptStatuses = HashMap<bitcoin::Script, ScriptStatus>;
 
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
@@ -686,6 +688,15 @@ impl ElectrumSession {
 
             let mut txs_to_notify = vec![];
 
+            // electrum_client::Client stores the last electrum_client::ScriptStatus
+            // for each script it has subscribed to, however to access it we have
+            // to use `script_pop` which removes the status from the Client internal
+            // storage. OTOH we need to remember the last script status corresponding
+            // to a script, since it is needed to determine if the script had a
+            // transaction and if its status has changed w.r.t. to the cached one.
+            // So we store the last statuses for each script in this map.
+            let mut last_statuses = ScriptStatuses::new();
+
             let mut client = loop {
                 // In theory this loop is superfluous, because the client is created at the
                 // beginning of the next loop before being used, however, rust compiler thinks
@@ -741,7 +752,7 @@ impl ElectrumSession {
                     }
                 };
 
-                match syncer.sync(&client) {
+                match syncer.sync(&client, &mut last_statuses) {
                     Ok(tx_ntfs) => {
                         state_updater.update_if_needed(true);
                         // Skip sending transaction notifications if it's the
@@ -1383,7 +1394,11 @@ struct DownloadTxResult {
 
 impl Syncer {
     /// Sync the wallet, return the set of updated accounts
-    pub fn sync(&self, client: &Client) -> Result<Vec<TransactionNotification>, Error> {
+    pub fn sync(
+        &self,
+        client: &Client,
+        last_statuses: &mut ScriptStatuses,
+    ) -> Result<Vec<TransactionNotification>, Error> {
         trace!("start sync");
         let start = Instant::now();
 
@@ -1391,6 +1406,8 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, TransactionNotification> = HashMap::new();
 
         for account in accounts.values() {
+            let mut new_statuses = ScriptStatuses::new();
+            let cache_statuses = account.status()?;
             let mut history_txs_id = HashSet::<BETxid>::new();
             let mut heights_set = HashSet::new();
             let mut txid_height = HashMap::<BETxid, _>::new();
@@ -1401,27 +1418,65 @@ impl Syncer {
             wallet_chains.shuffle(&mut thread_rng());
             for i in wallet_chains {
                 let is_internal = i == 1;
-                let mut count_empty = 0;
+                let mut count_consecutive_empty = 0;
                 for j in 0.. {
                     let (cached, path, script) = account.get_script(is_internal, j)?;
                     if !cached {
                         scripts.insert(script.clone(), path);
                     }
                     let b_script = script.into_bitcoin();
-                    let history = client.script_get_history(&b_script)?;
-                    if history.is_empty() {
-                        count_empty += 1;
-                    } else {
-                        count_empty = 0;
-                        if is_internal {
-                            last_used.internal = j;
-                        } else {
-                            last_used.external = j;
+
+                    match client.script_subscribe(&b_script) {
+                        Ok(Some(status)) => {
+                            // First time: script is subscribed, script contains at least 1 tx
+                            last_statuses.insert(b_script.clone(), status);
+                        }
+                        Ok(None) => {
+                            // First time: script is subscribed, script doesn't contain a tx yet
+                            ()
+                        }
+                        Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
+                            // Second or following iteration
+                            if let Some(status) = client.script_pop(&b_script)? {
+                                // There is an update, new tx for this script
+                                last_statuses.insert(b_script.clone(), status);
+                            } else {
+                                // There are no new transactions since last iteration
+                            }
+                        }
+                        Err(e) => return Err(Error::ClientError(e)),
+                    };
+                    match last_statuses.get(&b_script) {
+                        Some(last_status) => {
+                            // Script has a tx
+                            count_consecutive_empty = 0;
+                            if is_internal {
+                                last_used.internal = j;
+                            } else {
+                                last_used.external = j;
+                            }
+                            let cache_status = cache_statuses.get(&b_script);
+                            if Some(last_status) == cache_status {
+                                // No need to check this script since nothing has changed
+                                continue;
+                            }
+                        }
+                        None => {
+                            // Script never had a tx, initially and neither via updates
+                            count_consecutive_empty += 1
                         }
                     }
-                    if count_empty >= GAP_LIMIT {
+                    if count_consecutive_empty >= GAP_LIMIT {
                         break;
                     }
+
+                    let history = client.script_get_history(&b_script)?;
+
+                    let txid_height_pairs =
+                        history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
+                    let status = account::compute_script_status(txid_height_pairs);
+                    new_statuses.insert(b_script.clone(), status);
+
                     let net = self.network.id();
                     for el in history {
                         // el.height = -1 means unconfirmed with unconfirmed parents
@@ -1458,6 +1513,7 @@ impl Syncer {
                 || store_indexes != last_used
                 || !scripts.is_empty()
                 || txs_heights_changed
+                || !new_statuses.is_empty()
             {
                 info!(
                     "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
@@ -1475,12 +1531,41 @@ impl Syncer {
                     .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
                 acc_store.unblinded.extend(new_txs.unblinds);
 
-                // height map is used for the live list of transactions, since due to reorg or rbf tx
-                // could disappear from the list, we clear the list and keep only the last values returned by the server
-                acc_store.heights.clear();
+                // # Removing conflicting transactions
+
+                // ## Compute the previous outpoints spent by new tx
+                let prevout_spent_by_new_txs: HashSet<_> = txid_height
+                    .keys()
+                    .map(|txid| acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone())
+                    .flat_map(|tx| tx.tx.previous_outputs())
+                    .collect();
+
+                // ## search in existing transactions the ones that use a respent outpoint and remove them
+                let existing_txids_height: Vec<_> = acc_store.heights.keys().cloned().collect();
+                for txid in existing_txids_height.iter() {
+                    let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
+                    if tx
+                        .tx
+                        .previous_outputs()
+                        .iter()
+                        .any(|p| prevout_spent_by_new_txs.contains(&p))
+                    {
+                        acc_store.heights.remove(&txid);
+                    }
+                }
+
                 acc_store.heights.extend(txid_height.into_iter());
                 acc_store.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
                 acc_store.paths.extend(scripts.into_iter());
+
+                if acc_store.script_statuses.is_none() {
+                    acc_store.script_statuses = Some(HashMap::new());
+                }
+                acc_store
+                    .script_statuses
+                    .as_mut()
+                    .expect("always some because created if None in previous line")
+                    .extend(new_statuses);
 
                 for tx in new_txs.txs.iter() {
                     if new_txs.is_previous.contains(&tx.0) {

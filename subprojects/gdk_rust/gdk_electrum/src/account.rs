@@ -21,7 +21,7 @@ use gdk_common::{bitcoin, elements, rand};
 
 use gdk_common::be::{
     BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,
-    ScriptBatch, DUST_VALUE,
+    DUST_VALUE,
 };
 use gdk_common::error::fn_err;
 use gdk_common::model::{
@@ -41,7 +41,7 @@ use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::{RawAccountCache, Store};
-use crate::GAP_LIMIT;
+use crate::{ScriptStatuses, GAP_LIMIT};
 
 // The number of account types, including these reserved for future use.
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
@@ -904,6 +904,11 @@ impl Account {
         }
 
         Ok(betx)
+    }
+
+    pub fn status(&self) -> Result<ScriptStatuses, Error> {
+        let store = self.store.read()?;
+        Ok(store.account_cache(self.account_num)?.script_statuses.clone().unwrap_or_default())
     }
 
     pub fn get_script(
