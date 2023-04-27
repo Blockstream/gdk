@@ -686,72 +686,104 @@ impl ElectrumSession {
 
             let mut txs_to_notify = vec![];
 
-            loop {
+            let mut client = loop {
+                // In theory this loop is superfluous, because the client is created at the
+                // beginning of the next loop before being used, however, rust compiler thinks
+                // it could be not initialized so we need to initialize it.
                 match url.build_client(proxy.as_deref(), None) {
-                    Ok(client) => {
-                        let tip_before_sync = match tipper.server_tip(&client) {
-                            Ok(height) => height,
-                            Err(Error::Common(BtcEncodingError(_)))
-                            | Err(Error::Common(ElementsEncodingError(_))) => {
-                                // We aren't able to decode the blockheaders returned by the server,
-                                // do not sync further.
-                                break;
-                            }
-                            Err(e) => {
-                                gdk_common::log::error!("exception in tipper {e:?}");
-                                continue;
-                            }
-                        };
-
-                        match syncer.sync(&client) {
-                            Ok(tx_ntfs) => {
-                                state_updater.update_if_needed(true);
-                                // Skip sending transaction notifications if it's the
-                                // first call to sync. This allows us to _not_ notify
-                                // transactions that were sent or received before
-                                // login.
-                                if !first_sync.load(Ordering::Relaxed) {
-                                    txs_to_notify.extend(tx_ntfs);
-                                }
-                                first_sync.store(false, Ordering::Relaxed);
-                            }
-                            Err(e) => {
-                                state_updater.update_if_needed(false);
-                                warn!("Error during sync, {:?}", e)
-                            }
+                    Ok(new_client) => break new_client,
+                    Err(_) => {
+                        if wait_or_close(&user_wants_to_sync, 1) {
+                            // The thread needs to stop when `user_wants_to_sync` is false.
+                            // below this is done by just breaking from the main loop,
+                            // but here we are out of the loop so we return.
+                            // (If you start the threads without connection you are stuck in this
+                            // loop so it must be handled)
+                            info!(
+                                "closing syncer & tipper thread by breaking build client attempts"
+                            );
+                            return;
                         }
-
-                        let tip_after_sync = match tipper.server_tip(&client) {
-                            Ok(height) => height,
-                            Err(_) => {
-                                continue;
-                            }
-                        };
-
-                        if tip_before_sync != tip_after_sync {
-                            // If a block arrives while we are syncing
-                            // transactions, transactions might be returned as
-                            // unconfirmed even if they belong to the newly
-                            // notified block. Sync again to ensure
-                            // consistency.
-                            continue;
-                        }
-                        if let Ok(Some((height, header))) =
-                            tipper.update_cache_if_needed(tip_after_sync.0, tip_after_sync.1)
-                        {
-                            notify.block_from_header(height, &header);
-                        }
-                        while let Some(ntf) = txs_to_notify.pop() {
-                            info!("New tx notification: {}", ntf.txid);
-                            notify.updated_txs(&ntf);
-                        }
-                    }
-
-                    Err(err) => {
-                        state_updater.update_if_needed(false);
-                        warn!("Can't build client {:?}", err);
                     }
                 };
+            };
+
+            loop {
+                let is_connected = state_updater.current.load(Ordering::Relaxed);
+                debug!("loop start is_connected:{is_connected}");
+
+                if !is_connected {
+                    match url.build_client(proxy.as_deref(), None) {
+                        Ok(new_client) => client = new_client,
+                        Err(e) => {
+                            warn!("cannot build client {e:?}");
+                            if wait_or_close(&user_wants_to_sync, 1) {
+                                info!("closing syncer & tipper thread");
+                                break;
+                            }
+                            continue;
+                        }
+                    };
+                }
+
+                let tip_before_sync = match tipper.server_tip(&client) {
+                    Ok(height) => height,
+                    Err(Error::Common(BtcEncodingError(_)))
+                    | Err(Error::Common(ElementsEncodingError(_))) => {
+                        // We aren't able to decode the blockheaders returned by the server,
+                        // do not sync further.
+                        break;
+                    }
+                    Err(e) => {
+                        state_updater.update_if_needed(false);
+                        warn!("exception in tipper {e:?}");
+                        continue;
+                    }
+                };
+
+                match syncer.sync(&client) {
+                    Ok(tx_ntfs) => {
+                        state_updater.update_if_needed(true);
+                        // Skip sending transaction notifications if it's the
+                        // first call to sync. This allows us to _not_ notify
+                        // transactions that were sent or received before
+                        // login.
+                        if !first_sync.load(Ordering::Relaxed) {
+                            txs_to_notify.extend(tx_ntfs);
+                        }
+                        first_sync.store(false, Ordering::Relaxed);
+                    }
+                    Err(e) => {
+                        state_updater.update_if_needed(false);
+                        warn!("Error during sync, {:?}", e);
+                        continue;
+                    }
+                }
+
+                let tip_after_sync = match tipper.server_tip(&client) {
+                    Ok(height) => height,
+                    Err(_) => {
+                        continue;
+                    }
+                };
+
+                if tip_before_sync != tip_after_sync {
+                    // If a block arrives while we are syncing
+                    // transactions, transactions might be returned as
+                    // unconfirmed even if they belong to the newly
+                    // notified block. Sync again to ensure
+                    // consistency.
+                    continue;
+                }
+                if let Ok(Some((height, header))) =
+                    tipper.update_cache_if_needed(tip_after_sync.0, tip_after_sync.1)
+                {
+                    notify.block_from_header(height, &header);
+                }
+                while let Some(ntf) = txs_to_notify.pop() {
+                    info!("New tx notification: {}", ntf.txid);
+                    notify.updated_txs(&ntf);
+                }
 
                 if wait_or_close(&user_wants_to_sync, sync_interval) {
                     info!("closing syncer & tipper thread");
