@@ -991,13 +991,13 @@ namespace sdk {
         return tx_get_elements_signature_hash(tx, index, script, ct_value, sighash, flags);
     }
 
-    void blind_address(
+    void confidentialize_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex)
     {
-        GDK_RUNTIME_ASSERT(addr.at("is_blinded") == false);
+        GDK_RUNTIME_ASSERT(addr.at("is_confidential") == false);
         const std::string bech32_prefix = net_params.bech32_prefix();
         auto& address = addr.at("address");
-        addr["unblinded_address"] = address;
+        addr["unconfidential_address"] = address;
         if (boost::starts_with(address.get<std::string>(), bech32_prefix)) {
             const std::string blech32_prefix = net_params.blech32_prefix();
             address = confidential_addr_from_addr_segwit(address, bech32_prefix, blech32_prefix, blinding_pubkey_hex);
@@ -1005,7 +1005,7 @@ namespace sdk {
             address = confidential_addr_from_addr(address, net_params.blinded_prefix(), blinding_pubkey_hex);
         }
         addr["blinding_key"] = blinding_pubkey_hex;
-        addr["is_blinded"] = true;
+        addr["is_confidential"] = true;
     }
 
     void create_ga_transaction(session_impl& session, nlohmann::json& details)

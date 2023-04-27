@@ -526,11 +526,17 @@ pub struct GetTxInOut {
     #[serde(rename = "amountblinder")]
     pub amount_blinder: Option<String>,
 
-    /// Whether the elements is confidential or not.
+    /// Whether the amount and asset are blinded or not.
     ///
     /// None for not relevant elements.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub is_blinded: Option<bool>,
+
+    /// Whether the address is a confidential address or not.
+    ///
+    /// None for not relevant elements.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub is_confidential: Option<bool>,
 
     /// Blinding public key.
     ///
@@ -543,7 +549,7 @@ pub struct GetTxInOut {
     ///
     /// None for not relevant elements.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub unblinded_address: Option<String>,
+    pub unconfidential_address: Option<String>,
 
     /// Scriptpukey.
     ///
@@ -788,9 +794,9 @@ pub struct AddressPointer {
     pub user_path: Vec<ChildNumber>,
     pub is_internal: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_blinded: Option<bool>,
+    pub is_confidential: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub unblinded_address: Option<String>,
+    pub unconfidential_address: Option<String>,
 }
 
 // This one is simple enough to derive a serializer
@@ -994,7 +1000,7 @@ pub struct UnspentOutput {
 
     // liquid fields
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub confidential: Option<bool>,
+    pub is_blinded: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub asset_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1027,7 +1033,7 @@ impl TryFrom<Txo> for UnspentOutput {
     fn try_from(txo: Txo) -> Result<Self, Error> {
         let (is_internal, pointer) = parse_path(&txo.user_path.clone().into())?;
         let asset_id = txo.txoutsecrets.as_ref().map(|s| s.asset.to_hex());
-        let confidential = txo.confidential();
+        let is_blinded = txo.confidential();
         let asset_blinder = txo.txoutsecrets.as_ref().map(|s| s.asset_bf.to_hex());
         let amount_blinder = txo.txoutsecrets.as_ref().map(|s| s.value_bf.to_hex());
         let (asset_commitment, value_commitment, nonce_commitment) = match &txo.txoutcommitments {
@@ -1054,7 +1060,7 @@ impl TryFrom<Txo> for UnspentOutput {
             sequence: txo.sequence,
             sighash: None,
             skip_signing: false,
-            confidential,
+            is_blinded,
             asset_id,
             asset_blinder,
             amount_blinder,
@@ -1173,10 +1179,10 @@ pub struct PreviousAddress {
 
     // Liquid fields, None if Bitcoin
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub is_blinded: Option<bool>,
+    pub is_confidential: Option<bool>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub unblinded_address: Option<String>,
+    pub unconfidential_address: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blinding_script: Option<String>,
@@ -1222,7 +1228,7 @@ mod test {
 
     #[test]
     fn test_unspent() {
-        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 1], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 2], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "is_internal": false, "confidential": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 3], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}]}"#;
+        let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 1], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 2], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 3], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}]}"#;
         let _json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
         let _json: CreateTxUtxos = serde_json::from_str(json_str).unwrap();
     }

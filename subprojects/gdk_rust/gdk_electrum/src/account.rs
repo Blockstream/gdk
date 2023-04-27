@@ -242,7 +242,7 @@ impl Account {
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
-        let (is_blinded, unblinded_address, blinding_key) = match address {
+        let (is_blinded, unconfidential_address, blinding_key) = match address {
             BEAddress::Elements(ref a) => {
                 let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
                 (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
@@ -265,8 +265,8 @@ impl Account {
             pointer: pointer,
             user_path: user_path.into(),
             is_internal: is_internal,
-            is_blinded: is_blinded,
-            unblinded_address: unblinded_address,
+            is_confidential: is_blinded,
+            unconfidential_address: unconfidential_address,
         })
     }
 
@@ -294,7 +294,7 @@ impl Account {
             let script_pubkey = address.script_pubkey();
             let account_path =
                 DerivationPath::from(&[(is_internal as u32).into(), index.into()][..]);
-            let (is_blinded, unblinded_address, blinding_key) = match address {
+            let (is_confidential, unconfidential_address, blinding_key) = match address {
                 BEAddress::Elements(ref a) => {
                     let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
                     (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
@@ -315,8 +315,8 @@ impl Account {
                 script_pubkey: script_pubkey.to_hex(),
                 user_path: self.get_full_path(&account_path).into(),
                 tx_count,
-                is_blinded,
-                unblinded_address,
+                is_confidential,
+                unconfidential_address,
                 blinding_script: blinding_script_hex,
                 blinding_key,
             });
@@ -420,30 +420,41 @@ impl Account {
                         (0, "".to_string())
                     };
 
-                    let (address, script_pubkey, unblinded_address, is_blinded, blinding_key) =
-                        if is_relevant {
-                            let addr = self
-                                .derive_address(is_internal, pointer)
-                                .expect("deriving a relevant address");
-                            let script_pubkey = addr.script_pubkey().to_hex();
-                            let address = addr.to_string();
-                            let unblinded_address =
-                                addr.elements().map(|a| a.to_unconfidential().to_string());
-                            let is_blinded = addr.elements().map(|_| true);
-                            let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
-                            (address, script_pubkey, unblinded_address, is_blinded, blinding_key)
-                        } else {
-                            let address = acc_store
-                                .all_txs
-                                .get_previous_output_address(beoutpoint, self.network.id())
-                                .unwrap_or_else(|| "".to_string());
-                            let script_pubkey = acc_store
-                                .all_txs
-                                .get_previous_output_script_pubkey(beoutpoint)
-                                .map(|s| s.to_hex())
-                                .unwrap_or_else(|| "".to_string());
-                            (address, script_pubkey, None, None, None)
-                        };
+                    let (
+                        address,
+                        script_pubkey,
+                        unconfidential_address,
+                        is_confidential,
+                        blinding_key,
+                    ) = if is_relevant {
+                        let addr = self
+                            .derive_address(is_internal, pointer)
+                            .expect("deriving a relevant address");
+                        let script_pubkey = addr.script_pubkey().to_hex();
+                        let address = addr.to_string();
+                        let unconfidential_address =
+                            addr.elements().map(|a| a.to_unconfidential().to_string());
+                        let is_confidential = addr.elements().map(|_| true);
+                        let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
+                        (
+                            address,
+                            script_pubkey,
+                            unconfidential_address,
+                            is_confidential,
+                            blinding_key,
+                        )
+                    } else {
+                        let address = acc_store
+                            .all_txs
+                            .get_previous_output_address(beoutpoint, self.network.id())
+                            .unwrap_or_else(|| "".to_string());
+                        let script_pubkey = acc_store
+                            .all_txs
+                            .get_previous_output_script_pubkey(beoutpoint)
+                            .map(|s| s.to_hex())
+                            .unwrap_or_else(|| "".to_string());
+                        (address, script_pubkey, None, None, None)
+                    };
 
                     let satoshi = acc_store
                         .all_txs
@@ -471,6 +482,8 @@ impl Account {
                         }
                     };
 
+                    let is_blinded = is_confidential; // FIXME: Check blinders
+
                     Ok(GetTxInOut {
                         is_output: false,
                         is_spent: true,
@@ -488,7 +501,8 @@ impl Account {
                         asset_blinder,
                         amount_blinder,
                         is_blinded,
-                        unblinded_address,
+                        is_confidential,
+                        unconfidential_address,
                         blinding_key,
                         script_pubkey,
                     })
@@ -513,30 +527,42 @@ impl Account {
                         (0, "".to_string())
                     };
 
-                    let (address, script_pubkey, unblinded_address, is_blinded, blinding_key) =
-                        if is_relevant {
-                            let addr = self
-                                .derive_address(is_internal, pointer)
-                                .expect("deriving a relevant address");
-                            let address = addr.to_string();
-                            let script_pubkey = addr.script_pubkey().to_hex();
-                            let unblinded_address =
-                                addr.elements().map(|a| a.to_unconfidential().to_string());
-                            let is_blinded = addr.elements().map(|_| true);
-                            let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
-                            (address, script_pubkey, unblinded_address, is_blinded, blinding_key)
-                        } else {
-                            let address = tx
-                                .output_address(vout, self.network.id())
-                                .unwrap_or_else(|| "".to_string());
-                            let script_pubkey = tx.output_script(vout).to_hex();
-                            (address, script_pubkey, None, None, None)
-                        };
+                    let (
+                        address,
+                        script_pubkey,
+                        unconfidential_address,
+                        is_confidential,
+                        blinding_key,
+                    ) = if is_relevant {
+                        let addr = self
+                            .derive_address(is_internal, pointer)
+                            .expect("deriving a relevant address");
+                        let address = addr.to_string();
+                        let script_pubkey = addr.script_pubkey().to_hex();
+                        let unconfidential_address =
+                            addr.elements().map(|a| a.to_unconfidential().to_string());
+                        let is_confidential = addr.elements().map(|_| true);
+                        let blinding_key = addr.blinding_pubkey().map(|p| p.to_string());
+                        (
+                            address,
+                            script_pubkey,
+                            unconfidential_address,
+                            is_confidential,
+                            blinding_key,
+                        )
+                    } else {
+                        let address = tx
+                            .output_address(vout, self.network.id())
+                            .unwrap_or_else(|| "".to_string());
+                        let script_pubkey = tx.output_script(vout).to_hex();
+                        (address, script_pubkey, None, None, None)
+                    };
 
                     let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or(0);
                     let asset_id = tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_hex());
                     let asset_blinder = tx.output_assetblinder_hex(vout, &acc_store.unblinded);
                     let amount_blinder = tx.output_amountblinder_hex(vout, &acc_store.unblinded);
+                    let is_blinded = is_confidential; // FIXME: Check blinders
 
                     Ok(GetTxInOut {
                         is_output: true,
@@ -557,7 +583,8 @@ impl Account {
                         asset_blinder,
                         amount_blinder,
                         is_blinded,
-                        unblinded_address,
+                        is_confidential,
+                        unconfidential_address,
                         blinding_key,
                         script_pubkey,
                     })

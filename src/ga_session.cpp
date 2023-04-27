@@ -1930,11 +1930,11 @@ namespace sdk {
         update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
     }
 
-    static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unblinded)
+    static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unconfidential)
     {
-        if (mark_unblinded) {
-            utxo["is_blinded"] = false;
-            utxo["confidential"] = true;
+        if (mark_unconfidential) {
+            utxo["is_confidential"] = false;
+            utxo["is_blinded"] = true;
             utxo.erase("error");
         }
         utxo.erase("range_proof");
@@ -1954,7 +1954,7 @@ namespace sdk {
             const auto asset_tag = h2b(utxo.at("asset_tag"));
             GDK_RUNTIME_ASSERT(asset_tag.at(0) == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
-            utxo["confidential"] = false;
+            utxo["is_blinded"] = false;
             return false; // Cache not updated
         }
 
@@ -1983,13 +1983,13 @@ namespace sdk {
             const auto cached = m_cache->get_liquid_output(h2b(txhash), pt_idx);
             if (!cached.empty()) {
                 utxo.update(cached.begin(), cached.end());
-                constexpr bool mark_unblinded = true;
-                remove_utxo_proofs(utxo, mark_unblinded);
+                constexpr bool mark_unconfidential = true;
+                remove_utxo_proofs(utxo, mark_unconfidential);
                 if (has_address) {
-                    // We should now be able to blind the address
+                    // We should now be able to make the address confidential
                     const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
                     GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
-                    blind_address(m_net_params, utxo, b2h(blinding_pubkey));
+                    confidentialize_address(m_net_params, utxo, b2h(blinding_pubkey));
                 }
 
                 return false; // Cache not updated
@@ -2035,8 +2035,8 @@ namespace sdk {
         utxo["assetblinder"] = b2h_rev(std::get<2>(unblinded));
         utxo["amountblinder"] = b2h_rev(std::get<1>(unblinded));
         utxo["asset_id"] = b2h_rev(std::get<0>(unblinded));
-        constexpr bool mark_unblinded = true;
-        remove_utxo_proofs(utxo, mark_unblinded);
+        constexpr bool mark_unconfidential = true;
+        remove_utxo_proofs(utxo, mark_unconfidential);
 
         bool updated_blinding_cache = false;
         if (!txhash.empty()) {
@@ -2045,10 +2045,10 @@ namespace sdk {
         }
 
         if (has_address) {
-            // We should now be able to blind the address
+            // We should now be able to make the address confidential
             const auto blinding_pubkey = m_cache->get_liquid_blinding_pubkey(script);
             GDK_RUNTIME_ASSERT(!blinding_pubkey.empty());
-            blind_address(m_net_params, utxo, b2h(blinding_pubkey));
+            confidentialize_address(m_net_params, utxo, b2h(blinding_pubkey));
         }
 
         return updated_blinding_cache;
@@ -2133,8 +2133,8 @@ namespace sdk {
                         if (json_get_value(utxo, "is_relevant", true)) {
                             updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
                         } else {
-                            constexpr bool mark_unblinded = false;
-                            remove_utxo_proofs(utxo, mark_unblinded);
+                            constexpr bool mark_unconfidential = false;
+                            remove_utxo_proofs(utxo, mark_unconfidential);
                         }
                     } else {
                         amount::value_type value;
@@ -2785,9 +2785,9 @@ namespace sdk {
                 || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
 
             address["blinding_script"] = b2h(scriptpubkey_p2sh_p2wsh_from_bytes(server_script));
-            // Mark the address as unblinded. It will be blinded by the caller
-            // at a later time by asking the sessions signer to do so.
-            address["is_blinded"] = false;
+            // Mark the address as non-confidential. It will be converted to
+            // a confidential address later by asking the sessions signer to do so.
+            address["is_confidential"] = false;
         }
         utxo_add_paths(*this, address);
     }

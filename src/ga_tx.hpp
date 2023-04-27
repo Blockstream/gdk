@@ -18,7 +18,7 @@ namespace sdk {
 
     nlohmann::json get_blinding_factors(const blinding_key_t& master_blinding_key, const nlohmann::json& details);
 
-    void blind_address(
+    void confidentialize_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
 
     void create_ga_transaction(session_impl& session, nlohmann::json& details);

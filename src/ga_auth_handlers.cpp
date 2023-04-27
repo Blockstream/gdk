@@ -135,7 +135,7 @@ namespace sdk {
             std::vector<std::pair<uint32_t, size_t>> m_required_addrs;
             size_t m_num_required_addrs;
             size_t m_num_generated_addrs;
-            bool m_is_blinded;
+            bool m_are_confidential;
             std::map<uint32_t, std::vector<nlohmann::json>> m_addresses;
         };
 
@@ -143,7 +143,7 @@ namespace sdk {
             : auth_handler_impl(session, "upload_confidential_addrs")
             , m_num_required_addrs(0)
             , m_num_generated_addrs(0)
-            , m_is_blinded(false)
+            , m_are_confidential(false)
         {
             add_request(subaccount, num_addrs);
         }
@@ -187,19 +187,19 @@ namespace sdk {
             // The signer has provided the blinding keys for our address.
             GDK_RUNTIME_ASSERT(m_hw_request == hw_request::get_blinding_public_keys);
 
-            if (!m_is_blinded) {
-                // Blind our addresses with the signer provided blinding keys
+            if (!m_are_confidential) {
+                // Liquid: Make our addresses confidential with the signer provided blinding keys
                 const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
                 GDK_RUNTIME_ASSERT(public_keys.size() == m_num_required_addrs);
 
                 size_t i = 0;
                 for (auto& subaccount_addresses : m_addresses) {
                     for (auto& addr : subaccount_addresses.second) {
-                        blind_address(m_net_params, addr, public_keys.at(i));
+                        confidentialize_address(m_net_params, addr, public_keys.at(i));
                         ++i;
                     }
                 }
-                m_is_blinded = true;
+                m_are_confidential = true;
             }
 
             while (!m_addresses.empty()) {
@@ -855,8 +855,8 @@ namespace sdk {
             return m_state;
         }
 
-        // Liquid: blind the address using the blinding key from the caller
-        blind_address(m_net_params, m_result, get_hw_reply().at("public_keys").at(0));
+        // Liquid: Make our address confidential with the signer provided blinding key
+        confidentialize_address(m_net_params, m_result, get_hw_reply().at("public_keys").at(0));
         return state_type::done;
     }
 
@@ -893,11 +893,11 @@ namespace sdk {
             return m_state;
         }
 
-        // Liquid: blind the addresses using the blinding key from the HW
+        // Liquid: Make our addresses confidential with the signer provided blinding keys
         const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("list")) {
-            blind_address(m_net_params, it, public_keys.at(i));
+            confidentialize_address(m_net_params, it, public_keys.at(i));
             ++i;
         }
         return state_type::done;
@@ -923,13 +923,13 @@ namespace sdk {
         }
 
         // Otherwise, we have been called after resolving our blinding keys:
-        // Blind any unblinded change addresseses
+        // make any non-confidential change addresseses confidential
         const auto& public_keys = get_hw_reply().at("public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("change_address").items()) {
             auto& addr = it.value();
-            if (!addr.value("is_blinded", false)) {
-                blind_address(m_net_params, addr, public_keys.at(i));
+            if (!addr.value("is_confidential", false)) {
+                confidentialize_address(m_net_params, addr, public_keys.at(i));
                 ++i;
             }
         }
@@ -949,7 +949,7 @@ namespace sdk {
             if (change_addresses_p != m_result.end()) {
                 scripts.reserve(change_addresses_p->size());
                 for (auto& it : change_addresses_p->items()) {
-                    if (!it.value().value("is_blinded", false)) {
+                    if (!it.value().value("is_confidential", false)) {
                         scripts.push_back(it.value().at("blinding_script"));
                     }
                 }
@@ -1295,7 +1295,7 @@ namespace sdk {
         const bool is_liquid = m_net_params.is_liquid();
         if (is_liquid && m_details.value("confidential", false)) {
             // The user wants only confidential UTXOs, filter out non-confidential
-            filter_utxos(outputs, [](const auto& u) { return !u.value("confidential", false); });
+            filter_utxos(outputs, [](const auto& u) { return !u.value("is_blinded", false); });
         }
 
         if (!m_details.value("all_coins", false)) {

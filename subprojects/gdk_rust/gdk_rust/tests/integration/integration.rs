@@ -1126,7 +1126,7 @@ fn addresses(is_liquid: bool) {
     assert!(previous_addresses.list.iter().all(|e| !e.is_internal));
 
     if is_liquid {
-        assert!(previous_addresses.list.iter().all(|e| e.is_blinded.unwrap()));
+        assert!(previous_addresses.list.iter().all(|e| e.is_confidential.unwrap()));
     }
 
     opt.last_pointer = Some(100);

@@ -512,7 +512,7 @@ Liquid inputs have additional fields:
     "asset_tag": "0b5ff0a91c05353089cd40250a2b6c81f09507637d90c37c7e372a8465a4dc0458",
     "assetblinder": "0cd232883f93a3376b88e19a17192495663315a94bd54a24f20299b9af7a696c",
     "commitment": "09f9ac1dfa5042e25a9791fde4aa8292e21c25479eec7783ec5400805a227be256",
-    "confidential": true,
+    "is_blinded": true,
     "nonce_commitment": "03dcec00304fe2debe04a57f84962966b92db9390b96e9931fef47b002fb265278",
     "previdx": 1,
     "prevpointer": 40,
@@ -527,7 +527,7 @@ Liquid inputs have additional fields:
 :asset_tag: The hex-encoded asset commitment.
 :assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
 :commitment: The hex-encoded value commitment.
-:confidential: A boolean indicating whether or not the output is confidential.
+:is_blinded: A boolean indicating whether or not the input is blinded.
 :nonce_commitment: The hex-encoded nonce commitment.
 :previdx: The output index of the transaction containing the output representing this input.
 :prevpointer: Deprecated, will be removed in a future release.
@@ -587,8 +587,8 @@ Liquid outputs have additional fields:
     "assetblinder": "d29b09a3f18c7b404ba99338f6427370d0a3b0f6b9591ecf54bce4623a93eb06",
     "blinding_key": "039f2fd9daf37ae24e6a5311ffc18f60aaf3d8adac755c4ee93bf23bbde62071f7",
     "commitment": "0920c8c8ffe7a3529d48947ee1102e3ffbaa62ffa941bc00544d4dd90767426f2d",
-    "confidential": true,
     "is_blinded": true,
+    "is_confidential": true,
     "nonce_commitment": "0389e67d84f9d04fd163ca540efa599fb51433e7891156c96321f9e85a2687b270",
     "script": "a9144371b94845ee9b316fad126238ccefc05ae74ae587",
     "unblinded_address": "8ka5DahqHU82oALm372w9rPLZskn4jwpSu"
@@ -598,12 +598,13 @@ Liquid outputs have additional fields:
 :asset_id: The hex-encoded asset id in display format.
 :asset_tag: The hex-encoded asset commitment.
 :assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
+:blinding_key: The blinding public key for the output.
 :commitment: The hex-encoded value commitment.
-:confidential: For user wallet outputs, a boolean indicating whether or not the output
-    is confidential, i.e. whether its asset and value have been blinded.
-:is_blinded: For user wallet outputs, alays true when ``confidential`` is true.
+:is_blinded: For user wallet outputs, a boolean indicating whether or not the output is blinded.
+:is_confidential: For user wallet outputs, alays true when ``is_blinded`` is true.
 :nonce_commitment: The hex-encoded nonce commitment.
 :script: For user wallet outputs, the scriptpubkey of this output.
+:unblinded_address: For user wallet outputs, the non-confidential address corresponding to ``address``.
 
 
 .. _external-tx-detail:
@@ -1381,7 +1382,7 @@ For Liquid the inner maps have additional fields:
     "asset_tag": "0b103a2d34cf469987dd06937919f9dae8c9856be17c554fd408fdc226b1769e59",
     "assetblinder": "aedb6c37d0ea0bc64fbc7036b52d0a0784da0b1ca90ac918c19ee1025b0c944c",
     "commitment": "094c3f83d5bac22b527ccac141fe04883d79bf04aef10a1dd42f501c5b51318907",
-    "confidential": true,
+    "is_blinded": true,
     "nonce_commitment": "0211b39afe463473e428cfafd387f9c85b350f440131fad03aa5f4809b6c834f30"
   }
 
@@ -1391,7 +1392,7 @@ For Liquid the inner maps have additional fields:
 :asset_tag: The hex-encoded asset commitment.
 :assetblinder: The hex-encoded asset blinder (asset blinding factor, abf).
 :commitment: The hex-encoded value commitment.
-:confidential: A boolean indicating whether or not the output is confidential.
+:is_blinded: A boolean indicating whether or not the output is blinded.
 :nonce_commitment: The hex-encoded nonce commitment.
 
 .. _unspent-outputs-status:
