@@ -17,9 +17,3 @@ pub use sighashtype::*;
 use std::fmt::Debug;
 pub use transaction::*;
 pub use txid::*;
-
-#[derive(Default)]
-pub struct ScriptBatch {
-    pub cached: bool,
-    pub value: Vec<(BEScript, DerivationPath)>,
-}

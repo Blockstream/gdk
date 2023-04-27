@@ -26,8 +26,6 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
 
-pub const BATCH_SIZE: u32 = 20;
-
 pub type Store = Arc<RwLock<StoreMeta>>;
 
 /// RawCache is a persisted and encrypted cache of wallet data, contains stuff like wallet transactions

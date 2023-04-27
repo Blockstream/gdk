@@ -40,7 +40,8 @@ use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
-use crate::store::{RawAccountCache, Store, BATCH_SIZE};
+use crate::store::{RawAccountCache, Store};
+use crate::GAP_LIMIT;
 
 // The number of account types, including these reserved for future use.
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
@@ -905,27 +906,25 @@ impl Account {
         Ok(betx)
     }
 
-    pub fn get_script_batch(&self, is_internal: bool, batch: u32) -> Result<ScriptBatch, Error> {
+    pub fn get_script(
+        &self,
+        is_internal: bool,
+        j: u32,
+    ) -> Result<(bool, DerivationPath, BEScript), Error> {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
-        let mut result = ScriptBatch::default();
-        result.cached = true;
+        let path = DerivationPath::from(&[(is_internal as u32).into(), j.into()][..]);
+        let mut cached = true;
+        let script = acc_store.scripts.get(&path).cloned().map_or_else(
+            || -> Result<BEScript, Error> {
+                cached = false;
+                Ok(self.derive_address(is_internal, j)?.script_pubkey())
+            },
+            Ok,
+        )?;
 
-        let start = batch * BATCH_SIZE;
-        let end = start + BATCH_SIZE;
-        for j in start..end {
-            let path = DerivationPath::from(&[(is_internal as u32).into(), j.into()][..]);
-            let script = acc_store.scripts.get(&path).cloned().map_or_else(
-                || -> Result<BEScript, Error> {
-                    result.cached = false;
-                    Ok(self.derive_address(is_internal, j)?.script_pubkey())
-                },
-                Ok,
-            )?;
-            result.value.push((script, path));
-        }
-        Ok(result)
+        Ok((cached, path, script))
     }
 
     /// Get the chain number for the given address (0 for receive or 1 for change)
@@ -1150,11 +1149,8 @@ pub fn discover_account(
     // build our own client so that the subscriptions are dropped at the end
     let client = electrum_url.build_client(proxy, None)?;
 
-    // the batch size is the effective gap limit for our purposes. in reality it is a lower bound.
-    let gap_limit = BATCH_SIZE;
-
     let external_xpub = account_xpub.ckd_pub(&crate::EC, 0.into())?;
-    for index in 0..gap_limit {
+    for index in 0..GAP_LIMIT {
         let child_key = external_xpub.ckd_pub(&crate::EC, index.into())?;
         // Every network has the same scriptpubkey
         let script = bitcoin_address(&child_key.to_pub(), script_type, bitcoin::Network::Bitcoin)

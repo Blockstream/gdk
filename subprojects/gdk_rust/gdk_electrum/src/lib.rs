@@ -33,7 +33,6 @@ use gdk_common::bitcoin::util::bip32::{
 };
 use gdk_common::{bitcoin, elements};
 
-use electrum_client::GetHistoryRes;
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
 use gdk_common::wally::{
@@ -73,6 +72,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
+pub const GAP_LIMIT: u32 = 20;
 
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
@@ -1401,41 +1401,29 @@ impl Syncer {
             wallet_chains.shuffle(&mut thread_rng());
             for i in wallet_chains {
                 let is_internal = i == 1;
-                let mut batch_count = 0;
-                loop {
-                    let batch = account.get_script_batch(is_internal, batch_count)?;
-                    // convert the BEScript into bitcoin::Script for electrum-client
-                    let b_scripts =
-                        batch.value.iter().map(|e| e.0.clone().into_bitcoin()).collect::<Vec<_>>();
-                    let result: Vec<Vec<GetHistoryRes>> =
-                        client.batch_script_get_history(b_scripts.iter())?;
-                    if !batch.cached {
-                        scripts.extend(batch.value);
+                let mut count_empty = 0;
+                for j in 0.. {
+                    let (cached, path, script) = account.get_script(is_internal, j)?;
+                    if !cached {
+                        scripts.insert(script.clone(), path);
                     }
-                    let max = result
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, v)| !v.is_empty())
-                        .map(|(i, _)| i as u32)
-                        .max();
-                    if let Some(max) = max {
+                    let b_script = script.into_bitcoin();
+                    let history = client.script_get_history(&b_script)?;
+                    if history.is_empty() {
+                        count_empty += 1;
+                    } else {
+                        count_empty = 0;
                         if is_internal {
-                            last_used.internal = max + batch_count * BATCH_SIZE;
+                            last_used.internal = j;
                         } else {
-                            last_used.external = max + batch_count * BATCH_SIZE;
+                            last_used.external = j;
                         }
-                    };
-
-                    let flattened: Vec<GetHistoryRes> = result.into_iter().flatten().collect();
-                    trace!("{}/batch({}) {:?}", i, batch_count, flattened.len());
-
-                    if flattened.is_empty() {
+                    }
+                    if count_empty >= GAP_LIMIT {
                         break;
                     }
-
                     let net = self.network.id();
-
-                    for el in flattened {
+                    for el in history {
                         // el.height = -1 means unconfirmed with unconfirmed parents
                         // el.height =  0 means unconfirmed with confirmed parents
                         // but we threat those tx the same
@@ -1449,8 +1437,6 @@ impl Syncer {
 
                         history_txs_id.insert(el.tx_hash.into_net(net));
                     }
-
-                    batch_count += 1;
                 }
             }
 
