@@ -1,12 +1,22 @@
 # Changelog
 
-## Release 0.0.62
+## Release 0.0.63
 
 ### Added
 
 ### Changed
 - FFI (validate_call): Input JSON parameters are now moved internally and will be
   empty when an API call returns. This only affects C and C++ callers.
+
+### Fixed
+
+### Removed
+
+## Release 0.0.62 - 2023-04-23
+
+### Added
+
+### Changed
 
 ### Fixed
 - Watch Only: Fix old-style watch-only sessions fetching UTXOs and balances.
