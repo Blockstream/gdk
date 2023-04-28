@@ -1,0 +1,63 @@
+
+include:
+  - local: "gitlab/common.yml"
+
+
+
+build-android:
+  tags:
+    - ga
+  stage: build
+  needs: [ test_format ]
+  variables:
+    INSTALL_PATH: "gdk-android-jni"
+  parallel:
+    matrix:
+      - PLATFORM: [android]
+        ARCH: [armeabi-v7a, arm64-v8a, x86, x86_64]
+  script:
+    - ./tools/build.sh --ndk $ARCH --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/$PLATFORM-$ARCH --parallel 16 --install $INSTALL_PATH
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 1 day
+    when: on_success
+    paths:
+    - $INSTALL_PATH
+
+
+release-android:
+  tags:
+    - garelease
+  stage: release
+  needs: [ build-android ]
+  script:
+    - mkdir gdk-android-symbols
+    - mkdir -p gdk_dist/
+    - find gdk-android-jni -name "*.syms" -type f -exec cp --parents {} gdk-android-symbols \;
+    - tar -czf gdk_dist/gdk-android-symbols.tar.gz gdk-android-symbols --remove-files
+    - find gdk-android-jni -name "*.a" -type f -delete
+    - find gdk-android-jni -name "*.syms" -type f -delete
+    - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
+    - cd gdk_dist
+    - /opt/process_release
+  artifacts:
+    name: "android-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 14 days
+    paths:
+    - $CI_PROJECT_DIR/gdk_dist
+    when: on_success
+
+
+upload-android-gcloud:
+  extends: .gcloud-publish
+  needs: [ release-android ]
+  script:
+    - url=${GCLOUD_URL}/${subfolder}/android
+    - echo ${url}
+    - TMPF=$(mktemp) || exit 1
+    - echo $GCLOUD_PUSH_KEY > $TMPF
+    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
+    - gcloud auth activate-service-account --key-file=$TMPF
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist ${url}
+    - rm -f $TMPF
+

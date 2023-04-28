@@ -1,0 +1,26 @@
+
+.gcloud-publish:
+  image: blockstream/gcloud-docker-tf:1.1.7
+  tags:
+    - ga
+  stage: publish
+  variables:
+    GCLOUD_URL: "gs://green-gdk-builds"
+  before_script:
+    - subfolder=$CI_PROJECT_NAME-$CI_COMMIT_SHA
+    - if [[ ${CI_COMMIT_REF_NAME} == "master" ]]; then subfolder=gdk-master; fi
+
+
+
+##### WARNING!!!!
+    # $PREBUILT_SUBDIR is the folder for the DIY caching system we have in place in mac machines
+    # BUILD_IDX is your life belt in case you messed the CI up during the prebuild phase and the PREBUILT_DIR folder
+    # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
+    # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
+.osx_env:
+  variables:
+    BUILD_IDX: "0"
+  before_script:
+    - idx=($(shasum tools/* cmake/profiles/* | shasum))
+    - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
+

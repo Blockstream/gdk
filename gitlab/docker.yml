@@ -1,6 +1,7 @@
 .build_setup:
   stage: docker_build
   needs: []
+  when: manual
   variables:
     DOCKER_HOST: tcp://localhost:2375
     DOCKER_TLS_CERTDIR: ""
@@ -12,24 +13,11 @@
     - cloud
   retry:
     max: 2
-    when:
-      - runner_system_failure
-      - unknown_failure
-      - stuck_or_timeout_failure
+    when: [runner_system_failure, unknown_failure, stuck_or_timeout_failure]
   rules:
     - if: $CI_COMMIT_BRANCH
-      when: manual
       changes:
-        paths:
-          - tools/buildboost.sh
-          - tools/builddeps.sh
-          - tools/buildlibwally-core.sh
-          - tools/buildopenssl.sh
-          - tools/buildsqlite3.sh
-          - tools/buildtor.sh
-          - tools/requirements.txt
-          - $DOCKER_BUILD_CONTEXT/*
-          - $ENV_FILE
+        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE]
         compare_to: master
   script:
     - docker pull ${IMAGE}:latest || true
@@ -52,3 +40,23 @@
     when: always
     paths:
     - docker-build.log
+
+
+build_gdk-debian-ci:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-debian-ci
+    DOCKER_BUILD_CONTEXT: docker/debian
+    ENV_FILE: tools/env.sh
+
+build_gdk-ubuntu-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-ubuntu-builder
+    DOCKER_BUILD_CONTEXT: docker/ubuntu
+
+build_gdk-fedora-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-fedora-builder
+    DOCKER_BUILD_CONTEXT: docker/fedora

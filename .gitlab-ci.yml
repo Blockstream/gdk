@@ -2,14 +2,17 @@ image: blockstream/gdk-debian-ci@sha256:17aa28146276763208f7e6aa4e1e222d4f1224e4
 
 stages:
   - format
+  - docker_build
   - build
   - test
-  - deploy
+  - release
   - publish
-  - docker_build
 
 include:
-  - gitlab/**.yaml
+  - gitlab/common.yml
+  - gitlab/android.yml
+  - gitlab/ios.yml
+  - gitlab/docker.yml
 
 ## disables MR-triggered pipelines and allows only branch-triggered pipelines
 workflow:
@@ -18,18 +21,6 @@ workflow:
       when: never
     - when: always
 
-.ndk_release:
-  tags:
-    - ga
-  variables:
-    INSTALL_PATH: "gdk-android-jni"
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 1 day
-    when: on_success
-    paths:
-    - $INSTALL_PATH
-
 
 
 .py_release:
@@ -37,32 +28,6 @@ workflow:
     - ga
   variables:
     INSTALL_PATH: "gdk-python"
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 1 day
-    when: on_success
-    paths:
-    - $INSTALL_PATH
-
-
-
-    ##### WARNING!!!!
-    # $PREBUILT_SUBDIR is the folder for the DIY caching system we have in place in mac machines
-    # BUILD_IDX is your life belt in case you messed the CI up during the prebuild phase and the PREBUILT_DIR folder
-    # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
-    # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
-.osx_env:
-  variables:
-    BUILD_IDX: "0"
-  before_script:
-    - idx=($(shasum tools/* cmake/profiles/* | shasum))
-    - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
-
-
-.ios_release:
-  extends: .osx_env
-  tags:
-    - osx-ia
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 day
@@ -85,28 +50,18 @@ test_format:
 build_gcc_bullseye:
   extends: .py_release
   stage: build
+  needs: [ test_format ]
   script:
-    - cmake -B build-gcc -S .
-        -DEXTERNAL-DEPS-DIR=/prebuild/gcc
-        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
-        -DCMAKE_BUILD_TYPE=Release
-    - cmake --build build-gcc --target greenaddress-full --parallel 16
-    - cmake --build build-gcc --target python-wheel --parallel 16
-    - cmake --install build-gcc --prefix $INSTALL_PATH --strip
-    - cmake --install build-gcc --prefix $INSTALL_PATH --component gdk-dev
+    - ./tools/build.sh --gcc --buildtype release --install $INSTALL_PATH --python-version 3.9 --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
 
 
 build_clang_bullseye:
   tags:
     - ga
   stage: build
+  needs: [ test_format ]
   script:
-    - cmake -B build-clang -S .
-        -DEXTERNAL-DEPS-DIR=/prebuild/clang
-        -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
-        -DCMAKE_BUILD_TYPE=Release
-        -DENABLE_TESTS:BOOL=TRUE
-    - cmake --build build-clang --parallel 16
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --python-version 3.9 --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16 --enable-tests
   artifacts:
     expire_in: 2 hrs
     paths:
@@ -168,38 +123,18 @@ build_clang_fedora:
   tags:
     - ga
   stage: build
+  needs: [ test_format ]
   script:
     - source /root/.cargo/env
-    - cmake -B build-clang -S .
-      -DEXTERNAL-DEPS-DIR:PATH=/prebuild/clang
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/clang.cmake
-    - cmake --build build-clang --parallel 16
+    - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
 
 build_gcc_ubuntu20.04:
   image: blockstream/gdk-ubuntu-builder@sha256:0acd100b8edf1a3628f9402a5be4cfd6b75da2ed9c9538365acd2b2de98046ab
   extends: .py_release
   stage: build
+  needs: [ test_format ]
   script:
-    - source /root/.cargo/env
-    - cmake -B build-gcc -S .
-      -DEXTERNAL-DEPS-DIR:PATH=/prebuild/gcc
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/gcc.cmake
-    - cmake --build build-gcc --target python-wheel --parallel 16
-
-
-
-build-android:
-  extends: .ndk_release
-  stage: build
-  parallel:
-    matrix:
-      - PLATFORM: [android]
-        ARCH: [armeabi-v7a, arm64-v8a, x86, x86_64]
-  script:
-    - cmake -DEXTERNAL-DEPS-DIR:PATH=/prebuild/$PLATFORM-$ARCH -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$PLATFORM-$ARCH.cmake -B build -S .
-    - cmake --build build --target java-bindings --parallel 16
-    - cmake --install build --prefix ${INSTALL_PATH} --strip
-    - cmake --install build --prefix ${INSTALL_PATH} --component gdk-java
+    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
 
 
 
@@ -210,6 +145,7 @@ build_clang_osx:
   tags:
     - osx-ia
   stage: build
+  needs: [ test_format ]
   script:
     - cd $CI_PROJECT_DIR
     - python3 -m venv venv
@@ -218,14 +154,7 @@ build_clang_osx:
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - cmake -B build-clang -S .
-      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
-      -DPython_FIND_VIRTUALENV=ONLY
-    - cmake --build build-clang --target greenaddress-full --parallel 16
-    - cmake --build build-clang --target python-wheel --parallel 16
-    - cmake --install build-clang --prefix $INSTALL_PATH --strip
-    - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
 
 build_clang_osx_m1:
   extends: 
@@ -234,6 +163,7 @@ build_clang_osx_m1:
   tags:
     - osx-m1
   stage: build
+  needs: [ test_format ]
   script:
     - cd $CI_PROJECT_DIR
     - python3 -m venv venv
@@ -242,89 +172,19 @@ build_clang_osx_m1:
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-m1"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - cmake -B build-clang -S .
-      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/macOS.cmake
-      -DPython_FIND_VIRTUALENV=ONLY
-    - cmake --build build-clang --target greenaddress-full --parallel 16
-    - cmake --build build-clang --target python-wheel --parallel 16
-    - cmake --install build-clang --prefix $INSTALL_PATH --strip
-    - cmake --install build-clang --prefix $INSTALL_PATH --component gdk-dev
-
-build_osx_ios:
-  extends: .ios_release
-  stage: build
-  tags:
-    - osx-m1
-  variables:
-    INSTALL_PATH: "gdk-iphone"
-  script:
-    - cd $CI_PROJECT_DIR
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphone static --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - cmake -B build-iphone -S .
-      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphoneos.cmake
-      -DENABLE_SWIFT:BOOL=TRUE
-    - cmake --build build-iphone --parallel 16
-    - cmake --install build-iphone --prefix ${INSTALL_PATH} --strip
-    - cmake --install build-iphone --prefix ${INSTALL_PATH} --component gdk-dev
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
 
 
-build_osx_ios_sim_x86_64:
-  extends: .ios_release
-  stage: build
-  variables:
-    INSTALL_PATH: "gdk-iphone-sim"
-  script:
-    - cd $CI_PROJECT_DIR
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphonesim static --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - cmake -B build-iphonesim -S .
-      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
-      -DENABLE_SWIFT:BOOL=TRUE
-    - cmake --build build-iphonesim --parallel 16
-    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --strip
-    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
-
-build_osx_ios_sim_arm64:
-  extends: .ios_release
-  tags:
-    - osx-m1
-  stage: build
-  variables:
-    PREBUILT_DIR: "$CI_BUILDS_DIR/$PREBUILT_SUBDIR/ios-sim-arm64"
-    INSTALL_PATH: "gdk-iphone-sim-arm64"
-  script:
-    - cd $CI_PROJECT_DIR
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --iphonesim static --prefix $PREBUILT_DIR; fi
-    - cmake -B build-iphonesim -S .
-      -DEXTERNAL-DEPS-DIR:PATH=$PREBUILT_DIR
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/iphonesimulator.cmake
-      -DENABLE_SWIFT:BOOL=TRUE
-    - cmake --build build-iphonesim --parallel 16
-    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --strip
-    - cmake --install build-iphonesim --prefix ${INSTALL_PATH} --component gdk-dev
 
 build_mingw64_windows:
   tags:
     - ga
   stage: build
+  needs: [ test_format ]
   variables:
     INSTALL_PATH: "install-gdk"
   script:
-    - cmake -B build-windows -S .
-      -DEXTERNAL-DEPS-DIR=/prebuild/mingw-w64
-      -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/windows-mingw-w64.cmake
-    - cmake --build build-windows --parallel 16
-    - cmake --install build-windows --prefix $INSTALL_PATH --strip
-    - cmake --install build-windows --prefix $INSTALL_PATH --component gdk-dev
+    - ./tools/build.sh --mingw-w64 --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/mingw-w64 --parallel 16
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 1 hour
@@ -338,6 +198,7 @@ apidocs:
   tags:
     - ga
   stage: build
+  needs: [ test_format ]
   artifacts:
     expire_in: 14 days
     when: on_success
@@ -353,74 +214,33 @@ apidocs:
 
 
 
-package_release:
+release-python:
   tags:
     - garelease
-  stage: deploy
+  stage: release
+  needs: [ build_gcc_bullseye, build_clang_osx, build_clang_osx_m1 ]
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir -p gdk_dist/share/python
+    - find gdk-python/ -name *.whl -exec mv {} gdk_dist/ \;
+    - cd gdk_dist
+    - /opt/process_release
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
     expire_in: 14 days
     paths:
     - $CI_PROJECT_DIR/gdk_dist
     when: on_success
-  script:
-    - cd $CI_PROJECT_DIR
-    - mkdir gdk-android-symbols
-    - mkdir -p gdk_dist/share/python
-    - find gdk-android-jni -name "*.syms" -type f -exec cp --parents {} gdk-android-symbols \;
-    - tar -czf gdk_dist/gdk-android-symbols.tar.gz gdk-android-symbols --remove-files
-    - find gdk-android-jni -name "*.a" -type f -delete
-    - find gdk-android-jni -name "*.syms" -type f -delete
-    - tar -czf gdk_dist/gdk-android-jni.tar.gz gdk-android-jni --remove-files
-    - tar -czf gdk_dist/gdk-iphone.tar.gz gdk-iphone --remove-files
-    - tar -czf gdk_dist/gdk-iphone-sim.tar.gz gdk-iphone-sim --remove-files
-    - tar -czf gdk_dist/gdk-iphone-sim-arm64.tar.gz gdk-iphone-sim-arm64 --remove-files
-    - find gdk-python/ -name *.whl -exec mv {} gdk_dist/share/python \;
-    - cd gdk_dist
-    - /opt/process_release
-  needs:
-    - build-android
-    - build_gcc_bullseye
-    - build_gcc_ubuntu20.04
-    - build_clang_osx
-    - build_clang_osx_m1
-    - build_osx_ios
-    - build_osx_ios_sim_x86_64
-    - build_osx_ios_sim_arm64
-    - apidocs
-    - test_clang_bullseye # waiting for tests to pass
 
-cp_gcloud:
-  image: blockstream/gcloud-docker-tf:1.1.7
-  tags:
-    - ga
-  stage: publish
+upload-python-gcloud:
+  extends: .gcloud-publish
+  needs: [ release-python ]
   script:
-    - echo gs://green-gdk-builds/$CI_PROJECT_NAME-$CI_COMMIT_SHA
+    - url=${GCLOUD_URL}/${subfolder}/python
+    - echo ${url}
     - TMPF=$(mktemp) || exit 1
     - echo $GCLOUD_PUSH_KEY > $TMPF
     - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
     - gcloud auth activate-service-account --key-file=$TMPF
-    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist gs://green-gdk-builds/$CI_PROJECT_NAME-$CI_COMMIT_SHA
-  needs:
-  - package_release
-
-cp_gcloud_master:
-  image: blockstream/gcloud-docker-tf:1.1.7
-  tags:
-    - ga
-  stage: publish
-  only:
-    refs:
-      - master
-  script:
-    - TMPF=$(mktemp) || exit 1
-    - echo $GCLOUD_PUSH_KEY > $TMPF
-    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
-    - gcloud auth activate-service-account --key-file=$TMPF
-    - gsutil rm -r gs://green-gdk-builds/gdk-master || echo fail # avoid failing when dir does not exist
-    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist gs://green-gdk-builds/gdk-master
-  dependencies:
-  - package_release
-
-
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist ${url}
+    - rm -rf $TMPF

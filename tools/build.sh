@@ -41,8 +41,10 @@ install=false
 enable_tests=FALSE # cmake bool format
 python_version=3
 enable_python=false
+no_deps_rebuild=false
 parallel=$(cat /proc/cpuinfo | grep ^processor | wc -l)
 devmode=FALSE # cmake bool
+verbose=false
 
 
 if [ "$(uname)" = "Darwin" ]; then
@@ -55,15 +57,16 @@ if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,no-deps-rebuild,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
-        -v ) verbose_flag=" -v"; shift 2 ;;
+        -v ) verbose=true; shift 2 ;;
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
+        --no-deps-rebuild ) no_deps_rebuild=true; shift ;;
         --devmode ) devmode=TRUE; shift ;;
         --iphone | --iphonesim ) BUILD="$1"; LIBTYPE="$2"; shift 2 ;;
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
@@ -100,7 +103,7 @@ elif [ "$BUILD" == "--mingw-w64" ]; then
     bld_root="$PWD/build-windows-mingw-w64"
     cmake_profile="windows-mingw-w64.cmake"
 else
-    echo "unknown build"
+    echo "$BUILD unknown build"
     exit 1
 fi
 
@@ -109,26 +112,46 @@ if [ "$BUILDTYPE" == "debug" ]; then
     bld_root=$bld_root-debug
 fi
 
-if [[ "${BUILD}" == "--ndk" ]]; then
-    build_dependencies ${BUILD} ${NDK_ARCH}
-elif [[ "${BUILD}" == "--iphone" ]] || [[ "${BUILD}" == "--iphonesim" ]] ; then
-    build_dependencies ${BUILD} ${LIBTYPE}
-else
-    build_dependencies ${BUILD}
+
+if [[ ! $no_deps_rebuild ]]; then
+    if [[ "${BUILD}" == "--ndk" ]]; then
+        build_dependencies ${BUILD} ${NDK_ARCH}
+    elif [[ "${BUILD}" == "--iphone" ]] || [[ "${BUILD}" == "--iphonesim" ]] ; then
+        build_dependencies ${BUILD} ${LIBTYPE}
+    else
+        build_dependencies ${BUILD}
+    fi
 fi
 
-cmake -B $bld_root -S . \
+cmake_options="-B $bld_root -S . \
     -DEXTERNAL-DEPS-DIR=$EXTERNAL_DEPS_DIR \
     -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$cmake_profile \
     -DCMAKE_BUILD_TYPE=$cmake_build_type \
     -DENABLE_TESTS:BOOL=$enable_tests \
-    -DPYTHON_REQUIRED_VERSION=$python_version \
-    -DDEV_MODE:BOOL=$devmode
-
-cmake --build $bld_root --parallel $parallel$verbose_flag
+    -DDEV_MODE:BOOL=$devmode"
 
 if $enable_python ; then
-    cmake --build $bld_root --target python-wheel$verbose_flag
+    if [[ $python_version == "venv" ]]; then
+        cmake_options="${cmake_options} -DPython_FIND_VIRTUALENV=ONLY"
+    else
+        cmake_options="${cmake_options} -DPYTHON_REQUIRED_VERSION=$python_version"
+    fi
+fi
+
+if [ "$BUILD" == "--iphone" ] || [ "$BUILD" == "--iphonesim" ]; then
+    cmake_options="$cmake_options -DENABLE_SWIFT:BOOL=TRUE"
+fi
+
+cmake_verbose=""
+if $verbose ; then
+    cmake_verbose="-v"
+fi
+
+cmake ${cmake_options}
+cmake --build $bld_root --parallel $parallel $cmake_verbose
+
+if $enable_python ; then
+    cmake --build $bld_root --target python-wheel $cmake_verbose
 fi
 
 if $install ; then
