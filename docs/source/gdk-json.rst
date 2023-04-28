@@ -591,7 +591,7 @@ Liquid outputs have additional fields:
     "is_confidential": true,
     "nonce_commitment": "0389e67d84f9d04fd163ca540efa599fb51433e7891156c96321f9e85a2687b270",
     "script": "a9144371b94845ee9b316fad126238ccefc05ae74ae587",
-    "unblinded_address": "8ka5DahqHU82oALm372w9rPLZskn4jwpSu"
+    "unconfidential_address": "8ka5DahqHU82oALm372w9rPLZskn4jwpSu"
   }
 
 :amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
@@ -601,10 +601,12 @@ Liquid outputs have additional fields:
 :blinding_key: The blinding public key for the output.
 :commitment: The hex-encoded value commitment.
 :is_blinded: For user wallet outputs, a boolean indicating whether or not the output is blinded.
-:is_confidential: For user wallet outputs, alays true when ``is_blinded`` is true.
+:is_confidential: For user wallet outputs, always true when ``is_blinded`` is true.
 :nonce_commitment: The hex-encoded nonce commitment.
 :script: For user wallet outputs, the scriptpubkey of this output.
-:unblinded_address: For user wallet outputs, the non-confidential address corresponding to ``address``.
+:unconfidential_address: For user wallet outputs, the non-confidential address
+    corresponding to ``address``. This is provided for informational purposes
+    only and should not be used to receive.
 
 
 .. _external-tx-detail:
@@ -1193,13 +1195,14 @@ For Liquid addresses, the following additional fields are returned:
     "blinding_key": "02a519491b130082a1abbe17395213b46dae43c3e1c05b7a3dbd2157bd83e88a6e",
     "blinding_script": "a914c2427b28b2796243e1e8ee65be7598d465264b0187",
     "is_blinded": true,
-    "unblinded_address": "XV4PaYgbaJdPnYaJDzE41TpbBF6yBieeyd"
+    "unconfidential_address": "XV4PaYgbaJdPnYaJDzE41TpbBF6yBieeyd"
   }
 
 :blinding_key: The blinding key used to blind this address.
 :blinding_script: The script used to generate the blinding key via https://github.com/satoshilabs/slips/blob/master/slip-0077.md.
 :is_blinded: Always ``true``.
-:unblinded_address: The unblinded address. This is provided for informational purposes only and should not be used to receive.
+:unconfidential_address: The non-confidential address corresponding to ``address``.  This
+    is provided for informational purposes only and should not be used to receive.
 
 
 .. _previous-addresses-request:

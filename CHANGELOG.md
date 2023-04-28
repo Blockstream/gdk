@@ -16,6 +16,13 @@
 - GA_sign_transaction/GA_send_transaction: The "script" element of the returned
   "transaction_outputs" elements has been renamed to "scriptpubkey" to reflect
   its contents more accurately.
+- Liquid/JSON: The keys `blinded` and `confidential` in returned JSON have been
+  renamed for consistency and to avoid confusion. `is_blinded` now always refers
+  to a transaction input or output which has been blinded, i.e. its value and
+  asset have been replaced with blinded commitments. `is_blinded` at the
+  top-level of transaction JSON indicates that the transaction has been fully
+  blinded and is ready for signing. `is_confidential` now always refers to
+  an address or addressee element having a confidential address.
 
 ### Fixed
 
