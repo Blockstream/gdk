@@ -480,7 +480,7 @@ GDK_API int GA_get_available_currencies(struct GA_session* session, GA_json** cu
 GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_details, GA_json** output);
 
 /**
- * Encrypt json with server provided key protected by a PIN.
+ * Encrypt JSON with a server provided key protected by a PIN.
  *
  * :param session: The session to use.
  * :param details: The :ref:`encrypt-with-pin-details` to encrypt.
@@ -493,12 +493,12 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
 GDK_API int GA_encrypt_with_pin(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Decrypt json **with server provided key protected by a PIN.
+ * Decrypt JSON with a server provided key protected by a PIN.
  *
  * :param session: The session to use.
  * :param details: The :ref:`decrypt-with-pin-details` to decrypt.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
- *|     The call handlers result is the decrypted json.
+ *|     The call handlers result is the decrypted JSON.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
