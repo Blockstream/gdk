@@ -7,6 +7,7 @@
 ### Changed
 
 ### Fixed
+- Watch Only: Fix old-style watch-only sessions fetching UTXOs and balances.
 
 ### Removed
 
