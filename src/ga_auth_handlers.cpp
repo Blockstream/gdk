@@ -989,7 +989,7 @@ namespace sdk {
             return state_type::done;
         }
 
-        if (m_hw_request == hw_request::blind_tx) {
+        if (m_hw_request == hw_request::get_blinding_factors) {
             // HWW has returned the blinding factors, blind the tx
             // For txs containing AMP v1 inputs, ask the HWW to return the
             // nonces the service requires.
@@ -1001,7 +1001,7 @@ namespace sdk {
         }
 
         // Ask the HWW for the blinding factors to blind the tx
-        signal_hw_request(hw_request::blind_tx);
+        signal_hw_request(hw_request::get_blinding_factors);
         nlohmann::json::array_t utxos;
         const auto& used_utxos = m_details["used_utxos"];
         utxos.reserve(used_utxos.size());

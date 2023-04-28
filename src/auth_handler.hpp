@@ -34,7 +34,7 @@ namespace sdk {
             get_master_blinding_key = 4,
             get_blinding_public_keys = 5,
             get_blinding_nonces = 6,
-            blind_tx = 7
+            get_blinding_factors = 7
         };
 
         auth_handler();

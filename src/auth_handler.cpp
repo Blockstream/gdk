@@ -97,8 +97,8 @@ namespace sdk {
         case hw_request::get_blinding_nonces:
             action = "get_blinding_nonces";
             break;
-        case hw_request::blind_tx:
-            action = "blind_tx";
+        case hw_request::get_blinding_factors:
+            action = "get_blinding_factors";
             break;
         case hw_request::none:
         default:
@@ -484,7 +484,7 @@ namespace sdk {
             }
             handler->resolve_hw_reply(std::move(result));
             return true;
-        } else if (have_master_blinding_key && request == hw_request::blind_tx) {
+        } else if (have_master_blinding_key && request == hw_request::get_blinding_factors) {
             // Host unblinding: Blind a transaction
             handler->resolve_hw_reply(get_blinding_factors(signer->get_master_blinding_key(), required_data));
             return true;
