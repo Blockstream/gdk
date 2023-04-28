@@ -2549,10 +2549,13 @@ namespace sdk {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
         const bool all_coins = json_get_value(details, "all_coins", false);
+        bool old_watch_only = false;
 
         auto utxos
             = wamp_cast_json(m_wamp->call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
+
         locker_t locker(m_mutex);
+        old_watch_only = m_watch_only && m_blob_aes_key == boost::none;
         if (cleanup_utxos(locker, utxos, std::string(), missing)) {
             m_cache->save_db(); // Cache was updated; save it
         }
@@ -2588,9 +2591,12 @@ namespace sdk {
                 }
             }
         }
-        for (auto& utxo : utxos) {
-            if (!utxo.contains("prevout_script"))
-                utxo["prevout_script"] = b2h(output_script_from_utxo(locker, utxo));
+        if (!old_watch_only) {
+            // Old (non client blob) watch only sessions cannot generate prevout_script
+            for (auto& utxo : utxos) {
+                if (!utxo.contains("prevout_script"))
+                    utxo["prevout_script"] = b2h(output_script_from_utxo(locker, utxo));
+            }
         }
         return utxos;
     }

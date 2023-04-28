@@ -9,6 +9,7 @@
   empty when an API call returns. This only affects C and C++ callers.
 
 ### Fixed
+- Watch Only: Fix old-style watch-only sessions fetching UTXOs and balances.
 
 ### Removed
 
