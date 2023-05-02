@@ -482,7 +482,7 @@ impl Account {
                         }
                     };
 
-                    let is_blinded = is_confidential; // FIXME: Check blinders
+                    let is_blinded = is_blinded(&asset_blinder, &amount_blinder);
 
                     Ok(GetTxInOut {
                         is_output: false,
@@ -562,7 +562,7 @@ impl Account {
                     let asset_id = tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_hex());
                     let asset_blinder = tx.output_assetblinder_hex(vout, &acc_store.unblinded);
                     let amount_blinder = tx.output_amountblinder_hex(vout, &acc_store.unblinded);
-                    let is_blinded = is_confidential; // FIXME: Check blinders
+                    let is_blinded = is_blinded(&asset_blinder, &amount_blinder);
 
                     Ok(GetTxInOut {
                         is_output: true,
@@ -1657,6 +1657,24 @@ fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::T
 
     pset.blind_last(&mut rand::thread_rng(), &crate::EC, &inp_txout_sec)?;
     pset.extract_tx().map_err(Into::into)
+}
+
+fn is_blinded_inner(blinder: &str) -> bool {
+    blinder.chars().any(|c| c != '0')
+}
+
+/// False if both the asset and value blinders are zero.
+///
+/// The partially blinded case, i.e. when one of the two blinders is zero and the other is not, is
+/// interpreted as blinded.
+fn is_blinded(
+    asset_blinder_hex: &Option<String>,
+    amount_blinder_hex: &Option<String>,
+) -> Option<bool> {
+    match (asset_blinder_hex, amount_blinder_hex) {
+        (Some(abf), Some(vbf)) => Some(is_blinded_inner(abf) || is_blinded_inner(vbf)),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
