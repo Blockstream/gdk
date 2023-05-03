@@ -539,7 +539,7 @@ impl ElectrumSession {
             });
         }
 
-        let sync_interval = self.network.sync_interval.unwrap_or(7);
+        let sync_interval = self.network.sync_interval.unwrap_or(1);
 
         if self.network.spv_enabled.unwrap_or(false) {
             let checker = match self.network.id() {
@@ -704,7 +704,7 @@ impl ElectrumSession {
                 match url.build_client(proxy.as_deref(), None) {
                     Ok(new_client) => break new_client,
                     Err(_) => {
-                        if wait_or_close(&user_wants_to_sync, 1) {
+                        if wait_or_close(&user_wants_to_sync, sync_interval) {
                             // The thread needs to stop when `user_wants_to_sync` is false.
                             // below this is done by just breaking from the main loop,
                             // but here we are out of the loop so we return.
@@ -728,7 +728,7 @@ impl ElectrumSession {
                         Ok(new_client) => client = new_client,
                         Err(e) => {
                             warn!("cannot build client {e:?}");
-                            if wait_or_close(&user_wants_to_sync, 1) {
+                            if wait_or_close(&user_wants_to_sync, sync_interval) {
                                 info!("closing syncer & tipper thread");
                                 break;
                             }
