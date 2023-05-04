@@ -1146,30 +1146,23 @@ namespace sdk {
 
         for (size_t i = 0; i < transaction_outputs.size(); ++i) {
             auto& output = transaction_outputs[i];
-            bool need_bf = output.contains("amountblinder") || output.contains("blinding_key");
+            bool need_bfs = output.contains("blinding_key");
 
             abf_vbf_t abf_vbf;
-            if (need_bf) {
+            if (need_bfs) {
                 abf_vbf = asset_blinding_key_to_abf_vbf(master_blinding_key, hash_prevouts, i);
-            }
-
-            if (need_bf && json_get_value(output, "assetblinder").empty()) {
                 abfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data(), BLINDING_FACTOR_LEN)));
             } else {
                 abfs.emplace_back(std::string());
             }
             // Skip final vbf for non-partial txs; it is calculated by gdk
-            need_bf = need_bf and (is_partial or i != transaction_outputs.size() - 1);
-            if (need_bf && json_get_value(output, "amountblinder").empty()) {
+            if (need_bfs && (is_partial || i != transaction_outputs.size() - 1)) {
                 vbfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data() + BLINDING_FACTOR_LEN, BLINDING_FACTOR_LEN)));
             } else {
                 vbfs.emplace_back(std::string());
             }
         }
-        return {
-            { "assetblinders", std::move(abfs) },
-            { "amountblinders", std::move(vbfs) },
-        };
+        return { { "amountblinders", std::move(vbfs) }, { "assetblinders", std::move(abfs) } };
     }
 
     void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data)
@@ -1253,23 +1246,32 @@ namespace sdk {
 
             // If an output has a vbf, it contributes to the final vbf calculation.
             // If not, it either:
-            //  1) Is due to be blinded below, OR
+            //  1) Is belongs to this wallet and is due to be blinded below, OR
             //  2) Has been previously blinded; its contribution comes from "scalars" as above.
             // We distinguish between (1) from (2) by the presence of "blinding_key".
-            const bool for_final_vbf = output.contains("amountblinder") || output.contains("blinding_key");
+            const bool is_ours = output.contains("blinding_key");
+            const bool is_partially_blinded = output.contains("assetblinder");
+            const bool is_fully_blinded = is_partially_blinded && output.contains("amountblinder");
+            const bool for_final_vbf = is_fully_blinded || is_ours;
+            if (is_ours) {
+                // We only blind once; this output must not have been blinded before
+                GDK_RUNTIME_ASSERT(!is_partially_blinded && !is_fully_blinded);
+            } else {
+                // Must have an asset blinder, may not have an amount blinder
+                GDK_RUNTIME_ASSERT(is_partially_blinded);
+            }
             if (for_final_vbf) {
                 values.emplace_back(value);
             }
 
             abf_t abf;
-            const std::string abf_hex = json_get_value(output, "assetblinder");
+            std::string abf_hex = json_get_value(output, "assetblinder");
             if (for_final_vbf) {
                 if (abf_hex.empty()) {
-                    abf = h2b_rev<32>(assetblinders.at(i));
-                } else {
-                    abf = h2b_rev<32>(abf_hex);
+                    abf_hex = assetblinders.at(i);
+                    output["assetblinder"] = abf_hex;
                 }
-                output["assetblinder"] = b2h_rev(abf);
+                abf = h2b_rev<32>(abf_hex);
                 abfs.insert(abfs.end(), std::begin(abf), std::end(abf));
             } else {
                 // Asset blinding factor must be provided
@@ -1279,12 +1281,8 @@ namespace sdk {
             vbf_t vbf{ 0 };
             if (is_partial || i < transaction_outputs.size() - 2) {
                 if (for_final_vbf) {
-                    const std::string vbf_hex = json_get_value(output, "amountblinder");
-                    if (vbf_hex.empty()) {
-                        vbf = h2b_rev<32>(amountblinders.at(i));
-                    } else {
-                        vbf = h2b_rev<32>(vbf_hex);
-                    }
+                    auto vbf_hex = json_get_value(output, "amountblinder", amountblinders.at(i));
+                    vbf = h2b_rev<32>(vbf_hex);
                 }
                 // Leave the vbf to 0, below this value will not be used.
             } else {
