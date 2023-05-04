@@ -1532,24 +1532,60 @@ impl Syncer {
                 acc_store.unblinded.extend(new_txs.unblinds);
 
                 // # Removing conflicting transactions
+                // We have new transactions, but some of them could conflict (spend same outpoint)
+                // with each other or with the ones in the cache. We can't rely on the server to
+                // detect unconfirmed conflicting transactions.
 
-                // ## Compute the previous outpoints spent by new tx
-                let prevout_spent_by_new_txs: HashSet<_> = txid_height
+                // ## Remove new transactions conflicting with each other
+                // keeping the one having the greater fee.
+
+                // fetch full transactions and their fee from txids
+                let new_txs_fee: HashMap<BETxid, (BETransaction, u64)> = txid_height
                     .keys()
-                    .map(|txid| acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone())
-                    .flat_map(|tx| tx.tx.previous_outputs())
-                    .collect();
+                    .map(|txid| {
+                        let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
+                        let fee = tx.tx.fee(&acc_store.all_txs, &acc_store.unblinded, &self.network.policy_asset_id().ok()).expect("all txs to compute the fee must be in the cache");
+                        (*txid,(tx.tx, fee))
+                    }
+                ).collect();
 
-                // ## search in existing transactions the ones that use a respent outpoint and remove them
+                // build a reverse map so that I know which outpoint is spent by more than 1 tx,
+                // meaning the transactions are conflicting
+                let mut outpoints_to_tx: HashMap<BEOutPoint, Vec<BETxid>> = HashMap::new();
+                for (txid, (tx, _)) in new_txs_fee.iter() {
+                    for outpoint in tx.previous_outputs() {
+                        let entry = outpoints_to_tx.entry(outpoint).or_insert(vec![]);
+                        entry.push(*txid);
+                    }
+                }
+
+                // We are going to keep the txids that have no conflicts with other new txs, in case
+                // there are conflicts with another tx, we keep the one with greater fee.
+                txid_height.retain(|txid, _| {
+                    let (tx, fee) =
+                        new_txs_fee.get(txid).expect("new_txs_fee built over txid_height");
+                    for outpoint in tx.previous_outputs() {
+                        let txs_spending_this_outpoint = outpoints_to_tx
+                            .get(&outpoint)
+                            .expect("for sure there is at least current txid");
+                        for other_txid in txs_spending_this_outpoint.iter().filter(|t| *t != txid) {
+                            // if the tx is not found in the new ones, it means it doesn't conflict with the new ones.
+                            if let Some((_, other_fee)) = new_txs_fee.get(other_txid) {
+                                // return false (remove the txid) only if the fee is lower than the other_fee
+                                return fee > other_fee;
+                            }
+                        }
+                    }
+                    true
+                });
+
+                // ## search in existing transactions the ones that use a respent outpoint and
+                // remove them. Here we don't have to bother to check the fee, because we are sure
+                // they happened before.
                 let existing_txids_height: Vec<_> = acc_store.heights.keys().cloned().collect();
                 for txid in existing_txids_height.iter() {
                     let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
-                    if tx
-                        .tx
-                        .previous_outputs()
-                        .iter()
-                        .any(|p| prevout_spent_by_new_txs.contains(&p))
-                    {
+                    if tx.tx.previous_outputs().iter().any(|p| outpoints_to_tx.contains_key(p)) {
                         acc_store.heights.remove(&txid);
                     }
                 }
