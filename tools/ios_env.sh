@@ -19,6 +19,7 @@ export SDK_CPPFLAGS="$SDK_CFLAGS"
 export SDK_LDFLAGS="$SDK_CFLAGS"
 
 export IOS_CFLAGS="${SDK_CFLAGS} -isysroot${IOS_SDK_PATH} ${IOS_MIN_VERSION} -O2"
+export IOS_CXXFLAGS="${SDK_CPPFLAGS} -isysroot${IOS_SDK_PATH} ${IOS_MIN_VERSION} -O2"
 export IOS_LDFLAGS="${SDK_LDFLAGS} -isysroot${IOS_SDK_PATH} ${IOS_MIN_VERSION}"
 
 if [ \( $1 = "--iphonesim" \)  -a \( "$(sw_vers -productVersion)" = "10.15" \) ]; then
