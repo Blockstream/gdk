@@ -1501,10 +1501,7 @@ impl Syncer {
             let store_read = self.store.read()?;
             let acc_store = store_read.account_cache(account.num())?;
             let store_indexes = acc_store.indexes.clone();
-            let txs_heights_changed = txid_height
-                .iter()
-                .any(|(txid, height)| acc_store.heights.get(txid) != Some(height))
-                || acc_store.heights.keys().any(|txid| txid_height.get(txid).is_none());
+
             drop(acc_store);
             drop(store_read);
 
@@ -1512,14 +1509,15 @@ impl Syncer {
                 || !headers.is_empty()
                 || store_indexes != last_used
                 || !scripts.is_empty()
-                || txs_heights_changed
-                || !new_statuses.is_empty()
+                || !txid_height.is_empty()
             {
                 info!(
-                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?}",
+                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_indexes_changed:{}",
                     new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
                     headers,
-                    txid_height
+                    txid_height,
+                    scripts,
+                    store_indexes != last_used
                 );
                 let mut store_write = self.store.write()?;
                 store_write.cache.headers.extend(headers);
