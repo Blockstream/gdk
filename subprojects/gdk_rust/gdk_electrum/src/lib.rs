@@ -573,7 +573,7 @@ impl ElectrumSession {
                 let mut round = 0u8;
 
                 'outer: loop {
-                    if wait_or_close(&user_wants_to_sync, sync_interval) {
+                    if wait_or_close(&user_wants_to_sync, 7) {
                         info!("closing headers thread");
                         break;
                     }
