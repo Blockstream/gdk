@@ -752,17 +752,23 @@ impl ElectrumSession {
                     }
                 };
 
-                match syncer.sync(&client, &mut last_statuses) {
+                match syncer.sync(&client, &mut last_statuses, &user_wants_to_sync) {
                     Ok(tx_ntfs) => {
                         state_updater.update_if_needed(true);
                         // Skip sending transaction notifications if it's the
                         // first call to sync. This allows us to _not_ notify
                         // transactions that were sent or received before
                         // login.
-                        if !first_sync.load(Ordering::Relaxed) {
+                        if first_sync.load(Ordering::Relaxed) {
+                            info!("first sync completed");
+                        } else {
                             txs_to_notify.extend(tx_ntfs);
                         }
                         first_sync.store(false, Ordering::Relaxed);
+                    }
+                    Err(Error::UserDontWantToSync) => {
+                        warn!("{}", Error::UserDontWantToSync);
+                        break;
                     }
                     Err(e) => {
                         state_updater.update_if_needed(false);
@@ -1398,6 +1404,7 @@ impl Syncer {
         &self,
         client: &Client,
         last_statuses: &mut ScriptStatuses,
+        user_wants_to_sync: &Arc<AtomicBool>,
     ) -> Result<Vec<TransactionNotification>, Error> {
         trace!("start sync");
         let start = Instant::now();
@@ -1420,6 +1427,9 @@ impl Syncer {
                 let is_internal = i == 1;
                 let mut count_consecutive_empty = 0;
                 for j in 0.. {
+                    if !user_wants_to_sync.load(Ordering::Relaxed) {
+                        return Err(Error::UserDontWantToSync);
+                    }
                     let (cached, path, script) = account.get_script(is_internal, j)?;
                     if !cached {
                         scripts.insert(script.clone(), path);
