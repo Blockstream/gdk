@@ -1473,13 +1473,14 @@ impl Syncer {
                         }
                         None => {
                             // Script never had a tx, initially and neither via updates
-                            count_consecutive_empty += 1
+                            count_consecutive_empty += 1;
+                            if count_consecutive_empty >= GAP_LIMIT {
+                                break;
+                            } else {
+                                continue;
+                            }
                         }
                     }
-                    if count_consecutive_empty >= GAP_LIMIT {
-                        break;
-                    }
-
                     let history = client.script_get_history(&b_script)?;
 
                     let txid_height_pairs =
