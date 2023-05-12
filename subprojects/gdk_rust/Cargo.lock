@@ -368,9 +368,9 @@ dependencies = [
 
 [[package]]
 name = "electrum-client"
-version = "0.14.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a9bf0b1265b34ba0f92f3986dd2cca9a1c9e7eed7a341da2cd02d4c4dc2dcd8"
+checksum = "4b8debf63f96e20e6d9e94170227b4329806f5fbb87b1f0f10a597fd26f26902"
 dependencies = [
  "bitcoin",
  "byteorder",
@@ -574,7 +574,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin",
- "electrum-client 0.14.0",
+ "electrum-client 0.14.1",
  "elements",
  "libc",
  "log",
