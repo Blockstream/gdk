@@ -65,15 +65,17 @@ macro(create_greenaddress_target)
             ${wallycore_INCLUDE_DIRS}/wally_bip32.h
             ${wallycore_INCLUDE_DIRS}/wally_bip38.h
             ${wallycore_INCLUDE_DIRS}/wally_bip39.h
+            ${wallycore_INCLUDE_DIRS}/wally_bip85.h
             ${wallycore_INCLUDE_DIRS}/wally_core.h
+            ${wallycore_INCLUDE_DIRS}/wally_coinselection.h
             ${wallycore_INCLUDE_DIRS}/wally_crypto.h
             ${wallycore_INCLUDE_DIRS}/wally_descriptor.h
             ${wallycore_INCLUDE_DIRS}/wally_elements.h
             ${wallycore_INCLUDE_DIRS}/wally_map.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt_members.h
-            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_script.h
+            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
         COMPONENT gdk-dev
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
@@ -206,15 +208,17 @@ macro(create_greenaddressfull_target)
             ${wallycore_INCLUDE_DIRS}/wally_bip32.h
             ${wallycore_INCLUDE_DIRS}/wally_bip38.h
             ${wallycore_INCLUDE_DIRS}/wally_bip39.h
+            ${wallycore_INCLUDE_DIRS}/wally_bip85.h
             ${wallycore_INCLUDE_DIRS}/wally_core.h
+            ${wallycore_INCLUDE_DIRS}/wally_coinselection.h
             ${wallycore_INCLUDE_DIRS}/wally_crypto.h
             ${wallycore_INCLUDE_DIRS}/wally_descriptor.h
             ${wallycore_INCLUDE_DIRS}/wally_elements.h
             ${wallycore_INCLUDE_DIRS}/wally_map.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt.h
             ${wallycore_INCLUDE_DIRS}/wally_psbt_members.h
-            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_script.h
+            ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
         COMPONENT gdk-dev
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
