@@ -703,6 +703,10 @@ namespace sdk {
             set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
             set_override(defaults, "use_tor", user_overrides, false);
             set_override(defaults, "user_agent", user_overrides, empty);
+            set_override(defaults, "blob_server_onion_url", user_overrides, empty);
+            set_override(defaults, "blob_server_url", user_overrides, empty);
+            set_override(defaults, "blob_server_http_url", user_overrides, empty);
+
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;
         }
