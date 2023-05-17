@@ -12,6 +12,7 @@ include:
   - gitlab/common.yml
   - gitlab/android.yml
   - gitlab/ios.yml
+  - gitlab/python.yml
   - gitlab/docker.yml
 
 ## disables MR-triggered pipelines and allows only branch-triggered pipelines
@@ -21,19 +22,6 @@ workflow:
       when: never
     - when: always
 
-
-
-.py_release:
-  tags:
-    - ga
-  variables:
-    INSTALL_PATH: "gdk-python"
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 1 day
-    when: on_success
-    paths:
-    - $INSTALL_PATH
 
 
 
@@ -48,11 +36,12 @@ test_format:
 
 
 build_gcc_bullseye:
-  extends: .py_release
+  tags:
+    - ga
   stage: build
   needs: [ test_format ]
   script:
-    - ./tools/build.sh --gcc --buildtype release --install $INSTALL_PATH --python-version 3.9 --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
+    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
 
 
 build_clang_bullseye:
@@ -61,7 +50,7 @@ build_clang_bullseye:
   stage: build
   needs: [ test_format ]
   script:
-    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --python-version 3.9 --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16 --enable-tests
+    - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16 --enable-tests
   artifacts:
     expire_in: 2 hrs
     paths:
@@ -138,44 +127,6 @@ build_gcc_ubuntu20.04:
 
 
 
-build_clang_osx:
-  extends: 
-    - .osx_env
-    - .py_release
-  tags:
-    - osx-ia
-  stage: build
-  needs: [ test_format ]
-  script:
-    - cd $CI_PROJECT_DIR
-    - python3 -m venv venv
-    - source venv/bin/activate
-    - pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
-
-build_clang_osx_m1:
-  extends: 
-    - .osx_env
-    - .py_release
-  tags:
-    - osx-m1
-  stage: build
-  needs: [ test_format ]
-  script:
-    - cd $CI_PROJECT_DIR
-    - python3 -m venv venv
-    - source venv/bin/activate
-    - pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-m1"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
-    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
-
-
-
 build_mingw64_windows:
   tags:
     - ga
@@ -185,12 +136,30 @@ build_mingw64_windows:
     INSTALL_PATH: "install-gdk"
   script:
     - ./tools/build.sh --mingw-w64 --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/mingw-w64 --parallel 16
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 1 hour
-    when: on_success
-    paths:
-    - $INSTALL_PATH
+
+
+
+build_clang_osx:
+  extends:
+    - .osx_env
+    - .py_release
+  parallel:
+    matrix:
+      - RUNNER: [ia, m1]
+  tags:
+    - osx-$RUNNER
+  stage: build
+  needs: [ test_format ]
+  script:
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
+    - mkdir -p wheelhouse
+    - cp $INSTALL_PATH/share/python/* wheelhouse
 
 
 
@@ -214,28 +183,4 @@ apidocs:
 
 
 
-release-python:
-  tags:
-    - garelease
-  stage: release
-  needs: [ build_gcc_bullseye, build_clang_osx, build_clang_osx_m1 ]
-  script:
-    - cd $CI_PROJECT_DIR
-    - mkdir -p gdk_dist/share/python
-    - find gdk-python/ -name *.whl -exec mv {} gdk_dist/ \;
-    - cd gdk_dist
-    - /opt/process_release
-  artifacts:
-    name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 14 days
-    paths:
-    - $CI_PROJECT_DIR/gdk_dist
-    when: on_success
 
-upload-python-gcloud:
-  extends: .gcloud-publish
-  needs: [ release-python ]
-  script:
-    - url=${GCLOUD_URL}/${subfolder}/python
-    - echo ${url}
-    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist/* ${url}

@@ -7,8 +7,8 @@ COPY ./tools ./tools
 COPY ./cmake/profiles/ ./cmake/profiles/
 # Optionally copy dependency sources from the build directory if present
 COPY ./tools/requirements.txt ./*.tar.gz /root/
-COPY ./docker/ubuntu/deps.sh ./docker/ubuntu/deps.sh
-RUN ./docker/ubuntu/deps.sh
+COPY ./docker/ubuntu/install_deps.sh ./docker/ubuntu/install_deps.sh
+RUN ./docker/ubuntu/install_deps.sh
 
 FROM base AS buildergcc
 ENV GDK_KEEP_DOWNLOADS=1

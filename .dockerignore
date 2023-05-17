@@ -8,9 +8,10 @@
 !./tools/buildopenssl.sh
 !./tools/buildtor.sh
 !./tools/buildzlib.sh
-!./docker/debian/deps.sh
-!./docker/ubuntu/deps.sh
-!./docker/fedora/deps.sh
+!./docker/debian/install_deps.sh
+!./docker/ubuntu/install_deps.sh
+!./docker/fedora/install_deps.sh
+!./docker/python/install_deps.sh
 !./tools/env.sh
 !./tools/requirements.txt
 !./cmake/profiles/

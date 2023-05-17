@@ -17,7 +17,7 @@
   rules:
     - if: $CI_COMMIT_BRANCH
       changes:
-        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE]
+        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE, cmake/profiles/*]
         compare_to: master
   script:
     - docker pull ${IMAGE}:latest || true
@@ -60,3 +60,9 @@ build_gdk-fedora-builder:
   variables:
     IMAGE: blockstream/gdk-fedora-builder
     DOCKER_BUILD_CONTEXT: docker/fedora
+
+build_gdk-python-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-python-builder
+    DOCKER_BUILD_CONTEXT: docker/python

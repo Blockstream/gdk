@@ -62,7 +62,7 @@ $ tools/build.sh <options>
 ``<options>`` are:
 - ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms
 - ``--enable-tests``: builds test that can be easily launched using ``ctest`` (if your cmake is <= 3.20 you need to ``cd`` into the build directory, otherwise just use ``--test-dir``)
-- ``--python-version <version>``: builds python-wheels. ``<version>`` can be something as simple as ``3``, you let cmake pick the 3.X version present in your system for you
+- ``--python-version <version>``: builds python-wheels. ``<version>`` can be something as simple as ``3``, you let cmake pick the 3.X version present in your system for you. Or it can be ``venv`` to indicate cmake that you are using a virtual environment and cmake should pick whatever python interpreter you set up in it.
 - ``--parallel <jobs>``: set the number of parallel process that the build-system can spawn, default to CPU count.
 - ``--external-deps-dir <path>`` the folder specificied under ``--prefix`` option when running ``tools/buildddeps.sh``
 - ``--install <path>``: have the script invoke ``cmake --install`` and install all\* artifacts produced into ``<path>``
