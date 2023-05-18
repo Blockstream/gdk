@@ -302,10 +302,10 @@ cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/buil
 
 # building openssl
 name="openssl"
-source_url="https://github.com/openssl/openssl/archive/OpenSSL_1_1_1n.tar.gz"
-source_name="openssl-OpenSSL_1_1_1n"
+source_url="https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1t/openssl-1.1.1t.tar.gz"
+source_name="openssl-1.1.1t"
 source_filename="${source_name}.tar.gz"
-source_hash="6b2d2440ced8c802aaa61475919f0870ec556694c466ebea460e35ea2b14839e"
+source_hash="8dee9b24bdb1dcbf0c3d1e9b02fb8f6bf22165e807f45adeb7c9677536859d3b"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${OPENSSL_SRCDIR}
