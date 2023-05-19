@@ -5,6 +5,8 @@ include(cmake/includes/helpers.cmake)
 include(cmake/includes/greenaddress.cmake)
 
 
+cmake_policy(SET CMP0074 NEW)
+
 ### project options
 option(ENABLE_TESTS "enable building tests" FALSE)
 option(SHARED_ONLY "build only shared library" FALSE)
@@ -46,13 +48,13 @@ if(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
         INTERFACE_LINK_LIBRARIES Boost::log
     )
 endif()
+# zlib
+join_path(ZLIB_ROOT ${EXTERNAL-DEPS-DIR} "zlib" "build")
+find_package(ZLIB 1.2.12 EXACT REQUIRED)
 # openSSL
 join_path(OPENSSL_ROOT_DIR ${EXTERNAL-DEPS-DIR} "openssl" "build")
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL 1.1.1 EXACT REQUIRED)
-# zlib
-join_path(ZLIB_ROOT ${EXTERNAL-DEPS-DIR} "zlib" "build")
-find_package(ZLIB 1.2.12 EXACT REQUIRED)
 
 #### cmake-based projects with xxx-config.cmake file
 # nlohmann_json
