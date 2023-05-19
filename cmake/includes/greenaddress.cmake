@@ -17,7 +17,7 @@ macro(create_greenaddress_target)
     target_include_directories(greenaddress INTERFACE ${_gaIncludeDir})
     target_link_libraries(greenaddress PRIVATE
         gdk-rust
-        PkgConfig::sqlite3
+        sqlite3
         Microsoft.GSL::GSL
         autobahn-cpp
         msgpackc-cxx
@@ -124,7 +124,7 @@ macro(create_greenaddressstatic_target)
         PkgConfig::wallycore
         PkgConfig::libsecp256k1
         gdk-rust
-        PkgConfig::sqlite3
+        sqlite3
         Microsoft.GSL::GSL
         autobahn-cpp
         msgpackc-cxx

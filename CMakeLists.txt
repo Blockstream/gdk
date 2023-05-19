@@ -76,10 +76,6 @@ find_package(Libevent REQUIRED PATHS ${_libeventDir})
 #### dependencies relying on pkg-config
 find_package(PkgConfig REQUIRED)
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
-#sqlite
-join_path(_sqlitePkgDir ${EXTERNAL-DEPS-DIR} "sqlite" "build")
-list(APPEND CMAKE_PREFIX_PATH ${_sqlitePkgDir})
-pkg_check_modules(sqlite3 REQUIRED IMPORTED_TARGET sqlite3)
 # wallycore
 join_path(_wallycorePkgDir ${EXTERNAL-DEPS-DIR} "libwally-core" "build")
 list(APPEND CMAKE_PREFIX_PATH ${_wallycorePkgDir})
@@ -93,6 +89,8 @@ include(cmake/extern/autobahn.cmake)
 include(cmake/extern/tor.cmake)
 # bc-ur - no package manager files whatsoever
 include(cmake/extern/bcur.cmake)
+# sqlite3 -- avoiding the danger of importing system libraries
+include(cmake/extern/sqlite3.cmake)
 
 
 ####################################################################
