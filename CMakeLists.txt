@@ -105,7 +105,7 @@ create_greenaddress_target()
 create_greenaddressfull_target()
 
 # build python wheel
-find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter Development )
+find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter)
 add_subdirectory(src/swig_python)
 
 # swift bindings
