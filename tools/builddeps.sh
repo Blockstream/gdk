@@ -237,10 +237,10 @@ cmake_build_type=${BUILDTYPE^}
 
 # building wally-core
 name="libwally-core"
-source_url="https://github.com/ElementsProject/libwally-core/tarball/3386ca90a74e8e92a768cc2af3d82857ac3c55b9/ElementsProject-libwally-core-3386ca9.tar.gz"
-source_name="ElementsProject-libwally-core-3386ca9"
+source_url="https://github.com/ElementsProject/libwally-core/tarball/bb4cd3ac802c7beb58f63307c5ed6ca116cf0dd0/ElementsProject-libwally-core-bb4cd3a.tar.gz"
+source_name="ElementsProject-libwally-core-bb4cd3a"
 source_filename="${source_name}.tar.gz"
-source_hash="fb19097137de3c7f7d9a09dfa652f57185f7a973fddee852f5aaac1e42b5d714"
+source_hash="4679409268887402dcf334dad1d07a79ae7c1485e8ba943e8c13b6cefd2e526b"
 secpurl="https://github.com/ElementsProject/secp256k1-zkp.git"
 # Update this line to the secp commit used in wally
 secpcommit="ff33018fe765df82f8515c564d3fe44d388d3903"
