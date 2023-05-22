@@ -1,4 +1,4 @@
-image: blockstream/gdk-debian-ci@sha256:8605822ba01817d0bd4b1b327d91c2c6d67b47a7215cad7bf069d78326ae0b10
+image: blockstream/gdk-debian-ci@sha256:ad70c900e92c79866cc92d3acc3a0afd22db63209cee4d35e46b3cc2f26ad7a3
 
 stages:
   - format
@@ -119,7 +119,7 @@ rust_audit:
 
 
 build_clang_fedora:
-  image: blockstream/gdk-fedora-builder@sha256:b6fcf6c6a9d037134bde4f5b5a9fcc7c2abeeb5775e13ed2c2ffc06c363afcd9
+  image: blockstream/gdk-fedora-builder@sha256:73506cb284ab193f433ed4f16a86c867e6a6c1211a59b9c51686808a9f0947ea
   tags:
     - ga
   stage: build
@@ -129,7 +129,7 @@ build_clang_fedora:
     - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: blockstream/gdk-ubuntu-builder@sha256:a0ecad642a6e8a3e41c59918e06bca2375cb6be371afb04e8f9ae6dca67e5342
+  image: blockstream/gdk-ubuntu-builder@sha256:253f844cfca099848bc9b23049f04ba73fb6222b68094991516b2604410ad2e9
   extends: .py_release
   stage: build
   needs: [ test_format ]
