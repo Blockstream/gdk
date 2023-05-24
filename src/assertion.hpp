@@ -11,18 +11,23 @@ namespace sdk {
 }
 } // namespace ga
 
-#define GDK_RUNTIME_ASSERT(condition)                                                                                  \
+#ifdef __FILE_NAME__
+#define GDK_RUNTIME_ASSERT_MSG(condition, error_message)                                                               \
     do {                                                                                                               \
         if (!(condition)) {                                                                                            \
-            ga::sdk::runtime_assert_message(std::string(), __FILE__, static_cast<const char*>(__func__), __LINE__);    \
+            ga::sdk::runtime_assert_message(                                                                           \
+                error_message, __FILE_NAME__, static_cast<const char*>(__func__), __LINE__);                           \
         }                                                                                                              \
     } while (false)
+#else
 #define GDK_RUNTIME_ASSERT_MSG(condition, error_message)                                                               \
     do {                                                                                                               \
         if (!(condition)) {                                                                                            \
             ga::sdk::runtime_assert_message(error_message, __FILE__, static_cast<const char*>(__func__), __LINE__);    \
         }                                                                                                              \
     } while (false)
+#endif
+#define GDK_RUNTIME_ASSERT(condition) GDK_RUNTIME_ASSERT_MSG(condition, std::string());
 #define GDK_VERIFY(x) GDK_RUNTIME_ASSERT((x) == WALLY_OK)
 
 #define NET_ERROR_CODE_CHECK(msg, ec)                                                                                  \
