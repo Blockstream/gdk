@@ -198,7 +198,7 @@ namespace sdk {
 
     std::future<nlohmann::json> http_client::request(beast::http::verb verb, const nlohmann::json& params)
     {
-        GDK_LOG_NAMED_SCOPE("http_client");
+        GDK_LOG_SEV(log_level::debug) << "http_client";
 
         m_host = params.at("host");
         m_port = params.at("port");
@@ -262,7 +262,7 @@ namespace sdk {
 
     void http_client::on_resolve(beast::error_code ec, asio::ip::tcp::resolver::results_type results)
     {
-        GDK_LOG_NAMED_SCOPE("http_client:on_resolve");
+        GDK_LOG_SEV(log_level::debug) << "http_client:on_resolve";
 
         NET_ERROR_CODE_CHECK("on resolve", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -271,7 +271,7 @@ namespace sdk {
 
     void http_client::on_write(beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("http_client:on_write");
+        GDK_LOG_SEV(log_level::debug) << "http_client:on_write";
 
         NET_ERROR_CODE_CHECK("on write", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -281,7 +281,7 @@ namespace sdk {
 
     void http_client::on_read(beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("http_client:on_read");
+        GDK_LOG_SEV(log_level::debug) << "http_client:on_read";
 
         NET_ERROR_CODE_CHECK("on read", ec);
         get_lowest_layer().cancel();
@@ -290,7 +290,7 @@ namespace sdk {
 
     void http_client::on_shutdown(beast::error_code ec)
     {
-        GDK_LOG_NAMED_SCOPE("http_client");
+        GDK_LOG_SEV(log_level::debug) << "http_client";
 
         if (ec && ec != asio::error::eof && ec != asio::ssl::error::stream_truncated) {
             set_exception(ec.message());
@@ -364,7 +364,7 @@ namespace sdk {
     void tls_http_client::on_connect(
         beast::error_code ec, __attribute__((unused)) const asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
-        GDK_LOG_NAMED_SCOPE("http_client:on_connect");
+        GDK_LOG_SEV(log_level::debug) << "http_client:on_connect";
 
         NET_ERROR_CODE_CHECK("on connect", ec);
         async_handshake();
@@ -372,7 +372,7 @@ namespace sdk {
 
     void tls_http_client::on_handshake(beast::error_code ec)
     {
-        GDK_LOG_NAMED_SCOPE("http_client:on_handshake");
+        GDK_LOG_SEV(log_level::debug) << "http_client:on_handshake";
 
         NET_ERROR_CODE_CHECK("on handshake", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -464,7 +464,7 @@ namespace sdk {
     void tcp_http_client::on_connect(boost::beast::error_code ec,
         __attribute__((unused)) const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
-        GDK_LOG_NAMED_SCOPE("tcp_http_client");
+        GDK_LOG_SEV(log_level::debug) << "tcp_http_client";
 
         NET_ERROR_CODE_CHECK("on connect", ec);
 

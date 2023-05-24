@@ -21,7 +21,7 @@ namespace sdk {
 
     std::future<void> socks_client::run(const std::string& endpoint, const std::string& proxy_uri)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:run");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:run";
 
         m_endpoint = endpoint;
 
@@ -43,7 +43,7 @@ namespace sdk {
 
     void socks_client::shutdown()
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:shutdown");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:shutdown";
 
         beast::error_code ec;
         m_stream.socket().shutdown(asio::ip::tcp::socket::shutdown_both, ec);
@@ -54,7 +54,7 @@ namespace sdk {
 
     void socks_client::on_resolve(beast::error_code ec, const asio::ip::tcp::resolver::results_type& results)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_resolve");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_resolve";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
         m_stream.async_connect(results, beast::bind_front_handler(&socks_client::on_connect, shared_from_this()));
@@ -63,7 +63,7 @@ namespace sdk {
     void socks_client::on_connect(
         beast::error_code ec, __attribute__((unused)) const asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_connect");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_connect";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
@@ -75,7 +75,7 @@ namespace sdk {
 
     void socks_client::on_write(boost::beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_write");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_write";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
@@ -86,7 +86,7 @@ namespace sdk {
 
     void socks_client::on_read(boost::beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_read");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_read";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
@@ -124,7 +124,7 @@ namespace sdk {
 
     void socks_client::on_connect_read(boost::beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_connect_read");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_connect_read";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
@@ -144,7 +144,7 @@ namespace sdk {
     void socks_client::on_domain_name_read(
         boost::beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_NAMED_SCOPE("socks_client:on_domain_name_read");
+        GDK_LOG_SEV(log_level::debug) << "socks_client:on_domain_name_read";
 
         NET_ERROR_CODE_CHECK("socks_client", ec);
 
