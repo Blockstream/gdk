@@ -1338,17 +1338,18 @@ namespace sdk {
                 }
             } else {
                 GDK_RUNTIME_ASSERT(!output.contains("nonce_commitment"));
-                auto eph_keypair = get_ephemeral_keypair();
-                eph_public_key = std::move(eph_keypair.second);
+                priv_key_t eph_private_key;
+                std::tie(eph_private_key, eph_public_key) = get_ephemeral_keypair();
+                output["eph_public_key"] = b2h(eph_public_key);
                 const auto blinding_pubkey = h2b(output.at("blinding_key"));
                 GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
                 if (blinding_nonces_required) {
                     // Generate the blinding nonce for the caller
-                    const auto nonce = sha256(ecdh(blinding_pubkey, eph_keypair.first));
+                    const auto nonce = sha256(ecdh(blinding_pubkey, eph_private_key));
                     blinding_nonces.emplace_back(b2h(nonce));
                 }
 
-                rangeproof = asset_rangeproof(value, blinding_pubkey, eph_keypair.first, asset_id, abf, vbf,
+                rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf,
                     value_commitment, scriptpubkey, generator);
             }
 
