@@ -24,7 +24,7 @@ namespace sdk {
         constexpr uint32_t CT_WO = 2; // Watch-only wallet cache
 
         constexpr int VERSION = 1;
-        constexpr int MINOR_VERSION = 0x2;
+        constexpr int MINOR_VERSION = 0x3;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
         constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
                                           "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
@@ -531,8 +531,8 @@ namespace sdk {
                 exec_sql(m_db, "DELETE FROM LiquidOutput;");
                 exec_sql(m_db, "DELETE FROM LiquidBlindingNonce;");
             }
-            if (ver < 2) {
-                // Delete pre-v2 tx's
+            if (ver < 3) {
+                // Delete pre-v3 tx's
                 exec_sql(m_db, "DELETE FROM Tx;");
             }
 
