@@ -6,6 +6,10 @@
 - Liquid: Transaction blinding is now performed using a new call
   GA_blind_transaction, which should be called after creating and before
   signing the tx.
+- Liquid: Hawrdware wallet capability JSON now contains a new field
+  "supports_external_blinding". This should be set to true when registering
+  a signer that can blind/sign transactions with blinded outputs from
+  wallets other than the callers wallet (for example, a 2 step swap).
 
 ### Changed
 - FFI (validate_call): Input JSON parameters are now moved internally and will be

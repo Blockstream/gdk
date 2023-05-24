@@ -5,6 +5,7 @@
 #include "ga_strings.hpp"
 #include "memory.hpp"
 #include "session_impl.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
@@ -448,6 +449,9 @@ namespace sdk {
                 throw user_error(res::id_invalid_address);
             }
             const bool is_blinded = is_liquid && addressee.value("is_blinded", false);
+            if (is_blinded && !session.get_nonnull_signer()->supports_external_blinding()) {
+                throw user_error("Signing device does not support externally blinded transactions");
+            }
 
             // BIP21
             auto uri = parse_bitcoin_uri(net_params, address);

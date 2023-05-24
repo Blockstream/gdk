@@ -86,17 +86,17 @@ namespace sdk {
 
         static const nlohmann::json GREEN_DEVICE_JSON{ { "device_type", "green-backend" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
-            { "supports_liquid", liquid_support_level::lite },
+            { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "device_type", "watch-only" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
-            { "supports_liquid", liquid_support_level::lite },
+            { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "device_type", "software" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
-            { "supports_liquid", liquid_support_level::lite },
+            { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
             { "supports_ae_protocol", ae_protocol_support_level::none } };
 
         static nlohmann::json get_device_json(const nlohmann::json& hw_device, const nlohmann::json& credentials)
@@ -122,6 +122,7 @@ namespace sdk {
             json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
             json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
             json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
+            json_add_if_missing(ret, "supports_external_blinding", true, overwrite_null);
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
@@ -223,6 +224,8 @@ namespace sdk {
     liquid_support_level signer::get_liquid_support() const { return m_device["supports_liquid"]; }
 
     bool signer::supports_host_unblinding() const { return m_device["supports_host_unblinding"]; }
+
+    bool signer::supports_external_blinding() const { return m_device["supports_external_blinding"]; }
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device["supports_ae_protocol"]; }
 
