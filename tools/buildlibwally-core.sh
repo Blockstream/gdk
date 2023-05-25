@@ -24,7 +24,7 @@ cd ${WALLYCORE_BLDDIR}
 
 ${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
 
-CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests"
+CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests --disable-swig-python"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_BLDDIR}/build"
 
 if [ "${BUILDTYPE}" = "debug" ]; then
@@ -54,14 +54,14 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     export CXX=${XCODE_DEFAULT_PATH}/clang++
     env | sort
     ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} --build=${HOST_OS} \
-                --disable-swig-java --disable-swig-python ${CONFIGURE_ARGS}
+                --disable-swig-java ${CONFIGURE_ARGS}
 
     make clean -k || echo >/dev/null
     make -o configure -j${NUM_JOBS}
 elif [ "$1" = "--windows" ]; then
      export CC=x86_64-w64-mingw32-gcc-posix
      export CXX=x86_64-w64-mingw32-g++-posix
-    ./configure --disable-swig-java --disable-swig-python --host=x86_64-w64-mingw32 --build=${HOST_OS} ${CONFIGURE_ARGS}
+    ./configure --disable-swig-java --host=x86_64-w64-mingw32 --build=${HOST_OS} ${CONFIGURE_ARGS}
     make clean -k || echo >/dev/null
     make -j${NUM_JOBS}
 else
