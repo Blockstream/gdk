@@ -261,7 +261,7 @@ mod tests {
         }
     }
 
-    fn refresh_assets(assets: bool, icons: bool) -> Result<RegistrySource> {
+    fn test_refresh_assets(assets: bool, icons: bool) -> Result<RegistrySource> {
         let server = Server::run();
 
         let config = local_server_config(&server, assets, icons);
@@ -317,7 +317,7 @@ mod tests {
                 };
 
             // Either assets or icons must be requested
-            assert!(refresh_assets(false, false).is_err());
+            assert!(test_refresh_assets(false, false).is_err());
 
             // asset true (no cache), icons true (no cache)
             let value = get_full_registry();
@@ -325,11 +325,11 @@ mod tests {
             assert_eq!(value.icons.len(), hard_coded_icons.len());
 
             // refresh assets but not icons
-            let source = refresh_assets(true, false).unwrap();
+            let source = test_refresh_assets(true, false).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
 
             // refresh icons but not assets
-            let source = refresh_assets(false, true).unwrap();
+            let source = test_refresh_assets(false, true).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
 
             let value = get_full_registry();
@@ -337,7 +337,7 @@ mod tests {
 
             // check 304
             let now = std::time::Instant::now();
-            let source = refresh_assets(true, true).unwrap();
+            let source = test_refresh_assets(true, true).unwrap();
             assert_eq!(source, RegistrySource::NotModified);
             println!("not modified took {:?}", now.elapsed());
 
@@ -415,7 +415,7 @@ mod tests {
             let hard_coded_assets = hard_coded::assets(ElementsNetwork::Liquid);
             let hard_coded_icons = hard_coded::icons(ElementsNetwork::Liquid);
 
-            let source = refresh_assets(true, true).unwrap();
+            let source = test_refresh_assets(true, true).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
 
             // Corrupt local assets and icons files after downloading updated
@@ -431,10 +431,10 @@ mod tests {
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Assets).unwrap();
             registry::tests::corrupt_file(ElementsNetwork::Liquid, AssetsOrIcons::Icons).unwrap();
 
-            let source = refresh_assets(true, true).unwrap();
+            let source = test_refresh_assets(true, true).unwrap();
             assert_eq!(source, RegistrySource::Downloaded);
 
-            let res = refresh_assets(true, true).unwrap();
+            let res = test_refresh_assets(true, true).unwrap();
             assert_eq!(res, RegistrySource::NotModified);
         }
 
@@ -452,7 +452,7 @@ mod tests {
 
             // updating the local registry, now those assets should be added to
             // the cache.
-             refresh_assets(true, true).unwrap();
+             test_refresh_assets(true, true).unwrap();
 
             let res = get_assets(Some(&["123465c803ae336c62180e52d94ee80d80828db54df9bedbb9860060f49de2eb", "4d4354944366ea1e33f27c37fec97504025d6062c551208f68597d1ed40ec53e"]), None).unwrap();
             assert_eq!(res.assets.len(), 2);
@@ -467,12 +467,12 @@ mod tests {
             info!("{:?}", temp_dir);
             init(&temp_dir).unwrap();
 
-            refresh_assets(true, true).unwrap();
+            test_refresh_assets(true, true).unwrap();
             let icons = get_full_registry().icons;
 
             assets_or_icons::test::update_liquid_data();
 
-            refresh_assets(true, true).unwrap();
+            test_refresh_assets(true, true).unwrap();
             let new_icons = get_full_registry().icons;
 
             assert!(new_icons.len() > icons.len(), "{} vs {}", new_icons.len(), icons.len());
@@ -502,12 +502,12 @@ mod tests {
             assets_or_icons::test::update_liquid_data();
 
             // Not updating the icons.
-            refresh_assets(true, false).unwrap();
+            test_refresh_assets(true, false).unwrap();
             let res = get_assets(Some(&[ID]), None).unwrap();
             assert_eq!(res.icons.len(), 0);
 
             // Now updating the icons.
-            refresh_assets(false, true).unwrap();
+            test_refresh_assets(false, true).unwrap();
             let res = get_assets(Some(&[ID]), None).unwrap();
             assert_eq!(res.icons.len(), 1);
         }
@@ -549,12 +549,12 @@ mod tests {
             assert_eq!(res.icons.len(), hard_coded_icons.len());
 
             // Update assets and redo same query -> we should get new assets.
-            refresh_assets(true, false).unwrap();
+            test_refresh_assets(true, false).unwrap();
             let new = super::get_assets(params.clone()).unwrap();
             assert!(new.assets.len() > res.assets.len());
 
             // Update icons and redo same query -> we should get new icons.
-            refresh_assets(false, true).unwrap();
+            test_refresh_assets(false, true).unwrap();
             let new = super::get_assets(params).unwrap();
             assert!(new.assets.len() > res.assets.len());
 
