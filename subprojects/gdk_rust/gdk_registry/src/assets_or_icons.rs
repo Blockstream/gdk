@@ -108,6 +108,23 @@ pub(crate) mod test {
 
             (data, last_modified)
         }
+
+        pub(crate) fn emptify_icons(&self) -> (String, String) {
+            let (data, _) = self.liquid_data();
+
+            let data = match self {
+                Self::Assets => data,
+                Self::Icons => {
+                    let mut map = serde_json::from_str::<Map<_, _>>(&data).unwrap();
+                    for (_k, v) in map.iter_mut() {
+                        *v = Value::String("".to_string())
+                    }
+                    to_string(&map).unwrap()
+                }
+            };
+
+            (data, "new_last_modified".to_string())
+        }
     }
 
     #[test]
