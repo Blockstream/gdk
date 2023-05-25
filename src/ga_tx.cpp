@@ -441,7 +441,7 @@ namespace sdk {
 
         static amount create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
             bool is_rbf, nlohmann::json& result, nlohmann::json::iterator addressees_p,
-            nlohmann::json::array_t& reordered_addressees, session_impl& session, wally_tx_ptr& tx,
+            std::vector<size_t>& reordered_addressees, session_impl& session, wally_tx_ptr& tx,
             const std::set<std::string>& asset_ids, std::vector<nlohmann::json>& used_utxos)
         {
             std::vector<nlohmann::json> current_used_utxos;
@@ -462,11 +462,12 @@ namespace sdk {
             amount required_total{ 0 };
 
             const auto& net_params = session.get_network_parameters();
-            for (auto& addressee : *addressees_p) {
+            for (size_t i = 0; i < addressees_p->size(); ++i) {
+                auto& addressee = addressees_p->at(i);
                 const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
                 if (addressee_asset_id == asset_id) {
                     required_total += add_tx_addressee_output(session, result, tx, addressee);
-                    reordered_addressees.push_back(addressee);
+                    reordered_addressees.push_back(i);
                     // If addressee has an index, we are inserting the addressee in the
                     // transaction at that index, thus change indexes after the index must
                     // be incremented.
@@ -849,7 +850,8 @@ namespace sdk {
                 asset_ids.emplace(asset_id_from_json(net_params, addressee));
             }
 
-            nlohmann::json::array_t reordered_addressees;
+            std::vector<size_t> reordered_addressees;
+            reordered_addressees.reserve(addressees_p->size());
 
             if (is_liquid) {
                 std::for_each(std::begin(asset_ids), std::end(asset_ids), [&](const auto& id) {
@@ -866,7 +868,16 @@ namespace sdk {
                     reordered_addressees, session, tx, asset_ids, used_utxos);
             }
 
-            result["addressees"] = std::move(reordered_addressees);
+            if (json_get_value(result, "error").empty()) {
+                // Reorder the addresees
+                auto& addressees = result["addressees"];
+                nlohmann::json::array_t new_addressees;
+                new_addressees.reserve(reordered_addressees.size());
+                for (auto from_index : reordered_addressees) {
+                    new_addressees.emplace_back(std::move(addressees.at(from_index)));
+                }
+                result["addressees"] = std::move(new_addressees);
+            }
             update_tx_info(session, tx, result);
 
             if (is_rbf && json_get_value(result, "error").empty()) {
