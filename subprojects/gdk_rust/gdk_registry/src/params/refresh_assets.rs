@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
@@ -66,6 +67,10 @@ impl RefreshAssetsParams {
     pub(crate) const fn wants_icons(&self) -> bool {
         self.icons
     }
+
+    pub(crate) fn custom_headers(&self) -> &HashMap<String, String> {
+        &self.config.custom_headers
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -78,6 +83,9 @@ pub struct Config {
     pub(crate) proxy: Option<String>,
 
     pub(crate) url: String,
+
+    #[serde(default)]
+    pub(crate) custom_headers: HashMap<String, String>,
 }
 
 impl Default for Config {
@@ -86,6 +94,7 @@ impl Default for Config {
             network: ElementsNetwork::Liquid,
             proxy: None,
             url: BASE_URL.to_owned(),
+            custom_headers: HashMap::new(),
         }
     }
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::io::BufReader;
 use std::time::{Duration, Instant};
 
@@ -12,14 +13,16 @@ pub(crate) fn call(
     url: &str,
     agent: &ureq::Agent,
     last_modified: &str,
+    custom_params: &HashMap<String, String>,
 ) -> Result<Option<(Value, String)>> {
     let start = Instant::now();
 
-    let response = agent
-        .get(url)
-        .timeout(Duration::from_secs(30))
-        .set("If-Modified-Since", last_modified)
-        .call()?;
+    let mut request =
+        agent.get(url).timeout(Duration::from_secs(30)).set("If-Modified-Since", last_modified);
+    for param in custom_params {
+        request = request.set(param.0, param.1);
+    }
+    let response = request.call()?;
 
     let status = response.status();
 
@@ -74,7 +77,9 @@ mod test {
             );
 
             let (_, last_modified) =
-                call(&server.url_str(what.endpoint()), &agent, "").unwrap().unwrap();
+                call(&server.url_str(what.endpoint()), &agent, "", &HashMap::new())
+                    .unwrap()
+                    .unwrap();
 
             assert_eq!(expected_last_modified, last_modified);
         }

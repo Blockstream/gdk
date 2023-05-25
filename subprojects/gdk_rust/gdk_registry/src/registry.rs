@@ -188,7 +188,8 @@ fn refresh<T: Serialize + DeserializeOwned>(
         String::new()
     };
 
-    match http::call(&params.url(what), &params.agent()?, &last_modified)? {
+    match http::call(&params.url(what), &params.agent()?, &last_modified, &params.custom_headers())?
+    {
         Some((value, new_modified)) => {
             debug!("fetched {} were last modified {}", what, new_modified);
             let downloaded = serde_json::from_value::<T>(value)?;
