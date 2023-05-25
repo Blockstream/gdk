@@ -202,7 +202,7 @@ impl Cache {
         Ok(())
     }
 
-    pub(crate) fn update_missing_assets(&mut self, present: &RegistryAssets) {
+    pub(crate) fn update_missing_or_updated_assets(&mut self, present: &RegistryAssets) {
         let mut to_remove: Vec<&AssetId> =
             Vec::with_capacity(cmp::min(self.missing_assets.len(), present.len()));
 
@@ -211,12 +211,17 @@ impl Cache {
                 self.assets.insert(id.clone(), entry.clone());
                 to_remove.push(id);
             }
+            if let Some(asset) = self.assets.get(id) {
+                if asset != entry {
+                    self.assets.insert(id.clone(), entry.clone());
+                }
+            }
         }
 
         self.missing_assets.retain(|id| !to_remove.contains(&id));
     }
 
-    pub(crate) fn update_missing_icons(&mut self, present: &RegistryIcons) {
+    pub(crate) fn update_missing_or_updated_icons(&mut self, present: &RegistryIcons) {
         let mut to_remove: Vec<&AssetId> =
             Vec::with_capacity(cmp::min(self.missing_icons.len(), present.len()));
 
@@ -224,6 +229,11 @@ impl Cache {
             if self.missing_icons.contains(&id) {
                 self.icons.insert(id.clone(), entry.clone());
                 to_remove.push(id);
+            }
+            if let Some(icon) = self.icons.get(id) {
+                if icon != entry {
+                    self.icons.insert(id.clone(), entry.clone());
+                }
             }
         }
 
@@ -242,7 +252,7 @@ impl From<Cache> for RegistryInfos {
 pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
     let mut cache_files = CACHE_FILES.lock()?;
     let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
-    cache.update_missing_assets(assets);
+    cache.update_missing_or_updated_assets(assets);
     cache.update(&mut *cache_files)
 }
 
@@ -251,7 +261,7 @@ pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAsset
 pub(crate) fn update_missing_icons(xpub: ExtendedPubKey, icons: &RegistryIcons) -> Result<()> {
     let mut cache_files = CACHE_FILES.lock()?;
     let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
-    cache.update_missing_icons(icons);
+    cache.update_missing_or_updated_icons(icons);
     cache.update(&mut *cache_files)
 }
 
