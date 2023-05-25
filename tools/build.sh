@@ -115,7 +115,7 @@ if [ "$BUILDTYPE" == "debug" ]; then
 fi
 
 
-if [[ ! $no_deps_rebuild ]]; then
+if ! $no_deps_rebuild; then
     if [[ "${BUILD}" == "--ndk" ]]; then
         build_dependencies ${BUILD} ${NDK_ARCH}
     elif [[ "${BUILD}" == "--iphone" ]] || [[ "${BUILD}" == "--iphonesim" ]] ; then
