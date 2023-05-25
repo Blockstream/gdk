@@ -362,9 +362,9 @@ class gdk_wallet:
         }
 
         try:
-            details = self._gdk_resolve(gdk.create_transaction(self.session.session_obj, json.dumps(details)))
-            details = self._gdk_resolve(gdk.sign_transaction(self.session.session_obj, json.dumps(details)))
-            details = self._gdk_resolve(gdk.send_transaction(self.session.session_obj, json.dumps(details)))
+            for action in [gdk.create_transaction, gdk.blind_transaction, gdk.sign_transaction, gdk.send_transaction]:
+                details = self._gdk_resolve(action(self.session.session_obj, json.dumps(details)))
+                assert not details.get('error', ''), details.get('error', '')
             return details['txhash']
         except RuntimeError as e:
             print(f'\nError: {e}\n')
