@@ -15,11 +15,11 @@ boost_thread=@Boost_LIBRARY_DIRS@/libboost_thread.a
 openssl_ssl=@OPENSSL_SSL_LIBRARY@
 openssl_crypto=@OPENSSL_CRYPTO_LIBRARY@
 zlib=@ZLIB_LIBRARIES@
-tors="@_torLibList@"
+tor="@TOR_LINK_LIBRARIES@"
 bc_ur="@BCUR_LIBRARIES@"
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tors $bc_ur"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur"
 
 
 if [ "$(uname)" = "Darwin" ]; then

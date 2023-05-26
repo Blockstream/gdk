@@ -325,16 +325,13 @@ ${GDK_SOURCE_ROOT}/tools/build${name}.sh $C_COMPILER $BUILD ${CXXFLAGS}
 
 # building tor
 name="tor"
-source_url="https://github.com/torproject/tor/archive/tor-0.4.2.7.tar.gz"
-source_name="tor-tor-0.4.2.7"
+source_url="https://dist.torproject.org/tor-0.4.7.13.tar.gz"
+source_name="tor-0.4.7.13"
 source_filename="${source_name}.tar.gz"
-source_hash="526e61ebc5a8093fd0eadc2ebe9d61a413b183043d99bdef7ab95f5086d6601a"
+source_hash="2079172cce034556f110048e26083ce9bea751f3154b0ad2809751815b11ea9d"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export TOR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${source_name} "tmp"
-# cleaning up tor
-find ${GDK_BUILD_ROOT}/tor/src/ -name "*.c" -type f -delete
-find ${GDK_BUILD_ROOT}/tor/src/ -name "*.o" -type f  -delete
 
 
 # building nlohmann-json

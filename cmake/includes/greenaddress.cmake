@@ -23,7 +23,7 @@ macro(create_greenaddress_target)
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        tor::tor
+        external::tor
         event_static
         PkgConfig::libsecp256k1
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
@@ -130,7 +130,7 @@ macro(create_greenaddressstatic_target)
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        tor::tor
+        external::tor
         event_static
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
         Boost::boost
@@ -172,10 +172,6 @@ macro(create_greenaddressfull_target)
             get_target_property(_maybeLibeventPthreads event_pthreads_static IMPORTED_LOCATION_RELEASE)
         endif()
     endif()
-    unset(_torLibList)
-    foreach(_torLib IN LISTS _torLibs)
-        string(APPEND _torLibList "${_torLib} ")
-    endforeach()
     configure_file(${CMAKE_SOURCE_DIR}/tools/archiver.sh.gen.in  archiver.sh.gen)
     file(GENERATE OUTPUT archiver.sh INPUT ${CMAKE_CURRENT_BINARY_DIR}/archiver.sh.gen)
     add_custom_command(TARGET greenaddress-full POST_BUILD
