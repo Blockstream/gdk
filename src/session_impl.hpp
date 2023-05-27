@@ -201,6 +201,8 @@ namespace sdk {
             = 0;
         virtual void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex) = 0;
 
+        virtual nlohmann::json cache_control(const nlohmann::json& details);
+
         virtual nlohmann::json convert_amount(const nlohmann::json& amount_json) const = 0;
 
         virtual amount get_min_fee_rate() const = 0;

@@ -69,6 +69,8 @@ namespace sdk {
 
         void update_to_latest_minor_version();
 
+        void cache_control(const std::string& action, const std::string& data_source);
+
     private:
         bool check_db_changed();
 

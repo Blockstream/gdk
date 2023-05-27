@@ -132,6 +132,8 @@ namespace sdk {
         std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& message);
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
+        nlohmann::json cache_control(const nlohmann::json& details);
+
         nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
 
         bool encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,

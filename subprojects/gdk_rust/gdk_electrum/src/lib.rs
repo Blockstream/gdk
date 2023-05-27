@@ -1208,6 +1208,11 @@ impl ElectrumSession {
         self.store()?.write()?.export_cache()
     }
 
+    pub fn cache_control(&mut self, _opt: CacheControlOpt) -> Result<(), Error> {
+        // TODO: Implement
+        Ok(())
+    }
+
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
         let store = self.store()?;
         let store_read = store.read()?;

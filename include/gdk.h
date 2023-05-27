@@ -158,6 +158,22 @@ GDK_API int GA_get_proxy_settings(struct GA_session* session, GA_json** output);
 GDK_API int GA_get_wallet_identifier(const GA_json* net_params, const GA_json* params, GA_json** output);
 
 /**
+ * Operate on cached session data.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`cache-control-request` giving the operation to perform.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`cache-control-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: Deleting locally cached data will make future operations slow until
+ *     the cache is repopulated. In some cases this may result in delays of
+ *     several minutes, for example if transaction data must be re-fetched and
+ *     re-validated.
+ */
+GDK_API int GA_cache_control(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Make a request to an http server.
  *
  * :param session: The session to use.

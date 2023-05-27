@@ -788,6 +788,57 @@ When the user has a fiat spending limit set instead of BTC, limits are returned 
 :twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.
 :twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
+.. _cache-control-request:
+
+Cache Control Request JSON
+--------------------------
+
+Describes the operation to perform on cached wallet data using `GA_cache_control`.
+
+.. code-block:: json
+
+  {
+    "action": "delete",
+    "data_source": "local_asset_icons"
+  }
+
+:action: The cache action to perform. Currently only ``"delete"`` is accepted.
+:data_source: The data source to operate on as described below.
+
+.. list-table:: Cached Data Sources
+   :widths: 25 75
+   :header-rows: 1
+
+   * - data_source
+     - Description
+   * - ``"local_transactions"``
+     - Transaction data such as wallet transactions and related unblinding information.
+   * - ``"local_client_blob"``
+     - The local copy of the wallets client blob data.
+   * - ``"local_asset_icons"``
+     - Liquid: The local copy of any asset icons downloaded from the asset registry.
+   * - ``"local_assets"``
+     - Liquid: The local copy of any asset registration details (including icons) downloaded from the asset registry.
+   * - ``"local_data"``
+     - All data above this row plus additional local data such as generated addresses and the users master blinding key.
+   * - ``"all"``
+     - All of the above data sources combined.
+
+
+.. _cache-control-result:
+
+Cache Control Result JSON
+--------------------------
+
+Describes the result of a cache control operation.
+
+.. code-block:: json
+
+  {
+  }
+
+At present no data is returned.
+
 
 .. _bcur-encode:
 

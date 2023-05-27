@@ -152,6 +152,13 @@ namespace sdk {
         return true;
     }
 
+    nlohmann::json ga_rust::cache_control(const nlohmann::json& details)
+    {
+        session_impl::cache_control(details);
+        // Perform session-specific cache control
+        return rust_call("cache_control", details, m_session);
+    }
+
     bool ga_rust::discover_subaccount(const std::string& xpub, const std::string& type)
     {
         const auto details = nlohmann::json({ { "type", type }, { "xpub", xpub } });

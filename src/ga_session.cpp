@@ -1589,6 +1589,21 @@ namespace sdk {
         m_system_message_ack = std::string();
     }
 
+    nlohmann::json ga_session::cache_control(const nlohmann::json& details)
+    {
+        session_impl::cache_control(details);
+        const auto action = json_get_value(details, "action");
+        if (action == "delete") {
+            const auto data_source = details.at("data_source");
+            locker_t locker(m_mutex);
+            m_cache->cache_control(action, data_source);
+            if (data_source == "all" || data_source == "local_data" || data_source == "local_client_blob") {
+                m_blob_outdated = true;
+            }
+        }
+        return nlohmann::json();
+    }
+
     nlohmann::json ga_session::convert_amount(const nlohmann::json& amount_json) const
     {
         locker_t locker(m_mutex);

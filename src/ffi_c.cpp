@@ -271,6 +271,9 @@ GDK_DEFINE_C_FUNCTION_3(
             = new nlohmann::json(ga::sdk::get_wallet_hash_ids(*json_cast(net_params), *json_cast(params)));
     })
 
+GDK_DEFINE_C_FUNCTION_3(GA_cache_control, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new ga::sdk::cache_control_call(*session, json_move(details))); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_json*, params, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(session->http_request(*json_cast(params))); })
 

@@ -169,6 +169,12 @@ pub struct GetBalanceOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
+pub struct CacheControlOpt {
+    pub action: String,
+    pub data_source: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetUnspentOpt {
     pub subaccount: u32,
     pub num_confs: Option<u32>,

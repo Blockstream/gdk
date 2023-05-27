@@ -581,6 +581,21 @@ namespace sdk {
     }
 
     //
+    // Cache control
+    //
+    cache_control_call::cache_control_call(session& session, nlohmann::json details)
+        : auth_handler_impl(session, "cache_control")
+        , m_details(std::move(details))
+    {
+    }
+
+    auth_handler::state_type cache_control_call::call_impl()
+    {
+        m_result = m_session->cache_control(m_details);
+        return state_type::done;
+    }
+
+    //
     // Sign tx
     //
     sign_transaction_call::sign_transaction_call(session& session, nlohmann::json details)

@@ -446,6 +446,10 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
+    public func cacheControl(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_cache_control)
+    }
+
     public func getSettings() throws -> [String: Any]? {
         return try voidFuncToJsonWrapper(fun: GA_get_settings)
     }

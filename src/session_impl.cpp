@@ -101,6 +101,16 @@ namespace sdk {
         }
     }
 
+    nlohmann::json session_impl::cache_control(const nlohmann::json& details)
+    {
+        const auto action = json_get_value(details, "action");
+        if (action != "delete") {
+            throw user_error("Unknown cache control action");
+        }
+        // Perform global (non-session) cache control
+        return rust_call("global_cache_control", details);
+    }
+
     nlohmann::json session_impl::http_request(nlohmann::json params)
     {
         GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");

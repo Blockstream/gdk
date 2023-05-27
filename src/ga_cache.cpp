@@ -561,6 +561,29 @@ namespace sdk {
         get_blob(m_stmt_key_value_search, 0, callback);
     }
 
+    void cache::cache_control(const std::string& action, const std::string& data_source)
+    {
+        const char* kv_non_blob_sql
+            = "DELETE FROM KeyValue where key != \"client_blob\" and key != \"client_blob_hmac\";";
+        const bool do_all = data_source == "all";
+        const bool do_local = do_all || data_source == "local_data";
+
+        GDK_RUNTIME_ASSERT(action == "delete");
+        if (do_local || data_source == "local_transactions") {
+            exec_sql(m_db, "DELETE FROM Tx;");
+            exec_sql(m_db, "DELETE FROM TxData;");
+            exec_sql(m_db, "DELETE FROM LiquidOutput;");
+            exec_sql(m_db, "DELETE FROM LiquidBlindingPubKey;");
+            exec_sql(m_db, "DELETE FROM LiquidBlindingNonce;");
+        }
+        if (do_local || data_source == "local_client_blob") {
+            exec_sql(m_db, do_local ? "DELETE FROM KeyValue;" : kv_non_blob_sql);
+        }
+        if (do_local) {
+            exec_sql(m_db, "DELETE FROM ScriptPubKey;");
+        }
+    }
+
     void cache::get_transactions(
         uint32_t subaccount, uint64_t start, size_t count, const cache::get_transactions_fn& callback)
     {

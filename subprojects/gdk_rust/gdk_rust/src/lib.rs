@@ -14,7 +14,7 @@ use std::str::FromStr;
 use std::sync::{Arc, Once};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
+use gdk_common::model::{CacheControlOpt, InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
 use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
@@ -344,6 +344,11 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             init_logging(LevelFilter::from_str(&param.log_level).unwrap_or(LevelFilter::Off));
             gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
+            to_string(&json!("".to_string()))
+        }
+        "global_cache_control" => {
+            // TODO: Implement global cache control (gdk_registry)
+            let _params: CacheControlOpt = serde_json::from_str(input)?;
             to_string(&json!("".to_string()))
         }
         "spv_verify_tx" => {
