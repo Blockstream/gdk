@@ -1,3 +1,4 @@
+#include <boost/thread/tss.hpp>
 #include <initializer_list>
 #include <type_traits>
 
