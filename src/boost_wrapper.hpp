@@ -23,7 +23,6 @@
 #include <boost/beast/http.hpp>
 #include <boost/beast/ssl.hpp>
 #include <boost/beast/version.hpp>
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/format.hpp>
 #include <boost/log/attributes/named_scope.hpp>
 #include <boost/log/core.hpp>
@@ -35,7 +34,6 @@
 #include <boost/log/trivial.hpp>
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
-#include <boost/smart_ptr/atomic_shared_ptr.hpp>
 #include <boost/thread/tss.hpp>
 
 #if __clang__
