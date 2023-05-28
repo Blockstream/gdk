@@ -1107,16 +1107,16 @@ namespace sdk {
             std::string db_hmac;
             if (m_watch_only) {
                 m_cache->get_key_value("client_blob_hmac", { [&db_hmac](const auto& db_blob) {
-                    if (db_blob) {
+                    if (db_blob.has_value()) {
                         db_hmac.assign(db_blob->begin(), db_blob->end());
                     }
                 } });
             }
             m_cache->get_key_value("client_blob", { [this, &db_hmac, &server_hmac](const auto& db_blob) {
-                if (db_blob) {
-                    GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key != boost::none);
+                if (db_blob.has_value()) {
+                    GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key.has_value());
                     if (!m_watch_only) {
-                        db_hmac = client_blob::compute_hmac(m_blob_hmac_key.get(), *db_blob);
+                        db_hmac = client_blob::compute_hmac(m_blob_hmac_key.value(), *db_blob);
                     }
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
@@ -1153,8 +1153,8 @@ namespace sdk {
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_blob_aes_key != boost::none);
-        GDK_RUNTIME_ASSERT(m_blob_hmac_key != boost::none);
+        GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value());
+        GDK_RUNTIME_ASSERT(m_blob_hmac_key.has_value());
 
         const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
@@ -1184,11 +1184,11 @@ namespace sdk {
         m_cache->save_db();
     }
 
-    template <typename T> static bool set_optional_member(boost::optional<T>& member, T&& new_value)
+    template <typename T> static bool set_optional_member(std::optional<T>& member, T&& new_value)
     {
         // Allow changing the value only if it is not already set
-        GDK_RUNTIME_ASSERT(member == boost::none || member == new_value);
-        if (member == boost::none) {
+        GDK_RUNTIME_ASSERT(!member.has_value() || member == new_value);
+        if (!member.has_value()) {
             member.emplace(std::move(new_value));
             return true;
         }
@@ -1219,7 +1219,7 @@ namespace sdk {
             set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
             set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
         }
-        m_cache->load_db(m_local_encryption_key.get(), signer);
+        m_cache->load_db(m_local_encryption_key.value(), signer);
         // Save the cache in case we carried forward data from a previous version
         m_cache->save_db(); // No-op if unchanged
         load_signer_xpubs(locker, signer);
@@ -1245,11 +1245,11 @@ namespace sdk {
             m_signer.reset();
             remove_cached_utxos(std::vector<uint32_t>());
             swap_with_default(m_login_data);
-            m_local_encryption_key = boost::none;
+            m_local_encryption_key.reset();
             m_blob.reset();
             m_blob_hmac.clear();
-            m_blob_aes_key = boost::none;
-            m_blob_hmac_key = boost::none;
+            m_blob_aes_key.reset();
+            m_blob_hmac_key.reset();
             m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
             swap_with_default(m_limits_data);
             swap_with_default(m_twofactor_config);
@@ -1441,7 +1441,7 @@ namespace sdk {
             get_cached_client_blob(server_hmac);
         }
 
-        if (is_blob_on_server && m_blob_aes_key != boost::none) {
+        if (is_blob_on_server && m_blob_aes_key.has_value()) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
             if (!is_initial_login && m_blob_hmac != server_hmac) {
@@ -1483,7 +1483,7 @@ namespace sdk {
         auto ret = on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
 
         // Note that locker is unlocked at this point
-        if (m_blob_aes_key != boost::none) {
+        if (m_blob_aes_key.has_value()) {
             const auto subaccount_pointers = get_subaccount_pointers();
             std::vector<std::string> bip32_xpubs;
             bip32_xpubs.reserve(subaccount_pointers.size());
@@ -1627,7 +1627,7 @@ namespace sdk {
         }
 
         locker_t locker(m_mutex);
-        if (m_blob_aes_key == boost::none) {
+        if (!m_blob_aes_key.has_value()) {
             // The wallet doesn't have a client blob: can only happen
             // when a 2FA reset is in progress and the wallet was
             // created before client blobs were enabled.
@@ -1651,7 +1651,7 @@ namespace sdk {
             // Derive the username/password to use, encrypt the client blob key for upload
             const auto entropy = get_wo_entropy(username, password);
             u_p = get_wo_credentials(entropy);
-            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.get());
+            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.value());
         }
         locker.unlock();
         return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
@@ -1660,7 +1660,7 @@ namespace sdk {
     std::string ga_session::get_wo_username()
     {
         locker_t locker(m_mutex);
-        if (m_blob_aes_key != boost::none) {
+        if (m_blob_aes_key.has_value()) {
             // Client blob watch only; return from the client blob,
             // since the server doesn't know our real username.
             const auto username = m_blob.get_wo_username();
@@ -1885,9 +1885,9 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(signer.get());
         m_cache->get_key_value("xpubs", { [&signer](const auto& db_blob) {
-            if (db_blob) {
+            if (db_blob.has_value()) {
                 try {
-                    auto cached = nlohmann::json::from_msgpack(db_blob.get().begin(), db_blob.get().end());
+                    auto cached = nlohmann::json::from_msgpack(db_blob.value().begin(), db_blob.value().end());
                     for (auto& item : cached.items()) {
                         // Inverted: See encache_signer_xpubs()
                         signer->cache_bip32_xpub(item.value(), item.key());
@@ -1930,7 +1930,7 @@ namespace sdk {
 
         m_fiat_source = exchange;
         m_fiat_currency = currency;
-        update_fiat_rate(locker, fiat_rate.get_value_or(std::string()));
+        update_fiat_rate(locker, fiat_rate.value_or(std::string()));
     }
 
     static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unconfidential)
@@ -2559,7 +2559,7 @@ namespace sdk {
             = wamp_cast_json(m_wamp->call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
 
         locker_t locker(m_mutex);
-        old_watch_only = m_watch_only && m_blob_aes_key == boost::none;
+        old_watch_only = m_watch_only && !m_blob_aes_key.has_value();
         if (cleanup_utxos(locker, utxos, std::string(), missing)) {
             m_cache->save_db(); // Cache was updated; save it
         }
@@ -2683,8 +2683,8 @@ namespace sdk {
             locker_t locker(m_mutex);
             // First, try the local cache
             m_cache->get_transaction_data(txhash_hex, { [&tx, flags](const auto& db_blob) {
-                if (db_blob) {
-                    tx = tx_from_bin(db_blob.get(), flags);
+                if (db_blob.has_value()) {
+                    tx = tx_from_bin(db_blob.value(), flags);
                 }
             } });
             if (tx) {
@@ -2734,7 +2734,7 @@ namespace sdk {
         {
             locker_t locker(m_mutex);
             // Old (non client blob) watch only sessions cannot validate addrs
-            old_watch_only = m_watch_only && m_blob_aes_key == boost::none;
+            old_watch_only = m_watch_only && !m_blob_aes_key.has_value();
             csv_blocks = m_csv_blocks;
             csv_buckets = is_historic ? m_csv_buckets : std::vector<uint32_t>();
         }

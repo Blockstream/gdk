@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -251,11 +252,11 @@ namespace sdk {
 
         const bool m_spv_enabled;
         nlohmann::json m_login_data;
-        boost::optional<pbkdf2_hmac512_t> m_local_encryption_key;
+        std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         client_blob m_blob;
         std::string m_blob_hmac;
-        boost::optional<pbkdf2_hmac256_t> m_blob_aes_key;
-        boost::optional<pbkdf2_hmac256_t> m_blob_hmac_key;
+        std::optional<pbkdf2_hmac256_t> m_blob_aes_key;
+        std::optional<pbkdf2_hmac256_t> m_blob_hmac_key;
         bool m_blob_outdated;
         std::array<uint32_t, 32> m_gait_path;
         nlohmann::json m_limits_data;

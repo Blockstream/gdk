@@ -2,9 +2,10 @@
 #define GDK_SIGNER_HPP
 #pragma once
 
-#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
+#include <mutex>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 namespace ga {
 namespace sdk {
@@ -138,7 +139,7 @@ namespace sdk {
         wally_ext_key_ptr m_master_key;
         // Mutable post construction
         mutable std::mutex m_mutex;
-        boost::optional<blinding_key_t> m_master_blinding_key;
+        std::optional<blinding_key_t> m_master_blinding_key;
         cache_t m_cached_bip32_xpubs;
     };
 

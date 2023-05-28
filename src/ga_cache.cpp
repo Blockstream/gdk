@@ -282,7 +282,7 @@ namespace sdk {
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
-                callback(boost::none);
+                callback({});
                 return;
             }
             GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
@@ -330,15 +330,15 @@ namespace sdk {
             return true;
         }
 
-        static boost::optional<uint64_t> get_tx_timestamp(cache::sqlite3_stmt_ptr& stmt)
+        static std::optional<uint64_t> get_tx_timestamp(cache::sqlite3_stmt_ptr& stmt)
         {
             const int rc = sqlite3_step(stmt.get());
             if (rc == SQLITE_DONE) {
-                return boost::optional<uint64_t>(); // No tx found
+                return {}; // No tx found
             }
             GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
             if (sqlite3_column_type(stmt.get(), 0) == SQLITE_NULL) {
-                return boost::optional<uint64_t>(); // No tx found (from e.g. MIN())
+                return {}; // No tx found (from e.g. MIN())
             }
             auto db_timestamp = sqlite3_column_int64(stmt.get(), 0);
             GDK_RUNTIME_ASSERT(db_timestamp > 0);
@@ -610,7 +610,7 @@ namespace sdk {
     {
         const auto _{ stmt_clean(m_stmt_tx_latest_search) };
         bind_int(m_stmt_tx_latest_search, 1, subaccount);
-        return get_tx_timestamp(m_stmt_tx_latest_search).get_value_or(0);
+        return get_tx_timestamp(m_stmt_tx_latest_search).value_or(0);
     }
 
     void cache::set_latest_block(uint32_t block)
@@ -623,7 +623,7 @@ namespace sdk {
     {
         uint32_t db_block = 0;
         get_key_value("last_seen_block", { [&db_block](const auto& db_blob) {
-            if (db_blob != boost::none) {
+            if (db_blob.has_value()) {
                 const std::string block_str(db_blob->begin(), db_blob->end());
                 db_block = std::strtoul(block_str.c_str(), nullptr, 10);
             }
@@ -670,33 +670,33 @@ namespace sdk {
     bool cache::delete_mempool_txs(uint32_t subaccount)
     {
         // Delete all transactions from the earliest mempool tx onwards
-        boost::optional<uint64_t> db_timestamp;
+        std::optional<uint64_t> db_timestamp;
         {
             const auto _{ stmt_clean(m_stmt_tx_earliest_mempool_search) };
             bind_int(m_stmt_tx_earliest_mempool_search, 1, subaccount);
             db_timestamp = get_tx_timestamp(m_stmt_tx_earliest_mempool_search);
         }
-        if (db_timestamp == boost::none) {
+        if (!db_timestamp.has_value()) {
             return false; // Cache not updated
         }
-        delete_transactions(subaccount, db_timestamp.get());
+        delete_transactions(subaccount, db_timestamp.value());
         return true; // Cache updated
     }
 
     bool cache::delete_block_txs(uint32_t subaccount, uint32_t start_block)
     {
         // Delete all transactions in the start block or later
-        boost::optional<uint64_t> db_timestamp;
+        std::optional<uint64_t> db_timestamp;
         {
             const auto _{ stmt_clean(m_stmt_tx_earliest_block_search) };
             bind_int(m_stmt_tx_earliest_block_search, 1, subaccount);
             bind_int(m_stmt_tx_earliest_block_search, 2, start_block);
             db_timestamp = get_tx_timestamp(m_stmt_tx_earliest_block_search);
         }
-        if (db_timestamp == boost::none) {
+        if (!db_timestamp.has_value()) {
             return false; // Cache not updated
         }
-        delete_transactions(subaccount, db_timestamp.get());
+        delete_transactions(subaccount, db_timestamp.value());
         return true; // Cache updated
     }
 

@@ -329,7 +329,7 @@ namespace sdk {
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
         GDK_RUNTIME_ASSERT(m_master_blinding_key.has_value());
-        return m_master_blinding_key.get();
+        return m_master_blinding_key.value();
     }
 
     void signer::set_master_blinding_key(const std::string& blinding_key_hex)

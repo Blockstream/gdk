@@ -4,8 +4,8 @@
 
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
-#include <boost/optional.hpp>
 #include <nlohmann/json.hpp>
+#include <optional>
 
 struct sqlite3;
 struct sqlite3_stmt;
@@ -32,7 +32,7 @@ namespace sdk {
         bool insert_liquid_blinding_data(
             byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey);
 
-        typedef std::function<void(boost::optional<byte_span_t>)> get_key_value_fn;
+        typedef std::function<void(std::optional<byte_span_t>)> get_key_value_fn;
         void get_key_value(const std::string& key, const get_key_value_fn& callback);
 
         void upsert_key_value(const std::string& key, byte_span_t value);
