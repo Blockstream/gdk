@@ -1,3 +1,5 @@
+#include <boost/algorithm/string/trim.hpp>
+
 #include "client_blob.hpp"
 #include "containers.hpp"
 #include "exception.hpp"

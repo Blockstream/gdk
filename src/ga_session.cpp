@@ -12,8 +12,10 @@
 #ifndef WIN32
 #include <unistd.h>
 #endif
-
 #include "session.hpp"
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"

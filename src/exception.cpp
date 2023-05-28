@@ -1,7 +1,9 @@
 #include "exception.hpp"
-#include "boost_wrapper.hpp"
 #include "ga_strings.hpp"
 #include "logging.hpp"
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
 
 namespace ga {
 namespace sdk {

@@ -18,9 +18,6 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #endif
-#include <boost/algorithm/string.hpp>
-#include <boost/algorithm/string/join.hpp>
-#include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio.hpp>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>

@@ -1,3 +1,4 @@
+#include <boost/algorithm/string/predicate.hpp>
 #include <mutex>
 
 #include "assertion.hpp"

@@ -1,9 +1,9 @@
 #include "ga_auth_handlers.hpp"
 
+#include <boost/algorithm/string/predicate.hpp>
 #include <utility>
 
 #include "assertion.hpp"
-#include "boost_wrapper.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"

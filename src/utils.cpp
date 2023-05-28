@@ -10,6 +10,14 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 
+#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/classification.hpp>
+#include <boost/algorithm/string/erase.hpp>
+#include <boost/algorithm/string/join.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+#include <boost/algorithm/string/split.hpp>
+#include <boost/algorithm/string/trim.hpp>
+
 #ifdef __x86_64
 #include <x86intrin.h>
 #endif

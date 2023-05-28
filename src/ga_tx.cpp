@@ -1,11 +1,11 @@
 #include <algorithm>
 #include <array>
+#include <boost/algorithm/string/predicate.hpp>
 #include <ctime>
 #include <string>
 #include <vector>
 
 #include "amount.hpp"
-#include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"

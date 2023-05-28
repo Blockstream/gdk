@@ -1,5 +1,8 @@
-#include "http_client.hpp"
+#include <boost/algorithm/string/case_conv.hpp>
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "assertion.hpp"
+#include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"

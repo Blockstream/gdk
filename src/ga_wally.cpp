@@ -1,7 +1,8 @@
-#include "ga_wally.hpp"
-#include "boost_wrapper.hpp"
+#include <boost/algorithm/string/predicate.hpp>
+
 #include "exception.hpp"
 #include "ga_strings.hpp"
+#include "ga_wally.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
 
