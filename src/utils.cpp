@@ -1,3 +1,11 @@
+#if defined _WIN32 || defined WIN32 || defined __CYGWIN__
+// workaround https://sourceforge.net/p/mingw-w64/bugs/903/
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+
+#include "bcrypt.h"
+#endif
+
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -24,8 +32,6 @@
 
 #include <openssl/rand.h>
 
-#include "boost_wrapper.hpp"
-
 #include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
@@ -38,10 +44,6 @@
 #include "xpub_hdkey.hpp"
 #include <openssl/evp.h>
 #include <zlib.h>
-
-#if defined _WIN32 || defined WIN32 || defined __CYGWIN__
-#include "bcrypt.h"
-#endif
 
 namespace ga {
 namespace sdk {

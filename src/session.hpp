@@ -3,11 +3,11 @@
 #pragma once
 
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 
 #include "gdk.h"
 
-#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 
 namespace ga {

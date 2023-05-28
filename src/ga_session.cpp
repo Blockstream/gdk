@@ -21,7 +21,6 @@
 #include <boost/multiprecision/cpp_int.hpp>
 
 #include "autobahn_wrapper.hpp"
-#include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_cache.hpp"
 #include "ga_session.hpp"
@@ -40,7 +39,6 @@
 #define TX_CACHE_LEVEL log_level::debug
 
 using namespace std::literals;
-namespace asio = boost::asio;
 
 namespace ga {
 namespace sdk {

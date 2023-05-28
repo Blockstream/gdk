@@ -1,8 +1,6 @@
 #include <queue>
 #include <thread>
 
-#include "boost_wrapper.hpp"
-
 #include "assertion.hpp"
 #include "containers.hpp"
 #include "ga_wally.hpp"

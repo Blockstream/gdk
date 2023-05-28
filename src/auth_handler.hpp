@@ -2,7 +2,6 @@
 #define GDK_AUTH_HANDLER_HPP
 #pragma once
 
-#include "boost_wrapper.hpp"
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <string>

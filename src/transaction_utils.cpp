@@ -1,8 +1,6 @@
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 
-#include "boost_wrapper.hpp"
-
 #include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"

@@ -2,7 +2,6 @@
 #include <mutex>
 
 #include "assertion.hpp"
-#include "boost_wrapper.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
 #include "network_parameters.hpp"
