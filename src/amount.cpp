@@ -3,7 +3,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "boost_wrapper.hpp"
+#include <boost/multiprecision/cpp_dec_float.hpp>
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "wally_wrapper.h"

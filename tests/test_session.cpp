@@ -5,6 +5,7 @@
 #include "src/session_impl.hpp"
 #include <assert.h>
 #include <cstdlib>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <stdio.h>
 #include <stdlib.h>

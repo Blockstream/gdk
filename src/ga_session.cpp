@@ -18,6 +18,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 #include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
