@@ -26,7 +26,6 @@
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
-#include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
