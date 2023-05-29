@@ -104,7 +104,7 @@ namespace sdk {
         const std::vector<std::string>& roots, const std::vector<std::string>& pins, uint32_t cert_expiry_threshold);
 
     inline std::shared_ptr<http_client> make_http_client(
-        boost::asio::io_context& io, gsl::owner<boost::asio::ssl::context*> ssl_ctx)
+        boost::asio::io_context& io, boost::asio::ssl::context* ssl_ctx)
     {
         return ssl_ctx != nullptr ? std::shared_ptr<http_client>(new tls_http_client(io, *ssl_ctx))
                                   : std::shared_ptr<http_client>(new tcp_http_client(io));
