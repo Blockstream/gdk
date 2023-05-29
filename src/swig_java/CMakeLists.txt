@@ -25,8 +25,6 @@ if(NOT SWIG_FOUND OR NOT Java_FOUND OR NOT JNI_FOUND)
 endif()
 
 include(UseJava)
-### WARNING dirty trick due to wallycore not properly installing java binding
-join_path(_wallycoreSrcDir ${EXTERNAL-DEPS-DIR} "libwally-core" "src")
 
 set(_requiredJavaVersion 1.8)
 if(Java_VERSION VERSION_LESS _requiredJavaVersion)
@@ -42,7 +40,7 @@ join_path(_hackyGDKInclude ${CMAKE_SOURCE_DIR} "include")
 find_tool(_buildJavaSwig "swig.sh")
 
 add_custom_command(OUTPUT ${_swigCFile}
-    COMMAND ${_buildJavaSwig} ${SED} ${SWIG_EXECUTABLE} ${Java_JAVAC_EXECUTABLE} ${Java_JAR_EXECUTABLE} ${_swigCFile} ${_swigDestDir} swig_gasdk.i jni_extra.java_in ${_hackyGDKInclude} ${WALLYCORE_JAR} ${_requiredJavaVersion}
+    COMMAND ${_buildJavaSwig} ${SED} ${SWIG_EXECUTABLE} ${Java_JAVAC_EXECUTABLE} ${Java_JAR_EXECUTABLE} ${_swigCFile} ${_swigDestDir} swig_gasdk.i jni_extra.java_in ${_hackyGDKInclude}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     DEPENDS greenaddress-objects swig_gasdk.i jni_extra.java_in ${_hackyGDKInclude}/gdk.h
 )
@@ -86,9 +84,10 @@ INSTALL(
         gdk-java
     EXCLUDE_FROM_ALL
 )
+join_path(_wallycore_java ${wallycore_PREFIX} "share" "java" "com" "blockstream" "libwally" "Wally.java")
 INSTALL(
     FILES
-        ${_wallycoreSrcDir}/swig_java/src/com/blockstream/libwally/Wally.java
+    ${_wallycore_java}
     DESTINATION
         ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libwally
      COMPONENT

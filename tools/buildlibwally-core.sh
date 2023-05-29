@@ -1,31 +1,27 @@
 #! /usr/bin/env bash
 set -e
 
-WALLYCORE_BLDDIR=${GDK_BUILD_ROOT}/libwally-core
+WALLYCORE_INSTALLDIR=${GDK_BUILD_ROOT}/libwally-core/build
 
-#if [ ! -f "${WALLYCORE_SRCDIR}/.${SECP_COMMIT}" ]; then
-    cd ${WALLYCORE_SRCDIR}
-    rm -rf src/secp256k1
-    git clone ${SECP_URL} src/secp256k1
-    cd src/secp256k1
-    git checkout ${SECP_COMMIT}
-    cd ${WALLYCORE_SRCDIR}
-    touch .${SECP_COMMIT}
-    #make clean -k || echo >/dev/null
-#fi
+# FIXME: the whole tracking of secp_commit sha could be removed and replace by simpler
+# git submodule init
+# git submodule sync --recursive
+# git submodule update --init --recursive
+cd ${WALLYCORE_SRCDIR}
+rm -rf src/secp256k1
+git clone ${SECP_URL} src/secp256k1
+cd src/secp256k1
+git checkout ${SECP_COMMIT}
+cd ${WALLYCORE_SRCDIR}
+touch .${SECP_COMMIT}
 
-if [ ! -d "${WALLYCORE_BLDDIR}" ]; then
-    cp -r ${WALLYCORE_SRCDIR} ${WALLYCORE_BLDDIR}
-fi
-
-cd ${WALLYCORE_BLDDIR}
 ./tools/cleanup.sh
 ./tools/autogen.sh
 
 ${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
 
 CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests --disable-swig-python"
-CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_BLDDIR}/build"
+CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_INSTALLDIR}"
 
 if [ "${BUILDTYPE}" = "debug" ]; then
     CONFIGURE_ARGS="${CONFIGURE_ARGS} --enable-debug"
@@ -78,3 +74,11 @@ else
     make -j${NUM_JOBS}
 fi
 make -o configure install -j${NUM_JOBS}
+
+# FIXME: work around wally not installing its Java wrapper
+java_wally="src/swig_java/src/com/blockstream/libwally/Wally.java"
+if [[ -f ${java_wally} ]]; then
+    dest_dir="${WALLYCORE_INSTALLDIR}/share/java/com/blockstream/libwally"
+    mkdir -p ${dest_dir}
+    cp ${java_wally} ${dest_dir}
+fi

@@ -250,9 +250,6 @@ export WALLYCORE_NAME=${source_name}
 export SECP_URL=${secpurl}
 export SECP_COMMIT=${secpcommit}
 build ${name} ${WALLYCORE_SRCDIR}
-# cleaning up wally
-find ${GDK_BUILD_ROOT}/libwally-core/ -name "*.c" -type f -delete
-find ${GDK_BUILD_ROOT}/libwally-core/ -name "*.o" -type f -delete
 
 
 # building  zlib
