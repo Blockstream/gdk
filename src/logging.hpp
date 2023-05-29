@@ -6,36 +6,13 @@
 #include <android/log.h>
 #endif
 
-#include "autobahn_wrapper.hpp"
 #include "boost_wrapper.hpp"
 
 namespace ga {
 namespace sdk {
     namespace log_level = boost::log::trivial;
-    namespace wlog = websocketpp::log;
 
     using gdk_logger_t = boost::log::sources::severity_logger_mt<log_level::severity_level>;
-
-    namespace detail {
-        constexpr boost::log::trivial::severity_level sev(wlog::level l)
-        {
-            switch (l) {
-            case wlog::alevel::devel:
-            case wlog::elevel::devel:
-            case wlog::elevel::library:
-                return boost::log::trivial::debug;
-            case wlog::elevel::warn:
-                return boost::log::trivial::warning;
-            case wlog::elevel::rerror:
-                return boost::log::trivial::error;
-            case wlog::elevel::fatal:
-                return boost::log::trivial::fatal;
-            case wlog::elevel::info:
-            default:
-                return boost::log::trivial::info;
-            }
-        }
-    } // namespace detail
 
 #ifdef __ANDROID__
     class android_backend : public boost::log::sinks::basic_formatted_sink_backend<char> {
@@ -97,47 +74,6 @@ namespace sdk {
 
 #define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), sev)
 
-    class websocket_boost_logger {
-    public:
-        static gdk_logger_t& m_log;
-
-        explicit websocket_boost_logger(wlog::channel_type_hint::value hint)
-            : websocket_boost_logger(0, hint)
-        {
-        }
-
-        websocket_boost_logger(wlog::level l, __attribute__((unused)) wlog::channel_type_hint::value hint)
-            : m_level(l)
-        {
-        }
-
-        websocket_boost_logger()
-            : websocket_boost_logger(0, 0)
-        {
-        }
-
-        void set_channels(wlog::level l) { m_level = l; }
-        void clear_channels(wlog::level __attribute__((unused)) l) { m_level = 0; }
-
-        void write(wlog::level l, const std::string& s)
-        {
-            if (dynamic_test(l)) {
-                BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
-            }
-        }
-
-        void write(wlog::level l, char const* s)
-        {
-            if (dynamic_test(l)) {
-                BOOST_LOG_SEV(m_log, detail::sev(l)) << s;
-            }
-        }
-
-        bool static_test(wlog::level l) const { return (m_level & l) != 0; }
-        bool dynamic_test(wlog::level l) { return (m_level & l) != 0; }
-
-        wlog::level m_level;
-    };
 } // namespace sdk
 } // namespace ga
 

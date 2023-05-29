@@ -4,6 +4,7 @@
 
 #include "amount.hpp"
 #include "assertion.hpp"
+#include "autobahn_wrapper.hpp"
 #include "bcur_auth_handlers.hpp"
 #include "containers.hpp"
 #include "exception.hpp"

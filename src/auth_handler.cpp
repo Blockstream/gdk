@@ -1,5 +1,5 @@
 #include "auth_handler.hpp"
-
+#include "autobahn_wrapper.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"

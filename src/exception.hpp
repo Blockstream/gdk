@@ -2,8 +2,12 @@
 #define GDK_EXCEPTION_HPP
 #pragma once
 
-#include "autobahn_wrapper.hpp"
+#include <stdexcept>
 #include <utility>
+
+namespace autobahn {
+class call_error;
+}
 
 namespace ga {
 namespace sdk {

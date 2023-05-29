@@ -4,6 +4,7 @@
 
 #include <array>
 #include <memory>
+#include <set>
 #include <utility>
 
 #include "amount.hpp"

@@ -2,6 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "assertion.hpp"
+#include "autobahn_wrapper.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
 #include "memory.hpp"

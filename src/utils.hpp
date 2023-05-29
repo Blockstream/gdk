@@ -55,6 +55,7 @@ namespace sdk {
     }
 
     bool nsee_log_info(std::string message, const char* context);
+    std::string get_diagnostic_information(const boost::exception& e);
 
     template <typename F> bool no_std_exception_escape(F&& fn, const char* context = "") noexcept
     {
@@ -64,7 +65,7 @@ namespace sdk {
             return false;
         } catch (const boost::exception& e) {
             try {
-                message = diagnostic_information(e);
+                message = get_diagnostic_information(e);
             } catch (const std::exception&) {
             }
         } catch (const std::exception& e) {

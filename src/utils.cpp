@@ -25,6 +25,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
+#include <boost/exception/diagnostic_information.hpp>
 
 #ifdef __x86_64
 #include <x86intrin.h>
@@ -790,6 +791,8 @@ namespace sdk {
         GDK_LOG_SEV(log_level::info) << context << (*context ? " " : "") << "ignoring exception:" << message;
         return true;
     }
+
+    std::string get_diagnostic_information(const boost::exception& e) { return boost::diagnostic_information(e); }
 
     // For use in gdb as
     // printf "%s", gdb_dump_json(<json_variable>).c_str()

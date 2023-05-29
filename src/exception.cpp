@@ -1,4 +1,5 @@
 #include "exception.hpp"
+#include "autobahn_wrapper.hpp"
 #include "ga_strings.hpp"
 #include "logging.hpp"
 #include <boost/algorithm/string/classification.hpp>
