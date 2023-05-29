@@ -16,7 +16,6 @@
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "signer.hpp"
-#include "socks_client.hpp"
 #include "utils.hpp"
 
 using namespace std::literals;

@@ -9,7 +9,6 @@
 
 #include "boost_wrapper.hpp"
 #include "gsl_wrapper.hpp"
-#include "socks_client.hpp"
 
 namespace ga {
 namespace sdk {

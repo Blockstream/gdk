@@ -7,6 +7,7 @@
 #include "logging.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
+#include "socks_client.hpp"
 #include "utils.hpp"
 
 namespace asio = boost::asio;
