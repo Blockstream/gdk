@@ -54,10 +54,4 @@ upload-android-gcloud:
   script:
     - url=${GCLOUD_URL}/${subfolder}/android
     - echo ${url}
-    - TMPF=$(mktemp) || exit 1
-    - echo $GCLOUD_PUSH_KEY > $TMPF
-    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
-    - gcloud auth activate-service-account --key-file=$TMPF
-    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist ${url}
-    - rm -f $TMPF
-
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist/* ${url}

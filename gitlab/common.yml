@@ -9,6 +9,11 @@
   before_script:
     - subfolder=$CI_PROJECT_NAME-$CI_COMMIT_SHA
     - if [[ ${CI_COMMIT_REF_NAME} == "master" ]]; then subfolder=gdk-master; fi
+    - TMPF=$(mktemp) || exit 1
+    - echo $GCLOUD_PUSH_KEY > $TMPF
+    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
+    - gcloud auth activate-service-account --key-file=$TMPF
+    - rm -f $TMPF
 
 
 
@@ -23,4 +28,3 @@
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
     - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
-
