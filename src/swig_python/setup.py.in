@@ -3,14 +3,35 @@
 from setuptools import Extension, setup
 
 
+extra_objects = [
+    "${CMAKE_BINARY_DIR}/libgreenaddress-static.a",
+    "@sqlite3_LINK_LIBRARIES@",
+    "@_gdk_rust_LINK_LIBRARIES@",
+    "@wallycore_LINK_LIBRARIES@",
+    "@libsecp256k1_LINK_LIBRARIES@",
+    "@tor_LINK_LIBRARIES@",
+    "@_libevent_LINK_LIBRARIES@",
+    "@_libevent_pthreads_LINK_LIBRARIES@",
+    "@Boost_LIBRARY_DIRS@/libboost_log.a",
+    "@Boost_LIBRARY_DIRS@/libboost_chrono.a",
+    "@Boost_LIBRARY_DIRS@/libboost_date_time.a",
+    "@Boost_LIBRARY_DIRS@/libboost_system.a",
+    "@Boost_LIBRARY_DIRS@/libboost_thread.a",
+    "@BCUR_LIBRARIES@",
+    "@OPENSSL_SSL_LIBRARY@",
+    "@OPENSSL_CRYPTO_LIBRARY@",
+    "@ZLIB_LIBRARIES@",
+    ]
+
+
 setup(
     ext_modules=[Extension(
         name="greenaddress._greenaddress",
         sources=["swig_gasdk.i"],
         include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
-        swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API="],
-        libraries=["greenaddress_full"],
-        extra_link_args=["-shared", "-L${CMAKE_BINARY_DIR}", "-L./"],
+        swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API= "],
+        extra_objects=extra_objects,
+        extra_link_args=["-shared"],
         language="c++",
     )],
 )

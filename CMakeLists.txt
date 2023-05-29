@@ -103,6 +103,7 @@ add_subdirectory(src/swig_java)
 create_gdkrust_target()
 create_greenaddress_target()
 create_greenaddressfull_target()
+create_greenaddressstatic_target()
 
 # build python wheel
 find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter)
@@ -117,8 +118,6 @@ install_cmake_config()
 if(NOT ENABLE_TESTS)
     return()
 endif()
-
-create_greenaddressstatic_target()
 
 enable_testing()
 add_subdirectory(tests)
