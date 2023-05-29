@@ -9,7 +9,6 @@
 #include "ga_wally.hpp"
 #include "gdk.h"
 #include "logging.hpp"
-#include "threading.hpp"
 
 namespace ga {
 namespace sdk {

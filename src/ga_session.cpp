@@ -29,6 +29,7 @@
 #include "logging.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
+#include "threading.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "version.h"

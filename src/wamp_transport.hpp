@@ -8,6 +8,7 @@
 
 #include "autobahn_wrapper.hpp"
 #include "logging.hpp"
+#include "threading.hpp"
 
 namespace ga {
 namespace sdk {
