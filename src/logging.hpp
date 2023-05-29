@@ -6,7 +6,14 @@
 #include <android/log.h>
 #endif
 
-#include "boost_wrapper.hpp"
+#include <boost/log/attributes/named_scope.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sinks/async_frontend.hpp>
+#include <boost/log/sinks/basic_sink_backend.hpp>
+#include <boost/log/sources/global_logger_storage.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/trivial.hpp>
 
 namespace ga {
 namespace sdk {

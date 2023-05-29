@@ -16,7 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <nlohmann/json.hpp>
+#include <thread>
 
 #include <boost/algorithm/string/case_conv.hpp>
 #include <boost/algorithm/string/classification.hpp>
@@ -26,6 +26,7 @@
 #include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <nlohmann/json.hpp>
 
 #ifdef __x86_64
 #include <x86intrin.h>
