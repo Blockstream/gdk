@@ -16,7 +16,6 @@ add_library(greenaddress-objects OBJECT
     ffi_c.cpp
     ga_auth_handlers.cpp
     ga_cache.cpp
-    ga_lightning.cpp
     ga_rust.cpp
     ga_session.cpp
     ga_strings.cpp
@@ -93,7 +92,6 @@ target_include_directories(greenaddress-objects SYSTEM PRIVATE
     ${BCUR_INCLUDE_DIR}
 )
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
-    ${CMAKE_SOURCE_DIR}/include/greenlight.h
     ${CMAKE_SOURCE_DIR}/include/module.modulemap
     ${CMAKE_SOURCE_DIR}/include/wally_wrapper.h
     ${CMAKE_CURRENT_BINARY_DIR}/gdk_export.h

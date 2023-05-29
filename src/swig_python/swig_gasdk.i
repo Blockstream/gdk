@@ -29,7 +29,6 @@ del swig_import_helper
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #define SWIG_FILE_WITH_INIT
 #include "gdk.h"
-#include "greenlight.h"
 #include <limits.h>
 
 static int gdk_throw(int result, const char* default_message)
@@ -324,7 +323,6 @@ typedef unsigned int uint32_t;
 %rename("%(regex:/^GA_(.+)/\\1/)s", %$isfunction) "";
 
 %include "gdk.h"
-%include "greenlight.h"
 
 static int _python_set_callback_handler(PyObject* obj, PyObject* arg);
 static int _python_destroy_session(PyObject* obj);

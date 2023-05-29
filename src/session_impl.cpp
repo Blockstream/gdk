@@ -1,7 +1,6 @@
 #include "session_impl.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
-#include "ga_lightning.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_tor.hpp"
@@ -45,9 +44,6 @@ namespace sdk {
 
         if (np.is_electrum()) {
             return std::make_shared<ga_rust>(std::move(np));
-        }
-        if (np.is_lightning()) {
-            return std::make_shared<ga_lightning>(std::move(np));
         }
         return std::make_shared<ga_session>(std::move(np));
     }
@@ -673,12 +669,6 @@ namespace sdk {
     nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)
     {
         GDK_RUNTIME_ASSERT(false);
-        return nlohmann::json();
-    }
-
-    nlohmann::json session_impl::gl_call(const char* /*method*/, const nlohmann::json& /*params*/)
-    {
-        // Overriden for ga_lightning
         return nlohmann::json();
     }
 

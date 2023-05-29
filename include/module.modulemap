@@ -1,9 +1,8 @@
 module ga [extern_c] {
     module sdk {
-        header "greenlight.h"
+        header "gdk.h"
         export *
     }
-
     module wally {
         header "wally_wrapper.h"
         export *

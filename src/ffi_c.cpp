@@ -10,7 +10,6 @@
 #include "exception.hpp"
 #include "ga_auth_handlers.hpp"
 #include "gdk.h"
-#include "greenlight.h"
 #include "network_parameters.hpp"
 #include "session.hpp"
 #include "swap_auth_handlers.hpp"
@@ -540,9 +539,6 @@ GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_json, const GA_json*, json, con
     json_convert(*json_cast(json), path, v);
     *json_cast(output) = v;
 })
-
-GDK_DEFINE_C_FUNCTION_4(GA_gl_call, struct GA_session*, session, const char*, method, const GA_json*, params, GA_json**,
-    output, { *json_cast(output) = new nlohmann::json(session->gl_call(method, *json_cast(params))); })
 
 #ifdef __GNUC__
 #pragma GCC diagnostic pop

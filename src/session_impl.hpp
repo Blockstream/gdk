@@ -236,8 +236,6 @@ namespace sdk {
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         virtual std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
-        virtual nlohmann::json gl_call(const char* method, const nlohmann::json& params);
-
     protected:
         // Locking per-session assumes the following thread safety model:
         // 1) Implementations noted "idempotent" can be called from multiple

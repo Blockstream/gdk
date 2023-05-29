@@ -57,7 +57,6 @@ namespace sdk {
         bool is_liquid() const;
         bool is_development() const;
         bool is_electrum() const;
-        bool is_lightning() const;
         bool use_tor() const;
         bool is_spv_enabled() const;
         bool electrum_tls() const;

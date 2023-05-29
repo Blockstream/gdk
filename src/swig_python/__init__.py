@@ -330,9 +330,6 @@ class Session(object):
     def validate(self, details):
         return Call(validate(self.session_obj, self._to_json(details)))
 
-    def gl_call(self, method, params):
-        return json.loads(gl_call(self.session_obj, method, self._to_json(params)))
-
 _old_get_networks = get_networks
 def get_networks():
     return json.loads(_old_get_networks())

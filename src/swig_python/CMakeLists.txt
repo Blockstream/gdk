@@ -39,7 +39,6 @@ macro(prepare_manylinux_build_environment)
     )
     install(FILES
             ${CMAKE_SOURCE_DIR}/include/gdk.h
-            ${CMAKE_SOURCE_DIR}/include/greenlight.h
             ${CMAKE_BINARY_DIR}/src/gdk_export.h
         DESTINATION ${CMAKE_INSTALL_DATADIR}/wheel-build-environment/greenaddress
         COMPONENT gdk-cibuildwheel
