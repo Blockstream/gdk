@@ -280,7 +280,7 @@ namespace sdk {
                 net_params, ga_pub_key, user_pub_key, recovery_pubkeys.derive(subaccount, pointer), addr_type, subtype);
         }
         // 2of2
-        return output_script(net_params, ga_pub_key, user_pub_key, empty_span(), addr_type, subtype);
+        return output_script(net_params, ga_pub_key, user_pub_key, {}, addr_type, subtype);
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,

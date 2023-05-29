@@ -52,9 +52,6 @@ namespace sdk {
     {
         return gsl::make_span(reinterpret_cast<const unsigned char*>(str.data()), str.size());
     }
-
-    // Make an empty byte span
-    template <typename T = unsigned char> inline auto empty_span() { return gsl::make_span<const T>(nullptr, nullptr); }
 } // namespace sdk
 } // namespace ga
 

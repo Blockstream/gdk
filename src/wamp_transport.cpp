@@ -17,7 +17,6 @@
 #include "exception.hpp"
 #include "http_client.hpp"
 #include "logging.hpp"
-#include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
 #include "version.h"

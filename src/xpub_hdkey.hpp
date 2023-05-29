@@ -5,8 +5,6 @@
 #include <map>
 
 #include "ga_wally.hpp"
-#include "gsl_wrapper.hpp"
-#include "memory.hpp"
 #include "network_parameters.hpp"
 
 namespace ga {
@@ -17,7 +15,8 @@ namespace sdk {
     //
     class xpub_hdkey final {
     public:
-        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path = empty_span<uint32_t>());
+        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path);
+        xpub_hdkey(bool is_main_net, const xpub_t& xpub);
 
         xpub_hdkey(const xpub_hdkey&) = default;
         xpub_hdkey& operator=(const xpub_hdkey&) = default;

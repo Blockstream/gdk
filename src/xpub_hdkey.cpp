@@ -23,6 +23,10 @@ namespace sdk {
             m_ext_key = *master;
         }
     }
+    xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub)
+        : xpub_hdkey(is_main_net, xpub, {})
+    {
+    }
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
 

@@ -10,6 +10,7 @@
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
