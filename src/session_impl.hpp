@@ -2,12 +2,12 @@
 #define GDK_SESSION_IMPL_HPP
 
 #pragma once
+#include <atomic>
 #include <mutex>
 #include <set>
 #include <thread>
 
 #include "amount.hpp"
-#include "boost_wrapper.hpp"
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
 
@@ -20,6 +20,7 @@ namespace sdk {
     class user_pubkeys;
     class signer;
     struct tor_controller;
+    struct io_context_and_guard;
 
     class session_impl {
     public:
@@ -261,8 +262,8 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
-        boost::asio::io_context m_io;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
+        std::unique_ptr<io_context_and_guard> m_io;
+
         std::thread m_run_thread; // Runs the asio context
         const std::string m_user_proxy;
         std::shared_ptr<tor_controller> m_tor_ctrl;
