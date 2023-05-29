@@ -6,7 +6,7 @@
 - Liquid: Transaction blinding is now performed using a new call
   GA_blind_transaction, which should be called after creating and before
   signing the tx.
-- Liquid: Hawrdware wallet capability JSON now contains a new field
+- Liquid: Hardware wallet capability JSON now contains a new field
   "supports_external_blinding". This should be set to true when registering
   a signer that can blind/sign transactions with blinded outputs from
   wallets other than the callers wallet (for example, a 2 step swap).
@@ -27,6 +27,7 @@
   top-level of transaction JSON indicates that the transaction has been fully
   blinded and is ready for signing. `is_confidential` now always refers to
   an address or addressee element having a confidential address.
+- Liquid: update hard-coded asset icons.
 
 ### Fixed
 
@@ -76,12 +77,12 @@
   the amount themselves using GA_convert_amount if desired.
 - FFI (All calls): Input JSON parameters are now moved internally and will be
   empty when an API call returns. This only affects C and C++ callers.
-- Singlesig: GA_create_transaction has now aligned behaviour with multisig:
+- Singlesig: GA_create_transaction now has aligned behavior with multisig:
   previous workarounds to handle the differences between the session types
   can be removed.
-- Liquid: Singlesig: allow 32 bytes master blinding keys, consistenly with
+- Liquid: Singlesig: Allow 32 bytes master blinding keys, consistently with
   multisig.
-- Build: replace meson with cmake and make sqlite3 an external dependencies,
+- Build: Replace meson with cmake and make sqlite3 an external dependencies,
   check the updated README for the new build instructions.
 
 ### Fixed
@@ -90,7 +91,7 @@
   source is unavailable). When this occurs, 2FA will be required.
 - GA_get_twofactor_config: Fixed exception thrown when a fiat pricing source
   is unavailable and a fiat spending limit is set.
-- Singlesig: fix handling of some invalid proxies.
+- Singlesig: Fix handling of some invalid proxies.
 - Fix a bug in Android build.
 - Fix missing URL overrides in network parameters.
 
@@ -114,11 +115,11 @@
 - GA_get_unspent_outputs: The default sorting for multisig non-2of2
   subaccounts has been changed from oldest-first to largest-first.
 - Singlesig: GA_change_settings, GA_get_available_currencies and
-  GA_convert_amount have now aligned behaviour with multisig: all the prices
+  GA_convert_amount have now aligned behavior with multisig: all the prices
   and venues are matched and changing settings actually influence the fiat
   currency returned from GA_convert_amount.
 - GA_encrypt_with_pin: Add `hmac` field.
-- Liquid: update hardcoded asset icons.
+- Liquid: update hard-coded asset icons.
 
 ### Fixed
 - Liquid: Fix the min fee and dust threshold for multi/singlesig respectively.
@@ -127,7 +128,7 @@
   circumstances where an amount is not given in an addressee.
 - GA_create_transaction: Non-partial transactions where `utxo_strategy` is set
   to `"manual"` now return an error if an asset is provided in `used_utxos`
-  that does not correspond to an adressee.
+  that does not correspond to an addressee.
 - Singlesig: GA_get_transactions: fix script serialization
 - Singlesig: fixes for block and transaction notifications
 
@@ -137,7 +138,7 @@
 
 ### Added
 - GA_get_subaccount: add user_path, core_descriptor, slip132_extended_pubkey.
-- GA_get_assets: add ability to fetch informations about Liquid assets by
+- GA_get_assets: add ability to fetch information about Liquid assets by
 specifying one or more of the following fields: `names`, `tickers`, `category`.
 
 ### Changed
@@ -149,7 +150,7 @@ specifying one or more of the following fields: `names`, `tickers`, `category`.
 GA_refresh_assets will perform a network call to update the Liquid assets. To
 avoid the network call use GA_get_assets. In addition GA_refresh_assets now
 does not return any value, to get assets data use GA_get_assets.
-- GA_get_assets: it is now possible to fetch informations via the `assets_id`
+- GA_get_assets: it is now possible to fetch information's via the `assets_id`
 even before logging into a session.
 - Removed support for LiquiDEX v0 for GA_create_swap_transaction,
 GA_complete_swap_transaction and GA_validate, which now support LiquiDEX v1
@@ -188,8 +189,8 @@ from its input UTXOs and output addressees.
 - If the network connection drops in the middle of a request the latter will be
   eventually timed out instead of waiting for the connection to be available
   again.
-- Fixed an issue where the Liquid asset registry would be redownloaded
-  everytime `GA_refresh_assets` was called if the local registry file got corrupted.
+- Fixed an issue where the Liquid asset registry would be re-downloaded
+  every time `GA_refresh_assets` was called if the local registry file got corrupted.
 - Fixed an issue where `GA_get_assets` would not return any assets if a
   wallet's Liquid cache file got corrupted.
 - Singlesig: GA_get_transactions: Correctly handle "mixed" transactions
@@ -268,7 +269,7 @@ from its input UTXOs and output addressees.
 - Update openssl to 1.1.1n
 - Update libwally to latest
 - Rust is now mandatory for building
-- Registry: Switched to unified implementation with full asset data. Only Liquid-BTC icon is hardcoded, only asset metadata having icons are hardcoded (38 assets)
+- Registry: Switched to unified implementation with full asset data. Only Liquid-BTC icon is hard-coded, only asset metadata having icons are hard-coded (38 assets)
 
 ### Fixed
 
@@ -298,7 +299,7 @@ from its input UTXOs and output addressees.
 ## Release 0.0.51 - 2022-03-30
 
 - SPV: Enable SPV for multisig BTC wallets
-- Singlesig: support for hw signers (Bitcoin only)
+- Singlesig: support for HWW signers (Bitcoin only)
 - Singlesig: support for GA_http_request
 - Singlesig: implement GA_remove_account, see docs for details.
 
@@ -318,7 +319,7 @@ from its input UTXOs and output addressees.
 - Singlesig: Improved account discovery
 - Multisig: Don't send connection notifications for user-initiated session disconnect/destroy
 - Multisig: Remove old support for passing addressee asset_id as asset_tag
-- Multisig: Standardise address subtype as always 0 instead of null
+- Multisig: Standardize address subtype as always 0 instead of null
 - Multisig: Remove range and surjection proofs from returned UTXO data
 - Multisig: Fix spending from very old version 0 addresses
 - Liquid: Return blinded addresses in tx list results
@@ -334,7 +335,7 @@ from its input UTXOs and output addressees.
 - Liquid: Disable multi-asset sends on all networks
 - Liquid: Fix AMP blinding key upload on new subaccount creation
 - Single sig: Randomize secp context before use
-- All: Update localisation strings
+- All: Update localization strings
 - Misc bug fixes
 
 
@@ -355,7 +356,7 @@ from its input UTXOs and output addressees.
 ## Release 0.0.46.post1 - 2021-10-26
 
 - Fix: increase proxy and socks setup timeouts
-- Fix: tor wakeup
+- Fix: tor wake-up
 
 
 ## Release 0.0.46 - 2021-10-19
@@ -365,7 +366,7 @@ from its input UTXOs and output addressees.
 - Single sig: Add support for manual coin selection
 - Single sig: Improve TLS handling to allow connecting to more electrum servers
 - Improve expired certificate handling
-- Allow fetching wallet id without login and return it from register. Note the identifier returned by single sig sessions has changed to match multisig behaviour
+- Allow fetching wallet id without login and return it from register. Note the identifier returned by single sig sessions has changed to match multisig behavior
 - Fix builds under Python 3.9
 
 
