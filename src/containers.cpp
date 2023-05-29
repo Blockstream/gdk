@@ -1,8 +1,6 @@
-#include <queue>
-#include <thread>
-
-#include "assertion.hpp"
 #include "containers.hpp"
+#include "amount.hpp"
+#include "assertion.hpp"
 #include "ga_wally.hpp"
 
 namespace ga {
@@ -25,6 +23,16 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(value.is_array() && value.size() == size,
             std::string(key) + " must be an array of length " + std::to_string(size));
         return value;
+    }
+
+    amount json_get_amount(const nlohmann::json& data, const std::string& key)
+    {
+        return amount(data.at(key).get<amount::value_type>());
+    }
+
+    amount json_get_amount(const nlohmann::json& data, const std::string& key, const amount& default_value)
+    {
+        return amount(json_get_value(data, key, default_value.value()));
     }
 
 } // namespace sdk

@@ -8,6 +8,8 @@
 namespace ga {
 namespace sdk {
 
+    class amount;
+
     // Rename from_key to to_key in the given JSON object
     bool json_rename_key(nlohmann::json& data, const std::string& from_key, const std::string& to_key);
 
@@ -59,8 +61,11 @@ namespace sdk {
         if (p == data.end() || p->is_null()) {
             return default_value;
         }
-        return *p;
+        return p->get<T>();
     }
+
+    amount json_get_amount(const nlohmann::json& data, const std::string& key);
+    amount json_get_amount(const nlohmann::json& data, const std::string& key, const amount& default_value);
 
     // Filter items from json based on a predicate function `filter`.
     // Returns the keys of the items removed
