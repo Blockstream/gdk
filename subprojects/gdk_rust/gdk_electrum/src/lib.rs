@@ -719,19 +719,23 @@ impl ElectrumSession {
                 };
             };
 
+            let mut avoid_first_wait = true;
             loop {
                 let is_connected = state_updater.current.load(Ordering::Relaxed);
                 debug!("loop start is_connected:{is_connected}");
+
+                if avoid_first_wait {
+                    avoid_first_wait = false;
+                } else if wait_or_close(&user_wants_to_sync, sync_interval) {
+                    info!("closing syncer & tipper thread");
+                    break;
+                }
 
                 if !is_connected {
                     match url.build_client(proxy.as_deref(), None) {
                         Ok(new_client) => client = new_client,
                         Err(e) => {
                             warn!("cannot build client {e:?}");
-                            if wait_or_close(&user_wants_to_sync, sync_interval) {
-                                info!("closing syncer & tipper thread");
-                                break;
-                            }
                             continue;
                         }
                     };
@@ -800,11 +804,6 @@ impl ElectrumSession {
                 while let Some(ntf) = txs_to_notify.pop() {
                     info!("New tx notification: {}", ntf.txid);
                     notify.updated_txs(&ntf);
-                }
-
-                if wait_or_close(&user_wants_to_sync, sync_interval) {
-                    info!("closing syncer & tipper thread");
-                    break;
                 }
             }
         });
