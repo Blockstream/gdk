@@ -996,6 +996,7 @@ pub struct UnspentOutput {
     pub script_code: String,
     pub public_key: String,
     #[serde(default)]
+    #[serde(skip_serializing)]
     pub skip_signing: bool,
 
     // liquid fields
