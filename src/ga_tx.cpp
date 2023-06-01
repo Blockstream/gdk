@@ -1310,8 +1310,8 @@ namespace sdk {
                     // Currently we only allow one scalar per pre-blinded
                     // input to avoid the potential for footguns.
                     const auto& a = details.at("addressees");
-                    const size_t num_blinded_addressees
-                        = std::count_if(a.begin(), a.end(), [](const auto& a) { return a.value("is_blinded", false); });
+                    const size_t num_blinded_addressees = std::count_if(
+                        a.begin(), a.end(), [](const auto& ad) { return ad.value("is_blinded", false); });
                     GDK_RUNTIME_ASSERT(scalars.size() == num_blinded_addressees);
                     for (const auto& scalar : scalars) {
                         vbf = ec_scalar_add(vbf, h2b(scalar));

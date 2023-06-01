@@ -106,15 +106,15 @@ namespace sdk {
         const std::string p2sh("p2sh");
         const std::string p2wsh("p2wsh");
         const std::string csv("csv");
-    }; // namespace address_type
+    } // namespace address_type
 
-        // Dummy signatures are needed for correctly sizing transactions. If our signer supports
-        // low-R signatures, we estimate on a 71 byte signature, and occasionally produce 70 byte
-        // signatures. Otherwise, we estimate on 72 bytes and occasionally produce 70 or 71 byte
-        // signatures. Worst-case overestimation is therefore 2 bytes per input * 2 sigs, or
-        // 1 vbyte per input for segwit transactions.
+    // Dummy signatures are needed for correctly sizing transactions. If our signer supports
+    // low-R signatures, we estimate on a 71 byte signature, and occasionally produce 70 byte
+    // signatures. Otherwise, we estimate on 72 bytes and occasionally produce 70 or 71 byte
+    // signatures. Worst-case overestimation is therefore 2 bytes per input * 2 sigs, or
+    // 1 vbyte per input for segwit transactions.
 
-        // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
+    // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
 #define SIG_SLED(INITIAL, B) INITIAL, B, B, B, B, B, B, B, B, B, B, B, B, B, B, B
 #define SIG_BYTES(INITIAL, B) SIG_SLED(INITIAL, B), SIG_SLED(B, B)
 
