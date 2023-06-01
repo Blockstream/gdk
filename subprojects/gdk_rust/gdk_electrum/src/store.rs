@@ -183,7 +183,10 @@ impl Drop for StoreMeta {
             self.remove_file(Kind::Cache);
             std::fs::remove_dir(&self.path).unwrap();
         } else {
-            self.flush().unwrap();
+            match self.flush() {
+                Ok(_) | Err(Error::CannotSendToBlobThread) => (),
+                Err(e) => panic!("unexpected {:?}", e),
+            }
         }
     }
 }
@@ -379,7 +382,8 @@ impl StoreMeta {
             self.store.timestamp = from_epoch;
         }
         self.flush_serializable(Kind::Store)?;
-        self.sender.send(())?;
+        sender.send(()).map_err(|_| Error::CannotSendToBlobThread)?;
+
         Ok(())
     }
 
@@ -470,7 +474,7 @@ impl StoreMeta {
     pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
-        println!("inserting memo {} for txid {:?}", memo, txid);
+        info!("inserting memo {} for txid {:?}", memo, txid);
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())

@@ -202,6 +202,9 @@ pub enum Error {
     #[error("wallet is not initialized")]
     WalletNotInitialized,
 
+    #[error("cannot send to blob thread")]
+    CannotSendToBlobThread,
+
     #[error(
         "{}method not found: {method:?}",
         if *.in_session { "session " } else {""}

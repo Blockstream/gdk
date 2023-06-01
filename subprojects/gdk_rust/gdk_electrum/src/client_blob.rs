@@ -359,6 +359,7 @@ mod tests {
 
     #[test]
     fn restore_settings() -> Result<(), Box<dyn std::error::Error>> {
+        let _ = env_logger::try_init();
         let state_dir = tempfile::TempDir::new()?;
 
         let network_parameters = {

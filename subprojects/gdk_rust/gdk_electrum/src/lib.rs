@@ -305,7 +305,13 @@ impl ElectrumSession {
             // avoid touching disk if equivalent to last, it isn't a big performance penalty.
             // disconnect() may be called without login, so we check the store is loaded.
             if let Ok(store) = self.store() {
-                store.write()?.flush()?;
+                match store.write()?.flush() {
+                    Ok(_) | Err(Error::CannotSendToBlobThread) => (),
+                    Err(e) => {
+                        warn!("{e:?}");
+                        return Err(e);
+                    }
+                }
             }
             self.notify.network(State::Disconnected, State::Disconnected);
         }
