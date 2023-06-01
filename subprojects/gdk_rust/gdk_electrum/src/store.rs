@@ -158,7 +158,7 @@ pub struct StoreMeta {
 
     /// Used to send a notification to the client blob thread when the
     /// `RawStore` gets flushed.
-    sender: mpsc::SyncSender<()>,
+    sender: Option<mpsc::SyncSender<()>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -288,7 +288,6 @@ impl StoreMeta {
         path: P,
         xpub: &ExtendedPubKey,
         id: NetworkId,
-        sender: mpsc::SyncSender<()>,
     ) -> Result<StoreMeta, Error> {
         let cipher = xpub.to_cipher()?;
         let cache = RawCache::new(path.as_ref(), &cipher);
@@ -308,9 +307,13 @@ impl StoreMeta {
             path,
             last: HashMap::new(),
             to_remove: false,
-            sender,
+            sender: None,
         };
         Ok(store)
+    }
+
+    pub fn set_sender(&mut self, sender: mpsc::SyncSender<()>) {
+        self.sender = Some(sender);
     }
 
     pub fn to_remove(&mut self) {
@@ -382,8 +385,9 @@ impl StoreMeta {
             self.store.timestamp = from_epoch;
         }
         self.flush_serializable(Kind::Store)?;
-        sender.send(()).map_err(|_| Error::CannotSendToBlobThread)?;
-
+        if let Some(sender) = self.sender.as_ref() {
+            sender.send(()).map_err(|_| Error::CannotSendToBlobThread)?;
+        }
         Ok(())
     }
 
@@ -619,13 +623,15 @@ mod tests {
         let (sender, _receiver) = mpsc::sync_channel(32);
 
         {
-            let mut store = StoreMeta::new(&dir, &xpub, id, sender.clone()).unwrap();
+            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+            store.set_sender(sender.clone());
             store.make_account(0, xpub, true).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let store = StoreMeta::new(&dir, &xpub, id, sender).unwrap();
+        let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+        store.set_sender(sender);
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
