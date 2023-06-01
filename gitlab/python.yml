@@ -19,7 +19,7 @@ include:
 
 .linux-wheel:
   extends: .py_release
-  image: blockstream/gdk-python-builder@sha256:54ea7d075e9bdbbf74c3d5fd01bea50c11b173a8df7aaf6a20929128e426ada0
+  image: blockstream/gdk-python-builder@sha256:78964d5223c9e9863b83717427bc08456cf605049f847c7c376c7b248e561b68
   tags:
     - ga
   stage: build
