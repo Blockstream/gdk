@@ -820,22 +820,24 @@ impl ElectrumSession {
 
         self.handles.push(syncer_tipper_handle);
 
-        let user_wants_to_sync = self.user_wants_to_sync.clone();
-        let store = self.store()?;
-        let login_data = self.get_wallet_hash_id()?;
-        let agent = self.build_request_agent()?;
-        let url = self.network.blob_server_url()?;
+        if self.network.blob_server_enabled {
+            let user_wants_to_sync = self.user_wants_to_sync.clone();
+            let store = self.store()?;
+            let login_data = self.get_wallet_hash_id()?;
+            let agent = self.build_request_agent()?;
+            let url = self.network.blob_server_url()?;
 
-        let (sender, recv) = mpsc::sync_channel::<()>(32);
-        store.write().unwrap().set_sender(sender);
+            let (sender, recv) = mpsc::sync_channel::<()>(32);
+            store.write().unwrap().set_sender(sender);
 
-        let blob_client = BlobClient::new(agent, url, login_data.into());
+            let blob_client = BlobClient::new(agent, url, login_data.into());
 
-        let blob_handle = thread::spawn(move || {
-            let _ = client_blob::sync_blob(blob_client, store, &user_wants_to_sync, recv);
-        });
+            let blob_handle = thread::spawn(move || {
+                let _ = client_blob::sync_blob(blob_client, store, &user_wants_to_sync, recv);
+            });
 
-        self.handles.push(blob_handle);
+            self.handles.push(blob_handle);
+        }
 
         Ok(())
     }

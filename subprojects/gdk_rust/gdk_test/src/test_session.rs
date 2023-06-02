@@ -125,6 +125,7 @@ impl TestSession {
         network.sync_interval = Some(1);
         network.development = true;
         network.spv_enabled = Some(true);
+        network.blob_server_enabled = true;
         network.set_asset_registry_url("https://assets.blockstream.info".to_string());
         if is_liquid {
             network.liquid = true;

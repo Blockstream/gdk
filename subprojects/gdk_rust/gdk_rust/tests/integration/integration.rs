@@ -901,6 +901,7 @@ fn subaccounts(is_liquid: bool) {
         let mut network = test_session.network_parameters().clone();
         let temp_dir = TempDir::new().unwrap();
         network.state_dir = format!("{}", temp_dir.path().display());
+        network.blob_server_enabled = false;
         ElectrumSession::new(network).unwrap()
     };
 

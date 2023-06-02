@@ -39,6 +39,7 @@ pub struct NetworkParameters {
     #[serde(rename(deserialize = "blob_server_http_url"))]
     pub blob_server_url: String,
     blob_server_onion_url: String,
+    pub blob_server_enabled: bool,
 
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
