@@ -96,6 +96,16 @@ pub fn bip39_mnemonic_to_seed(mnemonic: &str, passphrase: &str) -> Option<[u8; B
     Some(out)
 }
 
+/// Generate a mnemonic sentence from the entropy
+pub fn bip39_mnemonic_from_entropy(entropy: &[u8]) -> String {
+    let mut out: *mut libc::c_char = std::ptr::null_mut();
+    let ret = unsafe {
+        ffi::bip39_mnemonic_from_bytes(ptr::null(), entropy.as_ptr(), entropy.len(), &mut out)
+    };
+    assert_eq!(ret, ffi::WALLY_OK);
+    read_str(out)
+}
+
 pub fn asset_blinding_key_from_seed(seed: &[u8]) -> MasterBlindingKey {
     assert_eq!(seed.len(), 64);
     let mut out = [0u8; 64];
@@ -192,6 +202,13 @@ mod tests {
 
         let seed = bip39_mnemonic_to_seed(&v_mnem, &v_passphrase).unwrap();
         assert_eq!(v_seed, seed.to_hex());
+    }
+
+    #[test]
+    fn test_bip39_mnemonic_from_entropy() {
+        let entropy = [0u8; 16];
+        let mnemonic = bip39_mnemonic_from_entropy(&entropy);
+        assert_eq!("abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about", &mnemonic);
     }
 
     #[test]

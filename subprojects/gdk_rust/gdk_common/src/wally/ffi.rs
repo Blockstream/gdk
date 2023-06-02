@@ -43,6 +43,18 @@ extern "C" {
     //    const char *mnemonic);
     pub fn bip39_mnemonic_validate(word_list: *const c_void, mnemonic: *const c_char) -> c_int;
 
+    //WALLY_CORE_API int bip39_mnemonic_from_bytes(
+    //    const struct words *w,
+    //    const unsigned char *bytes,
+    //    size_t bytes_len,
+    //    char **output);
+    pub fn bip39_mnemonic_from_bytes(
+        word_list: *const c_void,
+        bytes: *const c_uchar,
+        bytes_len: size_t,
+        output: *mut *mut c_char,
+    ) -> c_int;
+
     //WALLY_CORE_API int wally_tx_from_bytes(
     //    const unsigned char *bytes,
     //    size_t bytes_len,
