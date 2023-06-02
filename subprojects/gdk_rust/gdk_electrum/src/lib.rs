@@ -731,7 +731,8 @@ impl ElectrumSession {
             let mut avoid_first_wait = true;
             loop {
                 let is_connected = state_updater.current.load(Ordering::Relaxed);
-                debug!("loop start is_connected:{is_connected}");
+
+                debug!("loop start is_connected:{is_connected} user_wants_to_sync:{user_wants_to_sync:?}");
 
                 if avoid_first_wait {
                     avoid_first_wait = false;
@@ -744,7 +745,7 @@ impl ElectrumSession {
                     match url.build_client(proxy.as_deref(), None) {
                         Ok(new_client) => client = new_client,
                         Err(e) => {
-                            warn!("cannot build client {e:?}");
+                            warn!("cannot build client {url:?} {e:?}");
                             continue;
                         }
                     };
@@ -1548,7 +1549,7 @@ impl Syncer {
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
             {
-                info!(
+                debug!(
                     "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_indexes_changed:{}",
                     new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
                     headers,

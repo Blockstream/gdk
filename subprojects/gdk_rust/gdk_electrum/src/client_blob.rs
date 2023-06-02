@@ -4,6 +4,7 @@ use std::sync::mpsc;
 use std::time::{Duration, Instant};
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
+use gdk_common::log::debug;
 use gdk_common::once_cell::sync::Lazy;
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::{aes, bitcoin, log, ureq, url};
@@ -206,8 +207,12 @@ impl BlobClient {
         let b64_blob_hmac = base64::encode(Borrow::<[u8]>::borrow(&blob_hmac));
         let b64_previous_hmac = base64::encode(Borrow::<[u8]>::borrow(previous_hmac));
 
-        info!("storing new blob on the server with hmac {b64_blob_hmac:?}");
+        info!(
+            "set_client_blob client_id:{} hmac:{:?}",
+            self.client_id.wallet_hash_id, b64_blob_hmac
+        );
 
+        let now = Instant::now();
         let response = self
             .agent
             .get(&format!("{}/set_client_blob", self.blob_server_url))
@@ -218,9 +223,19 @@ impl BlobClient {
             .query("previous_hmac", &b64_previous_hmac)
             .call()?;
 
+        let resp = response.into_json::<SetBlobResponse>()?;
+        debug!(
+            "set_client_blob client_id:{:?} hmac:{} previous_mac:{}, took {:?} return {:?}",
+            self.client_id.wallet_hash_id,
+            b64_blob_hmac,
+            b64_previous_hmac,
+            now.elapsed(),
+            resp
+        );
+
         if let SetBlobResponse::Err(SetBlobError {
             error,
-        }) = response.into_json::<SetBlobResponse>()?
+        }) = resp
         {
             return Err(Error::BlobClientError(error));
         }
@@ -239,6 +254,7 @@ impl BlobClient {
 }
 
 /// An identifier used to access a wallet's blob stored on the the blob server.
+#[derive(Debug)]
 pub(super) struct ClientBlobId {
     wallet_hash_id: String,
 }
@@ -270,7 +286,7 @@ impl ClientBlobId {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct GetBlobResponse {
     blob: Blob,
     hmac: String,
@@ -279,7 +295,7 @@ struct GetBlobResponse {
     _sequence: u8,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(untagged)]
 enum SetBlobResponse {
     /// The server returns a [`GetBlobResponse`] when it successfully updates
@@ -289,7 +305,7 @@ enum SetBlobResponse {
     Err(SetBlobError),
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 struct SetBlobError {
     error: String,
 }
