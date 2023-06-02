@@ -904,10 +904,7 @@ fn subaccounts(is_liquid: bool) {
         ElectrumSession::new(network).unwrap()
     };
 
-    let credentials = Credentials {
-        mnemonic: "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string(),
-        bip39_passphrase: "".to_string(),
-    };
+    let credentials = test_session.credentials.clone();
     new_session.auth_handler_login(&credentials);
 
     let subaccounts = new_session.get_subaccounts().unwrap();

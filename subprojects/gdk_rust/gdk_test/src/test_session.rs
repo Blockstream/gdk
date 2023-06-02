@@ -8,7 +8,9 @@ use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::secp256k1::SecretKey;
 use gdk_common::bitcoin::Amount;
 use gdk_common::log::{info, warn};
-use gdk_common::{bitcoin, elements};
+use gdk_common::rand::Rng;
+use gdk_common::wally::bip39_mnemonic_from_entropy;
+use gdk_common::{bitcoin, elements, rand};
 use serde_json::{json, Map, Value};
 use tempfile::TempDir;
 
@@ -144,20 +146,20 @@ impl TestSession {
         );
         assert_eq!(session.filter_events("network").len(), ntf_len + 1);
 
-        let mnemonic_str = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about".to_string();
+        let mut entropy = [0u8; 32];
+        rand::thread_rng().fill(&mut entropy);
+        let mnemonic_str = bip39_mnemonic_from_entropy(&entropy);
+
         let credentials = Credentials {
             mnemonic: mnemonic_str.clone(),
             bip39_passphrase: "".to_string(),
         };
         info!("logging in gdk session");
-        let login_data = session.login(credentials.clone()).unwrap();
+        let _login_data = session.login(credentials.clone()).unwrap();
         assert!(session.filter_events("settings").last().is_some());
 
         assert_eq!(network.name, ""); // network name contributes to wallet hash id
-        assert_eq!(
-            login_data.wallet_hash_id,
-            "540dced6da44434f0fcc02cb6cda7e7a9ae5d961759a698797e1835dddc0cd6b"
-        );
+
         let tx_status = session.tx_status().unwrap();
         assert_eq!(tx_status, 15130871412783076140);
         let mut i = 60;
@@ -578,12 +580,7 @@ impl TestSession {
         let utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         assert_eq!(init_num_utxos + 1, utxos.0.get(policy_asset).unwrap().len());
         assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| u.is_blinded.unwrap_or(false)));
-        assert!(utxos
-            .0
-            .get(policy_asset)
-            .unwrap()
-            .iter()
-            .any(|u| !u.is_blinded.unwrap_or(false)));
+        assert!(utxos.0.get(policy_asset).unwrap().iter().any(|u| !u.is_blinded.unwrap_or(false)));
 
         // Spend only confidential utxos
         let node_address = self.node.client.getnewaddress(None, None).unwrap();
@@ -621,12 +618,7 @@ impl TestSession {
         let mut utxos = self.session.get_unspent_outputs(&utxos_opt).unwrap();
         utxos.0.get_mut(policy_asset).unwrap().retain(|e| e.txhash == unconf_txid);
         assert_eq!(utxos.0.get(policy_asset).unwrap().len(), 1);
-        assert!(utxos
-            .0
-            .get(policy_asset)
-            .unwrap()
-            .iter()
-            .all(|u| !u.is_blinded.unwrap_or(false)));
+        assert!(utxos.0.get(policy_asset).unwrap().iter().all(|u| !u.is_blinded.unwrap_or(false)));
         let sat = unconf_sat / 2;
         let _txid = self.send_tx(&node_address, sat, None, None, Some(utxos), None, None);
         assert_eq!(balance_node_before + sat, self.balance_node(None));
