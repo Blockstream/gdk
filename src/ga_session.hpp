@@ -176,6 +176,7 @@ namespace sdk {
         void set_local_encryption_keys_impl(
             locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
+        void derive_wallet_identifiers(nlohmann::json& login_data, bool is_initial_login) const;
         void get_cached_client_blob(const std::string& server_hmac);
         void load_client_blob(locker_t& locker, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
@@ -294,6 +295,7 @@ namespace sdk {
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
         std::unique_ptr<wamp_transport> m_wamp;
+        std::unique_ptr<wamp_transport> m_blobserver;
 
         // SPV header downloading
         std::shared_ptr<std::thread> m_spv_thread; // Header download thread

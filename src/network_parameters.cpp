@@ -163,12 +163,20 @@ static std::vector<std::string> wamp_cert_pins = {
     "64e286b76063602a372efd60cde8db2656a49ee15e84254b3d6eb5fe38f4288b",
 };
 
+static const std::string blobserver_staging = "wss://green-blobserver.staging.blockstream.com/ws";
+static const std::string blobserver_staging_onion = "bloba2m6sogq7qxnxhxexxnphn2xh6h62kvywpekx4crrrg3sl3ttbqd.onion";
+static const std::string blobserver_prod = "wss://green-blobserver.staging.blockstream.com/ws";
+static const std::string blobserver_prod_onion = "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion";
+
 static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks = {
     { "localtest",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", true },
             { "electrum_tls", false },
@@ -208,6 +216,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -248,6 +259,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
             { "development", true },
             { "electrum_tls", false },
@@ -288,6 +302,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidtestnet" },
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -324,6 +341,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -359,6 +379,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", false },
             { "electrum_tls", true },
@@ -398,6 +421,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -438,6 +464,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", true },
             { "electrum_tls", false },
@@ -474,6 +503,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -509,6 +541,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -544,6 +579,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "http://127.0.0.1:8080/address/" },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", true },
             { "electrum_tls", false },
@@ -583,6 +621,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidtestnet" },
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
+            { "blob_server_url", "wss://green-blobserver.staging.blockstream.com/ws" },
+            { "blob_server_onion_url", "blob2unhse5l7niy74zrzsk2mhoqhamwg3yiyvy2q3gqdb6ojuuxftyd.onion" },
+            { "blob_server_http_url", "https://green-blobserver.staging.blockstream.com" },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -662,6 +703,10 @@ namespace sdk {
             set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
             set_override(defaults, "use_tor", user_overrides, false);
             set_override(defaults, "user_agent", user_overrides, empty);
+            set_override(defaults, "blob_server_onion_url", user_overrides, empty);
+            set_override(defaults, "blob_server_url", user_overrides, empty);
+            set_override(defaults, "blob_server_http_url", user_overrides, empty);
+
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;
         }
@@ -746,6 +791,10 @@ namespace sdk {
         return get_url(m_details, "pin_server_url", "pin_server_onion_url", use_tor());
     }
     std::string network_parameters::get_pin_server_public_key() const { return m_details.at("pin_server_public_key"); }
+    std::string network_parameters::get_blob_server_url() const
+    {
+        return get_url(m_details, "blob_server_url", "blob_server_onion_url", use_tor());
+    }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
     std::string network_parameters::get_policy_asset() const { return m_details.value("policy_asset", "btc"); }
@@ -766,10 +815,6 @@ namespace sdk {
     std::string network_parameters::get_registry_connection_string() const
     {
         return get_url(m_details, "asset_registry_url", "asset_registry_onion_url", use_tor());
-    }
-    bool network_parameters::is_tls_connection() const
-    {
-        return boost::algorithm::starts_with(get_connection_string(), "wss://");
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
