@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.0.64
+## Release 0.0.65
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.64 - 23-06-05
 
 ### Added
 - GA_get_unspent_outputs: Singlesig: Liquid: set `is_confidential`.
