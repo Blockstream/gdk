@@ -36,6 +36,9 @@ pub struct NetworkParameters {
     pin_server_onion_url: String,
     pin_server_public_key: String,
 
+    pub blob_server_url: String,
+    pub blob_server_onion_url: String,
+
     pub spv_multi: Option<bool>,
     pub spv_servers: Option<Vec<String>>,
 
@@ -102,6 +105,18 @@ impl ElementsNetwork {
 }
 
 impl NetworkParameters {
+    pub fn blob_server_url(&self) -> Result<url::Url, Error> {
+        let url = if self.use_tor() && !self.blob_server_onion_url.is_empty() {
+            &self.blob_server_onion_url
+        } else if !self.blob_server_url.is_empty() {
+            &self.blob_server_url
+        } else {
+            return Err(Error::BlobServerUrlAbsent(self.use_tor()));
+        };
+
+        url::Url::parse(url).map_err(|_| Error::InvalidUrl(url.clone()))
+    }
+
     pub fn id(&self) -> NetworkId {
         match (self.liquid, self.mainnet, self.development) {
             (true, true, false) => NetworkId::Elements(ElementsNetwork::Liquid),

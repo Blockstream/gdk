@@ -27,6 +27,8 @@ use crate::{ElectrumSessionExt, RpcNodeExt, TestSigner};
 
 const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
+const BLOBSERVER_STAGING_HOST: &'static str = "https://green-blobserver.staging.blockstream.com";
+
 #[allow(unused)]
 pub struct TestSession {
     pub node: electrsd::bitcoind::BitcoinD,
@@ -119,6 +121,7 @@ impl TestSession {
 
         let mut network = NetworkParameters::default();
         network.electrum_url = Some(electrs.electrum_url.clone());
+        network.blob_server_url = BLOBSERVER_STAGING_HOST.to_owned();
         network.sync_interval = Some(1);
         network.development = true;
         network.spv_enabled = Some(true);

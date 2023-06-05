@@ -1,4 +1,5 @@
 use crate::account::xpubs_equivalent;
+use crate::client_blob::BlobClient;
 use crate::spv::CrossValidationResult;
 use crate::{Error, ScriptStatuses, GAP_LIMIT};
 use gdk_common::aes::Aes256GcmSiv;
@@ -11,7 +12,7 @@ use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::{Transaction, Txid};
 use gdk_common::elements;
 use gdk_common::elements::TxOutSecrets;
-use gdk_common::log::{info, log, Level};
+use gdk_common::log::{info, log, warn, Level};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
 use gdk_common::wally::MasterBlindingKey;
@@ -119,7 +120,7 @@ pub struct RawAccountCache {
 
 /// RawStore contains data that are not extractable from xpub+blockchain
 /// like wallet settings and memos
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct RawStore {
     /// wallet settings
     settings: Option<Settings>,
@@ -127,7 +128,9 @@ pub struct RawStore {
     /// transaction memos (account_num -> txid -> memo)
     memos: HashMap<Txid, String>,
 
-    // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
+    // additional fields should always be appended at the end as an `Option` to
+    // retain db backwards compatibility
+    //
     /// account settings
     accounts_settings: Option<HashMap<u32, AccountSettings>>,
 }
@@ -140,6 +143,8 @@ pub struct StoreMeta {
     cipher: Aes256GcmSiv,
     last: HashMap<Kind, sha256::Hash>,
     to_remove: bool,
+
+    blob_client: Option<BlobClient>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -164,7 +169,7 @@ impl Drop for StoreMeta {
             self.remove_file(Kind::Cache);
             std::fs::remove_dir(&self.path).unwrap();
         } else {
-            self.flush().unwrap();
+            let _ = self.flush();
         }
     }
 }
@@ -242,15 +247,28 @@ impl RawCache {
 impl RawStore {
     /// create a new RawStore, try to load data from a file or a fallback file
     /// errors such as corrupted file or model change in the db, result in a empty store that will be repopulated
-    fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Self {
-        Self::try_new(path.as_ref(), cipher).unwrap_or_else(|e| {
+    fn new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv, server_blob: Option<Vec<u8>>) -> Self {
+        Self::try_new(path.as_ref(), cipher, server_blob).unwrap_or_else(|e| {
             log_initialization(e, path);
             Default::default()
         })
     }
 
-    fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
-        let decrypted = load_decrypt(Kind::Store, path, cipher)?;
+    fn try_new<P: AsRef<Path>>(
+        path: P,
+        cipher: &Aes256GcmSiv,
+        server_blob: Option<Vec<u8>>,
+    ) -> Result<Self, Error> {
+        let decrypted = match server_blob {
+            None => load_decrypt(Kind::Store, path, cipher)?,
+            Some(encrypted) => match encrypted.decrypt(cipher) {
+                Ok(decrypted) => decrypted,
+                Err(e) => {
+                    warn!("blob on the server doesn't decrypt, trying local. {e:?}");
+                    load_decrypt(Kind::Store, path, cipher)?
+                }
+            },
+        };
         let store = serde_cbor::from_slice(&decrypted)?;
         Ok(store)
     }
@@ -288,11 +306,18 @@ impl StoreMeta {
         path: P,
         xpub: &ExtendedPubKey,
         id: NetworkId,
+        blob_client: Option<BlobClient>,
     ) -> Result<StoreMeta, Error> {
         let cipher = xpub.to_cipher()?;
         let cache = RawCache::new(path.as_ref(), &cipher);
 
-        let mut store = RawStore::new(path.as_ref(), &cipher);
+        let server_blob = match blob_client.as_ref() {
+            Some(client) => client.get_blob().unwrap_or(None),
+            None => None,
+        }
+        .map(|e| e.0);
+
+        let mut store = RawStore::new(path.as_ref(), &cipher, server_blob);
         let path = path.as_ref().to_path_buf();
 
         std::fs::create_dir_all(&path)?; // does nothing if path exists
@@ -307,6 +332,7 @@ impl StoreMeta {
             path,
             last: HashMap::new(),
             to_remove: false,
+            blob_client,
         };
         Ok(store)
     }
@@ -321,14 +347,14 @@ impl StoreMeta {
         path
     }
 
-    fn remove_file(&mut self, kind: Kind) {
+    pub(crate) fn remove_file(&mut self, kind: Kind) {
         let path = self.file_path(kind);
         if path.exists() {
             std::fs::remove_file(&path).unwrap();
         }
     }
 
-    fn flush_serializable(&mut self, kind: Kind) -> Result<(), Error> {
+    fn flush_serializable(&mut self, kind: Kind) -> Result<Option<Vec<u8>>, Error> {
         let now = Instant::now();
 
         let plaintext = match kind {
@@ -341,19 +367,17 @@ impl StoreMeta {
         if let Some(last_hash) = self.last.get(&kind) {
             if last_hash == &hash {
                 info!("latest serialization hash matches, no need to flush");
-                return Ok(());
+                return Ok(None);
             }
         }
 
         self.last.insert(kind, hash);
 
-        let (nonce_bytes, ciphertext) = plaintext.encrypt(&self.cipher)?;
+        let (nonce_bytes, mut ciphertext) = plaintext.encrypt(&self.cipher)?;
+        ciphertext.splice(0..0, nonce_bytes); // prepend nonce_bytes to the ciphertext
 
         let store_path = self.file_path(kind);
-        //TODO should avoid rewriting if not changed? it involves saving plaintext (or struct hash)
-        // in the front of the file
         let mut file = File::create(&store_path)?;
-        file.write_all(&nonce_bytes)?;
         file.write_all(&ciphertext)?;
         info!(
             "flushing {} bytes on {:?} took {}ms",
@@ -361,11 +385,18 @@ impl StoreMeta {
             &store_path,
             now.elapsed().as_millis()
         );
-        Ok(())
+        Ok(Some(ciphertext))
     }
 
     fn flush_store(&mut self) -> Result<(), Error> {
-        self.flush_serializable(Kind::Store)?;
+        let encrypted_store = self.flush_serializable(Kind::Store)?;
+
+        match (self.blob_client.as_mut(), encrypted_store) {
+            (Some(client), Some(encrypted_store)) => {
+                let _ = client.set_blob(&encrypted_store);
+            }
+            _ => (),
+        }
         Ok(())
     }
 
@@ -464,6 +495,7 @@ impl StoreMeta {
     pub fn insert_memo(&mut self, txid: BETxid, memo: &str) -> Result<(), Error> {
         // Coerced into a bitcoin::Txid to retain database compatibility
         let txid = txid.into_bitcoin();
+        info!("inserting memo {} for txid {:?}", memo, txid);
         self.store.memos.insert(txid, memo.to_string());
         self.flush_store()?;
         Ok(())
@@ -473,8 +505,8 @@ impl StoreMeta {
         self.store.memos.get(&txid.into_bitcoin())
     }
 
-    pub fn insert_settings(&mut self, settings: Option<Settings>) -> Result<(), Error> {
-        self.store.settings = settings;
+    pub fn insert_settings(&mut self, settings: Settings) -> Result<(), Error> {
+        self.store.settings = Some(settings);
         self.flush_store()?;
         Ok(())
     }
@@ -667,13 +699,13 @@ mod tests {
         let txid_btc = txid.ref_bitcoin().unwrap();
 
         {
-            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+            let mut store = StoreMeta::new(&dir, &xpub, id, None).unwrap();
             store.make_account(0, xpub, true).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let store = StoreMeta::new(&dir, &xpub, id).unwrap();
+        let store = StoreMeta::new(&dir, &xpub, id, None).unwrap();
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));

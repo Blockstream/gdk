@@ -84,6 +84,9 @@ pub enum Error {
 
     #[error("Generic({0})")]
     Generic(String),
+
+    #[error("The blob server url is empty. use_tor:{0}")]
+    BlobServerUrlAbsent(bool),
 }
 
 pub fn err<R>(str: &str) -> Result<R> {

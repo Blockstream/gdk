@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 pub mod account;
+mod client_blob;
 pub mod error;
 pub mod headers;
 pub mod interface;
@@ -55,6 +56,7 @@ use std::str::FromStr;
 use std::time::{Duration, Instant};
 use std::{iter, thread};
 
+use crate::client_blob::BlobClient;
 use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
@@ -342,16 +344,25 @@ impl ElectrumSession {
         }
     }
 
-    /// Load store and cache from disk.
+    /// Load store and cache from disk or from the blob if there is one.
     pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<(), Error> {
         if self.store.is_none() {
             let wallet_hash_id = self.network.wallet_hash_id(&opt.master_xpub);
             let mut path: PathBuf = self.network.state_dir.as_str().into();
             std::fs::create_dir_all(&path)?; // does nothing if path exists
-            path.push(wallet_hash_id);
+            path.push(&wallet_hash_id);
+
+            let blob_client = match self.network.blob_server_url() {
+                Ok(url) => {
+                    let agent = self.build_request_agent()?;
+                    Some(BlobClient::new(agent, url, wallet_hash_id))
+                }
+                Err(_) => None,
+            };
 
             info!("Store root path: {:?}", path);
-            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
+            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id(), blob_client)?;
+
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
         }
@@ -722,7 +733,8 @@ impl ElectrumSession {
             let mut avoid_first_wait = true;
             loop {
                 let is_connected = state_updater.current.load(Ordering::Relaxed);
-                debug!("loop start is_connected:{is_connected}");
+
+                debug!("loop start is_connected:{is_connected} user_wants_to_sync:{user_wants_to_sync:?}");
 
                 if avoid_first_wait {
                     avoid_first_wait = false;
@@ -735,7 +747,7 @@ impl ElectrumSession {
                     match url.build_client(proxy.as_deref(), None) {
                         Ok(new_client) => client = new_client,
                         Err(e) => {
-                            warn!("cannot build client {e:?}");
+                            warn!("cannot build client {url:?} {e:?}");
                             continue;
                         }
                     };
@@ -807,6 +819,7 @@ impl ElectrumSession {
                 }
             }
         });
+
         self.handles.push(syncer_tipper_handle);
 
         Ok(())
@@ -1139,7 +1152,7 @@ impl ElectrumSession {
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
         let mut settings = self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?;
         settings.update(value);
-        self.store()?.write()?.insert_settings(Some(settings.clone()))?;
+        self.store()?.write()?.insert_settings(settings.clone())?;
         self.notify.settings(&settings);
         Ok(())
     }
@@ -1885,7 +1898,7 @@ fn unblind_output(
     }
 }
 
-fn wait_or_close(user_wants_to_sync: &Arc<AtomicBool>, interval: u32) -> bool {
+pub(crate) fn wait_or_close(user_wants_to_sync: &AtomicBool, interval: u32) -> bool {
     for _ in 0..(interval * 2) {
         if !user_wants_to_sync.load(Ordering::Relaxed) {
             // Threads should stop, close

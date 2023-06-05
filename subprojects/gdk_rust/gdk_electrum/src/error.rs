@@ -48,6 +48,9 @@ pub enum Error {
     #[error(transparent)]
     BitcoinKeyError(#[from] bitcoin::util::key::Error),
 
+    #[error("couldn't set blob on server: {0}")]
+    BlobClientError(String),
+
     #[error(transparent)]
     ClientError(#[from] electrum_client::Error),
 

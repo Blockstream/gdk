@@ -864,17 +864,22 @@ pub struct Pricing {
     exchange: String,
 }
 
-impl Default for Settings {
+impl Default for Pricing {
     fn default() -> Self {
-        let pricing = Pricing {
+        Pricing {
             currency: "USD".to_string(),
             exchange: "BITFINEX".to_string(),
-        };
+        }
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
         Settings {
             unit: "BTC".to_string(),
             required_num_blocks: 12,
             altimeout: 5,
-            pricing,
+            pricing: Pricing::default(),
             sound: true,
         }
     }
