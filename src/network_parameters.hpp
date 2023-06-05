@@ -62,6 +62,8 @@ namespace sdk {
         bool electrum_tls() const;
         std::string user_agent() const;
         std::string get_connection_string() const;
+        std::string get_blob_server_host() const;
+        std::string get_blob_server_wamp() const;
         std::string get_registry_connection_string() const;
         bool is_tls_connection() const;
         std::vector<uint32_t> csv_buckets() const;
