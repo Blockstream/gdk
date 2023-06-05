@@ -1,6 +1,17 @@
 # Changelog
 
-## Release 0.0.63
+## Release 0.0.64
+
+### Added
+- GA_get_unspent_outputs: Singlesig: Liquid: set `is_confidential`.
+
+### Changed
+- Singlesig: switch from polling to subscription for transactions data. This
+  change is transparent for the caller, but it should improve performances and
+  reduce the server load.
+
+
+## Release 0.0.63 - 23-05-31
 
 ### Added
 - Liquid: Transaction blinding is now performed using a new call
