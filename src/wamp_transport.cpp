@@ -22,6 +22,8 @@
 #include "version.h"
 #include "wamp_transport.hpp"
 
+#include <boost/algorithm/string.hpp>
+
 using namespace std::literals;
 namespace asio = boost::asio;
 namespace wlog = websocketpp::log;
