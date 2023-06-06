@@ -58,20 +58,20 @@ find_package(OpenSSL 1.1.1 EXACT REQUIRED)
 
 #### cmake-based projects with xxx-config.cmake file
 # nlohmann_json
-join_path(_nlohmannDir ${EXTERNAL-DEPS-DIR} "nlohmann_json") 
-find_package(nlohmann_json REQUIRED PATHS ${_nlohmannDir})
+join_path(nlohmann_json_ROOT ${EXTERNAL-DEPS-DIR} "nlohmann_json")
+find_package(nlohmann_json REQUIRED CONFIG)
 # ms-gsl
-join_path(_msgGslDir ${EXTERNAL-DEPS-DIR} "ms-gsl") 
-find_package(Microsoft.GSL REQUIRED PATHS ${_msgGslDir})
+join_path(Microsoft.GSL_ROOT ${EXTERNAL-DEPS-DIR} "ms-gsl")
+find_package(Microsoft.GSL REQUIRED CONFIG)
 # websocketpp
-join_path(_weboscketppDir ${EXTERNAL-DEPS-DIR} "websocketpp") 
-find_package(websocketpp REQUIRED PATHS ${_weboscketppDir})
+join_path(websocketpp_ROOT ${EXTERNAL-DEPS-DIR} "websocketpp")
+find_package(websocketpp REQUIRED CONFIG)
 # msgpack
-join_path(_msgpackDir ${EXTERNAL-DEPS-DIR} "msgpack")
-find_package(msgpack REQUIRED PATHS ${_msgpackDir})
+join_path(msgpack_ROOT ${EXTERNAL-DEPS-DIR} "msgpack")
+find_package(msgpack REQUIRED CONFIG)
 
-join_path(_libeventDir ${EXTERNAL-DEPS-DIR} "libevent" "build")
-find_package(Libevent REQUIRED PATHS ${_libeventDir})
+join_path(Libevent_ROOT ${EXTERNAL-DEPS-DIR} "libevent" "build")
+find_package(Libevent REQUIRED CONFIG)
 
 #### dependencies relying on pkg-config
 find_package(PkgConfig REQUIRED)
