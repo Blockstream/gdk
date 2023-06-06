@@ -50,6 +50,16 @@ ENV RUSTUP_HOME=/usr/local/rustup
 ENV RUST_VERSION=1.68.0
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
+# predownloading rust dependencies
+COPY ./subprojects/gdk_rust/Cargo.* ./subprojects/gdk_rust/
+COPY ./subprojects/gdk_rust/gdk_common/Cargo.* ./subprojects/gdk_rust/gdk_common
+COPY ./subprojects/gdk_rust/gdk_electrum/Cargo.* ./subprojects/gdk_rust/gdk_electrum
+COPY ./subprojects/gdk_rust/gdk_pin_client/Cargo.* ./subprojects/gdk_rust/gdk_pin_client
+COPY ./subprojects/gdk_rust/gdk_registry/Cargo.* ./subprojects/gdk_rust/gdk_registry
+COPY ./subprojects/gdk_rust/gdk_rust/Cargo.* ./subprojects/gdk_rust/gdk_rust
+RUN cargo fetch --manifest-path ./subprojects/gdk_rust/Cargo.toml
+RUN rm -rf ./subprojects
+
 RUN chmod +xr /root
 WORKDIR /root/gdk
 VOLUME /root/gdk
