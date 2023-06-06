@@ -1,4 +1,37 @@
 
+####### DOCKER IMAGES
+.debian-image:
+  image: blockstream/gdk-debian-ci@sha256:104431e767e34299c65205100050f8b1ffe9f040445d2a59914c67e638f64fb9
+  tags: [ ga ]
+
+.android-image:
+  image: blockstream/gdk-android-builder@sha256:XX
+  tags: [ ga ]
+
+.python-image:
+  image: blockstream/gdk-python-builder@sha256:78964d5223c9e9863b83717427bc08456cf605049f847c7c376c7b248e561b68
+  tags: [ ga ]
+
+.ubuntu-image:
+  image: blockstream/gdk-ubuntu-builder@sha256:674649b879bdb5827cc0f19e5602af3772a9ecee8217b7ff00a7a4e84418fa05
+  tags: [ ga ]
+
+.fedora-image:
+  image: blockstream/gdk-fedora-builder@sha256:5018d7f265809e9c964d1637c5c6d912337f52a88acc2f94e3da4f5be4f428d3
+  tags: [ ga ]
+
+
+.py_release:
+  variables:
+    INSTALL_PATH: "gdk-python"
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 1 day
+    when: on_success
+    paths:
+    - wheelhouse
+
+
 .gcloud-publish:
   image: blockstream/gcloud-docker-tf:1.1.7
   tags:

@@ -1,4 +1,3 @@
-image: blockstream/gdk-debian-ci@sha256:104431e767e34299c65205100050f8b1ffe9f040445d2a59914c67e638f64fb9
 
 stages:
   - format
@@ -24,10 +23,8 @@ workflow:
 
 
 
-
 test_format:
-  tags:
-    - ga
+  extends: .debian-image
   stage: format
   needs: []
   script:
@@ -36,8 +33,7 @@ test_format:
 
 
 build_gcc_bullseye:
-  tags:
-    - ga
+  extends: .debian-image
   stage: build
   needs: [ test_format ]
   script:
@@ -45,8 +41,7 @@ build_gcc_bullseye:
 
 
 build_clang_bullseye:
-  tags:
-    - ga
+  extends: .debian-image
   stage: build
   needs: [ test_format ]
   script:
@@ -58,8 +53,7 @@ build_clang_bullseye:
       - build-clang/CTestTestfile.cmake
 
 test_clang_bullseye:
-  tags:
-    - ga
+  extends: .debian-image
   stage: test
   needs: [build_clang_bullseye]
   script:
@@ -69,8 +63,7 @@ test_clang_bullseye:
 
 
 test_rust:
-  tags:
-    - ga
+  extends: .debian-image
   needs: []
   stage: test
   variables:
@@ -96,8 +89,7 @@ test_rust:
   allow_failure: true
 
 rust_audit:
-  tags:
-    - ga
+  extends: .debian-image
   needs: []
   stage: test
   allow_failure: true
@@ -108,9 +100,7 @@ rust_audit:
 
 
 build_clang_fedora:
-  image: blockstream/gdk-fedora-builder@sha256:5018d7f265809e9c964d1637c5c6d912337f52a88acc2f94e3da4f5be4f428d3
-  tags:
-    - ga
+  extends: .fedora-image
   stage: build
   needs: [ test_format ]
   script:
@@ -118,8 +108,7 @@ build_clang_fedora:
     - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
 
 build_gcc_ubuntu20.04:
-  image: blockstream/gdk-ubuntu-builder@sha256:674649b879bdb5827cc0f19e5602af3772a9ecee8217b7ff00a7a4e84418fa05
-  extends: .py_release
+  extends: .ubuntu-image
   stage: build
   needs: [ test_format ]
   script:
@@ -128,8 +117,7 @@ build_gcc_ubuntu20.04:
 
 
 build_mingw64_windows:
-  tags:
-    - ga
+  extends: .debian-image
   stage: build
   needs: [ test_format ]
   variables:
@@ -164,8 +152,7 @@ build_clang_osx:
 
 
 apidocs:
-  tags:
-    - ga
+  extends: .debian-image
   stage: build
   needs: [ test_format ]
   artifacts:

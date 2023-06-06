@@ -4,32 +4,14 @@ include:
 
 
 
-.py_release:
-  tags:
-    - ga
-  variables:
-    INSTALL_PATH: "gdk-python"
-  artifacts:
-    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 1 day
-    when: on_success
-    paths:
-    - wheelhouse
-
-
 .linux-wheel:
-  extends: .py_release
-  image: blockstream/gdk-python-builder@sha256:78964d5223c9e9863b83717427bc08456cf605049f847c7c376c7b248e561b68
-  tags:
-    - ga
+  extends: [.python-image, .py_release ]
   stage: build
   needs: [ test_format ]
   script:
     - source /root/python-$PYTHON_VERSION-venv/bin/activate
     - ./tools/build.sh --gcc --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir /prebuild/gcc --parallel 16
     - auditwheel repair -w wheelhouse $INSTALL_PATH/share/python/*.whl
-
-
 
 
 build-linux-wheel-39:
@@ -63,6 +45,7 @@ release-python:
     paths:
     - $CI_PROJECT_DIR/gdk_dist
     when: on_success
+
 
 upload-python-gcloud:
   extends: .gcloud-publish
