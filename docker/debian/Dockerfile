@@ -10,16 +10,8 @@ COPY ./tools/requirements.txt ./*.tar.gz /root/
 COPY ./docker/debian/install_deps.sh ./docker/debian/install_deps.sh
 RUN ./docker/debian/install_deps.sh
 
-ENV ANDROID_NDK=/root/android-ndk-r23b
-ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 ENV GDK_KEEP_DOWNLOADS=1
 
-
-FROM base AS builderandroid
-RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/android-armeabi-v7a && \
-    ./tools/builddeps.sh --ndk arm64-v8a --prefix /prebuild/android-arm64-v8a && \
-    ./tools/builddeps.sh --ndk x86 --prefix /prebuild/android-x86 && \
-    ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/android-x86_64
 
 FROM base AS builderlinux
 RUN mkdir -p /prebuild/gcc /prebuild/clang
@@ -44,12 +36,6 @@ COPY --from=esplora-base-image /srv/explorer/electrs_bitcoin/bin/electrs /root/b
 COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bin/electrs_liquid
 COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
 COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
-
-COPY --from=builderandroid /prebuild/android-armeabi-v7a /prebuild/android-armeabi-v7a
-COPY --from=builderandroid /prebuild/android-arm64-v8a /prebuild/android-arm64-v8a
-COPY --from=builderandroid /prebuild/android-x86 /prebuild/android-x86
-COPY --from=builderandroid /prebuild/android-x86_64 /prebuild/android-x86_64
-
 
 COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
 COPY --from=builderlinux /prebuild/clang /prebuild/clang

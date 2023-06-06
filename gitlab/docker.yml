@@ -66,3 +66,9 @@ build_gdk-python-builder:
   variables:
     IMAGE: blockstream/gdk-python-builder
     DOCKER_BUILD_CONTEXT: docker/python
+
+build_gdk-android-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-android-builder
+    DOCKER_BUILD_CONTEXT: docker/android
