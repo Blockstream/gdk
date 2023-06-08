@@ -150,6 +150,7 @@ impl Session for ElectrumSession {
             "get_fee_estimates" => {
                 self.get_fee_estimates().map_err(Into::into).and_then(|x| fee_estimate_values(&x))
             }
+            "get_min_fee_rate" => self.get_min_fee_rate().to_json(),
 
             "get_settings" => self.get_settings().to_json(),
             "get_available_currencies" => {

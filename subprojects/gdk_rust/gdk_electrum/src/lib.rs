@@ -1125,6 +1125,10 @@ impl ElectrumSession {
         //TODO better implement default
     }
 
+    pub fn get_min_fee_rate(&self) -> Result<u64, Error> {
+        Ok(self.store()?.read()?.min_fee_rate())
+    }
+
     /// Return the settings or None if the store is not loaded (not logged in)
     pub fn get_settings(&self) -> Option<Settings> {
         Some(self.store().ok()?.read().ok()?.get_settings().unwrap_or_default())
