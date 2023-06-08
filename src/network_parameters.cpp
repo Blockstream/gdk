@@ -169,8 +169,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", std::string() },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", true },
             { "electrum_tls", false },
@@ -210,8 +210,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -252,8 +252,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
             { "development", true },
             { "electrum_tls", false },
@@ -294,8 +294,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidtestnet" },
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 1440, 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -332,8 +332,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 25920, 51840, 65535 } },
             { "development", false },
             { "electrum_tls", true },
@@ -369,8 +369,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>{ 144, 4320, 51840 } },
             { "development", false },
             { "electrum_tls", true },
@@ -410,8 +410,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "lq" },
             { "blinded_prefix", 12u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -452,8 +452,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidnetwork" },
             { "blech32_prefix", "el" },
             { "blinded_prefix", 4u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", true },
             { "electrum_tls", false },
@@ -490,8 +490,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -527,8 +527,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -564,8 +564,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "address_explorer_url", "http://127.0.0.1:8080/address/" },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", true },
             { "electrum_tls", false },
@@ -605,8 +605,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "bip21_prefix", "liquidtestnet" },
             { "blech32_prefix", "tlq" },
             { "blinded_prefix", 23u },
-            { "blob_server_host", std::string() },
-            { "blob_server_onion_host", std::string() },
+            { "blob_server_url", std::string() },
+            { "blob_server_onion_url", std::string() },
             { "csv_buckets", std::vector<uint32_t>() },
             { "development", false },
             { "electrum_tls", true },
@@ -686,8 +686,8 @@ namespace sdk {
             set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
             set_override(defaults, "use_tor", user_overrides, false);
             set_override(defaults, "user_agent", user_overrides, empty);
-            set_override(defaults, "blob_server_onion_host", user_overrides, empty);
-            set_override(defaults, "blob_server_host", user_overrides, empty);
+            set_override(defaults, "blob_server_onion_url", user_overrides, empty);
+            set_override(defaults, "blob_server_url", user_overrides, empty);
 
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;
@@ -773,19 +773,9 @@ namespace sdk {
         return get_url(m_details, "pin_server_url", "pin_server_onion_url", use_tor());
     }
     std::string network_parameters::get_pin_server_public_key() const { return m_details.at("pin_server_public_key"); }
-    std::string network_parameters::get_blob_server_host() const
+    std::string network_parameters::get_blob_server_url() const
     {
-        return get_url(m_details, "blob_server_host", "blob_server_onion_host", use_tor());
-    }
-    std::string network_parameters::get_blob_server_wamp() const
-    {
-        std::string host = get_blob_server_host();
-        if (host.empty()) {
-            return host;
-        } else {
-            std::string wamp = "wss://";
-            return wamp.append(host).append("/ws");
-        }
+        return get_url(m_details, "blob_server_url", "blob_server_onion_url", use_tor());
     }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
