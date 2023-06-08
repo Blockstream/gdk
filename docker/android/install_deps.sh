@@ -13,13 +13,6 @@ unzip ndk.zip
 rm ndk.zip
 
 
-mkdir /tmp/protoc && \
-    cd /tmp/protoc && \
-    curl -Ls https://github.com/protocolbuffers/protobuf/releases/download/v3.19.3/protoc-3.19.3-linux-x86_64.zip > protoc.zip && \
-    unzip protoc.zip && \
-    mv /tmp/protoc/bin/protoc /usr/local/bin && \
-    rm -rf /tmp/protoc
-
 if [ -f /.dockerenv ]; then
     apt remove --purge unzip -yqq
     apt -yqq autoremove

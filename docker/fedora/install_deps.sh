@@ -9,12 +9,6 @@ pip install --require-hashes -r tools/requirements.txt
 curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.68.0
 source /root/.cargo/env
 
-mkdir /tmp/protoc && \
-    cd /tmp/protoc && \
-    curl -Ls https://github.com/protocolbuffers/protobuf/releases/download/v3.19.3/protoc-3.19.3-linux-x86_64.zip > protoc.zip && \
-    unzip protoc.zip && \
-    mv /tmp/protoc/bin/protoc /usr/local/bin && \
-    rm -rf /tmp/protoc
 
 dnf clean all
 rm -fr /var/cache/dnf /tmp/*
