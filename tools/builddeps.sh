@@ -342,7 +342,10 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-    -DJSON_BuildTests:BOOL=OFF
+    -DJSON_BuildTests:BOOL=OFF \
+    -DJSON_Install:BOOL=ON \
+    -DJSON_MultipleHeaders:BOOL=ON \
+    -DJSON_SystemInclude:BOOL=ON
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
