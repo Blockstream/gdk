@@ -597,10 +597,14 @@ namespace sdk {
     {
         m_details.erase("utxos"); // Not needed anymore
         const bool is_liquid = m_net_params.is_liquid();
+        const auto signer = get_signer();
+        const bool use_ae_protocol = signer->use_ae_protocol();
+        const bool is_local_signer = !signer->is_remote();
 
         // Compute the data we need for the hardware to sign the transaction
         signal_hw_request(hw_request::sign_tx);
         m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
+        m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
 
         // We need the inputs, augmented with types, scripts and paths
         auto signing_inputs = get_ga_signing_inputs(m_details);
@@ -622,40 +626,25 @@ namespace sdk {
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
                 input["skip_signing"] = true;
                 input.erase("private_key");
-                continue;
+            } else if (!input.value("skip_signing", false)) {
+                // Wallet input we have been asked to sign.
+                const auto& addr_type = input.at("address_type");
+                GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+
+                // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
+                if (use_ae_protocol) {
+                    add_ae_host_data(input);
+                } else {
+                    remove_ae_host_data(input);
+                }
             }
-            if (input.value("skip_signing", false)) {
-                continue;
-            }
-            const auto& addr_type = input.at("address_type");
-            GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
         }
 
         // FIXME: Do not duplicate the transaction_outputs in required_data
         m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
         m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
 
-        // We use the Anti-Exfil protocol if the hw supports it
-        auto signer = get_signer();
-        const bool use_ae_protocol = signer->use_ae_protocol();
-        m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
-
-        for (auto& input : m_twofactor_data["signing_inputs"]) {
-            if (input.value("skip_signing", false)) {
-                continue;
-            }
-            const auto& addr_type = input.at("address_type");
-            GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-
-            // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-            if (use_ae_protocol && !input.contains("private_key")) {
-                add_ae_host_data(input);
-            } else {
-                remove_ae_host_data(input);
-            }
-        }
-
-        if (!signer->is_remote()) {
+        if (is_local_signer) {
             nlohmann::json prev_txs;
             if (!is_liquid) {
                 // BTC: Provide the previous txs data for validation, even
