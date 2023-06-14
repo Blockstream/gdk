@@ -422,8 +422,7 @@ namespace sdk {
         }
 
         // FIXME: refactor to use HWW path
-        nlohmann::json tx_details = { { "transaction", tx.to_hex() } };
-        const auto signatures = sign_ga_transaction(*this, tx_details, inputs);
+        const auto signatures = sign_ga_transaction(*this, tx, inputs);
 
         const bool is_low_r = get_signer()->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
@@ -480,7 +479,7 @@ namespace sdk {
             // We pass the UTXOs in (under a dummy asset key which is unused)
             // for housekeeping purposes such as internal cache updates.
             nlohmann::json u = { { "dummy", std::move(result["utxos"]) } };
-            tx_details = { { "transaction", tx.to_hex() }, { "utxos", std::move(u) } };
+            nlohmann::json tx_details = { { "transaction", tx.to_hex() }, { "utxos", std::move(u) } };
             restore_tx();
 
             if (details.contains("blinding_nonces")) {

@@ -604,8 +604,10 @@ namespace sdk {
 
         // Compute the data we need for the hardware to sign the transaction
         signal_hw_request(hw_request::sign_tx);
-        m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
+        m_twofactor_data["transaction"] = std::move(m_details["transaction"]);
+        m_twofactor_data["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
+        m_twofactor_data["is_partial"] = m_details.value("is_partial", false);
 
         // We need the inputs, augmented with types, scripts and paths
         auto signing_inputs = get_ga_signing_inputs(m_details);
@@ -619,7 +621,7 @@ namespace sdk {
                 // skip_signing=true and remove its private key so we
                 // don't expose it to the signer.
                 if (!tx) {
-                    tx = std::make_unique<Tx>(json_get_value(m_details, "transaction"), is_liquid);
+                    tx = std::make_unique<Tx>(json_get_value(m_twofactor_data, "transaction"), is_liquid);
                 }
                 const uint32_t sighash = WALLY_SIGHASH_ALL;
                 const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
@@ -656,9 +658,6 @@ namespace sdk {
             }
         }
         m_twofactor_data["signing_transactions"] = std::move(prev_txs);
-
-        // FIXME: Do not duplicate the transaction_outputs in required_data
-        m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
         m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
     }
 
@@ -695,7 +694,9 @@ namespace sdk {
             m_user_signed = true;
         } else {
             // Set the transaction details in the result
-            m_result.swap(m_twofactor_data["transaction"]);
+            m_result.swap(m_details);
+            m_result["transaction"] = std::move(m_twofactor_data["transaction"]);
+            m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
         }
 
         if (server_sign && !m_server_signed) {
@@ -717,10 +718,9 @@ namespace sdk {
         const auto& hw_reply = get_hw_reply();
         const auto& inputs = m_twofactor_data["signing_inputs"];
         const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
-        const auto& transaction_details = m_twofactor_data["transaction"];
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
-        Tx tx(json_get_value(transaction_details, "transaction"), is_liquid);
+        Tx tx(json_get_value(m_twofactor_data, "transaction"), is_liquid);
 
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the
@@ -767,7 +767,9 @@ namespace sdk {
             add_input_signature(tx, i, utxo, signature, is_low_r);
         }
 
-        m_result.swap(m_twofactor_data["transaction"]);
+        // Return our input details with the signatures updated
+        m_result.swap(m_details);
+        m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
         update_tx_size_info(m_net_params, tx, m_result);
     }
 

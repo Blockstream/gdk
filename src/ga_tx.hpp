@@ -96,7 +96,7 @@ namespace sdk {
     std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details);
 
     std::vector<std::string> sign_ga_transaction(
-        session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs);
+        session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs);
 
     void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 

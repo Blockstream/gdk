@@ -1272,10 +1272,8 @@ namespace sdk {
     }
 
     std::vector<std::string> sign_ga_transaction(
-        session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs)
+        session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs)
     {
-        const bool is_liquid = session.get_network_parameters().is_liquid();
-        Tx tx(json_get_value(details, "transaction"), is_liquid);
         std::vector<std::string> sigs(inputs.size());
 
         for (size_t i = 0; i < inputs.size(); ++i) {
