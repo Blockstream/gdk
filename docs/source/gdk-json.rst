@@ -1250,6 +1250,7 @@ Receive address details JSON
     "branch": 1,
     "pointer": 13,
     "script": "52210338832debc5e15ce143d5cf9241147ac0019e7516d3d9569e04b0e18f3278718921025dfaa85d64963252604e1b139b40182bb859a9e2e1aa2904876c34e82158d85452ae",
+    "scriptpubkey": "a914c2427b28b2796243e1e8ee65be7598d465264b0187",
     "script_type": 14,
     "subaccount": 0,
     "subtype": 0
@@ -1261,7 +1262,8 @@ Receive address details JSON
     or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
 :branch: Always ``1``, used in the address derivation path for subaccounts.
 :pointer: The address number/final number in the address derivation path.
-:script: The scriptpubkey of the address.
+:script: The locking script of the address.
+:scriptpubkey: The scriptpubkey of the address.
 :script_type: Integer representing the type of script.
 :subaccount: The subaccount this address belongs to. Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks referenced in ``"script"``, otherwise, 0.
@@ -1273,13 +1275,11 @@ For Liquid addresses, the following additional fields are returned:
 
   {
     "blinding_key": "02a519491b130082a1abbe17395213b46dae43c3e1c05b7a3dbd2157bd83e88a6e",
-    "blinding_script": "a914c2427b28b2796243e1e8ee65be7598d465264b0187",
     "is_blinded": true,
     "unconfidential_address": "XV4PaYgbaJdPnYaJDzE41TpbBF6yBieeyd"
   }
 
 :blinding_key: The blinding key used to blind this address.
-:blinding_script: The script used to generate the blinding key via https://github.com/satoshilabs/slips/blob/master/slip-0077.md.
 :is_blinded: Always ``true``.
 :unconfidential_address: The non-confidential address corresponding to ``address``.  This
     is provided for informational purposes only and should not be used to receive.

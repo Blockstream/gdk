@@ -2715,7 +2715,7 @@ namespace sdk {
         return ret;
     }
 
-    static script_type set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
+    static void set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
     {
         // Add the script type, to allow addresses to be used interchangeably with utxos
         script_type addr_script_type;
@@ -2727,7 +2727,6 @@ namespace sdk {
             addr_script_type = script_type::ga_p2sh_fortified_out;
         }
         address["script_type"] = addr_script_type;
-        return addr_script_type;
     }
 
     void ga_session::update_address_info(nlohmann::json& address, bool is_historic)
@@ -2748,7 +2747,7 @@ namespace sdk {
         json_rename_key(address, "addr_type", "address_type");
 
         const std::string addr_type = address["address_type"];
-        const script_type addr_script_type = set_addr_script_type(address, addr_type);
+        set_addr_script_type(address, addr_type);
 
         // Compute the address from the script the server returned
         const auto server_script = h2b(address.at("script"));
@@ -2786,12 +2785,10 @@ namespace sdk {
             }
         }
 
-        if (m_net_params.is_liquid()) {
-            // we treat the script as a segwit wrapped script, which is the only supported type on Liquid at the moment
-            GDK_RUNTIME_ASSERT(addr_script_type == script_type::ga_p2sh_p2wsh_csv_fortified_out
-                || addr_script_type == script_type::ga_p2sh_p2wsh_fortified_out);
+        constexpr bool allow_unconfidential = true;
+        address["scriptpubkey"] = b2h(scriptpubkey_from_address(m_net_params, server_address, allow_unconfidential));
 
-            address["blinding_script"] = b2h(scriptpubkey_p2sh_p2wsh_from_bytes(server_script));
+        if (m_net_params.is_liquid()) {
             // Mark the address as non-confidential. It will be converted to
             // a confidential address later by asking the sessions signer to do so.
             address["is_confidential"] = false;

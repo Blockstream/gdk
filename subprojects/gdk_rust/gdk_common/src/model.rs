@@ -785,9 +785,8 @@ pub struct AddressPointer {
     pub subaccount: u32,
     pub address_type: String,
     pub address: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "blinding_script")]
-    pub script_pubkey: Option<String>,
+    #[serde(rename = "scriptpubkey")]
+    pub script_pubkey: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blinding_key: Option<String>,
     pub pointer: u32, // child_number in bip32 terminology
@@ -1189,8 +1188,7 @@ pub struct PreviousAddress {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub unconfidential_address: Option<String>,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub blinding_script: Option<String>,
+    pub scriptpubkey: String,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub blinding_key: Option<String>,

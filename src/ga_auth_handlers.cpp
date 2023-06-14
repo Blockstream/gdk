@@ -177,7 +177,7 @@ namespace sdk {
                 scripts.reserve(m_num_required_addrs);
                 for (const auto& subaccount_addresses : m_addresses) {
                     for (const auto& addr : subaccount_addresses.second) {
-                        scripts.push_back(addr.at("blinding_script"));
+                        scripts.push_back(addr.at("scriptpubkey"));
                     }
                 }
                 signal_hw_request(hw_request::get_blinding_public_keys);
@@ -841,7 +841,7 @@ namespace sdk {
         if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
             // Ask the caller to provide the blinding key
             signal_hw_request(hw_request::get_blinding_public_keys);
-            m_twofactor_data["scripts"].push_back(m_result.at("blinding_script"));
+            m_twofactor_data["scripts"].push_back(m_result.at("scriptpubkey"));
         } else {
             // We are done
             m_state = state_type::done;
@@ -882,7 +882,7 @@ namespace sdk {
         signal_hw_request(hw_request::get_blinding_public_keys);
         auto& scripts = m_twofactor_data["scripts"];
         for (const auto& it : m_result.at("list")) {
-            scripts.push_back(it.at("blinding_script"));
+            scripts.push_back(it.at("scriptpubkey"));
         }
     }
 
@@ -951,7 +951,7 @@ namespace sdk {
                 scripts.reserve(change_addresses_p->size());
                 for (auto& it : change_addresses_p->items()) {
                     if (!it.value().value("is_confidential", false)) {
-                        scripts.push_back(it.value().at("blinding_script"));
+                        scripts.push_back(it.value().at("scriptpubkey"));
                     }
                 }
             }

@@ -254,15 +254,11 @@ impl Account {
         let script_pubkey = &address.script_pubkey();
         acc_store.scripts.insert(account_path.clone(), script_pubkey.clone());
         acc_store.paths.insert(script_pubkey.clone(), account_path.clone());
-        let script_pubkey_hex: Option<String> = match &address.blinding_pubkey() {
-            None => None,
-            Some(_pubkey) => Some(script_pubkey.to_hex()),
-        };
         Ok(AddressPointer {
             subaccount: self.account_num,
             address_type: self.script_type.to_string(),
             address: address.to_string(),
-            script_pubkey: script_pubkey_hex,
+            script_pubkey: script_pubkey.to_hex(),
             blinding_key: blinding_key,
             pointer: pointer,
             user_path: user_path.into(),
@@ -303,10 +299,6 @@ impl Account {
                 }
                 _ => (None, None, None),
             };
-            let blinding_script_hex: Option<String> = match &address.blinding_pubkey() {
-                None => None,
-                Some(_pubkey) => Some(script_pubkey.to_hex()),
-            };
             let tx_count = acc_store.all_txs.tx_count(&script_pubkey);
             previous_addresses.push(PreviousAddress {
                 address: address.to_string(),
@@ -319,7 +311,7 @@ impl Account {
                 tx_count,
                 is_confidential,
                 unconfidential_address,
-                blinding_script: blinding_script_hex,
+                scriptpubkey: script_pubkey.to_hex(),
                 blinding_key,
             });
         }
