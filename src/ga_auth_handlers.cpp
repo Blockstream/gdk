@@ -1741,9 +1741,14 @@ namespace sdk {
             if (user_limits.contains("satoshi")) {
                 limit = user_limits["satoshi"].get<amount::value_type>();
             }
-            const uint64_t satoshi = m_details.at("satoshi").at("btc");
-            const uint64_t fee = m_details.at("fee");
-            const uint32_t change_index = m_details.at("change_index").at("btc");
+            amount::value_type satoshi = 0;
+            for (const auto& o : m_details.at("transaction_outputs")) {
+                if (!o.value("is_change", false)) {
+                    satoshi += json_get_amount(o, "satoshi").value();
+                }
+            }
+            const amount::value_type fee = json_get_amount(m_details, "fee").value();
+            const uint32_t change_index = get_tx_change_index(m_details, "btc");
 
             m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
                 { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };

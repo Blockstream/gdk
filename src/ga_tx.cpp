@@ -16,6 +16,9 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
+#define BUILD_ELEMENTS
+#include <wally_coinselection.h>
+
 namespace ga {
 namespace sdk {
     namespace {
@@ -53,12 +56,10 @@ namespace sdk {
         }
 
         // Add a UTXO to a transaction. Returns the amount added
-        static amount add_utxo(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& utxo)
+        static amount add_utxo(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result,
+            nlohmann::json& utxo, bool add_to_used_utxos)
         {
-            if (has_utxo(tx, utxo)) {
-                // The transaction has already the input, do not add it.
-                return amount(utxo.at("satoshi"));
-            }
+            GDK_RUNTIME_ASSERT(!has_utxo(tx, utxo));
 
             const std::string txhash = utxo.at("txhash");
             const auto txid = h2b_rev(txhash);
@@ -103,7 +104,9 @@ namespace sdk {
                     tx_add_raw_input(tx, txid, index, sequence, dummy_input_script(low_r, script));
                 }
             }
-
+            if (add_to_used_utxos) {
+                result["used_utxos"].push_back(utxo);
+            }
             return amount(utxo.at("satoshi"));
         }
 
@@ -301,8 +304,8 @@ namespace sdk {
                     const std::string address = output.at("address");
                     if (addressees.empty()) {
                         // We didn't pay anyone else; this is actually a re-deposit
-                        addressees.emplace_back(
-                            nlohmann::json({ { "address", address }, { "satoshi", output.at("satoshi") } }));
+                        addressees.emplace_back(nlohmann::json(
+                            { { "address", address }, { "satoshi", output.at("satoshi") }, { "is_greedy", true } }));
                         change_index = NO_CHANGE_INDEX;
                         is_redeposit = true;
                     } else {
@@ -316,10 +319,8 @@ namespace sdk {
                     result["change_subaccount"] = output.at("subaccount");
                 }
 
-                result["is_redeposit"] = is_redeposit;
                 result["addressees"] = addressees;
 
-                result["change_index"][policy_asset] = change_index;
                 if (change_index == NO_CHANGE_INDEX && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
                         if (json_get_value(in, "is_relevant", false)) {
@@ -386,7 +387,7 @@ namespace sdk {
                 // re-depositing requires, just create the input and mark
                 // the tx as a redeposit to let the regular creation logic
                 // handle it.
-                result["is_redeposit"] = true;
+                // FIXME: Create a greedy receive address
                 if (result.find("utxos") == result.end()) {
                     // Add a single output from the old tx as our new tx input
                     std::vector<nlohmann::json> utxos;
@@ -406,315 +407,198 @@ namespace sdk {
             return { is_rbf, is_cpfp };
         }
 
-        static void update_change_output(const amount& fee, const amount& total, const amount& required_total,
-            bool have_change_output, bool is_liquid, wally_tx_ptr& tx, uint32_t change_index,
-            const std::string& asset_id, nlohmann::json& result)
-        {
+        struct addressee_details_t {
+            std::string asset_id;
+            amount required_total;
+            amount utxo_sum;
+            amount fee; // Only non-zero for the policy asset
+            std::vector<size_t> addressee_indices;
+            std::vector<uint32_t> utxo_indices;
+            std::optional<size_t> greedy_index;
+        };
 
-            amount::value_type change_amount = 0;
-            if (have_change_output) {
-                // Set the change amount
-                change_amount = (total - required_total - fee).value();
-                if (is_liquid) {
-                    set_tx_output_commitment(tx, change_index, asset_id, change_amount);
-                } else {
-                    auto& change_output = tx->outputs[change_index];
-                    change_output.satoshi = change_amount;
-                    const uint32_t new_change_index = get_uniform_uint32_t(tx->num_outputs);
-                    // Randomize change output
-                    // Move change output to random offset in tx outputs while
-                    // preserving the ordering of the other outputs
-                    while (change_index < new_change_index) {
-                        std::swap(tx->outputs[change_index], tx->outputs[change_index + 1]);
-                        ++change_index;
-                    }
-                    while (change_index > new_change_index) {
-                        std::swap(tx->outputs[change_index], tx->outputs[change_index - 1]);
-                        --change_index;
-                    }
-                }
+        static bool update_greedy_output(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+            addressee_details_t& addressee, amount::value_type change_amount)
+        {
+            if (!addressee.greedy_index.has_value()) {
+                return false;
             }
-            // TODO: change amount should be liquid specific (blinded)
-            result["change_amount"][asset_id] = change_amount;
-            result["change_index"][asset_id] = change_index;
+            if (!change_amount) {
+                // Greedy outputs are not optional: they must have a value
+                throw user_error("No available value for greedy output");
+            }
+            // Fill the greedy output with the left over value
+            const auto greedy_idx = addressee.greedy_index.value();
+            auto& json_addressee = result.at("addressees").at(greedy_idx);
+            json_addressee["satoshi"] = change_amount;
+            tx->outputs[greedy_idx].satoshi = change_amount;
+            if (session.get_network_parameters().is_liquid()) {
+                set_tx_output_commitment(tx, greedy_idx, addressee.asset_id, change_amount);
+            }
+            // FIXME: account for another non-greedy addressee
+            addressee.required_total = addressee.utxo_sum - addressee.fee;
+            return true;
         }
 
-        static amount create_tx_outputs(const std::string& asset_id, const std::string& policy_asset, bool is_partial,
-            bool is_rbf, nlohmann::json& result, nlohmann::json::iterator addressees_p,
-            std::vector<size_t>& reordered_addressees, session_impl& session, wally_tx_ptr& tx,
-            const std::set<std::string>& asset_ids, std::vector<nlohmann::json>& used_utxos)
+        static void create_change_output(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+            const std::string& asset_id, amount::value_type change_amount, bool add_to_tx = true)
         {
-            std::vector<nlohmann::json> current_used_utxos;
-            amount available_total, total, fee, v;
-
-            if (is_rbf) {
-                // Add all the old utxos. Note we don't add them to used_utxos
-                // since the user can't choose to remove them, and we won't
-                // randomise them in the final transaction
-                for (auto& utxo : result.at("old_used_utxos")) {
-                    v = add_utxo(session, tx, utxo);
-                    available_total += v;
-                    total += v;
+            auto& change_address = result["change_address"][asset_id];
+            if (change_address.empty()) {
+                // No previously generated change address, so generate one.
+                if (!result.contains("change_subaccount")) {
+                    // Find out where to send any change
+                    try {
+                        const auto subaccounts = get_tx_subaccounts(result);
+                        result["change_subaccount"] = get_single_subaccount(subaccounts);
+                    } catch (const std::exception&) {
+                        result["change_address"].erase(asset_id);
+                        throw;
+                    }
                 }
+                const uint32_t change_subaccount = result.at("change_subaccount");
+                nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
+                change_address = session.get_receive_address(details);
             }
+            change_address["satoshi"] = change_amount;
+            if (add_to_tx) {
+                add_tx_change_output(session, result, tx, asset_id);
+            }
+            const auto change_idx = tx->num_outputs - 1;
+            tx->outputs[change_idx].satoshi = change_amount;
+            if (session.get_network_parameters().is_liquid()) {
+                set_tx_output_commitment(tx, change_idx, asset_id, change_amount);
+            }
+        }
 
-            // Add all outputs and compute the total amount of satoshi to be sent
-            amount required_total{ 0 };
+        static void pick_asset_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+            nlohmann::json& utxos, addressee_details_t& addressee)
+        {
+            amount::value_type total = 0;
 
+            // Perform asset UTXO selection
+            std::vector<std::pair<size_t, amount>> indexed_values;
+            for (size_t i = 0; i < utxos.size(); ++i) {
+                const auto satoshi = json_get_amount(utxos[i], "satoshi");
+                indexed_values.emplace_back(std::make_pair(i, satoshi));
+                total += satoshi.value();
+            }
+            auto required_total = addressee.required_total.value();
+            if (total < required_total) {
+                throw user_error(res::id_insufficient_funds);
+            }
+            if (addressee.greedy_index.has_value()) {
+                required_total = total; // We require all the available value
+            }
+            auto&& sort_2nd = [](auto& l, auto& r) { return l.second < r.second; };
+            std::sort(indexed_values.begin(), indexed_values.end(), sort_2nd);
+            std::vector<amount::value_type> values;
+            values.reserve(indexed_values.size());
+            for (const auto& v : indexed_values) {
+                values.push_back(v.second.value());
+            }
+            const size_t attempts = 1000000; /* FIXME: dynamic? */
+            const uint32_t io_ratio = 5; /* FIXME: dynamic? */
+            size_t written;
+            addressee.utxo_indices.resize(indexed_values.size());
+            int ret = wally_coinselect_assets(values.data(), values.size(), required_total, attempts, io_ratio,
+                addressee.utxo_indices.data(), addressee.utxo_indices.size(), &written);
+            addressee.utxo_indices.resize(written);
+            GDK_RUNTIME_ASSERT(ret == WALLY_OK);
+
+            for (auto& i : addressee.utxo_indices) {
+                i = indexed_values[i].first; // Set to the index of the chosen UTXO
+                addressee.utxo_sum += add_utxo(session, tx, result, utxos[i], true);
+            }
+        }
+
+        static void pick_policy_asset_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+            nlohmann::json& utxos, addressee_details_t& addressee, bool manual_selection)
+        {
             const auto& net_params = session.get_network_parameters();
-            for (size_t i = 0; i < addressees_p->size(); ++i) {
-                auto& addressee = addressees_p->at(i);
-                const auto addressee_asset_id = asset_id_from_json(net_params, addressee);
-                if (addressee_asset_id == asset_id) {
-                    required_total += add_tx_addressee_output(session, result, tx, addressee);
-                    reordered_addressees.push_back(i);
-                    // If addressee has an index, we are inserting the addressee in the
-                    // transaction at that index, thus change indexes after the index must
-                    // be incremented.
-                    if (addressee.contains("index")) {
-                        const auto index = addressee.at("index");
-                        if (result.contains("change_index")) {
-                            auto& change_indexes = result.at("change_index");
-                            for (auto it = change_indexes.begin(); it != change_indexes.end(); ++it) {
-                                if (*it >= index) {
-                                    *it = static_cast<uint32_t>(*it) + 1;
+            const auto policy_asset = net_params.get_policy_asset();
+            const amount dust_threshold = session.get_dust_threshold(policy_asset);
+            const amount user_fee_rate = json_get_amount(result, "fee_rate");
+            const amount min_fee_rate = session.get_min_fee_rate();
+            const amount network_fee = json_get_amount(result, "network_fee", amount(0));
+            const ssize_t num_utxos = manual_selection ? 0 : utxos.size();
+            const bool is_greedy = addressee.greedy_index.has_value();
+            bool added_change = false;
+
+            for (ssize_t i = 0; i <= num_utxos; ++i) {
+                const bool no_more_utxos = i == num_utxos;
+
+                addressee.fee = get_tx_fee(net_params, tx, min_fee_rate, user_fee_rate);
+                addressee.fee += network_fee;
+                auto required_total = addressee.required_total + addressee.fee;
+
+                if ((!is_greedy && addressee.utxo_sum >= required_total) || (is_greedy && no_more_utxos)) {
+                    // We have enough to cover the amount to send plus any fee
+                    amount::value_type change_amount = 0;
+                    if (addressee.utxo_sum >= required_total) {
+                        change_amount = (addressee.utxo_sum - required_total).value();
+                        if (change_amount) {
+                            if (update_greedy_output(session, tx, result, addressee, change_amount)) {
+                                if (change_amount <= dust_threshold) {
+                                    goto add_more_utxos;
+                                }
+                                change_amount = 0;
+                            } else {
+                                // Generate a change address for the left over asset value
+                                create_change_output(
+                                    session, tx, result, addressee.asset_id, change_amount, !added_change);
+                                if (!added_change) {
+                                    added_change = true;
+                                    --i;
+                                    continue; // Loop again to include the change output
+                                }
+                                if (change_amount <= dust_threshold) {
+                                    goto add_more_utxos;
                                 }
                             }
                         }
-                    }
-                }
-            }
-
-            const std::string strategy = json_add_if_missing(result, "utxo_strategy", UTXO_SEL_DEFAULT);
-            const bool manual_selection = strategy == UTXO_SEL_MANUAL;
-            const bool is_liquid = net_params.is_liquid();
-            const bool send_all = json_add_if_missing(result, "send_all", false);
-            auto& utxos = result.at("utxos");
-            // TODO: filter per asset or assume always single asset
-            if (manual_selection) {
-                // Add all selected utxos
-                for (auto& utxo : result.at("used_utxos")) {
-                    v = add_utxo(session, tx, utxo);
-                    if (is_liquid) {
-                        const std::string asset_id_hex = utxo.at("asset_id");
-                        if (!is_partial && asset_id_hex != policy_asset && !asset_ids.count(asset_id_hex)) {
-                            // The user has provided an asset UTXO without a recipient for it
-                            set_tx_error(result, "Missing recipient for asset " + asset_id_hex);
-                            break;
-                        }
-                        if (asset_id_hex != asset_id) {
-                            continue;
-                        }
-                    }
-                    available_total += v;
-                    total += v;
-                    current_used_utxos.emplace_back(utxo);
-                }
-            } else {
-                // Collect utxos in order until we have covered the amount to send
-                // FIXME: Better coin selection algorithms (esp. minimum size)
-                const auto asset_utxos_p = utxos.find(asset_id);
-                if (asset_utxos_p == utxos.end()) {
-                    if (!is_rbf) {
-                        set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
-                    }
-                } else {
-                    for (auto& utxo : utxos.at(asset_id)) {
-                        if (send_all || total < required_total) {
-                            v = add_utxo(session, tx, utxo);
-                            total += v;
-                            current_used_utxos.emplace_back(utxo);
-                        } else {
-                            v = static_cast<amount::value_type>(utxo.at("satoshi"));
-                        }
-                        available_total += v;
-                    }
-                }
-            }
-
-            // Return the available total for client insufficient fund handling
-            result["available_total"] = available_total.value();
-
-            bool have_change_output = false;
-            bool have_fee_output = false;
-            uint32_t change_index = NO_CHANGE_INDEX;
-            uint32_t fee_index = NO_CHANGE_INDEX;
-
-            if (is_rbf) {
-                have_change_output = get_tx_change_index(result, asset_id) != NO_CHANGE_INDEX;
-                if (have_change_output) {
-                    change_index = add_tx_change_output(session, result, tx, policy_asset);
-                }
-            }
-
-            if (result.find("fee_rate") == result.end()) {
-                result["fee_rate"] = session.get_default_fee_rate().value();
-            }
-            const amount dust_threshold = session.get_dust_threshold(asset_id);
-            const amount user_fee_rate = amount(result.at("fee_rate"));
-            const amount min_fee_rate = session.get_min_fee_rate();
-            const amount network_fee = amount(json_get_value(result, "network_fee", 0u));
-
-            bool force_add_utxo = false;
-
-            if (!is_partial) {
-                if (auto& change_address = result["change_address"][asset_id]; change_address.empty()) {
-                    // No previously generated change address found, so generate one.
-                    if (!result.contains("change_subaccount")) {
-                        // Find out where to send any change
-                        try {
-                            const auto subaccounts = get_tx_subaccounts(result);
-                            result["change_subaccount"] = get_single_subaccount(subaccounts);
-                        } catch (const std::exception&) {
-                            result["change_address"].erase(asset_id);
-                            throw;
-                        }
-                    }
-                    const uint32_t change_subaccount = result.at("change_subaccount");
-                    nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
-                    change_address = session.get_receive_address(details);
-                }
-            }
-
-            const bool include_fee = asset_id == policy_asset && !is_partial;
-            const size_t max_loop_iterations = std::max(size_t(8), utxos.size() * 2 + 1); // +1 in case empty+send all
-            size_t loop_iterations;
-            const size_t num_addressees = addressees_p->size();
-
-            for (loop_iterations = 0; loop_iterations < max_loop_iterations; ++loop_iterations) {
-                if (is_partial) {
-                    break;
-                }
-                amount change, required_with_fee;
-
-                if (include_fee) {
-                    if (is_liquid) {
-                        if (!have_fee_output) {
-                            // Add a dummy fee output for the weight calculation
-                            fee_index = add_tx_fee_output(session, result, tx);
-                            have_fee_output = true;
-                        }
-                        if (!manual_selection) {
-                            auto& used = result["used_utxos"];
-                            for (auto& current : current_used_utxos) {
-                                used.push_back(current);
-                            }
-                        }
-                    }
-                    fee = get_tx_fee(net_params, tx, min_fee_rate, user_fee_rate);
-                    fee += network_fee;
-                }
-
-                if (send_all && addressees_p->at(0).value("asset_id", policy_asset) == asset_id) {
-                    if (available_total < fee + dust_threshold) {
-                        // After paying the fee, we only have dust left, so
-                        // the requested amount isn't payable
-                        set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
                     } else {
-                        // We are sending everything without a change output,
-                        // so compute what we can send (everything minus the
-                        // fee) and exit the loop
-                        required_total = available_total - fee;
-                        if (is_liquid) {
-                            set_tx_output_commitment(tx, 0, asset_id, required_total.value());
-                        } else {
-                            tx->outputs[0].satoshi = required_total.value();
-                        }
-                        if (num_addressees == 1u) {
-                            addressees_p->at(0)["satoshi"] = required_total.value();
-                        }
+                        throw user_error(res::id_insufficient_funds); // Cant cover fee
                     }
-                    goto leave_loop;
-                }
-
-                required_with_fee = required_total + fee;
-                if (total < required_with_fee || force_add_utxo) {
-                    // We don't have enough funds to cover the fee yet, or we
-                    // need to add more to avoid a dusty change output
-                    force_add_utxo = false;
-                    if (manual_selection || !utxos.contains(asset_id) || utxos.at(asset_id).size() == 0
-                        || current_used_utxos.size() == utxos.at(asset_id).size()) {
-                        // Used all inputs and do not have enough funds
-                        set_tx_error(result, res::id_insufficient_funds); // Insufficient funds
-                        goto leave_loop;
-                    }
-
-                    // FIXME: Use our strategy here when non-default implemented
-                    auto& utxo = utxos.at(asset_id).at(current_used_utxos.size());
-                    total += add_utxo(session, tx, utxo);
-                    current_used_utxos.emplace_back(utxo);
-                    continue;
-                }
-
-                change = total - required_with_fee;
-
-                if ((!have_change_output && change < dust_threshold)
-                    || (have_change_output && change >= dust_threshold)) {
-                    // We don't have a change output, and have only dust left over, or
-                    // we do have a change output and its not dust, so we're done
-                    if (!have_change_output) {
-                        // We don't have any change out, so donate the left
-                        // over dust to the mining fee
-                        fee += change;
-                    }
-                leave_loop:
-                    result["fee"] = fee.value();
+                    result["change_amount"][addressee.asset_id] = change_amount;
+                    result["fee"] = addressee.fee.value();
                     result["network_fee"] = network_fee.value();
-                    break;
+                    return;
                 }
-
-                // If we have change,its dust so we need to try adding a new utxo.
-                // This only happens if the fee increase from adding the change
-                // output made the change amount dusty.
-                // We could instead drop the change output and donate more than
-                // the dust to the miners, but that has to be a user preference
-                // (cost vs privacy), which isn't exposed yet, and besides, a
-                // better UTXO selection algorithm should prevent this rare case.
-                if (have_change_output) {
-                    force_add_utxo = true;
-                    continue;
+            add_more_utxos:
+                if (no_more_utxos) {
+                    throw user_error(res::id_insufficient_funds);
                 }
+                // Add the next input
+                addressee.utxo_indices.push_back(i);
+                addressee.utxo_sum += add_utxo(session, tx, result, utxos[i], true);
+            }
+        }
 
-                // We have more than the dust amount of change. Add a change
-                // output to collect it, then loop again in case the amount
-                // this increases the fee by requires more UTXOs.
-                change_index = add_tx_change_output(session, result, tx, asset_id);
-                have_change_output = true;
-                if (is_liquid && include_fee) {
-                    GDK_RUNTIME_ASSERT(fee_index != NO_CHANGE_INDEX);
-                    std::swap(tx->outputs[fee_index], tx->outputs[change_index]);
-                    std::swap(fee_index, change_index);
+        static void pick_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+            nlohmann::json& src_utxos, addressee_details_t& addressee, bool manual_selection)
+        {
+            // Select the inputs to use
+            nlohmann::json empty = nlohmann::json::array_t{};
+            const auto& net_params = session.get_network_parameters();
+            const bool is_policy_asset = addressee.asset_id == net_params.get_policy_asset();
+            bool use_empty = false;
+            if (!manual_selection && !src_utxos.contains(addressee.asset_id)) {
+                // No UTXOs for the asset found
+                if (addressee.utxo_sum >= addressee.required_total) {
+                    use_empty = true;
+                } else {
+                    throw user_error(res::id_insufficient_funds);
                 }
-                result["change_index"][asset_id] = change_index;
             }
+            auto& utxos = manual_selection ? src_utxos : use_empty ? empty : src_utxos.at(addressee.asset_id);
 
-            if (!manual_selection) {
-                used_utxos.insert(used_utxos.end(), std::begin(current_used_utxos), std::end(current_used_utxos));
+            addressee.utxo_indices.reserve(utxos.size());
+            if (is_policy_asset) {
+                pick_policy_asset_utxos(session, tx, result, utxos, addressee, manual_selection);
+            } else {
+                pick_asset_utxos(session, tx, result, utxos, addressee);
             }
-
-            if (loop_iterations >= max_loop_iterations) {
-                GDK_LOG_SEV(log_level::error) << "Endless tx loop building: " << result.dump();
-                GDK_RUNTIME_ASSERT(false);
-            }
-
-            update_change_output(
-                fee, total, required_total, have_change_output, is_liquid, tx, change_index, asset_id, result);
-
-            if (include_fee && is_liquid) {
-                set_tx_output_commitment(tx, fee_index, asset_id, fee.value());
-            }
-
-            if (required_total == 0 && (!include_fee || !is_liquid)) {
-                set_tx_error(result, res::id_no_amount_specified); // // No amount specified
-            } else if (user_fee_rate < min_fee_rate) {
-                set_tx_error(result, res::id_fee_rate_is_below_minimum); // Fee rate is below minimum accepted fee rate
-            }
-
-            if (!manual_selection) {
-                result["used_utxos"] = used_utxos;
-            }
-            result["satoshi"][asset_id] = required_total.value();
-            return fee;
         }
 
         static void create_ga_transaction_impl(session_impl& session, nlohmann::json& result)
@@ -727,28 +611,22 @@ namespace sdk {
             const bool is_partial = json_get_value(result, "is_partial", false);
 
             result["transaction_outputs"] = nlohmann::json::array();
+            if (result.find("fee_rate") == result.end()) {
+                result["fee_rate"] = session.get_default_fee_rate().value();
+            } else if (json_get_amount(result, "fee_rate") < session.get_min_fee_rate()) {
+                set_tx_error(result, res::id_fee_rate_is_below_minimum);
+                return;
+            }
 
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
             std::tie(is_rbf, is_cpfp) = check_bump_tx(session, subaccounts, result);
 
-            const bool is_redeposit = json_get_value(result, "is_redeposit", false);
-
-            if (is_redeposit) {
-                // When re-depositing, send everything and don't create change
-                result["send_all"] = true;
-            }
-            result["is_redeposit"] = is_redeposit;
-
             const bool is_sweep = result.find("private_key") != result.end();
             result["is_sweep"] = is_sweep;
 
-            // Let the caller know if addressees should not be modified
-            result["addressees_read_only"] = is_redeposit || is_rbf || is_cpfp || is_sweep;
-
             if (is_partial) {
-                GDK_RUNTIME_ASSERT(!is_rbf && !is_cpfp && !is_redeposit && !is_sweep);
-                GDK_RUNTIME_ASSERT(!json_get_value(result, "send_all", false));
+                GDK_RUNTIME_ASSERT(!is_rbf && !is_cpfp && !is_sweep);
             }
 
             // We must have addressees to send to, and if sending everything, only one
@@ -787,17 +665,11 @@ namespace sdk {
                     }
                     result["utxos"][policy_asset] = std::move(sweep_utxos);
                 }
-                result["send_all"] = true;
                 // Use the provided address
                 GDK_RUNTIME_ASSERT(addressees_p->size() == 1u);
+                addressees_p->at(0)["is_greedy"] = true;
                 addressees_p->at(0)["satoshi"] = 0;
             }
-
-            const bool send_all = json_add_if_missing(result, "send_all", false);
-            // For now, the amount can't be directly edited for the below actions
-            // With coin control, the amount will auto update as utxos are
-            // selected/deselected
-            result["amount_read_only"] = send_all || is_redeposit || is_rbf || is_cpfp || is_sweep;
 
             const std::string strategy = json_add_if_missing(result, "utxo_strategy", UTXO_SEL_DEFAULT);
             const bool manual_selection = strategy == UTXO_SEL_MANUAL;
@@ -812,14 +684,7 @@ namespace sdk {
                 }
             } else {
                 // We will recompute the used utxos
-                result.erase("used_utxos");
-            }
-
-            // Send all should not be visible/set when RBFing
-            GDK_RUNTIME_ASSERT(!is_rbf || (!send_all || is_redeposit));
-
-            if (send_all && num_addressees > 1u) {
-                set_tx_error(result, res::id_send_all_requires_a_single); // Send all requires a single output
+                result["used_utxos"] = nlohmann::json::array();
             }
 
             auto& utxos = result.at("utxos");
@@ -827,50 +692,118 @@ namespace sdk {
             const uint32_t num_extra_utxos = is_rbf ? result.at("old_used_utxos").size() : 0;
             const uint32_t locktime = result.value("transaction_locktime", current_block_height);
             const uint32_t tx_version = result.value("transaction_version", WALLY_TX_VERSION_2);
-            wally_tx_ptr tx = tx_init(locktime, utxos.size() + num_extra_utxos, num_addressees + 1, tx_version);
+            wally_tx_ptr tx = tx_init(locktime, utxos.size() + num_extra_utxos, num_addressees * 2, tx_version);
             if (!is_rbf && !result.contains("transaction_locktime")) {
                 set_anti_snipe_locktime(tx, current_block_height);
             }
 
-            std::vector<nlohmann::json> used_utxos;
-            used_utxos.reserve(utxos.size());
+            std::map<std::string, addressee_details_t> asset_addressees;
 
-            std::set<std::string> asset_ids;
-            for (auto& addressee : *addressees_p) {
+            // Make sure we have details for the policy asset
+            auto& btc_details = asset_addressees[policy_asset];
+            btc_details.asset_id = policy_asset;
+
+            // Validate the given addressees
+            for (size_t i = 0; i < addressees_p->size(); ++i) {
+                auto& addressee = addressees_p->at(i);
                 if (auto error = validate_tx_addressee(session, addressee); !error.empty()) {
                     set_tx_error(result, error);
                     return;
                 }
-                asset_ids.emplace(asset_id_from_json(net_params, addressee));
-            }
-
-            std::vector<size_t> reordered_addressees;
-            reordered_addressees.reserve(addressees_p->size());
-
-            if (is_liquid) {
-                std::for_each(std::begin(asset_ids), std::end(asset_ids), [&](const auto& id) {
-                    if (id != policy_asset) {
-                        create_tx_outputs(id, policy_asset, is_partial, is_rbf, result, addressees_p,
-                            reordered_addressees, session, tx, asset_ids, used_utxos);
+                auto asset_id = asset_id_from_json(net_params, addressee);
+                auto& a = asset_addressees[asset_id];
+                a.asset_id = asset_id;
+                if (json_get_value(addressee, "is_greedy", false)) {
+                    if (a.greedy_index.has_value()) {
+                        set_tx_error(result, "only one output per asset type can be greedy");
+                        return;
+                    } else if (is_partial) {
+                        set_tx_error(result, "greedy outputs cannot be used with partial transactions");
+                        return;
                     }
-                });
-            }
-            amount fee;
-            if (!is_partial || asset_ids.find(policy_asset) != asset_ids.end()) {
-                // do fee output + L-BTC outputs
-                fee = create_tx_outputs(policy_asset, policy_asset, is_partial, is_rbf, result, addressees_p,
-                    reordered_addressees, session, tx, asset_ids, used_utxos);
+                    a.greedy_index = i;
+                    addressee["satoshi"] = amount::value_type(0);
+                }
+                a.addressee_indices.push_back(i);
+                // Add the value of this output to the required total
+                a.required_total += json_get_amount(addressee, "satoshi");
             }
 
-            if (json_get_value(result, "error").empty()) {
-                // Reorder the addresees
-                auto& addressees = result["addressees"];
-                nlohmann::json::array_t new_addressees;
-                new_addressees.reserve(reordered_addressees.size());
-                for (auto from_index : reordered_addressees) {
-                    new_addressees.emplace_back(std::move(addressees.at(from_index)));
+            // Add all addressees to our transaction, in order
+            for (size_t i = 0; i < addressees_p->size(); ++i) {
+                auto& json_addressee = addressees_p->at(i);
+                add_tx_addressee_output(session, result, tx, json_addressee);
+            }
+
+            if (is_rbf) {
+                // Add all the old utxos. Note we don't add them to used_utxos
+                // since the user can't choose to remove them, and we won't
+                // randomise them in the final transaction
+                for (auto& utxo : result.at("old_used_utxos")) {
+                    btc_details.utxo_sum += add_utxo(session, tx, result, utxo, false); // FIXME: add to used_utxos?
                 }
-                result["addressees"] = std::move(new_addressees);
+            }
+
+            if (manual_selection) {
+                // Add all of the given inputs
+                auto& used_utxos = result.at("used_utxos");
+                for (size_t i = 0; i < used_utxos.size(); ++i) {
+                    const auto asset_id = asset_id_from_json(net_params, used_utxos[i]);
+                    const bool is_policy_asset = asset_id == policy_asset;
+                    if (is_liquid && !is_partial && !is_policy_asset) {
+                        // Ensure this UTXO has a corresponding recipient
+                        // (ignoring the policy asset, which is required for fees)
+                        if (asset_addressees.find(asset_id) == asset_addressees.end()) {
+                            set_tx_error(result, "Missing recipient for asset " + asset_id);
+                            return;
+                        }
+                    }
+                    auto& addressee = asset_addressees[asset_id];
+                    addressee.utxo_indices.push_back(i);
+                    addressee.utxo_sum += add_utxo(session, tx, result, used_utxos[i], false);
+                }
+            }
+
+            // We process all assets first, then the policy asset last
+            for (bool process_policy_asset : { false, true }) {
+                if (is_partial) {
+                    continue;
+                }
+                for (auto& a : asset_addressees) {
+                    auto& addressee = a.second;
+                    const bool is_policy_asset = addressee.asset_id == policy_asset;
+                    if (process_policy_asset != is_policy_asset) {
+                        continue;
+                    }
+                    if (is_policy_asset || !manual_selection) {
+                        // Compute the UTXOs to use and their sum
+                        pick_utxos(session, tx, result, utxos, addressee, manual_selection);
+                    }
+                    if (addressee.utxo_sum < addressee.required_total + addressee.fee) {
+                        set_tx_error(result, res::id_insufficient_funds);
+                        return;
+                    }
+                    if (!is_policy_asset) {
+                        // Check input vs output values. Add excess to any
+                        // greedy output or change, as needed.
+                        amount::value_type change_amount = 0;
+                        change_amount = (addressee.utxo_sum - addressee.required_total).value();
+                        if (change_amount) {
+                            if (update_greedy_output(session, tx, result, addressee, change_amount)) {
+                                change_amount = 0;
+                            } else {
+                                // Generate a change address for the left over asset value
+                                const bool add_to_tx = true;
+                                create_change_output(session, tx, result, addressee.asset_id, change_amount, add_to_tx);
+                            }
+                        }
+                        result["change_amount"][addressee.asset_id] = change_amount;
+                    }
+                }
+            }
+
+            if (is_liquid && !is_partial) {
+                add_tx_fee_output(session, result, tx, btc_details.fee.value());
             }
             update_tx_info(session, tx, result);
 
@@ -880,20 +813,21 @@ namespace sdk {
                 // and the transaction construction policies. As a result it may occur that rbf
                 // requirements are not met, but, in general, it is not possible to check it
                 // before the transaction is actually constructed.
-                const amount old_fee = amount(json_get_value(result, "old_fee", 0u));
-                const amount old_fee_rate = amount(json_get_value(result, "old_fee_rate", 0u));
-                const amount calculated_fee_rate = amount(result.at("calculated_fee_rate"));
-                const amount min_fee_rate = session.get_min_fee_rate();
-                const uint32_t vsize = result.at("transaction_vsize");
-                const amount bandwidth_fee = vsize * min_fee_rate / 1000;
-                if (fee < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
+                const amount old_fee = json_get_amount(result, "old_fee", amount(0));
+                const amount old_fee_rate = json_get_amount(result, "old_fee_rate", amount(0));
+                const amount calculated_fee_rate = json_get_amount(result, "calculated_fee_rate");
+                const amount::value_type vsize = json_get_amount(result, "transaction_vsize").value();
+                const amount::value_type bandwidth_fee = vsize * session.get_min_fee_rate().value() / 1000;
+                if (btc_details.fee.value() < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
                 }
             }
-
+#if 0
+            // FIXME: set "satoshi" fields to the net effect on the wallet
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 randomise_inputs(tx, used_utxos);
             }
+#endif
         }
 
         static std::string sign_input(
@@ -1076,12 +1010,13 @@ namespace sdk {
             throw user_error(error);
         }
 
-        const auto& used_utxos = details.at("used_utxos");
+        const auto used_utxos = details.find("used_utxos");
         const auto old_utxos = details.find("old_used_utxos");
         const bool have_old = old_utxos != details.end();
+        const bool have_used_utxos = used_utxos != details.end();
 
         std::vector<nlohmann::json> result;
-        result.reserve(used_utxos.size() + (have_old ? old_utxos->size() : 0));
+        result.reserve((have_used_utxos ? used_utxos->size() : 0) + (have_old ? old_utxos->size() : 0));
 
         if (have_old) {
             for (const auto& utxo : *old_utxos) {
@@ -1089,8 +1024,10 @@ namespace sdk {
             }
         }
 
-        for (const auto& utxo : used_utxos) {
-            result.push_back(utxo);
+        if (have_used_utxos) {
+            for (const auto& utxo : *used_utxos) {
+                result.push_back(utxo);
+            }
         }
         return result;
     }

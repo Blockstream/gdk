@@ -565,7 +565,7 @@ namespace sdk {
         return amount(satoshi);
     }
 
-    amount add_tx_addressee_output(
+    void add_tx_addressee_output(
         session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
@@ -609,17 +609,17 @@ namespace sdk {
             const uint32_t index = addressee.at("index");
             tx_add_elements_raw_output_at(tx, index, scriptpubkey, asset_commitment, value_commitment, nonce_commitment,
                 surjectionproof, rangeproof);
-            return amount(satoshi);
+            return;
         }
 
-        if (!result.value("send_all", false)) {
+        if (!addressee.value("is_greedy", false)) {
             const auto satoshi = addressee["satoshi"].get<amount::value_type>();
             if (satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
-                set_tx_error(result, res::id_invalid_amount);
+                throw user_error(res::id_invalid_amount);
             }
         }
-        return add_tx_output(net_params, result, tx, addressee);
+        add_tx_output(net_params, result, tx, addressee);
     }
 
     size_t add_tx_change_output(
@@ -638,11 +638,12 @@ namespace sdk {
         return tx->num_outputs - 1;
     }
 
-    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx)
+    size_t add_tx_fee_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, amount::value_type satoshi)
     {
         const auto& net_params = session.get_network_parameters();
-        nlohmann::json output{ { "satoshi", 0 }, { "scriptpubkey", nlohmann::json::array() }, { "is_change", false },
-            { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
+        nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", nlohmann::json::array() },
+            { "is_change", false }, { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
         add_tx_output(net_params, result, tx, output);
         return tx->num_outputs - 1;
     }
@@ -670,9 +671,18 @@ namespace sdk {
 
     uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id)
     {
-        const auto index_p = result.find("change_index");
-        if (index_p != result.end()) {
-            return index_p->value(asset_id, NO_CHANGE_INDEX);
+        const auto change_address_p = result.find("change_address");
+        if (change_address_p != result.end()) {
+            const auto p = change_address_p->find(asset_id);
+            if (p != change_address_p->end()) {
+                const std::string spk = p->at("scriptpubkey");
+                auto& transaction_outputs = result.at("transaction_outputs");
+                for (size_t i = 0; i < transaction_outputs.size(); ++i) {
+                    if (transaction_outputs.at(i).at("scriptpubkey") == spk) {
+                        return i;
+                    }
+                }
+            }
         }
         return NO_CHANGE_INDEX;
     }

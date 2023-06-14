@@ -82,7 +82,7 @@ namespace sdk {
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    amount add_tx_addressee_output(
+    void add_tx_addressee_output(
         session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee);
 
     // Add an output from a JSON change output, returns the index in tx->outputs
@@ -91,7 +91,8 @@ namespace sdk {
         session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id);
 
     // Add a fee output to a tx, returns the index in tx->outputs
-    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, wally_tx_ptr& tx);
+    size_t add_tx_fee_output(
+        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, amount::value_type satoshi);
 
     // Update the json tx size/fee rate information from tx
     void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
