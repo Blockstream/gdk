@@ -677,49 +677,68 @@ namespace sdk {
         return NO_CHANGE_INDEX;
     }
 
+    const nlohmann::json& get_tx_output_source(nlohmann::json& result, const wally_tx_ptr& tx, size_t i)
+    {
+        const auto& o = tx->outputs[i];
+        const std::string spk = b2h(gsl::make_span(o.script, o.script_len));
+        auto&& match_spk = [&spk](const auto& a) { return a.at("scriptpubkey") == spk; };
+        auto& addressees = result.at("addressees");
+
+        // Addressee
+        auto p = std::find_if(addressees.begin(), addressees.end(), match_spk);
+        if (p != addressees.end()) {
+            return *p;
+        }
+        // Change output
+        for (auto& it : result.at("change_address").items()) {
+            if (match_spk(it.value())) {
+                return it.value();
+            }
+        }
+        throw user_error("No matching addressee or change for transaction output");
+    }
+
     void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result)
     {
         const auto& net_params = session.get_network_parameters();
         update_tx_size_info(net_params, tx, result);
 
         const bool is_liquid = net_params.is_liquid();
-        const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0U;
 
         nlohmann::json::array_t outputs;
-        if (!valid || !json_get_value(result, "error").empty() || !result.contains("addressees")) {
+        if (!tx->num_inputs || !tx->num_outputs || !json_get_value(result, "error").empty()
+            || !result.contains("addressees")) {
             // The tx is not valid/is incomplete
             result["transaction_outputs"] = std::move(outputs);
             return;
         }
 
         outputs.reserve(tx->num_outputs);
+        nlohmann::json empty;
 
-        size_t addressee_index = 0;
         for (size_t i = 0; i < tx->num_outputs; ++i) {
             const auto& o = tx->outputs[i];
+            const bool is_fee = !o.script;
+            const auto& src = is_fee ? empty : get_tx_output_source(result, tx, i);
+
             auto addressee = nlohmann::json::object();
             GDK_RUNTIME_ASSERT(!is_liquid || o.asset);
             const bool is_blinded = is_liquid && *o.asset != 1 && o.value && *o.value != 1;
             std::string asset_id;
 
             if (is_blinded) {
-                // Find the addressee with the same index as the current output
-                for (const auto& addr : result.at("addressees")) {
-                    if (addr.value("is_blinded", false) && addr.at("index") == i) {
-                        addressee = addr;
-                    }
-                }
-                GDK_RUNTIME_ASSERT(!addressee.empty());
-                asset_id = addressee.at("asset_id");
+                GDK_RUNTIME_ASSERT(!is_fee && src.at("index") == i);
+                asset_id = src.at("asset_id");
             } else if (is_liquid) {
                 asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+                if (is_fee) {
+                    GDK_RUNTIME_ASSERT(asset_id == net_params.get_policy_asset());
+                } else {
+                    GDK_RUNTIME_ASSERT(src.at("asset_id") == asset_id);
+                }
             } else {
                 asset_id = net_params.get_policy_asset();
             }
-            const bool is_fee = o.script == nullptr && o.script_len == 0u;
-            const auto scriptpubkey_hex = !is_fee ? b2h(gsl::make_span(o.script, o.script_len)) : std::string{};
-
-            const uint32_t change_index = get_tx_change_index(result, asset_id);
 
             amount::value_type satoshi = o.satoshi;
             if (is_liquid) {
@@ -728,35 +747,23 @@ namespace sdk {
                     satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
                 } else {
                     GDK_RUNTIME_ASSERT(is_blinded);
-                    satoshi = addressee.at("satoshi");
+                    satoshi = src.at("satoshi");
                 }
             }
+            // FIXME: Change addresses do not have their satoshi values set
+            GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || src.at("satoshi") == satoshi);
 
-            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", scriptpubkey_hex },
-                { "is_change", i == change_index }, { "is_fee", is_fee }, { "asset_id", asset_id } };
-
-            if (is_fee) {
-                // Nothing to do
-            } else if (i == change_index) {
-                // Insert our change meta-data for the change output
-                const auto& change_address = result.at("change_address").at(asset_id);
-                output.insert(change_address.begin(), change_address.end());
-            } else {
-                if (!is_blinded) {
-                    // Go to the next not blinded addressee
-                    while (addressee_index < result.at("addressees").size()) {
-                        const auto& addr = result.at("addressees").at(addressee_index);
-                        ++addressee_index;
-                        if (!addr.value("is_blinded", false)) {
-                            addressee = addr;
-                            break;
-                        }
-                    }
-                }
-                GDK_RUNTIME_ASSERT(!addressee.empty());
-                output.insert(addressee.begin(), addressee.end());
+            auto spk = is_fee ? std::string() : b2h(gsl::make_span(o.script, o.script_len));
+            if (!is_fee) {
+                GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
             }
+            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) }, { "is_fee", is_fee },
+                { "asset_id", asset_id } };
 
+            if (!is_fee) {
+                // Add the fields from the source addressee/change output
+                output.insert(src.begin(), src.end());
+            }
             outputs.emplace_back(std::move(output));
         }
         result["transaction_outputs"] = std::move(outputs);
