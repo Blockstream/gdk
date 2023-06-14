@@ -1387,13 +1387,13 @@ namespace sdk {
         // We must have at least a regular output and a fee output, unless partial
         GDK_RUNTIME_ASSERT(transaction_outputs.size() >= (is_partial ? 1 : 2));
         const auto num_fees = std::count_if(transaction_outputs.begin(), transaction_outputs.end(),
-            [](const auto& o) { return o.value("is_fee", false); });
+            [](const auto& o) { return json_get_value(o, "scriptpubkey").empty(); });
         if (is_partial) {
             // We must not have a fee output as the transaction is incomplete
             GDK_RUNTIME_ASSERT(num_fees == 0);
         } else {
             // We must have a fee output, and it must be the last one
-            GDK_RUNTIME_ASSERT(num_fees == 1 && transaction_outputs.back().value("is_fee", false));
+            GDK_RUNTIME_ASSERT(num_fees == 1 && json_get_value(transaction_outputs.back(), "scriptpubkey").empty());
         }
         std::vector<unsigned char> assets, generators, abfs, all_abfs, vbfs;
         std::vector<uint64_t> values;
@@ -1436,8 +1436,8 @@ namespace sdk {
 
         for (size_t i = 0; i < transaction_outputs.size(); ++i) {
             auto& output = transaction_outputs[i];
-            if (output.value("is_fee", false)) {
-                continue;
+            if (json_get_value(output, "scriptpubkey").empty()) {
+                continue; // Fee
             }
             const auto asset_id = h2b_rev(output.at("asset_id"));
             const uint64_t value = output.at("satoshi");

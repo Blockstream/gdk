@@ -1031,7 +1031,7 @@ namespace sdk {
         if (!is_partial) {
             // Remove the fee output for non-partial txs
             GDK_RUNTIME_ASSERT(!outputs.empty());
-            GDK_RUNTIME_ASSERT(outputs.back().value("is_fee", false));
+            GDK_RUNTIME_ASSERT(json_get_value(outputs.back(), "scriptpubkey").empty());
             outputs.erase(outputs.size() - 1);
         }
         return m_state;

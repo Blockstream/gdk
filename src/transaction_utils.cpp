@@ -464,9 +464,10 @@ namespace sdk {
     {
         std::string old_error = json_get_value(result, "error");
         const amount satoshi = json_get_amount(output, "satoshi");
+        std::string script_hex = output.at("scriptpubkey");
         std::vector<unsigned char> script;
-        if (!output.value("is_fee", false)) {
-            script = h2b(output.at("scriptpubkey"));
+        if (!script_hex.empty()) {
+            script = h2b(script_hex);
         }
         if (!net_params.is_liquid()) {
             tx.add_output(satoshi.value(), script);
@@ -562,7 +563,7 @@ namespace sdk {
     {
         const auto& net_params = session.get_network_parameters();
         nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", nlohmann::json::array() },
-            { "is_change", false }, { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
+            { "is_change", false }, { "asset_id", net_params.get_policy_asset() } };
         add_tx_output(net_params, result, tx, output);
         return tx.get_num_outputs() - 1;
     }
@@ -695,7 +696,7 @@ namespace sdk {
             if (!is_fee) {
                 GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
             }
-            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) }, { "is_fee", is_fee } };
+            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) } };
             if (is_liquid) {
                 output.emplace("asset_id", asset_id);
             }

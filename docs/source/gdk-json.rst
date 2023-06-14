@@ -688,7 +688,6 @@ Sign transaction JSON
       "asset_id": "btc",
       "branch": 1,
       "is_change": true,
-      "is_fee": false,
       "pointer": 3,
       "satoshi": 44792,
       "scriptpubkey": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
@@ -705,7 +704,6 @@ Sign transaction JSON
       "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
       "asset_id": "btc",
       "is_change": false,
-      "is_fee": false,
       "satoshi": 5000,
       "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
@@ -807,7 +805,6 @@ Send transaction JSON
       "asset_id": "btc",
       "branch": 1,
       "is_change": true,
-      "is_fee": false,
       "pointer": 3,
       "satoshi": 44792,
       "scriptpubkey": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
@@ -824,7 +821,6 @@ Send transaction JSON
       "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
       "asset_id": "btc",
       "is_change": false,
-      "is_fee": false,
       "satoshi": 5000,
       "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
     }
