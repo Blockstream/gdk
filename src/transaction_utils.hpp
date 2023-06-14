@@ -66,17 +66,12 @@ namespace sdk {
 
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver);
 
-    // Compute the fee for a tx
-    amount get_tx_fee(const network_parameters& net_params, const Tx& tx, amount min_fee_rate, amount fee_rate);
-
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential);
 
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
-
-    void set_tx_output_commitment(Tx& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi);
 
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee);
 
@@ -107,9 +102,6 @@ namespace sdk {
 
     // Returns true if a tx has AMP inputs
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
-
-    // Set the locktime on tx to avoid fee sniping
-    void set_anti_snipe_locktime(Tx& tx, uint32_t current_block_height);
 } // namespace sdk
 } // namespace ga
 

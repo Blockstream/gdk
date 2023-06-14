@@ -24,15 +24,14 @@ namespace sdk {
 
         static nlohmann::json get_tx_input_fields(const Tx& tx, size_t index)
         {
-            GDK_RUNTIME_ASSERT(index < tx.get_num_inputs());
-            const wally_tx_input* in = tx.get()->inputs + index;
+            const auto& in = tx.get_input(index);
             nlohmann::json::array_t witness;
-            for (size_t i = 0; i < in->witness->num_items; ++i) {
-                const auto* item = in->witness->items + i;
+            for (size_t i = 0; i < in.witness->num_items; ++i) {
+                const auto* item = in.witness->items + i;
                 witness.push_back(item->witness_len ? b2h(gsl::make_span(item->witness, item->witness_len)) : "");
             }
-            return { { "txhash", b2h_rev(gsl::make_span(in->txhash, sizeof(in->txhash))) }, { "pt_idx", in->index },
-                { "sequence", in->sequence }, { "script_sig", b2h(gsl::make_span(in->script, in->script_len)) },
+            return { { "txhash", b2h_rev(gsl::make_span(in.txhash, sizeof(in.txhash))) }, { "pt_idx", in.index },
+                { "sequence", in.sequence }, { "script_sig", b2h(gsl::make_span(in.script, in.script_len)) },
                 { "witness", std::move(witness) } };
         }
 
@@ -99,7 +98,7 @@ namespace sdk {
             const network_parameters& net_params, const Tx& tx, const nlohmann::json& proposal_output)
         {
             GDK_RUNTIME_ASSERT(tx.get_num_outputs());
-            const auto& tx_output = tx.get()->outputs[0];
+            const auto& tx_output = tx.get_output(0);
             const auto rangeproof = gsl::make_span(tx_output.rangeproof, tx_output.rangeproof_len);
             const auto commitment = gsl::make_span(tx_output.value, tx_output.value_len);
             const auto nonce = gsl::make_span(tx_output.nonce, tx_output.nonce_len);
@@ -139,7 +138,7 @@ namespace sdk {
             const auto output_value = proposal_output.at("satoshi");
             const auto value_blind_proof = h2b(proposal_output.at("value_blind_proof"));
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
-            const auto& tx_output = tx->get()->outputs[0];
+            const auto& tx_output = tx->get_output(0);
             const auto output_value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);
 
             bool have_matched_asset_commitment = tx_output.asset_len == output_asset_commitment.size()
@@ -321,8 +320,8 @@ namespace sdk {
             nlohmann::json::array_t addressees = { std::move(maker_addressee), std::move(taker_addressee) };
 
             nlohmann::json create_details
-                = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->get()->version },
-                      { "transaction_locktime", m_tx->get()->locktime }, { "utxo_strategy", "manual" },
+                = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->get_version() },
+                      { "transaction_locktime", m_tx->get_locktime() }, { "utxo_strategy", "manual" },
                       { "utxos", nlohmann::json::object() }, { "used_utxos", std::move(used_utxos) },
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));

@@ -112,7 +112,7 @@ namespace sdk {
         static sig_and_sighash_t ec_sig_from_witness(const Tx& tx, size_t input_index, size_t item_index)
         {
             constexpr bool has_sighash = true;
-            const auto& witness = tx.get()->inputs[input_index].witness;
+            const auto& witness = tx.get_input(input_index).witness;
             const auto& witness_item = witness->items[item_index];
             GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
             const auto der_sig = gsl::make_span(witness_item.witness, witness_item.witness_len);
@@ -130,8 +130,7 @@ namespace sdk {
                 // redeem script in the inputs witness data. The user can change
                 // their CSV time at any time, so we must use the value that was
                 // originally used in the tx rather than the users current setting.
-                GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
-                const auto& witness = tx.get()->inputs[i].witness;
+                const auto& witness = tx.get_input(i).witness;
                 GDK_RUNTIME_ASSERT(witness != nullptr && witness->num_items != 0);
                 // The redeem script is the last witness item
                 const auto& witness_item = witness->items[witness->num_items - 1];
@@ -142,7 +141,7 @@ namespace sdk {
             utxo["subtype"] = subtype;
         }
 
-        void randomise_inputs(const Tx& tx, std::vector<nlohmann::json>& used_utxos)
+        void randomise_inputs(Tx& tx, std::vector<nlohmann::json>& used_utxos)
         {
             std::vector<nlohmann::json> unshuffled_utxos(used_utxos.begin(), used_utxos.end());
             std::shuffle(used_utxos.begin(), used_utxos.end(), uniform_uint32_rng());
@@ -152,7 +151,7 @@ namespace sdk {
             for (size_t i = 0; i < used_utxos.size(); ++i) {
                 new_position_of.emplace(used_utxos[i], i);
             }
-            wally_tx_input* in_p = tx.get()->inputs + (tx.get_num_inputs() - used_utxos.size());
+            auto* in_p = &tx.get_input(tx.get_num_inputs() - used_utxos.size());
             std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
             for (size_t i = 0; i < unshuffled_utxos.size(); ++i) {
                 const size_t new_position = new_position_of[unshuffled_utxos[i]];
@@ -218,9 +217,9 @@ namespace sdk {
                 // the overall fee rate of the pair to the desired rate,
                 // so that miners are incentivized to mine both together).
                 const amount new_fee_rate = json_get_amount(result, "fee_rate");
-                const auto new_fee = get_tx_fee(net_params, tx, min_fee_rate, new_fee_rate);
-                const amount network_fee = new_fee <= old_fee ? amount() : new_fee;
-                result["network_fee"] = network_fee.value();
+                const auto fee_rate = std::max(min_fee_rate.value(), new_fee_rate.value());
+                const auto new_fee = tx.get_fee(net_params, fee_rate);
+                result["network_fee"] = new_fee <= old_fee ? 0 : new_fee;
             }
 
             if (is_rbf) {
@@ -251,8 +250,8 @@ namespace sdk {
                         // Validate address matches the transaction scriptpubkey
                         const bool allow_unconfidential = false;
                         const auto spk = scriptpubkey_from_address(net_params, out_addr, allow_unconfidential);
-                        GDK_RUNTIME_ASSERT(tx.get()->outputs[out_index].script_len == spk.size());
-                        GDK_RUNTIME_ASSERT(!memcmp(tx.get()->outputs[out_index].script, &spk[0], spk.size()));
+                        GDK_RUNTIME_ASSERT(tx.get_output(out_index).script_len == spk.size());
+                        GDK_RUNTIME_ASSERT(!memcmp(tx.get_output(out_index).script, &spk[0], spk.size()));
                     }
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
@@ -343,8 +342,8 @@ namespace sdk {
                         // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                         const uint32_t i = input.at("pt_idx");
                         GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
-                        utxo["txhash"] = b2h_rev(tx.get()->inputs[i].txhash);
-                        utxo["pt_idx"] = tx.get()->inputs[i].index;
+                        utxo["txhash"] = b2h_rev(tx.get_input(i).txhash);
+                        utxo["pt_idx"] = tx.get_input(i).index;
                         calculate_input_subtype(utxo, tx, i);
                         const auto script = session.output_script_from_utxo(utxo);
                         utxo["prevout_script"] = b2h(script);
@@ -416,8 +415,8 @@ namespace sdk {
             std::optional<size_t> greedy_index;
         };
 
-        static bool update_greedy_output(session_impl& session, Tx& tx, nlohmann::json& result,
-            addressee_details_t& addressee, amount::value_type change_amount)
+        static bool update_greedy_output(
+            Tx& tx, nlohmann::json& result, addressee_details_t& addressee, amount::value_type change_amount)
         {
             if (!addressee.greedy_index.has_value()) {
                 return false;
@@ -430,10 +429,7 @@ namespace sdk {
             const auto greedy_idx = addressee.greedy_index.value();
             auto& json_addressee = result.at("addressees").at(greedy_idx);
             json_addressee["satoshi"] = change_amount;
-            tx.get()->outputs[greedy_idx].satoshi = change_amount;
-            if (session.get_network_parameters().is_liquid()) {
-                set_tx_output_commitment(tx, greedy_idx, addressee.asset_id, change_amount);
-            }
+            tx.set_output_satoshi(greedy_idx, addressee.asset_id, change_amount);
             // FIXME: account for another non-greedy addressee
             addressee.required_total = addressee.utxo_sum - addressee.fee;
             return true;
@@ -464,10 +460,7 @@ namespace sdk {
                 add_tx_change_output(session, result, tx, asset_id);
             }
             const auto change_idx = tx.get_num_outputs() - 1;
-            tx.get()->outputs[change_idx].satoshi = change_amount;
-            if (session.get_network_parameters().is_liquid()) {
-                set_tx_output_commitment(tx, change_idx, asset_id, change_amount);
-            }
+            tx.set_output_satoshi(change_idx, asset_id, change_amount);
         }
 
         static void pick_asset_utxos(session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxos,
@@ -519,6 +512,7 @@ namespace sdk {
             const amount dust_threshold = session.get_dust_threshold(policy_asset);
             const amount user_fee_rate = json_get_amount(result, "fee_rate");
             const amount min_fee_rate = session.get_min_fee_rate();
+            const auto fee_rate = std::max(min_fee_rate.value(), user_fee_rate.value());
             const amount network_fee = json_get_amount(result, "network_fee", amount(0));
             const ssize_t num_utxos = manual_selection ? 0 : utxos.size();
             const bool is_greedy = addressee.greedy_index.has_value();
@@ -527,7 +521,7 @@ namespace sdk {
             for (ssize_t i = 0; i <= num_utxos; ++i) {
                 const bool no_more_utxos = i == num_utxos;
 
-                addressee.fee = get_tx_fee(net_params, tx, min_fee_rate, user_fee_rate);
+                addressee.fee = tx.get_fee(net_params, fee_rate);
                 addressee.fee += network_fee;
                 auto required_total = addressee.required_total + addressee.fee;
 
@@ -537,7 +531,7 @@ namespace sdk {
                     if (addressee.utxo_sum >= required_total) {
                         change_amount = (addressee.utxo_sum - required_total).value();
                         if (change_amount) {
-                            if (update_greedy_output(session, tx, result, addressee, change_amount)) {
+                            if (update_greedy_output(tx, result, addressee, change_amount)) {
                                 if (change_amount <= dust_threshold) {
                                     goto add_more_utxos;
                                 }
@@ -691,7 +685,7 @@ namespace sdk {
             const uint32_t tx_version = result.value("transaction_version", WALLY_TX_VERSION_2);
             Tx tx(locktime, tx_version, is_liquid);
             if (!is_rbf && !result.contains("transaction_locktime")) {
-                set_anti_snipe_locktime(tx, current_block_height);
+                tx.set_anti_snipe_locktime(current_block_height);
             }
 
             std::map<std::string, addressee_details_t> asset_addressees;
@@ -786,7 +780,7 @@ namespace sdk {
                         amount::value_type change_amount = 0;
                         change_amount = (addressee.utxo_sum - addressee.required_total).value();
                         if (change_amount) {
-                            if (update_greedy_output(session, tx, result, addressee, change_amount)) {
+                            if (update_greedy_output(tx, result, addressee, change_amount)) {
                                 change_amount = 0;
                             } else {
                                 // Generate a change address for the left over asset value
@@ -919,13 +913,6 @@ namespace sdk {
         return WALLY_TX_FLAG_USE_WITNESS | (m_is_liquid ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
     }
 
-    bool Tx::is_elements() const
-    {
-        size_t written;
-        GDK_VERIFY(wally_tx_is_elements(m_tx.get(), &written));
-        return written == 1;
-    }
-
     std::vector<unsigned char> Tx::to_bytes() const
     {
         size_t written;
@@ -937,6 +924,17 @@ namespace sdk {
     }
 
     std::string Tx::to_hex() const { return b2h(to_bytes()); }
+
+    struct wally_tx_input& Tx::get_input(size_t index)
+    {
+        return const_cast<struct wally_tx_input&>(std::as_const(*this).get_input(index));
+    }
+
+    const struct wally_tx_input& Tx::get_input(size_t index) const
+    {
+        GDK_RUNTIME_ASSERT(index < m_tx->num_inputs);
+        return m_tx->inputs[index];
+    }
 
     void Tx::add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
         const wally_tx_witness_stack_ptr& witness)
@@ -963,6 +961,17 @@ namespace sdk {
         GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness.get()));
     }
 
+    struct wally_tx_output& Tx::get_output(size_t index)
+    {
+        return const_cast<struct wally_tx_output&>(std::as_const(*this).get_output(index));
+    }
+
+    const struct wally_tx_output& Tx::get_output(size_t index) const
+    {
+        GDK_RUNTIME_ASSERT(index < m_tx->num_outputs);
+        return m_tx->outputs[index];
+    }
+
     void Tx::add_output(uint64_t satoshi, byte_span_t script)
     {
         constexpr uint32_t flags = 0;
@@ -985,6 +994,28 @@ namespace sdk {
         GDK_VERIFY(wally_tx_elements_output_commitment_set(&m_tx->outputs[index], asset.data(), asset.size(),
             value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(), surjectionproof.size(),
             rangeproof.data(), rangeproof.size()));
+    }
+
+    void Tx::set_output_satoshi(size_t index, const std::string& asset_id, uint64_t satoshi)
+    {
+        auto& txout = get_output(index);
+        txout.satoshi = satoshi;
+        if (m_is_liquid) {
+            // The given asset must match the txout we are updating
+            const auto asset_bytes = h2b_rev(asset_id, 0x1);
+            GDK_RUNTIME_ASSERT(txout.asset && txout.asset_len == asset_bytes.size()
+                && !memcmp(txout.asset, asset_bytes.data(), asset_bytes.size()));
+            set_output_commitments(index, asset_bytes, tx_confidential_value_from_satoshi(satoshi), {}, {}, {});
+        }
+    }
+
+    void Tx::set_anti_snipe_locktime(uint32_t current_block_height)
+    {
+        // We use cores algorithm to randomly use an older locktime for delayed tx privacy
+        if (current_block_height > 100 && get_uniform_uint32_t(10) == 0) {
+            current_block_height -= get_uniform_uint32_t(100);
+        }
+        m_tx->locktime = current_block_height;
     }
 
     size_t Tx::get_weight() const
@@ -1017,6 +1048,79 @@ namespace sdk {
         GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(), value.data(),
             value.size(), sighash, flags, tx_hash.data(), tx_hash.size()));
         return tx_hash;
+    }
+
+    size_t Tx::get_adjusted_weight(const network_parameters& net_params) const
+    {
+        size_t weight = get_weight();
+        GDK_RUNTIME_ASSERT(m_is_liquid == net_params.is_liquid());
+        if (m_is_liquid) {
+            // Add the weight of any missing blinding data
+            const auto policy_asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
+            const auto num_inputs = get_num_inputs() ? get_num_inputs() : 1; // Assume at least 1 input
+            const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
+            size_t blinding_weight = 0;
+            bool found_fee = false;
+
+            for (const auto& tx_out : get_outputs()) {
+                uint64_t satoshi = 0;
+
+                if (!tx_out.script) {
+                    GDK_RUNTIME_ASSERT(!found_fee);
+                    found_fee = true;
+                    continue;
+                }
+                GDK_RUNTIME_ASSERT(tx_out.asset_len);
+                GDK_RUNTIME_ASSERT(tx_out.value_len);
+                if (!tx_out.nonce) {
+                    blinding_weight += WALLY_TX_ASSET_CT_NONCE_LEN * 4;
+                }
+                if (!tx_out.surjectionproof_len) {
+                    blinding_weight += sjp_size;
+                }
+                if (tx_out.value[0] == 1) {
+                    // An explicit value; use it for a better estimate
+                    auto conf_value = gsl::make_span(tx_out.value, tx_out.value_len);
+                    satoshi = tx_confidential_value_to_satoshi(conf_value);
+                    // Add the difference between the explicit and blinded value size
+                    blinding_weight -= WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN * 4;
+                    blinding_weight += WALLY_TX_ASSET_CT_VALUE_LEN * 4;
+                }
+                if (!tx_out.rangeproof_len) {
+                    if (!satoshi) {
+                        // We don't know the value, or its a zero placeholder;
+                        // assume its the maximum for estimation purposes.
+                        if (tx_out.asset_len == policy_asset_bytes.size()
+                            && !memcmp(tx_out.asset, policy_asset_bytes.data(), tx_out.asset_len)) {
+                            // L-BTC: Limited by the policy asset coin supply
+                            satoshi = amount::get_max_satoshi();
+                        } else {
+                            // Asset: Any valid uint64 value is possible
+                            satoshi = std::numeric_limits<uint64_t>::max();
+                        }
+                    }
+                    blinding_weight += varbuff_get_length(asset_rangeproof_max_size(satoshi));
+                }
+            }
+            if (found_fee) {
+                // FIXME: Fee must be the last output
+                GDK_RUNTIME_ASSERT(!get_outputs().back().script);
+            } else {
+                // Add weight for a fee output (which is always unblinded)
+                const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
+                weight += fee_output_vbytes * 4;
+            }
+            weight += blinding_weight;
+        }
+        return weight;
+    }
+
+    uint64_t Tx::get_fee(const network_parameters& net_params, uint64_t fee_rate) const
+    {
+        const size_t weight = get_adjusted_weight(net_params);
+        const size_t vsize = (weight + 3) / 4;
+        const auto fee = static_cast<double>(vsize) * fee_rate / 1000.0;
+        return static_cast<uint64_t>(std::ceil(fee));
     }
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
@@ -1394,7 +1498,7 @@ namespace sdk {
                 vbfs.insert(vbfs.end(), std::begin(vbf), std::end(vbf));
             }
 
-            const auto& o = tx.get()->outputs[i];
+            const auto& o = tx.get_output(i);
             const auto generator = asset_generator_from_bytes(asset_id, abf);
             std::array<unsigned char, 33> value_commitment;
             if (for_final_vbf) {
@@ -1466,7 +1570,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(vout < tx.get_num_outputs());
 
         nlohmann::json result = nlohmann::json::object();
-        const auto& o = tx.get()->outputs[vout];
+        const auto& o = tx.get_output(vout);
         if (is_explicit(o)) {
             result["satoshi"] = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
             result["assetblinder"] = ZEROS;
@@ -1505,7 +1609,7 @@ namespace sdk {
         const nlohmann::json& utxo, const Tx& tx, size_t index, bool is_liquid)
     {
         GDK_RUNTIME_ASSERT(index < tx.get_num_inputs());
-        const auto& input = tx.get()->inputs[index];
+        const auto& input = tx.get_input(index);
         const auto& witness = input.witness;
 
         // TODO: handle backup paths:

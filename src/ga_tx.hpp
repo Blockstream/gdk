@@ -23,12 +23,12 @@ namespace sdk {
 
         void swap(Tx& rhs);
 
-        bool is_elements() const;
-
         std::vector<unsigned char> to_bytes() const;
         std::string to_hex() const;
 
         size_t get_num_inputs() const { return m_tx->num_inputs; }
+        struct wally_tx_input& get_input(size_t index);
+        const struct wally_tx_input& get_input(size_t index) const;
         auto get_inputs() { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
         auto get_inputs() const { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
 
@@ -40,6 +40,9 @@ namespace sdk {
         void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
 
         size_t get_num_outputs() const { return m_tx->num_outputs; }
+
+        struct wally_tx_output& get_output(size_t index);
+        const struct wally_tx_output& get_output(size_t index) const;
         auto get_outputs() { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
         auto get_outputs() const { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
 
@@ -49,18 +52,22 @@ namespace sdk {
 
         void set_output_commitments(size_t index, byte_span_t asset, byte_span_t value, byte_span_t nonce,
             byte_span_t surjectionproof, byte_span_t rangeproof);
+        void set_output_satoshi(size_t index, const std::string& asset_id, uint64_t satoshi);
+
+        uint32_t get_version() const { return m_tx->version; }
+        uint32_t get_locktime() const { return m_tx->locktime; }
+        void set_anti_snipe_locktime(uint32_t current_block_height);
 
         size_t get_weight() const;
         static size_t vsize_from_weight(size_t weight);
+        size_t get_adjusted_weight(const network_parameters& net_params) const;
+        uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
         std::array<unsigned char, SHA256_LEN> get_btc_signature_hash(
             size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const;
 
         std::array<unsigned char, SHA256_LEN> get_elements_signature_hash(
             size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const;
-
-        const auto& get() const { return m_tx; } // FIXME: remove, just for conversion
-        auto& get() { return m_tx; } // FIXME: remove, just for conversion
 
     private:
         uint32_t get_flags() const;

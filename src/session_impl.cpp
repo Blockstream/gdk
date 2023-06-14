@@ -353,7 +353,7 @@ namespace sdk {
         nlohmann::json::array_t outputs;
         outputs.reserve(tx.get_num_outputs());
         for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
-            const auto& o = tx.get()->outputs[i];
+            const auto& o = tx.get_output(i);
             if (!o.script_len) {
                 continue; // Liquid fee
             }
@@ -391,8 +391,8 @@ namespace sdk {
         inputs.reserve(tx.get_num_inputs());
         size_t num_sigs_required = 0;
         for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-            const std::string txhash_hex = b2h_rev(tx.get()->inputs[i].txhash);
-            const uint32_t vout = tx.get()->inputs[i].index;
+            const std::string txhash_hex = b2h_rev(tx.get_input(i).txhash);
+            const uint32_t vout = tx.get_input(i).index;
             nlohmann::json input_utxo({ { "skip_signing", true } });
             for (const auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
@@ -450,8 +450,8 @@ namespace sdk {
             std::vector<std::vector<unsigned char>> new_scripts;
             auto&& restore_tx = [&tx, &old_scripts] {
                 for (size_t i = 0; i < old_scripts.size(); ++i) {
-                    tx.get()->inputs[i].script = (unsigned char*)old_scripts[i].data();
-                    tx.get()->inputs[i].script_len = old_scripts[i].size();
+                    tx.get_input(i).script = (unsigned char*)old_scripts[i].data();
+                    tx.get_input(i).script_len = old_scripts[i].size();
                 }
                 old_scripts.clear();
             };
@@ -465,7 +465,7 @@ namespace sdk {
                 old_scripts.reserve(tx.get_num_inputs());
                 new_scripts.reserve(tx.get_num_inputs());
                 for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-                    auto& txin = tx.get()->inputs[i];
+                    auto& txin = tx.get_input(i);
                     old_scripts.emplace_back(gsl::make_span(txin.script, txin.script_len));
                     new_scripts.emplace_back(psbt_get_input_redeem_script(psbt, i));
                     auto& redeem_script = new_scripts.back();
@@ -499,9 +499,9 @@ namespace sdk {
             if (utxo.empty()) {
                 /* Finalize the input, but don't remove its finalization data.
                  * FIXME: see comment below on partial signing */
-                GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, tx.get()->inputs[i].witness));
-                GDK_VERIFY(wally_psbt_set_input_final_scriptsig(
-                    psbt.get(), i, tx.get()->inputs[i].script, tx.get()->inputs[i].script_len));
+                auto& txin = tx.get_input(i);
+                GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, txin.witness));
+                GDK_VERIFY(wally_psbt_set_input_final_scriptsig(psbt.get(), i, txin.script, txin.script_len));
             }
         }
 
