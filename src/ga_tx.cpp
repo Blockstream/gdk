@@ -109,16 +109,14 @@ namespace sdk {
             return json_get_amount(utxo, "satoshi");
         }
 
-        static sig_and_sighash_t ec_sig_from_witness(const Tx& tx, size_t input_index, size_t item_index)
+        static sig_and_sighash_t ec_sig_from_witness(const struct wally_tx_witness_stack* witness, size_t index)
         {
+            const auto& item = witness->items[index];
+            GDK_RUNTIME_ASSERT(item.witness && item.witness_len);
+            const auto der_sig = gsl::make_span(item.witness, item.witness_len);
+            const uint32_t sighash = der_sig[item.witness_len - 1];
             constexpr bool has_sighash = true;
-            const auto& witness = tx.get_input(input_index).witness;
-            const auto& witness_item = witness->items[item_index];
-            GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
-            const auto der_sig = gsl::make_span(witness_item.witness, witness_item.witness_len);
-            const uint32_t sighash = der_sig[witness_item.witness_len - 1];
-            const ecdsa_sig_t sig = ec_sig_from_der(der_sig, has_sighash);
-            return std::make_pair(sig, sighash);
+            return std::make_pair(ec_sig_from_der(der_sig, has_sighash), sighash);
         }
 
         static void calculate_input_subtype(nlohmann::json& utxo, const Tx& tx, size_t i)
@@ -369,7 +367,7 @@ namespace sdk {
                 // from being modified.
                 uint32_t vin = 0;
                 for (auto& input : result["old_used_utxos"]) {
-                    const auto sigs = get_signatures_from_input(input, tx, vin, net_params.is_liquid());
+                    const auto sigs = tx.get_input_signatures(input, vin);
                     const auto pubkeys = session.pubkeys_from_utxo(input);
                     for (size_t i = 0; i < sigs.size(); ++i) {
                         const auto sighash = sigs.at(i).second;
@@ -958,6 +956,51 @@ namespace sdk {
     void Tx::set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness)
     {
         GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness.get()));
+    }
+
+    std::vector<sig_and_sighash_t> Tx::get_input_signatures(const nlohmann::json& utxo, size_t index) const
+    {
+        const auto& input = get_input(index);
+
+        // TODO: handle backup paths:
+        // - 2of3 p2sh, backup key signing
+        // - 2of3 p2wsh, backup key signing
+        // - 2of2 csv, csv path
+        const std::string addr_type = utxo.at("address_type");
+        if (!is_segwit_address_type(utxo)) {
+            const auto script_sig = gsl::make_span(input.script, input.script_len);
+            if (addr_type == address_type::p2pkh) {
+                // p2pkh: script sig: <user_sig> <pubkey>
+                return { get_sig_from_p2pkh_script_sig(script_sig) };
+            }
+            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
+            // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
+            // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
+            return get_sigs_from_multisig_script_sig(script_sig);
+        }
+
+        GDK_RUNTIME_ASSERT(input.witness);
+        const auto num_items = input.witness->num_items;
+
+        if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
+            // p2sh-p2wpkh: witness stack: <user_sig> <pubkey>
+            GDK_RUNTIME_ASSERT(num_items == 2);
+            return { ec_sig_from_witness(input.witness, 0) };
+        }
+        // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
+        // 2of2 csv:   witness stack: <user_sig> <ga_sig> <redeem_script> (Liquid, not optimized)
+        // 2of2 csv:   witness stack: <ga_sig> <user_sig> <redeem_script>
+        // 2of3 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
+        // 2of2_no_recovery p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (Liquid)
+        GDK_RUNTIME_ASSERT(num_items > 2);
+        auto user_sig = ec_sig_from_witness(input.witness, num_items - 2);
+        auto ga_sig = ec_sig_from_witness(input.witness, num_items - 3);
+
+        if (m_is_liquid && addr_type == address_type::csv) {
+            // Liquid 2of2 csv: sigs are inverted in the witness stack
+            std::swap(user_sig, ga_sig);
+        }
+        return { std::move(ga_sig), std::move(user_sig) };
     }
 
     struct wally_tx_output& Tx::get_output(size_t index)
@@ -1588,54 +1631,6 @@ namespace sdk {
         }
 
         return result;
-    }
-
-    std::vector<sig_and_sighash_t> get_signatures_from_input(
-        const nlohmann::json& utxo, const Tx& tx, size_t index, bool is_liquid)
-    {
-        GDK_RUNTIME_ASSERT(index < tx.get_num_inputs());
-        const auto& input = tx.get_input(index);
-        const auto& witness = input.witness;
-
-        // TODO: handle backup paths:
-        // - 2of3 p2sh, backup key signing
-        // - 2of3 p2wsh, backup key signing
-        // - 2of2 csv, csv path
-        const std::string addr_type = utxo.at("address_type");
-        if (!is_segwit_address_type(utxo)) {
-            const auto script_sig = gsl::make_span(input.script, input.script_len);
-            if (addr_type == address_type::p2pkh) {
-                // p2pkh: script sig: <user_sig> <pubkey>
-                return { get_sig_from_p2pkh_script_sig(script_sig) };
-            }
-            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
-            // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
-            // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
-            return get_sigs_from_multisig_script_sig(script_sig);
-        }
-
-        if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
-            // p2sh-p2wpkh: witness stack: <user_sig> <pubkey>
-            GDK_RUNTIME_ASSERT(witness && witness->num_items == 2);
-            auto user_sig = ec_sig_from_witness(tx, index, 0);
-            return { std::move(user_sig) };
-        }
-        // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
-        // 2of2 csv:   witness stack: <user_sig> <ga_sig> <redeem_script> (Liquid, not optimized)
-        // 2of2 csv:   witness stack: <ga_sig> <user_sig> <redeem_script>
-        // 2of3 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
-        // 2of2_no_recovery p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (Liquid)
-        GDK_RUNTIME_ASSERT(witness && witness->num_items > 2);
-
-        auto user_sig = ec_sig_from_witness(tx, index, witness->num_items - 2);
-        auto ga_sig = ec_sig_from_witness(tx, index, witness->num_items - 3);
-
-        if (is_liquid && addr_type == address_type::csv) {
-            // Liquid 2of2 csv: sigs are inverted in the witness stack
-            std::swap(user_sig, ga_sig);
-        }
-
-        return { std::move(ga_sig), std::move(user_sig) };
     }
 } // namespace sdk
 } // namespace ga

@@ -26,6 +26,7 @@ namespace sdk {
         std::vector<unsigned char> to_bytes() const;
         std::string to_hex() const;
 
+        // Inputs
         size_t get_num_inputs() const { return m_tx->num_inputs; }
         struct wally_tx_input& get_input(size_t index);
         const struct wally_tx_input& get_input(size_t index) const;
@@ -39,6 +40,9 @@ namespace sdk {
 
         void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
 
+        std::vector<sig_and_sighash_t> get_input_signatures(const nlohmann::json& utxo, size_t index) const;
+
+        // Outputs
         size_t get_num_outputs() const { return m_tx->num_outputs; }
 
         struct wally_tx_output& get_output(size_t index);
@@ -86,9 +90,6 @@ namespace sdk {
 
     void add_input_signature(
         Tx& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
-
-    std::vector<sig_and_sighash_t> get_signatures_from_input(
-        const nlohmann::json& utxo, const Tx& tx, size_t index, bool is_liquid);
 
     nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 
