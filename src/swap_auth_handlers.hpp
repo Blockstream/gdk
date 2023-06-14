@@ -6,7 +6,7 @@
 
 namespace ga {
 namespace sdk {
-    struct Tx;
+    class Tx;
 
     class create_swap_transaction_call : public auth_handler_impl {
     public:

@@ -19,6 +19,7 @@ namespace sdk {
     class ga_pubkeys;
     class user_pubkeys;
     class signer;
+    class Tx;
     struct tor_controller;
     struct io_context_and_guard;
 

@@ -14,6 +14,7 @@ namespace sdk {
     class ga_pubkeys;
     class session_impl;
     class user_pubkeys;
+    class Tx;
 
     enum class script_type : int {
         // Script types returned by the Green backend server

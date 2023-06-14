@@ -10,6 +10,67 @@ namespace sdk {
     class network_parameters;
     class session_impl;
 
+    class Tx {
+    public:
+        Tx(uint32_t locktime, uint32_t version, bool is_liquid);
+        Tx(byte_span_t tx_bin, bool is_liquid);
+        Tx(const std::string& tx_hex, bool is_liquid);
+        Tx(const wally_psbt_ptr& psbt);
+
+        Tx(Tx&& rhs) = default;
+        Tx(Tx& rhs) = delete;
+        Tx(const Tx& rhs) = delete;
+
+        void swap(Tx& rhs);
+
+        bool is_elements() const;
+
+        std::vector<unsigned char> to_bytes() const;
+        std::string to_hex() const;
+
+        size_t get_num_inputs() const { return m_tx->num_inputs; }
+        auto get_inputs() { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
+        auto get_inputs() const { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
+
+        void add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
+            const wally_tx_witness_stack_ptr& witness = {});
+
+        void set_input_script(size_t index, byte_span_t script);
+
+        void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
+
+        size_t get_num_outputs() const { return m_tx->num_outputs; }
+        auto get_outputs() { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
+        auto get_outputs() const { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
+
+        void add_output(uint64_t satoshi, byte_span_t script);
+        void add_elements_output_at(size_t index, byte_span_t script, byte_span_t asset, byte_span_t value,
+            byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+
+        void set_output_commitments(size_t index, byte_span_t asset, byte_span_t value, byte_span_t nonce,
+            byte_span_t surjectionproof, byte_span_t rangeproof);
+
+        size_t get_weight() const;
+        static size_t vsize_from_weight(size_t weight);
+
+        std::array<unsigned char, SHA256_LEN> get_btc_signature_hash(
+            size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const;
+
+        std::array<unsigned char, SHA256_LEN> get_elements_signature_hash(
+            size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const;
+
+        const auto& get() const { return m_tx; } // FIXME: remove, just for conversion
+        auto& get() { return m_tx; } // FIXME: remove, just for conversion
+
+    private:
+        uint32_t get_flags() const;
+        struct tx_deleter {
+            void operator()(struct wally_tx* p);
+        };
+        std::unique_ptr<struct wally_tx, tx_deleter> m_tx;
+        bool m_is_liquid;
+    };
+
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo);
 
     std::array<unsigned char, SHA256_LEN> get_script_hash(
