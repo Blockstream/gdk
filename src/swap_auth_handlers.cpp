@@ -217,11 +217,10 @@ namespace sdk {
         // Call sign_transaction to sign the callers side
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
         m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
-        nlohmann::json::array_t sign_with = { "user" };
-        if (!m_net_params.is_electrum() && !m_create_details.contains("blinding_nonces")) {
-            sign_with.emplace_back("green-backend"); // Not an AMP tx, ask backend to sign
-        }
-        m_create_details["sign_with"] = std::move(sign_with);
+        // For AMP, skip server signing for multisig. The taker will ask the
+        // backend to sign the completed swap since AMP only signs SIGHASH_ALL
+        const bool is_amp_tx = m_create_details.contains("blinding_nonces");
+        m_create_details["sign_with"] = nlohmann::json::array_t{ is_amp_tx ? "user" : "all" };
         add_next_handler(new sign_transaction_call(m_session_parent, m_create_details));
         return state_type::done; // We are complete once tx signing is done
     }

@@ -679,6 +679,19 @@ namespace sdk {
         }
     }
 
+    // Determine whether to sign with the users key, green backend, or both
+    static std::pair<bool, bool> get_sign_with(const nlohmann::json& details, bool is_electrum)
+    {
+        const std::vector<std::string> with = json_get_value<decltype(with)>(details, "sign_with");
+        auto&& contains
+            = [&with](const auto& who) -> bool { return std::find(with.begin(), with.end(), who) != with.end(); };
+
+        const bool sign_with_all = contains("all");
+        const bool user_sign = with.empty() || contains("user") || sign_with_all;
+        const bool server_sign = contains("green-backend") || (sign_with_all && !is_electrum);
+        return { user_sign, server_sign };
+    }
+
     auth_handler::state_type sign_transaction_call::call_impl()
     {
         auto signer = get_signer();
@@ -692,10 +705,8 @@ namespace sdk {
             return m_state;
         }
 
-        const std::vector<std::string> sign_with = json_get_value<decltype(sign_with)>(m_details, "sign_with");
-        const bool user_sign
-            = sign_with.empty() || std::find(sign_with.begin(), sign_with.end(), "user") != sign_with.end();
-        const bool server_sign = std::find(sign_with.begin(), sign_with.end(), "green-backend") != sign_with.end();
+        bool user_sign, server_sign;
+        std::tie(user_sign, server_sign) = get_sign_with(m_details, m_net_params.is_electrum());
 
         if (user_sign && !m_user_signed) {
             // We haven't signed the users inputs yet, do so now
