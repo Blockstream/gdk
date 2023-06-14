@@ -562,8 +562,8 @@ namespace sdk {
     size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, Tx& tx, amount::value_type satoshi)
     {
         const auto& net_params = session.get_network_parameters();
-        nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", nlohmann::json::array() },
-            { "is_change", false }, { "asset_id", net_params.get_policy_asset() } };
+        nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", "" }, { "is_change", false },
+            { "asset_id", net_params.get_policy_asset() } };
         add_tx_output(net_params, result, tx, output);
         return tx.get_num_outputs() - 1;
     }
