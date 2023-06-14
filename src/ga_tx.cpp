@@ -107,7 +107,7 @@ namespace sdk {
             if (add_to_used_utxos) {
                 result["used_utxos"].push_back(utxo);
             }
-            return amount(utxo.at("satoshi"));
+            return json_get_amount(utxo, "satoshi");
         }
 
         static sig_and_sighash_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
@@ -206,8 +206,8 @@ namespace sdk {
 
             // Store the old fee and fee rate to check if replacement
             // requirements are satisfied
-            const amount old_fee = amount(prev_tx.at("fee"));
-            const amount old_fee_rate = amount(prev_tx.at("fee_rate"));
+            const amount old_fee = json_get_amount(prev_tx, "fee");
+            const amount old_fee_rate = json_get_amount(prev_tx, "fee_rate");
             result["old_fee"] = old_fee.value();
             result["old_fee_rate"] = old_fee_rate.value();
 
@@ -218,7 +218,7 @@ namespace sdk {
                 // the network fee to the new transactions fee increases
                 // the overall fee rate of the pair to the desired rate,
                 // so that miners are incentivized to mine both together).
-                const amount new_fee_rate = amount(result.at("fee_rate"));
+                const amount new_fee_rate = json_get_amount(result, "fee_rate");
                 const auto new_fee = get_tx_fee(net_params, tx, min_fee_rate, new_fee_rate);
                 const amount network_fee = new_fee <= old_fee ? amount() : new_fee;
                 result["network_fee"] = network_fee.value();
@@ -907,7 +907,7 @@ namespace sdk {
     std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
         const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash)
     {
-        const amount::value_type v = utxo.at("satoshi");
+        const amount satoshi = json_get_amount(utxo, "satoshi");
         const auto script = h2b(utxo.at("prevout_script"));
         const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
         const bool is_liquid = net_params.is_liquid();
@@ -915,7 +915,6 @@ namespace sdk {
         validate_sighash(sighash, is_liquid);
 
         if (!is_liquid) {
-            const amount satoshi{ v };
             return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), sighash, flags);
         }
 
@@ -924,7 +923,7 @@ namespace sdk {
         if (!utxo.value("commitment", std::string{}).empty()) {
             ct_value = h2b(utxo.at("commitment"));
         } else {
-            const auto value = tx_confidential_value_from_satoshi(v);
+            const auto value = tx_confidential_value_from_satoshi(satoshi.value());
             ct_value.assign(std::begin(value), std::end(value));
         }
         return tx_get_elements_signature_hash(tx, index, script, ct_value, sighash, flags);

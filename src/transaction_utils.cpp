@@ -515,7 +515,8 @@ namespace sdk {
 
             // Validate and convert the amount to satoshi
             try {
-                addressee["satoshi"] = session.convert_amount(addressee)["satoshi"].get<amount::value_type>();
+                const auto satoshi = json_get_amount(session.convert_amount(addressee), "satoshi");
+                addressee["satoshi"] = satoshi.value();
                 amount::strip_non_satoshi_keys(addressee);
             } catch (const user_error& ex) {
                 return ex.what();
@@ -543,14 +544,14 @@ namespace sdk {
         const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx, const nlohmann::json& output)
     {
         std::string old_error = json_get_value(result, "error");
-        const amount::value_type satoshi = output.at("satoshi").get<amount::value_type>();
+        const amount satoshi = json_get_amount(output, "satoshi");
         std::vector<unsigned char> script;
         if (!output.value("is_fee", false)) {
             script = h2b(output.at("scriptpubkey"));
         }
         if (!net_params.is_liquid()) {
-            tx_add_raw_output(tx, satoshi, script);
-            return amount(satoshi);
+            tx_add_raw_output(tx, satoshi.value(), script);
+            return satoshi;
         }
         if (output.value("is_change", false)
             && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
@@ -560,9 +561,9 @@ namespace sdk {
         const uint32_t index = tx->num_outputs; // Append to outputs
         const auto asset_id = asset_id_from_json(net_params, output);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi.value());
         tx_add_elements_raw_output_at(tx, index, script, asset_bytes, ct_value, {}, {}, {});
-        return amount(satoshi);
+        return satoshi;
     }
 
     void add_tx_addressee_output(
@@ -577,7 +578,7 @@ namespace sdk {
             // The case of an existing blinded output
             auto scriptpubkey = h2b(addressee.at("scriptpubkey"));
             const auto asset_id = h2b_rev(asset_id_hex);
-            const amount::value_type satoshi = addressee.at("satoshi");
+            const amount satoshi = json_get_amount(addressee, "satoshi");
             const auto abf = h2b_rev(addressee.at("assetblinder"));
             if (std::all_of(abf.begin(), abf.end(), [](auto b) { return b == 0; })) {
                 throw user_error("pre-blinded input asset is not blinded");
@@ -589,7 +590,7 @@ namespace sdk {
                 if (std::all_of(vbf.begin(), vbf.end(), [](auto b) { return b == 0; })) {
                     throw user_error("pre-blinded input value is not blinded");
                 }
-                value_commitment = asset_value_commitment(satoshi, vbf, asset_commitment);
+                value_commitment = asset_value_commitment(satoshi.value(), vbf, asset_commitment);
             } else {
                 value_commitment = h2b<33>(addressee.at("commitment"));
             }
@@ -613,7 +614,7 @@ namespace sdk {
         }
 
         if (!addressee.value("is_greedy", false)) {
-            const auto satoshi = addressee["satoshi"].get<amount::value_type>();
+            const amount satoshi = json_get_amount(addressee, "satoshi");
             if (satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
                 throw user_error(res::id_invalid_amount);
