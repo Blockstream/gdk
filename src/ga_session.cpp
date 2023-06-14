@@ -2194,6 +2194,7 @@ namespace sdk {
 
         for (auto& tx : txs) {
             tx.erase("created_at"); // TODO: Remove once the server stops returning this
+            tx.erase("transaction_size");
 
             // Compute the tx weight and fee rate
             const uint32_t tx_vsize = tx.at("transaction_vsize");
@@ -2477,6 +2478,9 @@ namespace sdk {
         m_cache->get_transactions(subaccount, first, count,
             { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
                   uint32_t spv_status, nlohmann::json& tx_json) {
+                // TODO: Remove transaction_size.erase when cache version
+                // is upgraded beyond 1.3 and clears transactions.
+                tx_json.erase("transaction_size");
                 tx_json["spv_verified"] = spv_get_status_string(spv_status);
                 result.emplace_back(std::move(tx_json));
             } });
