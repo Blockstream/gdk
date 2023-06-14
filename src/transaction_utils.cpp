@@ -355,14 +355,17 @@ namespace sdk {
             const auto num_inputs = tx->num_inputs ? tx->num_inputs : 1; // Assume at least 1 input
             const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
             size_t blinding_weight = 0;
+            bool found_fee = false;
 
             for (size_t i = 0; i < tx->num_outputs; ++i) {
                 auto& output = tx->outputs[i];
                 uint64_t satoshi = 0;
 
                 if (!output.script) {
+                    // FIXME: Fee must be the last output
                     GDK_RUNTIME_ASSERT(i + 1 == tx->num_outputs);
-                    continue; // Fee: Must be the last output
+                    found_fee = true;
+                    continue;
                 }
                 GDK_RUNTIME_ASSERT(output.asset_len);
                 GDK_RUNTIME_ASSERT(output.value_len);
@@ -395,6 +398,11 @@ namespace sdk {
                     }
                     blinding_weight += varbuff_get_length(asset_rangeproof_max_size(satoshi));
                 }
+            }
+            if (!found_fee) {
+                // Add weight for a fee output (which is always unblinded)
+                const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
+                weight += fee_output_vbytes * 4;
             }
             weight += blinding_weight;
         }
