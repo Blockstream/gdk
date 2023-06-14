@@ -374,8 +374,8 @@ namespace sdk {
                     for (size_t i = 0; i < sigs.size(); ++i) {
                         const auto sighash = sigs.at(i).second;
                         input["user_sighash"] = sighash;
-                        const auto script_hash = get_script_hash(net_params, input, tx, vin, sighash);
-                        GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), script_hash, sigs.at(i).first));
+                        const auto preimage_hash = tx.get_signing_preimage_hash(input, vin, sighash);
+                        GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), preimage_hash, sigs.at(i).first));
                     }
                     ++vin;
                 }
@@ -824,12 +824,11 @@ namespace sdk {
         static std::string sign_input(
             session_impl& session, Tx& tx, uint32_t index, const nlohmann::json& u, uint32_t sighash)
         {
-            const auto& net_params = session.get_network_parameters();
-            const auto script_hash = get_script_hash(net_params, u, tx, index, sighash);
+            const auto preimage_hash = tx.get_signing_preimage_hash(u, index, sighash);
             const std::string private_key_hex = json_get_value(u, "private_key");
 
             if (!private_key_hex.empty()) {
-                const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), script_hash);
+                const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), preimage_hash);
                 const auto der = ec_sig_to_der(user_sig, sighash);
                 tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
                 return b2h(der);
@@ -840,7 +839,7 @@ namespace sdk {
                 const bool is_internal = json_get_value(u, "is_internal", false);
                 const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
                 auto signer = session.get_nonnull_signer();
-                const auto user_sig = signer->sign_hash(path, script_hash);
+                const auto user_sig = signer->sign_hash(path, preimage_hash);
                 const auto der = ec_sig_to_der(user_sig, sighash);
 
                 if (is_segwit_address_type(u)) {
@@ -1032,24 +1031,6 @@ namespace sdk {
         return written;
     }
 
-    std::array<unsigned char, SHA256_LEN> Tx::get_btc_signature_hash(
-        size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const
-    {
-        std::array<unsigned char, SHA256_LEN> tx_hash;
-        GDK_VERIFY(wally_tx_get_btc_signature_hash(
-            m_tx.get(), index, script.data(), script.size(), satoshi, sighash, flags, tx_hash.data(), tx_hash.size()));
-        return tx_hash;
-    }
-
-    std::array<unsigned char, SHA256_LEN> Tx::get_elements_signature_hash(
-        size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const
-    {
-        std::array<unsigned char, SHA256_LEN> tx_hash;
-        GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(), value.data(),
-            value.size(), sighash, flags, tx_hash.data(), tx_hash.size()));
-        return tx_hash;
-    }
-
     size_t Tx::get_adjusted_weight(const network_parameters& net_params) const
     {
         size_t weight = get_weight();
@@ -1123,6 +1104,35 @@ namespace sdk {
         return static_cast<uint64_t>(std::ceil(fee));
     }
 
+    std::array<unsigned char, SHA256_LEN> Tx::get_signing_preimage_hash(
+        const nlohmann::json& utxo, size_t index, uint32_t sighash) const
+    {
+        std::array<unsigned char, SHA256_LEN> ret;
+        const auto satoshi = json_get_amount(utxo, "satoshi").value();
+        const auto script = h2b(utxo.at("prevout_script"));
+        const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+
+        validate_sighash(sighash, m_is_liquid);
+
+        if (!m_is_liquid) {
+            GDK_VERIFY(wally_tx_get_btc_signature_hash(
+                m_tx.get(), index, script.data(), script.size(), satoshi, sighash, flags, ret.data(), ret.size()));
+            return ret;
+        }
+
+        // Liquid case - has a value-commitment in place of a satoshi value
+        std::vector<unsigned char> ct_value;
+        if (!utxo.value("commitment", std::string{}).empty()) {
+            ct_value = h2b(utxo.at("commitment"));
+        } else {
+            const auto value = tx_confidential_value_from_satoshi(satoshi);
+            ct_value.assign(std::begin(value), std::end(value));
+        }
+        GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
+            ct_value.data(), ct_value.size(), sighash, flags, ret.data(), ret.size()));
+        return ret;
+    }
+
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
     {
         const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
@@ -1148,31 +1158,6 @@ namespace sdk {
             // Populate the recovery xpub for h/w signing
             utxo["recovery_xpub"] = session.get_recovery_xpub(subaccount);
         }
-    }
-
-    std::array<unsigned char, SHA256_LEN> get_script_hash(
-        const network_parameters& net_params, const nlohmann::json& utxo, const Tx& tx, size_t index, uint32_t sighash)
-    {
-        const amount satoshi = json_get_amount(utxo, "satoshi");
-        const auto script = h2b(utxo.at("prevout_script"));
-        const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
-        const bool is_liquid = net_params.is_liquid();
-
-        validate_sighash(sighash, is_liquid);
-
-        if (!is_liquid) {
-            return tx.get_btc_signature_hash(index, script, satoshi.value(), sighash, flags);
-        }
-
-        // Liquid case - has a value-commitment in place of a satoshi value
-        std::vector<unsigned char> ct_value;
-        if (!utxo.value("commitment", std::string{}).empty()) {
-            ct_value = h2b(utxo.at("commitment"));
-        } else {
-            const auto value = tx_confidential_value_from_satoshi(satoshi.value());
-            ct_value.assign(std::begin(value), std::end(value));
-        }
-        return tx.get_elements_signature_hash(index, script, ct_value, sighash, flags);
     }
 
     void confidentialize_address(

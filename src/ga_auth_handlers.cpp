@@ -741,10 +741,10 @@ namespace sdk {
                 } else {
                     pubkey = user_pubkeys.derive(subaccount, pointer, utxo.value("is_internal", false));
                 }
-                const auto script_hash = get_script_hash(m_net_params, utxo, tx, i, sighash);
+                const auto preimage_hash = tx.get_signing_preimage_hash(utxo, i, sighash);
                 constexpr bool has_sighash = true;
-                verify_ae_signature(
-                    pubkey, script_hash, utxo.at("ae_host_entropy"), signer_commitments[i], signatures[i], has_sighash);
+                verify_ae_signature(pubkey, preimage_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
+                    signatures[i], has_sighash);
             }
         }
 

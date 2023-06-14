@@ -63,11 +63,8 @@ namespace sdk {
         size_t get_adjusted_weight(const network_parameters& net_params) const;
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
-        std::array<unsigned char, SHA256_LEN> get_btc_signature_hash(
-            size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const;
-
-        std::array<unsigned char, SHA256_LEN> get_elements_signature_hash(
-            size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const;
+        std::array<unsigned char, SHA256_LEN> get_signing_preimage_hash(
+            const nlohmann::json& utxo, size_t index, uint32_t sighash) const;
 
     private:
         uint32_t get_flags() const;
@@ -79,9 +76,6 @@ namespace sdk {
     };
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo);
-
-    std::array<unsigned char, SHA256_LEN> get_script_hash(
-        const network_parameters& net_params, const nlohmann::json& utxo, const Tx& tx, size_t index, uint32_t sighash);
 
     nlohmann::json get_blinding_factors(const blinding_key_t& master_blinding_key, const nlohmann::json& details);
 
