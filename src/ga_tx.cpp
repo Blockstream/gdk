@@ -139,6 +139,18 @@ namespace sdk {
             utxo["subtype"] = subtype;
         }
 
+        static void cleanup_tx_addressee(session_impl& session, nlohmann::json& addressee)
+        {
+            // Fix up fields from a bumped tx output to what addressees expect
+            for (const auto& key : { "is_output", "is_relevant", "is_spent", "script_type", "pt_idx" }) {
+                addressee.erase(key);
+            }
+            if (json_get_value(addressee, "address_type").empty()) {
+                addressee.erase("address_type");
+            }
+            utxo_add_paths(session, addressee);
+        }
+
         // Check if a tx to bump is present, and if so add the details required to bump it
         // FIXME: Support bump/CPFP for liquid
         static std::pair<bool, bool> check_bump_tx(
@@ -203,9 +215,9 @@ namespace sdk {
 
             if (is_rbf) {
                 // Compute addressees and any change details from the old tx
-                std::vector<nlohmann::json> addressees;
                 const auto& outputs = prev_tx.at("outputs");
                 GDK_RUNTIME_ASSERT(tx.get_num_outputs() == outputs.size());
+                nlohmann::json::array_t addressees;
                 addressees.reserve(outputs.size());
                 size_t out_index = 0;
                 std::optional<size_t> change_index;
@@ -269,8 +281,8 @@ namespace sdk {
                     } else {
                         // Not a change output, or there is already one:
                         // treat this as a regular output
-                        addressees.emplace_back(nlohmann::json(
-                            { { "address", output.at("address") }, { "satoshi", output.at("satoshi") } }));
+                        addressees.emplace_back(output);
+                        cleanup_tx_addressee(session, addressees.back());
                     }
                     ++out_index;
                 }
@@ -282,8 +294,9 @@ namespace sdk {
                     const std::string address = output.at("address");
                     if (addressees.empty()) {
                         // We didn't pay anyone else; this is actually a re-deposit
-                        addressees.emplace_back(nlohmann::json(
-                            { { "address", address }, { "satoshi", output.at("satoshi") }, { "is_greedy", true } }));
+                        addressees.emplace_back(output);
+                        cleanup_tx_addressee(session, addressees.back());
+                        addressees.back()["is_greedy"] = true;
                         change_index.reset();
                         is_redeposit = true;
                     } else {
@@ -297,7 +310,7 @@ namespace sdk {
                     result["change_subaccount"] = output.at("subaccount");
                 }
 
-                result["addressees"] = addressees;
+                result["addressees"] = std::move(addressees);
 
                 if (!change_index.has_value() && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
@@ -434,6 +447,7 @@ namespace sdk {
                 const uint32_t change_subaccount = result.at("change_subaccount");
                 nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
                 change_address = session.get_receive_address(details);
+                cleanup_tx_addressee(session, change_address);
             }
             change_address["satoshi"] = change_amount;
             if (add_to_tx) {
