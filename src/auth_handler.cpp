@@ -517,6 +517,16 @@ namespace sdk {
                 handler->resolve_hw_reply(std::move(result));
                 return true;
             }
+        } else if (request == hw_request::sign_tx) {
+            // Check if there are any inputs that actually require signing
+            auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
+            const auto& inputs = required_data.at("signing_inputs");
+            if (std::find_if(inputs.begin(), inputs.end(), do_sign) == inputs.end()) {
+                // No inputs require signing: return empty sigs for each input
+                result["signatures"] = nlohmann::json::array_t(inputs.size(), std::string());
+                handler->resolve_hw_reply(std::move(result));
+                return true;
+            }
         }
 
         if (is_hardware) {
