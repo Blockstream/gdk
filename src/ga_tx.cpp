@@ -584,6 +584,10 @@ namespace sdk {
             const bool is_partial = json_get_value(result, "is_partial", false);
 
             result["transaction_outputs"] = nlohmann::json::array();
+            result["fee"] = 0u;
+            result["network_fee"] = 0u;
+            result.erase("change_amount");
+
             if (result.find("fee_rate") == result.end()) {
                 result["fee_rate"] = session.get_default_fee_rate().value();
             } else if (json_get_amount(result, "fee_rate") < session.get_min_fee_rate()) {
@@ -594,6 +598,12 @@ namespace sdk {
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
             std::tie(is_rbf, is_cpfp) = check_bump_tx(session, subaccounts, result);
+
+            if (auto p = result.find("change_address"); p != result.end()) {
+                for (auto& it : p->items()) {
+                    it.value()["satoshi"] = 0u;
+                }
+            }
 
             const bool is_sweep = result.find("private_key") != result.end();
             result["is_sweep"] = is_sweep;
