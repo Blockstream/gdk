@@ -950,130 +950,149 @@ namespace sdk {
     //
     // Transactions
     //
-    uint32_t tx_flags(bool is_liquid)
+    void Tx::tx_deleter::operator()(struct wally_tx* p) { wally_tx_free(p); }
+
+    Tx::Tx(uint32_t locktime, uint32_t version, bool is_liquid)
+        : m_is_liquid(is_liquid)
     {
-        return WALLY_TX_FLAG_USE_WITNESS | (is_liquid ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+        struct wally_tx* p;
+        GDK_VERIFY(wally_tx_init_alloc(version, locktime, 16, 16, &p));
+        m_tx.reset(p);
     }
 
-    bool tx_is_elements(const wally_tx_ptr& tx)
+    Tx::Tx(byte_span_t tx_bin, bool is_liquid)
+        : m_is_liquid(is_liquid)
+    {
+        struct wally_tx* p;
+        GDK_VERIFY(wally_tx_from_bytes(tx_bin.data(), tx_bin.size(), get_flags(), &p));
+        m_tx.reset(p);
+    }
+
+    Tx::Tx(const std::string& tx_hex, bool is_liquid)
+        : m_is_liquid(is_liquid)
+    {
+        struct wally_tx* p;
+        GDK_VERIFY(wally_tx_from_hex(tx_hex.c_str(), get_flags(), &p));
+        m_tx.reset(p);
+    }
+
+    Tx::Tx(const wally_psbt_ptr& psbt)
+        : m_is_liquid(psbt_is_elements(psbt))
+    {
+        struct wally_tx* p;
+        GDK_VERIFY(wally_psbt_extract(psbt.get(), WALLY_PSBT_EXTRACT_NON_FINAL, &p));
+        m_tx.reset(p);
+    }
+
+    void Tx::swap(Tx& rhs)
+    {
+        std::swap(m_is_liquid, rhs.m_is_liquid);
+        std::swap(m_tx, rhs.m_tx);
+    }
+
+    uint32_t Tx::get_flags() const
+    {
+        return WALLY_TX_FLAG_USE_WITNESS | (m_is_liquid ? WALLY_TX_FLAG_USE_ELEMENTS : 0);
+    }
+
+    bool Tx::is_elements() const
     {
         size_t written;
-        GDK_VERIFY(wally_tx_is_elements(tx.get(), &written));
+        GDK_VERIFY(wally_tx_is_elements(m_tx.get(), &written));
         return written == 1;
     }
 
-    size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags)
+    std::vector<unsigned char> Tx::to_bytes() const
     {
         size_t written;
-        GDK_VERIFY(wally_tx_get_length(tx.get(), flags, &written));
-        return written;
-    }
-
-    std::vector<unsigned char> tx_to_bytes(const wally_tx_ptr& tx, uint32_t flags)
-    {
-        std::vector<unsigned char> buff(tx_get_length(tx, flags));
-        size_t written;
-        GDK_VERIFY(wally_tx_to_bytes(tx.get(), flags, buff.data(), buff.size(), &written));
+        GDK_VERIFY(wally_tx_get_length(m_tx.get(), get_flags(), &written));
+        std::vector<unsigned char> buff(written);
+        GDK_VERIFY(wally_tx_to_bytes(m_tx.get(), get_flags(), buff.data(), buff.size(), &written));
         GDK_RUNTIME_ASSERT(written == buff.size());
         return buff;
     }
 
-    std::string tx_to_hex(const wally_tx_ptr& tx, uint32_t flags)
+    std::string Tx::to_hex() const { return b2h(to_bytes()); }
+
+    void Tx::add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
+        const wally_tx_witness_stack_ptr& witness)
     {
-        char* s;
-        GDK_VERIFY(wally_tx_to_hex(tx.get(), flags, &s));
-        return make_string(s);
+        constexpr uint32_t flags = 0;
+        if (!m_is_liquid) {
+            GDK_VERIFY(wally_tx_add_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
+                script.size(), witness.get(), flags));
+            return;
+        }
+        GDK_VERIFY(wally_tx_add_elements_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence,
+            script.data(), script.size(), witness.get(), nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
+            nullptr, 0, nullptr, flags));
     }
 
-    void tx_add_raw_output(const wally_tx_ptr& tx, uint64_t satoshi, byte_span_t script)
+    void Tx::set_input_script(size_t index, byte_span_t script)
     {
-        const uint32_t flags = 0;
-        GDK_VERIFY(wally_tx_add_raw_output(tx.get(), satoshi, script.data(), script.size(), flags));
+        const unsigned char* data = script.size() ? script.data() : nullptr;
+        GDK_VERIFY(wally_tx_set_input_script(m_tx.get(), index, data, script.size()));
     }
 
-    void tx_add_elements_raw_output_at(const wally_tx_ptr& tx, size_t index, byte_span_t script, byte_span_t asset,
-        byte_span_t value, byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof)
+    void Tx::set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness)
     {
-        GDK_VERIFY(wally_tx_add_elements_raw_output_at(tx.get(), index, script.data(), script.size(), asset.data(),
-            asset.size(), value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(),
-            surjectionproof.size(), rangeproof.data(), rangeproof.size(), 0));
+        GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness.get()));
     }
 
-    void tx_elements_output_commitment_set(const wally_tx_ptr& tx, size_t index, byte_span_t asset, byte_span_t value,
+    void Tx::add_output(uint64_t satoshi, byte_span_t script)
+    {
+        constexpr uint32_t flags = 0;
+        GDK_VERIFY(wally_tx_add_raw_output(m_tx.get(), satoshi, script.data(), script.size(), flags));
+    }
+
+    void Tx::add_elements_output_at(size_t index, byte_span_t script, byte_span_t asset, byte_span_t value,
         byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof)
     {
-        GDK_RUNTIME_ASSERT(index < tx->num_outputs);
-        GDK_VERIFY(wally_tx_elements_output_commitment_set(&tx->outputs[index], asset.data(), asset.size(),
+        constexpr uint32_t flags = 0;
+        GDK_VERIFY(wally_tx_add_elements_raw_output_at(m_tx.get(), index, script.data(), script.size(), asset.data(),
+            asset.size(), value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(),
+            surjectionproof.size(), rangeproof.data(), rangeproof.size(), flags));
+    }
+
+    void Tx::set_output_commitments(size_t index, byte_span_t asset, byte_span_t value, byte_span_t nonce,
+        byte_span_t surjectionproof, byte_span_t rangeproof)
+    {
+        GDK_RUNTIME_ASSERT(index < get_num_outputs());
+        GDK_VERIFY(wally_tx_elements_output_commitment_set(&m_tx->outputs[index], asset.data(), asset.size(),
             value.data(), value.size(), nonce.data(), nonce.size(), surjectionproof.data(), surjectionproof.size(),
             rangeproof.data(), rangeproof.size()));
     }
 
-    std::array<unsigned char, SHA256_LEN> tx_get_btc_signature_hash(
-        const wally_tx_ptr& tx, size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags)
+    size_t Tx::get_weight() const
+    {
+        size_t written;
+        GDK_VERIFY(wally_tx_get_weight(m_tx.get(), &written));
+        return written;
+    }
+
+    size_t Tx::vsize_from_weight(size_t weight)
+    {
+        size_t written;
+        GDK_VERIFY(wally_tx_vsize_from_weight(weight, &written));
+        return written;
+    }
+
+    std::array<unsigned char, SHA256_LEN> Tx::get_btc_signature_hash(
+        size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const
     {
         std::array<unsigned char, SHA256_LEN> tx_hash;
         GDK_VERIFY(wally_tx_get_btc_signature_hash(
-            tx.get(), index, script.data(), script.size(), satoshi, sighash, flags, tx_hash.data(), tx_hash.size()));
+            m_tx.get(), index, script.data(), script.size(), satoshi, sighash, flags, tx_hash.data(), tx_hash.size()));
         return tx_hash;
     }
 
-    std::array<unsigned char, SHA256_LEN> tx_get_elements_signature_hash(
-        const wally_tx_ptr& tx, size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags)
+    std::array<unsigned char, SHA256_LEN> Tx::get_elements_signature_hash(
+        size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const
     {
         std::array<unsigned char, SHA256_LEN> tx_hash;
-        GDK_VERIFY(wally_tx_get_elements_signature_hash(tx.get(), index, script.data(), script.size(), value.data(),
+        GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(), value.data(),
             value.size(), sighash, flags, tx_hash.data(), tx_hash.size()));
         return tx_hash;
-    }
-
-    wally_tx_ptr tx_init(
-        uint32_t locktime, size_t inputs_allocation_len, size_t outputs_allocation_len, uint32_t version)
-    {
-        struct wally_tx* p;
-        GDK_VERIFY(wally_tx_init_alloc(version, locktime, inputs_allocation_len, outputs_allocation_len, &p));
-        return wally_tx_ptr(p);
-    }
-
-    wally_tx_ptr tx_from_bin(byte_span_t tx_bin, uint32_t flags)
-    {
-        struct wally_tx* p;
-        GDK_VERIFY(wally_tx_from_bytes(tx_bin.data(), tx_bin.size(), flags, &p));
-        return wally_tx_ptr(p);
-    }
-
-    wally_tx_ptr tx_from_hex(const std::string& tx_hex, uint32_t flags)
-    {
-        struct wally_tx* p;
-        GDK_VERIFY(wally_tx_from_hex(tx_hex.c_str(), flags, &p));
-        return wally_tx_ptr(p);
-    }
-
-    void tx_add_raw_input(const wally_tx_ptr& tx, byte_span_t txhash, uint32_t index, uint32_t sequence,
-        byte_span_t script, const wally_tx_witness_stack_ptr& witness)
-    {
-        const uint32_t flags = 0;
-        if (!tx_is_elements(tx)) {
-            GDK_VERIFY(wally_tx_add_raw_input(tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
-                script.size(), witness.get(), flags));
-        } else {
-            GDK_VERIFY(wally_tx_add_elements_raw_input(tx.get(), txhash.data(), txhash.size(), index, sequence,
-                script.data(), script.size(), witness.get(), nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
-                nullptr, 0, nullptr, flags));
-        }
-    }
-
-    size_t tx_get_vsize(const wally_tx_ptr& tx)
-    {
-        size_t written;
-        GDK_VERIFY(wally_tx_get_vsize(tx.get(), &written));
-        return written;
-    }
-
-    size_t tx_get_weight(const wally_tx_ptr& tx)
-    {
-        size_t written;
-        GDK_VERIFY(wally_tx_get_weight(tx.get(), &written));
-        return written;
     }
 
     std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices)
@@ -1082,24 +1101,6 @@ namespace sdk {
         GDK_VERIFY(wally_get_hash_prevouts(
             txids.data(), txids.size(), output_indices.data(), output_indices.size(), ret.data(), ret.size()));
         return ret;
-    }
-
-    void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script)
-    {
-        const unsigned char* data = script.size() ? script.data() : nullptr;
-        GDK_VERIFY(wally_tx_set_input_script(tx.get(), index, data, script.size()));
-    }
-
-    void tx_set_input_witness(const wally_tx_ptr& tx, size_t index, const wally_tx_witness_stack_ptr& witness)
-    {
-        GDK_VERIFY(wally_tx_set_input_witness(tx.get(), index, witness.get()));
-    }
-
-    size_t tx_vsize_from_weight(size_t weight)
-    {
-        size_t written;
-        GDK_VERIFY(wally_tx_vsize_from_weight(weight, &written));
-        return written;
     }
 
     wally_tx_witness_stack_ptr tx_witness_stack_init(size_t allocation_len)
@@ -1178,11 +1179,11 @@ namespace sdk {
         return make_string(s);
     }
 
-    wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt)
+    bool psbt_is_elements(const wally_psbt_ptr& psbt)
     {
-        struct wally_tx* p;
-        GDK_VERIFY(wally_psbt_extract(psbt.get(), WALLY_PSBT_EXTRACT_NON_FINAL, &p));
-        return wally_tx_ptr(p);
+        size_t is_elements;
+        GDK_VERIFY(wally_psbt_is_elements(psbt.get(), &is_elements));
+        return is_elements != 0;
     }
 
     std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index)

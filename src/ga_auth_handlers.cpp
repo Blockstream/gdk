@@ -621,6 +621,8 @@ namespace sdk {
 
     void sign_transaction_call::set_signer_data(const std::shared_ptr<signer>& signer)
     {
+        const bool is_liquid = m_net_params.is_liquid();
+
         // We use the Anti-Exfil protocol if the hw supports it
         const bool use_ae_protocol = signer->use_ae_protocol();
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
@@ -644,15 +646,15 @@ namespace sdk {
 
         if (!signer->is_remote() && !m_twofactor_data.contains("signing_transactions")) {
             nlohmann::json prev_txs;
-            if (!m_net_params.is_liquid()) {
+            if (!is_liquid) {
                 // BTC: Provide the previous txs data for validation, even
                 // for segwit, in order to mitigate the segwit fee attack.
                 // (Liquid txs are segwit+explicit fee and so not affected)
                 for (const auto& input : m_twofactor_data["signing_inputs"]) {
                     const std::string txhash = input.at("txhash");
                     if (!prev_txs.contains(txhash)) {
-                        auto prev_tx = m_session->get_raw_transaction_details(txhash);
-                        prev_txs.emplace(txhash, tx_to_hex(prev_tx));
+                        auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
+                        prev_txs.emplace(txhash, std::move(tx_hex));
                     }
                 }
             }
@@ -713,7 +715,7 @@ namespace sdk {
         const auto& transaction_details = m_twofactor_data["transaction"];
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
-        const auto tx = tx_from_hex(transaction_details.at("transaction"), tx_flags(is_liquid));
+        Tx tx(json_get_value(transaction_details, "transaction"), is_liquid);
 
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the

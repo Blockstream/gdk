@@ -42,13 +42,12 @@ namespace sdk {
                 && output.nonce_len == WALLY_TX_ASSET_CT_NONCE_LEN && output.rangeproof_len > 0;
         }
 
-        static bool has_utxo(const wally_tx_ptr& tx, const nlohmann::json& utxo)
+        static bool has_utxo(const Tx& tx, const nlohmann::json& utxo)
         {
-            const auto txhash = h2b_rev(utxo.at("txhash"));
-            const std::string txhash_hex = utxo.at("txhash");
+            const auto txhash = h2b_rev<WALLY_TXHASH_LEN>(utxo.at("txhash"));
             const uint32_t prevout = utxo.at("pt_idx");
-            for (size_t i = 0; i < tx->num_inputs; ++i) {
-                if (!memcmp(tx->inputs[i].txhash, txhash.data(), txhash.size()) && prevout == tx->inputs[i].index) {
+            for (const auto& tx_in : tx.get_inputs()) {
+                if (tx_in.index == prevout && !memcmp(tx_in.txhash, txhash.data(), txhash.size())) {
                     return true;
                 }
             }
@@ -56,8 +55,8 @@ namespace sdk {
         }
 
         // Add a UTXO to a transaction. Returns the amount added
-        static amount add_utxo(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result,
-            nlohmann::json& utxo, bool add_to_used_utxos)
+        static amount add_utxo(
+            session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxo, bool add_to_used_utxos)
         {
             GDK_RUNTIME_ASSERT(!has_utxo(tx, utxo));
 
@@ -78,10 +77,10 @@ namespace sdk {
                 for (const auto& item : wit_items) {
                     tx_witness_stack_add(witness, h2b(item));
                 }
-                tx_add_raw_input(tx, txid, index, sequence, script_sig, witness);
+                tx.add_input(txid, index, sequence, script_sig, witness);
             } else if (is_external) {
                 const auto script = dummy_external_input_script(low_r, h2b(utxo.at("public_key")));
-                tx_add_raw_input(tx, txid, index, sequence, script);
+                tx.add_input(txid, index, sequence, script);
             } else {
                 // Populate the prevout script if missing so signing can use it later
                 if (utxo.find("prevout_script") == utxo.end()) {
@@ -99,9 +98,9 @@ namespace sdk {
                     tx_witness_stack_add_dummy(wit, dummy_sig_type);
                     tx_witness_stack_add_dummy(wit, dummy_sig_type);
                     tx_witness_stack_add(wit, script);
-                    tx_add_raw_input(tx, txid, index, sequence, DUMMY_WITNESS_SCRIPT, wit);
+                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, wit);
                 } else {
-                    tx_add_raw_input(tx, txid, index, sequence, dummy_input_script(low_r, script));
+                    tx.add_input(txid, index, sequence, dummy_input_script(low_r, script));
                 }
             }
             if (add_to_used_utxos) {
@@ -110,10 +109,10 @@ namespace sdk {
             return json_get_amount(utxo, "satoshi");
         }
 
-        static sig_and_sighash_t ec_sig_from_witness(const wally_tx_ptr& tx, size_t input_index, size_t item_index)
+        static sig_and_sighash_t ec_sig_from_witness(const Tx& tx, size_t input_index, size_t item_index)
         {
             constexpr bool has_sighash = true;
-            const auto& witness = tx->inputs[input_index].witness;
+            const auto& witness = tx.get()->inputs[input_index].witness;
             const auto& witness_item = witness->items[item_index];
             GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
             const auto der_sig = gsl::make_span(witness_item.witness, witness_item.witness_len);
@@ -122,7 +121,7 @@ namespace sdk {
             return std::make_pair(sig, sighash);
         }
 
-        static void calculate_input_subtype(nlohmann::json& utxo, const wally_tx_ptr& tx, size_t i)
+        static void calculate_input_subtype(nlohmann::json& utxo, const Tx& tx, size_t i)
         {
             // Calculate the subtype of a tx input we wish to present as a utxo.
             uint32_t subtype = 0;
@@ -131,8 +130,8 @@ namespace sdk {
                 // redeem script in the inputs witness data. The user can change
                 // their CSV time at any time, so we must use the value that was
                 // originally used in the tx rather than the users current setting.
-                GDK_RUNTIME_ASSERT(i < tx->num_inputs);
-                const auto& witness = tx->inputs[i].witness;
+                GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
+                const auto& witness = tx.get()->inputs[i].witness;
                 GDK_RUNTIME_ASSERT(witness != nullptr && witness->num_items != 0);
                 // The redeem script is the last witness item
                 const auto& witness_item = witness->items[witness->num_items - 1];
@@ -143,7 +142,7 @@ namespace sdk {
             utxo["subtype"] = subtype;
         }
 
-        void randomise_inputs(const wally_tx_ptr& tx, std::vector<nlohmann::json>& used_utxos)
+        void randomise_inputs(const Tx& tx, std::vector<nlohmann::json>& used_utxos)
         {
             std::vector<nlohmann::json> unshuffled_utxos(used_utxos.begin(), used_utxos.end());
             std::shuffle(used_utxos.begin(), used_utxos.end(), uniform_uint32_rng());
@@ -153,7 +152,7 @@ namespace sdk {
             for (size_t i = 0; i < used_utxos.size(); ++i) {
                 new_position_of.emplace(used_utxos[i], i);
             }
-            wally_tx_input* in_p = tx->inputs + (tx->num_inputs - used_utxos.size());
+            wally_tx_input* in_p = tx.get()->inputs + (tx.get_num_inputs() - used_utxos.size());
             std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
             for (size_t i = 0; i < unshuffled_utxos.size(); ++i) {
                 const size_t new_position = new_position_of[unshuffled_utxos[i]];
@@ -228,7 +227,7 @@ namespace sdk {
                 // Compute addressees and any change details from the old tx
                 std::vector<nlohmann::json> addressees;
                 const auto& outputs = prev_tx.at("outputs");
-                GDK_RUNTIME_ASSERT(tx->num_outputs == outputs.size());
+                GDK_RUNTIME_ASSERT(tx.get_num_outputs() == outputs.size());
                 addressees.reserve(outputs.size());
                 uint32_t out_index = 0, change_index = NO_CHANGE_INDEX;
                 bool have_explicit_change = false; // True if we found an explicit change output
@@ -252,8 +251,8 @@ namespace sdk {
                         // Validate address matches the transaction scriptpubkey
                         const bool allow_unconfidential = false;
                         const auto spk = scriptpubkey_from_address(net_params, out_addr, allow_unconfidential);
-                        GDK_RUNTIME_ASSERT(tx->outputs[out_index].script_len == spk.size());
-                        GDK_RUNTIME_ASSERT(!memcmp(tx->outputs[out_index].script, &spk[0], spk.size()));
+                        GDK_RUNTIME_ASSERT(tx.get()->outputs[out_index].script_len == spk.size());
+                        GDK_RUNTIME_ASSERT(!memcmp(tx.get()->outputs[out_index].script, &spk[0], spk.size()));
                     }
                     const bool is_relevant = json_get_value(output, "is_relevant", false);
                     if (is_relevant) {
@@ -343,9 +342,9 @@ namespace sdk {
                         nlohmann::json utxo(input);
                         // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                         const uint32_t i = input.at("pt_idx");
-                        GDK_RUNTIME_ASSERT(i < tx->num_inputs);
-                        utxo["txhash"] = b2h_rev(tx->inputs[i].txhash);
-                        utxo["pt_idx"] = tx->inputs[i].index;
+                        GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
+                        utxo["txhash"] = b2h_rev(tx.get()->inputs[i].txhash);
+                        utxo["pt_idx"] = tx.get()->inputs[i].index;
                         calculate_input_subtype(utxo, tx, i);
                         const auto script = session.output_script_from_utxo(utxo);
                         utxo["prevout_script"] = b2h(script);
@@ -354,7 +353,7 @@ namespace sdk {
                         }
                         used_utxos_map.emplace(i, utxo);
                     }
-                    GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx->num_inputs);
+                    GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx.get_num_inputs());
                     std::vector<nlohmann::json> old_used_utxos;
                     old_used_utxos.reserve(used_utxos_map.size());
                     for (const auto& input : used_utxos_map) {
@@ -417,7 +416,7 @@ namespace sdk {
             std::optional<size_t> greedy_index;
         };
 
-        static bool update_greedy_output(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+        static bool update_greedy_output(session_impl& session, Tx& tx, nlohmann::json& result,
             addressee_details_t& addressee, amount::value_type change_amount)
         {
             if (!addressee.greedy_index.has_value()) {
@@ -431,7 +430,7 @@ namespace sdk {
             const auto greedy_idx = addressee.greedy_index.value();
             auto& json_addressee = result.at("addressees").at(greedy_idx);
             json_addressee["satoshi"] = change_amount;
-            tx->outputs[greedy_idx].satoshi = change_amount;
+            tx.get()->outputs[greedy_idx].satoshi = change_amount;
             if (session.get_network_parameters().is_liquid()) {
                 set_tx_output_commitment(tx, greedy_idx, addressee.asset_id, change_amount);
             }
@@ -440,7 +439,7 @@ namespace sdk {
             return true;
         }
 
-        static void create_change_output(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+        static void create_change_output(session_impl& session, Tx& tx, nlohmann::json& result,
             const std::string& asset_id, amount::value_type change_amount, bool add_to_tx = true)
         {
             auto& change_address = result["change_address"][asset_id];
@@ -464,15 +463,15 @@ namespace sdk {
             if (add_to_tx) {
                 add_tx_change_output(session, result, tx, asset_id);
             }
-            const auto change_idx = tx->num_outputs - 1;
-            tx->outputs[change_idx].satoshi = change_amount;
+            const auto change_idx = tx.get_num_outputs() - 1;
+            tx.get()->outputs[change_idx].satoshi = change_amount;
             if (session.get_network_parameters().is_liquid()) {
                 set_tx_output_commitment(tx, change_idx, asset_id, change_amount);
             }
         }
 
-        static void pick_asset_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
-            nlohmann::json& utxos, addressee_details_t& addressee)
+        static void pick_asset_utxos(session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxos,
+            addressee_details_t& addressee)
         {
             amount::value_type total = 0;
 
@@ -512,7 +511,7 @@ namespace sdk {
             }
         }
 
-        static void pick_policy_asset_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
+        static void pick_policy_asset_utxos(session_impl& session, Tx& tx, nlohmann::json& result,
             nlohmann::json& utxos, addressee_details_t& addressee, bool manual_selection)
         {
             const auto& net_params = session.get_network_parameters();
@@ -575,8 +574,8 @@ namespace sdk {
             }
         }
 
-        static void pick_utxos(session_impl& session, wally_tx_ptr& tx, nlohmann::json& result,
-            nlohmann::json& src_utxos, addressee_details_t& addressee, bool manual_selection)
+        static void pick_utxos(session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& src_utxos,
+            addressee_details_t& addressee, bool manual_selection)
         {
             // Select the inputs to use
             nlohmann::json empty = nlohmann::json::array_t{};
@@ -637,7 +636,6 @@ namespace sdk {
                 set_tx_error(result, res::id_no_recipients);
                 return;
             }
-            const size_t num_addressees = addressees_p->size();
 
             if (is_sweep) {
                 if (is_liquid) {
@@ -689,10 +687,9 @@ namespace sdk {
 
             auto& utxos = result.at("utxos");
             const uint32_t current_block_height = session.get_block_height();
-            const uint32_t num_extra_utxos = is_rbf ? result.at("old_used_utxos").size() : 0;
             const uint32_t locktime = result.value("transaction_locktime", current_block_height);
             const uint32_t tx_version = result.value("transaction_version", WALLY_TX_VERSION_2);
-            wally_tx_ptr tx = tx_init(locktime, utxos.size() + num_extra_utxos, num_addressees * 2, tx_version);
+            Tx tx(locktime, tx_version, is_liquid);
             if (!is_rbf && !result.contains("transaction_locktime")) {
                 set_anti_snipe_locktime(tx, current_block_height);
             }
@@ -831,7 +828,7 @@ namespace sdk {
         }
 
         static std::string sign_input(
-            session_impl& session, const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, uint32_t sighash)
+            session_impl& session, Tx& tx, uint32_t index, const nlohmann::json& u, uint32_t sighash)
         {
             const auto& net_params = session.get_network_parameters();
             const auto script_hash = get_script_hash(net_params, u, tx, index, sighash);
@@ -840,7 +837,7 @@ namespace sdk {
             if (!private_key_hex.empty()) {
                 const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), script_hash);
                 const auto der = ec_sig_to_der(user_sig, sighash);
-                tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
+                tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
                 return b2h(der);
             } else {
                 const auto script = h2b(u.at("prevout_script"));
@@ -857,12 +854,12 @@ namespace sdk {
                     // Note that this requires setting the inputs sequence number to the CSV time too
                     auto wit = tx_witness_stack_init(1);
                     tx_witness_stack_add(wit, der);
-                    tx_set_input_witness(tx, index, wit);
+                    tx.set_input_witness(index, wit);
                     const uint32_t witness_ver = 0;
-                    tx_set_input_script(tx, index, witness_script(script, witness_ver));
+                    tx.set_input_script(index, witness_script(script, witness_ver));
                 } else {
                     const bool is_low_r = signer->supports_low_r();
-                    tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig, sighash));
+                    tx.set_input_script(index, input_script(is_low_r, script, user_sig, sighash));
                 }
                 return b2h(der);
             }
@@ -904,8 +901,8 @@ namespace sdk {
         }
     }
 
-    std::array<unsigned char, SHA256_LEN> get_script_hash(const network_parameters& net_params,
-        const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, uint32_t sighash)
+    std::array<unsigned char, SHA256_LEN> get_script_hash(
+        const network_parameters& net_params, const nlohmann::json& utxo, const Tx& tx, size_t index, uint32_t sighash)
     {
         const amount satoshi = json_get_amount(utxo, "satoshi");
         const auto script = h2b(utxo.at("prevout_script"));
@@ -915,7 +912,7 @@ namespace sdk {
         validate_sighash(sighash, is_liquid);
 
         if (!is_liquid) {
-            return tx_get_btc_signature_hash(tx, index, script, satoshi.value(), sighash, flags);
+            return tx.get_btc_signature_hash(index, script, satoshi.value(), sighash, flags);
         }
 
         // Liquid case - has a value-commitment in place of a satoshi value
@@ -926,7 +923,7 @@ namespace sdk {
             const auto value = tx_confidential_value_from_satoshi(satoshi.value());
             ct_value.assign(std::begin(value), std::end(value));
         }
-        return tx_get_elements_signature_hash(tx, index, script, ct_value, sighash, flags);
+        return tx.get_elements_signature_hash(index, script, ct_value, sighash, flags);
     }
 
     void confidentialize_address(
@@ -959,8 +956,7 @@ namespace sdk {
         }
     }
 
-    void add_input_signature(
-        const wally_tx_ptr& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r)
+    void add_input_signature(Tx& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r)
     {
         GDK_RUNTIME_ASSERT(json_get_value(u, "private_key").empty());
 
@@ -970,34 +966,34 @@ namespace sdk {
 
         if (addr_type == address_type::p2pkh) {
             // Singlesig pre-segwit
-            tx_set_input_script(tx, index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
+            tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
         } else if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
             // Singlesig segwit
             const auto public_key = h2b(u.at("public_key"));
             auto wit = tx_witness_stack_init(2);
             tx_witness_stack_add(wit, der);
             tx_witness_stack_add(wit, public_key);
-            tx_set_input_witness(tx, index, wit);
+            tx.set_input_witness(index, wit);
             if (addr_type == address_type::p2sh_p2wpkh) {
-                tx_set_input_script(tx, index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
                 // for native segwit ensure the scriptsig is empty
-                tx_set_input_script(tx, index, byte_span_t());
+                tx.set_input_script(index, byte_span_t());
             }
         } else if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
             // Multisig segwit
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
-            tx_set_input_witness(tx, index, wit);
+            tx.set_input_witness(index, wit);
             const uint32_t witness_ver = 0;
-            tx_set_input_script(tx, index, witness_script(script, witness_ver));
+            tx.set_input_script(index, witness_script(script, witness_ver));
         } else {
             // Multisig pre-segwit
             GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
             constexpr bool has_sighash = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash);
             const uint32_t user_sighash = der.back();
-            tx_set_input_script(tx, index, input_script(is_low_r, script, user_sig, user_sighash));
+            tx.set_input_script(index, input_script(is_low_r, script, user_sig, user_sighash));
         }
     }
 
@@ -1031,11 +1027,11 @@ namespace sdk {
         return result;
     }
 
-    std::pair<std::vector<std::string>, wally_tx_ptr> sign_ga_transaction(
+    std::pair<std::vector<std::string>, Tx> sign_ga_transaction(
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs)
     {
         const bool is_liquid = session.get_network_parameters().is_liquid();
-        wally_tx_ptr tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
+        Tx tx(json_get_value(details, "transaction"), is_liquid);
         std::vector<std::string> sigs(inputs.size());
 
         for (size_t i = 0; i < inputs.size(); ++i) {
@@ -1123,7 +1119,7 @@ namespace sdk {
         const auto& used_utxos = details.at("used_utxos");
         auto& transaction_outputs = details.at("transaction_outputs");
 
-        const auto tx = tx_from_hex(details.at("transaction"), tx_flags(is_liquid));
+        Tx tx(json_get_value(details, "transaction"), is_liquid);
         const bool is_partial = json_get_value(details, "is_partial", false);
         const bool blinding_nonces_required = details.at("blinding_nonces_required");
 
@@ -1253,7 +1249,7 @@ namespace sdk {
                 vbfs.insert(vbfs.end(), std::begin(vbf), std::end(vbf));
             }
 
-            const auto& o = tx->outputs[i];
+            const auto& o = tx.get()->outputs[i];
             const auto generator = asset_generator_from_bytes(asset_id, abf);
             std::array<unsigned char, 33> value_commitment;
             if (for_final_vbf) {
@@ -1301,8 +1297,7 @@ namespace sdk {
                     = asset_surjectionproof(asset_id, abf, generator, entropy, assets, all_abfs, generators);
             }
 
-            tx_elements_output_commitment_set(
-                tx, i, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
+            tx.set_output_commitments(i, generator, value_commitment, eph_public_key, surjectionproof, rangeproof);
         }
 
         details["is_blinded"] = true;
@@ -1316,17 +1311,17 @@ namespace sdk {
         update_tx_size_info(net_params, tx, details);
     }
 
-    nlohmann::json unblind_output(session_impl& session, const wally_tx_ptr& tx, uint32_t vout)
+    nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout)
     {
         // FIXME: this is another place where unblinding is performed (the other is ga_session::unblind_utxo).
         //        This is not ideal and we should aim to have a single place to perform unblinding,
         //        but unfortunately it is quite complex so for now we have this duplication.
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
-        GDK_RUNTIME_ASSERT(tx->num_outputs > vout);
+        GDK_RUNTIME_ASSERT(vout < tx.get_num_outputs());
 
         nlohmann::json result = nlohmann::json::object();
-        const auto& o = tx->outputs[vout];
+        const auto& o = tx.get()->outputs[vout];
         if (is_explicit(o)) {
             result["satoshi"] = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
             result["assetblinder"] = ZEROS;
@@ -1362,10 +1357,10 @@ namespace sdk {
     }
 
     std::vector<sig_and_sighash_t> get_signatures_from_input(
-        const nlohmann::json& utxo, const wally_tx_ptr& tx, size_t index, bool is_liquid)
+        const nlohmann::json& utxo, const Tx& tx, size_t index, bool is_liquid)
     {
-        GDK_RUNTIME_ASSERT(index < tx->num_inputs);
-        const auto& input = tx->inputs[index];
+        GDK_RUNTIME_ASSERT(index < tx.get_num_inputs());
+        const auto& input = tx.get()->inputs[index];
         const auto& witness = input.witness;
 
         // TODO: handle backup paths:

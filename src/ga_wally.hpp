@@ -31,19 +31,12 @@ template <> struct default_delete<struct wally_tx_witness_stack> {
 template <> struct default_delete<struct wally_tx_output> {
     void operator()(struct wally_tx_output* ptr) const { wally_tx_output_free(ptr); }
 };
-
-template <> struct default_delete<struct wally_tx> {
-    void operator()(struct wally_tx* ptr) const { wally_tx_free(ptr); }
-};
 } // namespace std
 
 namespace ga {
 namespace sdk {
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
-    using wally_tx_input_ptr = std::unique_ptr<struct wally_tx_input>;
     using wally_tx_witness_stack_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
-    using wally_tx_output_ptr = std::unique_ptr<struct wally_tx_output>;
-    using wally_tx_ptr = std::unique_ptr<struct wally_tx>;
     using wally_psbt_ptr = std::unique_ptr<struct wally_psbt>;
 
     using byte_span_t = gsl::span<const unsigned char>;
@@ -73,12 +66,6 @@ namespace sdk {
     };
     using wally_string_ptr = std::unique_ptr<char, wally_string_dtor>;
     inline std::string make_string(char* p) { return std::string(wally_string_ptr(p).get()); }
-
-#ifdef __GNUC__
-#define GA_USE_RESULT __attribute__((warn_unused_result))
-#else
-#define GA_USE_RESULT
-#endif
 
     //
     // Hashing/HMAC
@@ -358,51 +345,67 @@ namespace sdk {
     //
     // Transactions
     //
-    GA_USE_RESULT uint32_t tx_flags(bool is_liquid);
+    struct Tx {
+        Tx(uint32_t locktime, uint32_t version, bool is_liquid);
+        Tx(byte_span_t tx_bin, bool is_liquid);
+        Tx(const std::string& tx_hex, bool is_liquid);
+        Tx(const wally_psbt_ptr& psbt);
 
-    GA_USE_RESULT bool tx_is_elements(const wally_tx_ptr& tx);
+        Tx(Tx&& rhs) = default;
+        Tx(Tx& rhs) = delete;
+        Tx(const Tx& rhs) = delete;
 
-    GA_USE_RESULT size_t tx_get_length(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+        void swap(Tx& rhs);
 
-    std::vector<unsigned char> tx_to_bytes(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
-    std::string tx_to_hex(const wally_tx_ptr& tx, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+        bool is_elements() const;
 
-    void tx_add_raw_output(const wally_tx_ptr& tx, uint64_t satoshi, byte_span_t script);
+        std::vector<unsigned char> to_bytes() const;
+        std::string to_hex() const;
 
-    void tx_add_elements_raw_output_at(const wally_tx_ptr& tx, size_t index, byte_span_t script, byte_span_t asset,
-        byte_span_t value, byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+        size_t get_num_inputs() const { return m_tx->num_inputs; }
+        auto get_inputs() { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
+        auto get_inputs() const { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
 
-    void tx_elements_output_commitment_set(const wally_tx_ptr& tx, size_t index, byte_span_t asset, byte_span_t value,
-        byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
+        void add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
+            const wally_tx_witness_stack_ptr& witness = {});
 
-    std::array<unsigned char, SHA256_LEN> tx_get_btc_signature_hash(const wally_tx_ptr& tx, size_t index,
-        byte_span_t script, uint64_t satoshi, uint32_t sighash = WALLY_SIGHASH_ALL,
-        uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+        void set_input_script(size_t index, byte_span_t script);
 
-    std::array<unsigned char, SHA256_LEN> tx_get_elements_signature_hash(const wally_tx_ptr& tx, size_t index,
-        byte_span_t script, byte_span_t value, uint32_t sighash = WALLY_SIGHASH_ALL,
-        uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+        void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
 
-    wally_tx_ptr tx_init(uint32_t locktime, size_t inputs_allocation_len, size_t outputs_allocation_len = 2,
-        uint32_t version = WALLY_TX_VERSION_2);
+        size_t get_num_outputs() const { return m_tx->num_outputs; }
+        auto get_outputs() { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
+        auto get_outputs() const { return gsl::make_span(m_tx->outputs, m_tx->num_outputs); }
 
-    wally_tx_ptr tx_from_bin(byte_span_t tx_bin, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
-    wally_tx_ptr tx_from_hex(const std::string& tx_hex, uint32_t flags = WALLY_TX_FLAG_USE_WITNESS);
+        void add_output(uint64_t satoshi, byte_span_t script);
+        void add_elements_output_at(size_t index, byte_span_t script, byte_span_t asset, byte_span_t value,
+            byte_span_t nonce, byte_span_t surjectionproof, byte_span_t rangeproof);
 
-    void tx_add_raw_input(const wally_tx_ptr& tx, byte_span_t txhash, uint32_t index, uint32_t sequence,
-        byte_span_t script, const wally_tx_witness_stack_ptr& witness = {});
+        void set_output_commitments(size_t index, byte_span_t asset, byte_span_t value, byte_span_t nonce,
+            byte_span_t surjectionproof, byte_span_t rangeproof);
 
-    GA_USE_RESULT size_t tx_get_vsize(const wally_tx_ptr& tx);
+        size_t get_weight() const;
+        static size_t vsize_from_weight(size_t weight);
 
-    GA_USE_RESULT size_t tx_get_weight(const wally_tx_ptr& tx);
+        std::array<unsigned char, SHA256_LEN> get_btc_signature_hash(
+            size_t index, byte_span_t script, uint64_t satoshi, uint32_t sighash, uint32_t flags) const;
+
+        std::array<unsigned char, SHA256_LEN> get_elements_signature_hash(
+            size_t index, byte_span_t script, byte_span_t value, uint32_t sighash, uint32_t flags) const;
+
+        const auto& get() const { return m_tx; } // FIXME: remove, just for conversion
+        auto& get() { return m_tx; } // FIXME: remove, just for conversion
+
+    private:
+        uint32_t get_flags() const;
+        struct tx_deleter {
+            void operator()(struct wally_tx* p);
+        };
+        std::unique_ptr<struct wally_tx, tx_deleter> m_tx;
+        bool m_is_liquid;
+    };
 
     std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices);
-
-    void tx_set_input_script(const wally_tx_ptr& tx, size_t index, byte_span_t script);
-
-    void tx_set_input_witness(const wally_tx_ptr& tx, size_t index, const wally_tx_witness_stack_ptr& witness);
-
-    GA_USE_RESULT size_t tx_vsize_from_weight(size_t weight);
 
     wally_tx_witness_stack_ptr tx_witness_stack_init(size_t allocation_len);
 
@@ -421,11 +424,9 @@ namespace sdk {
 
     std::string psbt_to_base64(const wally_psbt_ptr& psbt, uint32_t flags = 0);
 
-    wally_tx_ptr psbt_extract_tx(const wally_psbt_ptr& psbt);
+    bool psbt_is_elements(const wally_psbt_ptr& psbt);
 
     std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index);
-
-#undef GA_USE_RESULT
 
 } /* namespace sdk */
 } /* namespace ga */

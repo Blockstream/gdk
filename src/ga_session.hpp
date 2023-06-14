@@ -110,7 +110,7 @@ namespace sdk {
         nlohmann::json get_unspent_outputs_for_private_key(
             const std::string& private_key, const std::string& password, uint32_t unused);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
-        wally_tx_ptr get_raw_transaction_details(const std::string& txhash_hex) const;
+        Tx get_raw_transaction_details(const std::string& txhash_hex) const;
         nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
         nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);

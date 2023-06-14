@@ -346,49 +346,47 @@ namespace sdk {
         return witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
     }
 
-    static size_t get_tx_adjusted_weight(const network_parameters& net_params, const wally_tx_ptr& tx)
+    static size_t get_tx_adjusted_weight(const network_parameters& net_params, const Tx& tx)
     {
-        size_t weight = tx_get_weight(tx);
+        size_t weight = tx.get_weight();
         if (net_params.is_liquid()) {
             // Add the weight of any missing blinding data
             const auto policy_asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
-            const auto num_inputs = tx->num_inputs ? tx->num_inputs : 1; // Assume at least 1 input
+            const auto num_inputs = tx.get_num_inputs() ? tx.get_num_inputs() : 1; // Assume at least 1 input
             const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
             size_t blinding_weight = 0;
             bool found_fee = false;
 
-            for (size_t i = 0; i < tx->num_outputs; ++i) {
-                auto& output = tx->outputs[i];
+            for (const auto& tx_out : tx.get_outputs()) {
                 uint64_t satoshi = 0;
 
-                if (!output.script) {
-                    // FIXME: Fee must be the last output
-                    GDK_RUNTIME_ASSERT(i + 1 == tx->num_outputs);
+                if (!tx_out.script) {
+                    GDK_RUNTIME_ASSERT(!found_fee);
                     found_fee = true;
                     continue;
                 }
-                GDK_RUNTIME_ASSERT(output.asset_len);
-                GDK_RUNTIME_ASSERT(output.value_len);
-                if (!output.nonce) {
+                GDK_RUNTIME_ASSERT(tx_out.asset_len);
+                GDK_RUNTIME_ASSERT(tx_out.value_len);
+                if (!tx_out.nonce) {
                     blinding_weight += WALLY_TX_ASSET_CT_NONCE_LEN * 4;
                 }
-                if (!output.surjectionproof_len) {
+                if (!tx_out.surjectionproof_len) {
                     blinding_weight += sjp_size;
                 }
-                if (output.value[0] == 1) {
+                if (tx_out.value[0] == 1) {
                     // An explicit value; use it for a better estimate
-                    auto conf_value = gsl::make_span(output.value, output.value_len);
+                    auto conf_value = gsl::make_span(tx_out.value, tx_out.value_len);
                     satoshi = tx_confidential_value_to_satoshi(conf_value);
                     // Add the difference between the explicit and blinded value size
                     blinding_weight -= WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN * 4;
                     blinding_weight += WALLY_TX_ASSET_CT_VALUE_LEN * 4;
                 }
-                if (!output.rangeproof_len) {
+                if (!tx_out.rangeproof_len) {
                     if (!satoshi) {
                         // We don't know the value, or its a zero placeholder;
                         // assume its the maximum for estimation purposes.
-                        if (output.asset_len == policy_asset_bytes.size()
-                            && !memcmp(output.asset, policy_asset_bytes.data(), output.asset_len)) {
+                        if (tx_out.asset_len == policy_asset_bytes.size()
+                            && !memcmp(tx_out.asset, policy_asset_bytes.data(), tx_out.asset_len)) {
                             // L-BTC: Limited by the policy asset coin supply
                             satoshi = amount::get_max_satoshi();
                         } else {
@@ -399,7 +397,10 @@ namespace sdk {
                     blinding_weight += varbuff_get_length(asset_rangeproof_max_size(satoshi));
                 }
             }
-            if (!found_fee) {
+            if (found_fee) {
+                // FIXME: Fee must be the last output
+                GDK_RUNTIME_ASSERT(!tx.get_outputs().back().script);
+            } else {
                 // Add weight for a fee output (which is always unblinded)
                 const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
                 weight += fee_output_vbytes * 4;
@@ -409,8 +410,7 @@ namespace sdk {
         return weight;
     }
 
-    amount get_tx_fee(
-        const network_parameters& net_params, const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate)
+    amount get_tx_fee(const network_parameters& net_params, const Tx& tx, amount min_fee_rate, amount fee_rate)
     {
         const amount rate = fee_rate < min_fee_rate ? min_fee_rate : fee_rate;
         const size_t weight = get_tx_adjusted_weight(net_params, tx);
@@ -443,12 +443,11 @@ namespace sdk {
         }
     }
 
-    void set_tx_output_commitment(
-        wally_tx_ptr& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi)
+    void set_tx_output_commitment(Tx& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi)
     {
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
-        tx_elements_output_commitment_set(tx, index, asset_bytes, ct_value, {}, {}, {});
+        tx.set_output_commitments(index, asset_bytes, ct_value, {}, {}, {});
     }
 
     // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
@@ -541,7 +540,7 @@ namespace sdk {
     }
 
     static amount add_tx_output(
-        const network_parameters& net_params, nlohmann::json& result, wally_tx_ptr& tx, const nlohmann::json& output)
+        const network_parameters& net_params, nlohmann::json& result, Tx& tx, const nlohmann::json& output)
     {
         std::string old_error = json_get_value(result, "error");
         const amount satoshi = json_get_amount(output, "satoshi");
@@ -550,7 +549,7 @@ namespace sdk {
             script = h2b(output.at("scriptpubkey"));
         }
         if (!net_params.is_liquid()) {
-            tx_add_raw_output(tx, satoshi.value(), script);
+            tx.add_output(satoshi.value(), script);
             return satoshi;
         }
         if (output.value("is_change", false)
@@ -558,16 +557,15 @@ namespace sdk {
             // This is an unblinded change output, allow it
             result["error"] = old_error;
         }
-        const uint32_t index = tx->num_outputs; // Append to outputs
+        const uint32_t index = tx.get_num_outputs(); // Append to outputs
         const auto asset_id = asset_id_from_json(net_params, output);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi.value());
-        tx_add_elements_raw_output_at(tx, index, script, asset_bytes, ct_value, {}, {}, {});
+        tx.add_elements_output_at(index, script, asset_bytes, ct_value, {}, {}, {});
         return satoshi;
     }
 
-    void add_tx_addressee_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee)
+    void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
         std::string address = addressee.at("address"); // Assume its a standard address
@@ -608,8 +606,8 @@ namespace sdk {
             }
 
             const uint32_t index = addressee.at("index");
-            tx_add_elements_raw_output_at(tx, index, scriptpubkey, asset_commitment, value_commitment, nonce_commitment,
-                surjectionproof, rangeproof);
+            tx.add_elements_output_at(
+                index, scriptpubkey, asset_commitment, value_commitment, nonce_commitment, surjectionproof, rangeproof);
             return;
         }
 
@@ -623,8 +621,7 @@ namespace sdk {
         add_tx_output(net_params, result, tx, addressee);
     }
 
-    size_t add_tx_change_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id)
+    size_t add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id)
     {
         const auto& net_params = session.get_network_parameters();
         auto& output = result.at("change_address").at(asset_id);
@@ -636,29 +633,28 @@ namespace sdk {
         const auto spk = scriptpubkey_from_address(net_params, output.at("address"), allow_unconfidential);
         output["scriptpubkey"] = b2h(spk);
         add_tx_output(net_params, result, tx, output);
-        return tx->num_outputs - 1;
+        return tx.get_num_outputs() - 1;
     }
 
-    size_t add_tx_fee_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, amount::value_type satoshi)
+    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, Tx& tx, amount::value_type satoshi)
     {
         const auto& net_params = session.get_network_parameters();
         nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", nlohmann::json::array() },
             { "is_change", false }, { "is_fee", true }, { "asset_id", net_params.get_policy_asset() } };
         add_tx_output(net_params, result, tx, output);
-        return tx->num_outputs - 1;
+        return tx.get_num_outputs() - 1;
     }
 
-    void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result)
+    void update_tx_size_info(const network_parameters& net_params, const Tx& tx, nlohmann::json& result)
     {
-        const bool valid = tx->num_inputs != 0u && tx->num_outputs != 0u;
-        result["transaction"] = valid ? tx_to_hex(tx, tx_flags(net_params.is_liquid())) : std::string();
+        const bool valid = tx.get_num_inputs() != 0u && tx.get_num_outputs() != 0u;
+        result["transaction"] = valid ? tx.to_hex() : std::string();
         const auto weight = get_tx_adjusted_weight(net_params, tx);
         result["transaction_weight"] = valid ? weight : 0;
-        const uint32_t tx_vsize = valid ? tx_vsize_from_weight(weight) : 0;
+        const uint32_t tx_vsize = valid ? Tx::vsize_from_weight(weight) : 0;
         result["transaction_vsize"] = tx_vsize;
-        result["transaction_version"] = tx->version;
-        result["transaction_locktime"] = tx->locktime;
+        result["transaction_version"] = tx.get()->version;
+        result["transaction_locktime"] = tx.get()->locktime;
         const auto fee_p = result.find("fee");
         if (fee_p != result.end()) {
             if (net_params.is_liquid()) {
@@ -688,9 +684,9 @@ namespace sdk {
         return NO_CHANGE_INDEX;
     }
 
-    const nlohmann::json& get_tx_output_source(nlohmann::json& result, const wally_tx_ptr& tx, size_t i)
+    const nlohmann::json& get_tx_output_source(nlohmann::json& result, const Tx& tx, size_t i)
     {
-        const auto& o = tx->outputs[i];
+        const auto& o = tx.get()->outputs[i];
         const std::string spk = b2h(gsl::make_span(o.script, o.script_len));
         auto&& match_spk = [&spk](const auto& a) { return a.at("scriptpubkey") == spk; };
         auto& addressees = result.at("addressees");
@@ -709,7 +705,7 @@ namespace sdk {
         throw user_error("No matching addressee or change for transaction output");
     }
 
-    void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result)
+    void update_tx_info(session_impl& session, const Tx& tx, nlohmann::json& result)
     {
         const auto& net_params = session.get_network_parameters();
         update_tx_size_info(net_params, tx, result);
@@ -717,18 +713,18 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
 
         nlohmann::json::array_t outputs;
-        if (!tx->num_inputs || !tx->num_outputs || !json_get_value(result, "error").empty()
+        if (!tx.get_num_inputs() || !tx.get_num_outputs() || !json_get_value(result, "error").empty()
             || !result.contains("addressees")) {
             // The tx is not valid/is incomplete
             result["transaction_outputs"] = std::move(outputs);
             return;
         }
 
-        outputs.reserve(tx->num_outputs);
+        outputs.reserve(tx.get_num_outputs());
         nlohmann::json empty;
 
-        for (size_t i = 0; i < tx->num_outputs; ++i) {
-            const auto& o = tx->outputs[i];
+        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+            const auto& o = tx.get()->outputs[i];
             const bool is_fee = !o.script;
             const auto& src = is_fee ? empty : get_tx_output_source(result, tx, i);
 
@@ -845,12 +841,12 @@ namespace sdk {
         return false;
     }
 
-    void set_anti_snipe_locktime(const wally_tx_ptr& tx, uint32_t current_block_height)
+    void set_anti_snipe_locktime(Tx& tx, uint32_t current_block_height)
     {
         // We use cores algorithm to randomly use an older locktime for delayed tx privacy
-        tx->locktime = current_block_height;
+        tx.get()->locktime = current_block_height;
         if (get_uniform_uint32_t(10) == 0) {
-            tx->locktime -= get_uniform_uint32_t(100);
+            tx.get()->locktime -= get_uniform_uint32_t(100);
         }
     }
 

@@ -3,10 +3,11 @@
 #pragma once
 
 #include "auth_handler.hpp"
-#include "ga_wally.hpp"
 
 namespace ga {
 namespace sdk {
+    struct Tx;
+
     class create_swap_transaction_call : public auth_handler_impl {
     public:
         create_swap_transaction_call(session& session, const nlohmann::json& details);
@@ -38,7 +39,7 @@ namespace sdk {
         const std::string m_swap_type;
         nlohmann::json m_receive_address;
         nlohmann::json m_create_details;
-        wally_tx_ptr m_tx;
+        std::unique_ptr<Tx> m_tx;
     };
 } // namespace sdk
 } // namespace ga

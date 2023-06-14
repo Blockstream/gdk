@@ -2679,28 +2679,26 @@ namespace sdk {
     }
 
     // Idempotent
-    wally_tx_ptr ga_session::get_raw_transaction_details(const std::string& txhash_hex) const
+    Tx ga_session::get_raw_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            wally_tx_ptr tx;
-            const auto flags = tx_flags(m_net_params.is_liquid());
+            std::vector<unsigned char> tx_bin;
             locker_t locker(m_mutex);
             // First, try the local cache
-            m_cache->get_transaction_data(txhash_hex, { [&tx, flags](const auto& db_blob) {
+            m_cache->get_transaction_data(txhash_hex, { [&tx_bin](const auto& db_blob) {
                 if (db_blob.has_value()) {
-                    tx = tx_from_bin(db_blob.value(), flags);
+                    tx_bin.assign(db_blob.value().begin(), db_blob.value().end());
                 }
             } });
-            if (tx) {
+            if (!tx_bin.empty()) {
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx cache using cached " << txhash_hex;
             } else {
-                // If not found, ask the server
-                const std::string tx_data = wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex));
-                tx = tx_from_hex(tx_data, flags);
+                // Not found, ask the server
+                tx_bin = h2b(wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex)));
                 // Cache the result
-                m_cache->insert_transaction_data(txhash_hex, h2b(tx_data));
+                m_cache->insert_transaction_data(txhash_hex, tx_bin);
             }
-            return tx;
+            return Tx(tx_bin, m_net_params.is_liquid());
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
@@ -3296,9 +3294,8 @@ namespace sdk {
         // FIXME: test weight and return error in create_transaction, not here
         const std::string tx_hex = result.at("transaction");
         const size_t MAX_TX_WEIGHT = 400000;
-        const uint32_t flags = tx_flags(m_net_params.is_liquid());
-        const auto unsigned_tx = tx_from_hex(tx_hex, flags);
-        GDK_RUNTIME_ASSERT(tx_get_weight(unsigned_tx) < MAX_TX_WEIGHT);
+        const Tx unsigned_tx(tx_hex, m_net_params.is_liquid());
+        GDK_RUNTIME_ASSERT(unsigned_tx.get_weight() < MAX_TX_WEIGHT);
 
         nlohmann::json private_data;
         // FIXME: social_destination/social_destination_type/payreq if BIP70
@@ -3327,7 +3324,7 @@ namespace sdk {
 
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
-        const auto tx = tx_from_hex(tx_details["tx"], flags);
+        const Tx tx(json_get_value(tx_details, "tx"), m_net_params.is_liquid());
         update_tx_size_info(m_net_params, tx, result);
 
         // TODO: get outputs/change subaccounts also, for multi-account spends
@@ -3341,7 +3338,7 @@ namespace sdk {
 
         if (is_send) {
             // Cache the raw tx data
-            m_cache->insert_transaction_data(txhash_hex, tx_to_bytes(tx));
+            m_cache->insert_transaction_data(txhash_hex, tx.to_bytes());
 
             if (!memo.empty()) {
                 update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));

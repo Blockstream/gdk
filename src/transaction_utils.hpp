@@ -66,8 +66,7 @@ namespace sdk {
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver);
 
     // Compute the fee for a tx
-    amount get_tx_fee(
-        const network_parameters& net_params, const wally_tx_ptr& tx, amount min_fee_rate, amount fee_rate);
+    amount get_tx_fee(const network_parameters& net_params, const Tx& tx, amount min_fee_rate, amount fee_rate);
 
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(
@@ -76,32 +75,28 @@ namespace sdk {
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
 
-    void set_tx_output_commitment(
-        wally_tx_ptr& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi);
+    void set_tx_output_commitment(Tx& tx, uint32_t index, const std::string& asset_id, amount::value_type satoshi);
 
     std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    void add_tx_addressee_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, nlohmann::json& addressee);
+    void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee);
 
     // Add an output from a JSON change output, returns the index in tx->outputs
     // Note the output is zero valued and is expected to be updated later
-    size_t add_tx_change_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, const std::string& asset_id);
+    size_t add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id);
 
     // Add a fee output to a tx, returns the index in tx->outputs
-    size_t add_tx_fee_output(
-        session_impl& session, nlohmann::json& result, wally_tx_ptr& tx, amount::value_type satoshi);
+    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, Tx& tx, amount::value_type satoshi);
 
     // Update the json tx size/fee rate information from tx
-    void update_tx_size_info(const network_parameters& net_params, const wally_tx_ptr& tx, nlohmann::json& result);
+    void update_tx_size_info(const network_parameters& net_params, const Tx& tx, nlohmann::json& result);
 
     // Get the output index of an assets change, or NO_CHANGE_INDEX
     uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id);
 
     // Update the json tx representation with info from tx
-    void update_tx_info(session_impl& session, const wally_tx_ptr& tx, nlohmann::json& result);
+    void update_tx_info(session_impl& session, const Tx& tx, nlohmann::json& result);
 
     // Compute the subaccounts a tx uses from its inputs
     std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details);
@@ -113,7 +108,7 @@ namespace sdk {
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
 
     // Set the locktime on tx to avoid fee sniping
-    void set_anti_snipe_locktime(const wally_tx_ptr& tx, uint32_t current_block_height);
+    void set_anti_snipe_locktime(Tx& tx, uint32_t current_block_height);
 } // namespace sdk
 } // namespace ga
 

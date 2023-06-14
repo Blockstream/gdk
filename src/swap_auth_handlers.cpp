@@ -22,10 +22,10 @@ namespace sdk {
         static const std::string LIQUIDEX_STR("liquidex_v1");
         static constexpr uint32_t LIQUIDEX_VERSION = 1;
 
-        static nlohmann::json get_tx_input_fields(const wally_tx_ptr& tx, size_t index)
+        static nlohmann::json get_tx_input_fields(const Tx& tx, size_t index)
         {
-            GDK_RUNTIME_ASSERT(index < tx->num_inputs);
-            const wally_tx_input* in = tx->inputs + index;
+            GDK_RUNTIME_ASSERT(index < tx.get_num_inputs());
+            const wally_tx_input* in = tx.get()->inputs + index;
             nlohmann::json::array_t witness;
             for (size_t i = 0; i < in->witness->num_items; ++i) {
                 const auto* item = in->witness->items + i;
@@ -85,7 +85,7 @@ namespace sdk {
             return { b2h(ec_scalar_subtract(input_scalar, output_scalar)) };
         }
 
-        static nlohmann::json liquidex_get_maker_input(const wally_tx_ptr& tx, const nlohmann::json& proposal_input)
+        static nlohmann::json liquidex_get_maker_input(const Tx& tx, const nlohmann::json& proposal_input)
         {
             auto maker_input = get_tx_input_fields(tx, 0);
             maker_input["asset_id"] = proposal_input.at("asset");
@@ -96,10 +96,10 @@ namespace sdk {
         }
 
         static nlohmann::json liquidex_get_maker_addressee(
-            const network_parameters& net_params, const wally_tx_ptr& tx, const nlohmann::json& proposal_output)
+            const network_parameters& net_params, const Tx& tx, const nlohmann::json& proposal_output)
         {
-            GDK_RUNTIME_ASSERT(tx->num_outputs);
-            const auto& tx_output = tx->outputs[0];
+            GDK_RUNTIME_ASSERT(tx.get_num_outputs());
+            const auto& tx_output = tx.get()->outputs[0];
             const auto rangeproof = gsl::make_span(tx_output.rangeproof, tx_output.rangeproof_len);
             const auto commitment = gsl::make_span(tx_output.value, tx_output.value_len);
             const auto nonce = gsl::make_span(tx_output.nonce, tx_output.nonce_len);
@@ -117,7 +117,7 @@ namespace sdk {
             return ret;
         }
 
-        static wally_tx_ptr liquidex_validate_proposal(const nlohmann::json& proposal)
+        static std::unique_ptr<Tx> liquidex_validate_proposal(const nlohmann::json& proposal)
         {
             constexpr bool is_liquid = true;
             GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == LIQUIDEX_VERSION, "unknown version");
@@ -128,9 +128,9 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(ec_scalar_verify(scalar), "invalid scalar");
             GDK_RUNTIME_ASSERT_MSG(
                 proposal_input.at("asset") != proposal_output.at("asset"), "cannot swap the same asset");
-            wally_tx_ptr tx = tx_from_hex(proposal.at("transaction"), tx_flags(is_liquid));
+            auto tx = std::make_unique<Tx>(json_get_value(proposal, "transaction"), is_liquid);
             GDK_RUNTIME_ASSERT_MSG(
-                tx->num_inputs == 1 && tx->num_outputs == 1, "unexpected number of inputs or outputs");
+                tx->get_num_inputs() == 1 && tx->get_num_outputs() == 1, "unexpected number of inputs or outputs");
 
             // Verify unblinded values match the transaction commitments
             // TODO: obtain the previous output and verify the input commitments
@@ -139,7 +139,7 @@ namespace sdk {
             const auto output_value = proposal_output.at("satoshi");
             const auto value_blind_proof = h2b(proposal_output.at("value_blind_proof"));
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
-            const auto& tx_output = tx->outputs[0];
+            const auto& tx_output = tx->get()->outputs[0];
             const auto output_value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);
 
             bool have_matched_asset_commitment = tx_output.asset_len == output_asset_commitment.size()
@@ -306,14 +306,14 @@ namespace sdk {
             return state_type::make_call;
         } else if (m_create_details.empty()) {
             // Get the input UTXOs
-            auto maker_input = liquidex_get_maker_input(m_tx, proposal_input);
+            auto maker_input = liquidex_get_maker_input(*m_tx, proposal_input);
             nlohmann::json::array_t used_utxos = { std::move(maker_input) };
             std::set<std::string> asset_ids{ maker_asset_id, taker_asset_id, m_net_params.get_policy_asset() };
             for (const auto& asset_id : asset_ids) {
                 add_asset_utxos(utxos, asset_id, used_utxos);
             }
 
-            auto maker_addressee = liquidex_get_maker_addressee(m_net_params, m_tx, proposal_output);
+            auto maker_addressee = liquidex_get_maker_addressee(m_net_params, *m_tx, proposal_output);
             nlohmann::json taker_addressee = std::move(m_receive_address);
             m_receive_address["used"] = true; // Make sure m_receive_address.empty() isn't true
             taker_addressee["asset_id"] = maker_asset_id; // Taker is receiving the makers asset
@@ -321,8 +321,8 @@ namespace sdk {
             nlohmann::json::array_t addressees = { std::move(maker_addressee), std::move(taker_addressee) };
 
             nlohmann::json create_details
-                = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->version },
-                      { "transaction_locktime", m_tx->locktime }, { "utxo_strategy", "manual" },
+                = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->get()->version },
+                      { "transaction_locktime", m_tx->get()->locktime }, { "utxo_strategy", "manual" },
                       { "utxos", nlohmann::json::object() }, { "used_utxos", std::move(used_utxos) },
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));

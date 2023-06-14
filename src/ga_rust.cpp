@@ -396,11 +396,11 @@ namespace sdk {
         throw std::runtime_error("set_unspent_outputs_status not implemented");
     }
 
-    wally_tx_ptr ga_rust::get_raw_transaction_details(const std::string& txhash_hex) const
+    Tx ga_rust::get_raw_transaction_details(const std::string& txhash_hex) const
     {
         try {
-            const auto tx_hex = rust_call("get_transaction_hex", nlohmann::json(txhash_hex), m_session);
-            return tx_from_hex(tx_hex, tx_flags(m_net_params.is_liquid()));
+            const std::string tx_hex = rust_call("get_transaction_hex", nlohmann::json(txhash_hex), m_session);
+            return Tx(tx_hex, m_net_params.is_liquid());
         } catch (const std::exception& e) {
             GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");

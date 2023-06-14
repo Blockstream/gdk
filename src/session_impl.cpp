@@ -335,13 +335,13 @@ namespace sdk {
     {
         const bool is_liquid = m_net_params.is_liquid();
         const auto psbt = psbt_from_base64(details.at("psbt"));
-        const auto tx = psbt_extract_tx(psbt);
+        Tx tx(psbt);
 
         nlohmann::json::array_t inputs;
-        inputs.reserve(tx->num_inputs);
-        for (size_t i = 0; i < tx->num_inputs; ++i) {
-            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
-            const uint32_t vout = tx->inputs[i].index;
+        inputs.reserve(tx.get_num_inputs());
+        for (const auto& tx_in : tx.get_inputs()) {
+            const std::string txhash_hex = b2h_rev(tx_in.txhash);
+            const uint32_t vout = tx_in.index;
             for (const auto& utxo : details.at("utxos")) {
                 if (utxo.value("txhash", std::string()) == txhash_hex && utxo.at("pt_idx") == vout) {
                     inputs.emplace_back(std::move(utxo));
@@ -351,9 +351,9 @@ namespace sdk {
         }
 
         nlohmann::json::array_t outputs;
-        outputs.reserve(tx->num_outputs);
-        for (size_t i = 0; i < tx->num_outputs; ++i) {
-            const auto& o = tx->outputs[i];
+        outputs.reserve(tx.get_num_outputs());
+        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+            const auto& o = tx.get()->outputs[i];
             if (!o.script_len) {
                 continue; // Liquid fee
             }
@@ -383,16 +383,16 @@ namespace sdk {
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
         const auto psbt = psbt_from_base64(details.at("psbt"));
-        auto tx = psbt_extract_tx(psbt);
+        Tx tx(psbt);
 
         // Get our inputs in order, with UTXO details for signing,
         // or a "skip_signing" indicator if they aren't ours.
         std::vector<nlohmann::json> inputs;
-        inputs.reserve(tx->num_inputs);
+        inputs.reserve(tx.get_num_inputs());
         size_t num_sigs_required = 0;
-        for (size_t i = 0; i < tx->num_inputs; ++i) {
-            const std::string txhash_hex = b2h_rev(tx->inputs[i].txhash);
-            const uint32_t vout = tx->inputs[i].index;
+        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+            const std::string txhash_hex = b2h_rev(tx.get()->inputs[i].txhash);
+            const uint32_t vout = tx.get()->inputs[i].index;
             nlohmann::json input_utxo({ { "skip_signing", true } });
             for (const auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
@@ -411,7 +411,7 @@ namespace sdk {
             // No signatures required, return the PSBT unchanged
             return { { "utxos", utxos }, { "psbt", details.at("psbt") } };
         }
-        const bool is_partial = num_sigs_required != tx->num_inputs;
+        const bool is_partial = num_sigs_required != tx.get_num_inputs();
         if (!is_electrum && is_partial) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
@@ -422,8 +422,7 @@ namespace sdk {
         }
 
         // FIXME: refactor to use HWW path
-        const auto flags = tx_flags(is_liquid);
-        nlohmann::json tx_details = { { "transaction", tx_to_hex(tx, flags) } };
+        nlohmann::json tx_details = { { "transaction", tx.to_hex() } };
         const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
 
         const bool is_low_r = get_signer()->supports_low_r();
@@ -451,8 +450,8 @@ namespace sdk {
             std::vector<std::vector<unsigned char>> new_scripts;
             auto&& restore_tx = [&tx, &old_scripts] {
                 for (size_t i = 0; i < old_scripts.size(); ++i) {
-                    tx->inputs[i].script = (unsigned char*)old_scripts[i].data();
-                    tx->inputs[i].script_len = old_scripts[i].size();
+                    tx.get()->inputs[i].script = (unsigned char*)old_scripts[i].data();
+                    tx.get()->inputs[i].script_len = old_scripts[i].size();
                 }
                 old_scripts.clear();
             };
@@ -463,10 +462,10 @@ namespace sdk {
                 // input scriptSigs with redeemScripts before passing to the
                 // Green backend. The backend checks the redeemScript for
                 // segwit-ness to verify the tx is segwit before signing.
-                old_scripts.reserve(tx->num_inputs);
-                new_scripts.reserve(tx->num_inputs);
-                for (size_t i = 0; i < tx->num_inputs; ++i) {
-                    auto& txin = tx->inputs[i];
+                old_scripts.reserve(tx.get_num_inputs());
+                new_scripts.reserve(tx.get_num_inputs());
+                for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+                    auto& txin = tx.get()->inputs[i];
                     old_scripts.emplace_back(gsl::make_span(txin.script, txin.script_len));
                     new_scripts.emplace_back(psbt_get_input_redeem_script(psbt, i));
                     auto& redeem_script = new_scripts.back();
@@ -481,14 +480,15 @@ namespace sdk {
             // We pass the UTXOs in (under a dummy asset key which is unused)
             // for housekeeping purposes such as internal cache updates.
             nlohmann::json u = { { "dummy", std::move(result["utxos"]) } };
-            tx_details = { { "transaction", tx_to_hex(tx, flags) }, { "utxos", std::move(u) } };
+            tx_details = { { "transaction", tx.to_hex() }, { "utxos", std::move(u) } };
             restore_tx();
 
             if (details.contains("blinding_nonces")) {
                 tx_details["blinding_nonces"] = details["blinding_nonces"];
             }
             auto ret = service_sign_transaction(tx_details, nlohmann::json::object());
-            tx = tx_from_hex(ret.at("transaction"), flags);
+            Tx signed_tx(json_get_value(ret, "transaction"), is_liquid);
+            tx.swap(signed_tx);
             result["utxos"] = std::move(tx_details["utxos"]["dummy"]);
         }
 
@@ -499,9 +499,9 @@ namespace sdk {
             if (utxo.empty()) {
                 /* Finalize the input, but don't remove its finalization data.
                  * FIXME: see comment below on partial signing */
-                GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, tx->inputs[i].witness));
+                GDK_VERIFY(wally_psbt_set_input_final_witness(psbt.get(), i, tx.get()->inputs[i].witness));
                 GDK_VERIFY(wally_psbt_set_input_final_scriptsig(
-                    psbt.get(), i, tx->inputs[i].script, tx->inputs[i].script_len));
+                    psbt.get(), i, tx.get()->inputs[i].script, tx.get()->inputs[i].script_len));
             }
         }
 
