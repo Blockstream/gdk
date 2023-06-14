@@ -71,7 +71,6 @@ namespace sdk {
     private:
         state_type call_impl() override;
         void initialize();
-        void set_signer_data(const std::shared_ptr<signer>& signer);
         void sign_user_inputs(const std::shared_ptr<signer>& signer);
         void on_next_handler_complete(auth_handler* next_handler) override;
 

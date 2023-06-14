@@ -596,10 +596,10 @@ namespace sdk {
     void sign_transaction_call::initialize()
     {
         m_details.erase("utxos"); // Not needed anymore
+        const bool is_liquid = m_net_params.is_liquid();
 
         if (!m_twofactor_data.contains("signing_inputs")) {
             // Compute the data we need for the hardware to sign the transaction
-            const bool is_liquid = m_net_params.is_liquid();
             signal_hw_request(hw_request::sign_tx);
             m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
 
@@ -636,13 +636,9 @@ namespace sdk {
             m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
             m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
         }
-    }
-
-    void sign_transaction_call::set_signer_data(const std::shared_ptr<signer>& signer)
-    {
-        const bool is_liquid = m_net_params.is_liquid();
 
         // We use the Anti-Exfil protocol if the hw supports it
+        auto signer = get_signer();
         const bool use_ae_protocol = signer->use_ae_protocol();
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
 
@@ -699,8 +695,6 @@ namespace sdk {
         if (!m_initialized) {
             // Create signing/twofactor data for user signing
             initialize();
-            // Create the data needed for user signing
-            set_signer_data(signer);
             m_initialized = true;
             return m_state;
         }
