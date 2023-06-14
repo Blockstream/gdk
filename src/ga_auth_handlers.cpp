@@ -598,44 +598,42 @@ namespace sdk {
         m_details.erase("utxos"); // Not needed anymore
         const bool is_liquid = m_net_params.is_liquid();
 
-        if (!m_twofactor_data.contains("signing_inputs")) {
-            // Compute the data we need for the hardware to sign the transaction
-            signal_hw_request(hw_request::sign_tx);
-            m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
+        // Compute the data we need for the hardware to sign the transaction
+        signal_hw_request(hw_request::sign_tx);
+        m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
 
-            // We need the inputs, augmented with types, scripts and paths
-            auto signing_inputs = get_ga_signing_inputs(m_details);
-            std::unique_ptr<Tx> tx;
-            m_sweep_signatures.resize(signing_inputs.size());
-            for (size_t i = 0; i < signing_inputs.size(); ++i) {
-                auto& input = signing_inputs[i];
-                if (input.contains("private_key")) {
-                    // Sweep input. Compute the signature using the provided
-                    // private key and store it. Then mark the input as
-                    // skip_signing=true and remove its private key so we
-                    // don't expose it to the signer.
-                    if (!tx) {
-                        tx = std::make_unique<Tx>(json_get_value(m_details, "transaction"), is_liquid);
-                    }
-                    const uint32_t sighash = WALLY_SIGHASH_ALL;
-                    const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
-                    const auto sig = ec_sig_from_bytes(h2b(input["private_key"]), preimage_hash);
-                    m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
-                    input["skip_signing"] = true;
-                    input.erase("private_key");
-                    continue;
+        // We need the inputs, augmented with types, scripts and paths
+        auto signing_inputs = get_ga_signing_inputs(m_details);
+        std::unique_ptr<Tx> tx;
+        m_sweep_signatures.resize(signing_inputs.size());
+        for (size_t i = 0; i < signing_inputs.size(); ++i) {
+            auto& input = signing_inputs[i];
+            if (input.contains("private_key")) {
+                // Sweep input. Compute the signature using the provided
+                // private key and store it. Then mark the input as
+                // skip_signing=true and remove its private key so we
+                // don't expose it to the signer.
+                if (!tx) {
+                    tx = std::make_unique<Tx>(json_get_value(m_details, "transaction"), is_liquid);
                 }
-                if (input.value("skip_signing", false)) {
-                    continue;
-                }
-                const auto& addr_type = input.at("address_type");
-                GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+                const uint32_t sighash = WALLY_SIGHASH_ALL;
+                const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
+                const auto sig = ec_sig_from_bytes(h2b(input["private_key"]), preimage_hash);
+                m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
+                input["skip_signing"] = true;
+                input.erase("private_key");
+                continue;
             }
-
-            // FIXME: Do not duplicate the transaction_outputs in required_data
-            m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
-            m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
+            if (input.value("skip_signing", false)) {
+                continue;
+            }
+            const auto& addr_type = input.at("address_type");
+            GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
         }
+
+        // FIXME: Do not duplicate the transaction_outputs in required_data
+        m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
+        m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
 
         // We use the Anti-Exfil protocol if the hw supports it
         auto signer = get_signer();
@@ -657,7 +655,7 @@ namespace sdk {
             }
         }
 
-        if (!signer->is_remote() && !m_twofactor_data.contains("signing_transactions")) {
+        if (!signer->is_remote()) {
             nlohmann::json prev_txs;
             if (!is_liquid) {
                 // BTC: Provide the previous txs data for validation, even
