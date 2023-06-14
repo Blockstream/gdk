@@ -5,9 +5,6 @@ include(CMakePrintHelpers)
 
 macro(create_greenaddress_target)
     add_library(greenaddress SHARED $<TARGET_OBJECTS:greenaddress-objects>)
-    if(TARGET swig-java-obj)
-        target_sources(greenaddress PRIVATE $<TARGET_OBJECTS:swig-java-obj>)
-    endif()
     set_target_properties(greenaddress PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
@@ -92,32 +89,11 @@ macro(create_greenaddress_target)
         FILE "greenaddress-targets.cmake"
         EXCLUDE_FROM_ALL
     )
-    find_program(OBJCOPY NAMES llvm-objcopy ${TOOLCHAIN_PREFIX}-objcopy objcopy HINTS ${ANDROID_TOOLCHAIN_ROOT})
-    if(OBJCOPY)
-        add_custom_command(OUTPUT libgreenaddress.syms
-            COMMAND ${OBJCOPY} --only-keep-debug $<TARGET_FILE:greenaddress> libgreenaddress.syms
-            DEPENDS greenaddress
-            BYPRODUCTS libgreenaddress.syms
-            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        )
-        add_custom_target(greenaddress-syms ALL
-            DEPENDS libgreenaddress.syms
-        )
-        install(FILES ${CMAKE_BINARY_DIR}/libgreenaddress.syms
-            DESTINATION ${_libInstallDir}
-            COMPONENT gdk-runtime
-            OPTIONAL
-        )
-    endif()
 endmacro()
 
 
 macro(create_greenaddressstatic_target)
     add_library(greenaddress-static STATIC $<TARGET_OBJECTS:greenaddress-objects>)
-    if(TARGET swig_java)
-        target_sources(greenaddress-static PRIVATE $<TARGET_OBJECTS:swig_java>)
-        target_link_libraries(greenaddress-static PRIVATE swig_java)
-    endif()
     get_target_property(_gaIncludeDir greenaddress-objects INTERFACE_INCLUDE_DIRECTORIES)
     target_include_directories(greenaddress-static INTERFACE ${_gaIncludeDir})
     target_link_libraries(greenaddress-static PUBLIC
@@ -151,12 +127,8 @@ endmacro()
 
 macro(create_greenaddressfull_target)
     add_library(greenaddress-full STATIC $<TARGET_OBJECTS:greenaddress-objects>)
-    set_target_properties(greenaddress-full PROPERTIES OUTPUT_NAME greenaddress_full)
-    ### WARNING once on cmake > 3.12 ``target_sources(greenaddress-objects $<TARGET_NAME_IF_EXISTS:swig_java>)``
-    if(TARGET swig_java)
-        target_sources(greenaddress-full PRIVATE $<TARGET_OBJECTS:swig_java>)
-    endif()
     set_target_properties(greenaddress-full PROPERTIES
+        OUTPUT_NAME greenaddress_full
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
         PUBLIC_HEADER $<TARGET_PROPERTY:greenaddress-objects,PUBLIC_HEADER>

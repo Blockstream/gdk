@@ -151,20 +151,28 @@ if $verbose ; then
 fi
 
 cmake ${cmake_options}
-cmake --build $bld_root --parallel $parallel $cmake_verbose
+if [[ "${BUILD}" == "--ndk" ]]; then
+    cmake --build $bld_root --target greenaddress-java greenaddress-syms --parallel $parallel $cmake_verbose
+else
+    cmake --build $bld_root --parallel $parallel $cmake_verbose
+fi
 
 if $enable_python ; then
     cmake --build $bld_root --target python-wheel $cmake_verbose
 fi
 
-if $install ; then
-    if [ "$BUILDTYPE" == "release" ]; then
-        cmake --install $bld_root --prefix $install_prefix --strip
-    else
-        cmake --install $bld_root --prefix $install_prefix
-    fi
-    cmake --install $bld_root --prefix $install_prefix --component gdk-dev
+if [[ "$install" == "false" ]]; then
+    exit 0
 fi
+
 if [[ "${BUILD}" == "--ndk" ]]; then
     cmake --install $bld_root --prefix $install_prefix --component gdk-java
+    exit 0
 fi
+
+if [ "$BUILDTYPE" == "release" ]; then
+    cmake --install $bld_root --prefix $install_prefix --strip
+else
+    cmake --install $bld_root --prefix $install_prefix
+fi
+cmake --install $bld_root --prefix $install_prefix --component gdk-dev
