@@ -757,9 +757,6 @@ namespace sdk {
             auto addressees_p = result.find("addressees");
             if (addressees_p == result.end() || addressees_p->empty()) {
                 set_tx_error(result, res::id_no_recipients);
-                if (!result.contains("used_utxos")) {
-                    result.emplace("used_utxos", std::vector<nlohmann::json>());
-                }
                 return;
             }
             const size_t num_addressees = addressees_p->size();
@@ -842,9 +839,6 @@ namespace sdk {
             for (auto& addressee : *addressees_p) {
                 if (auto error = validate_tx_addressee(session, addressee); !error.empty()) {
                     set_tx_error(result, error);
-                    if (!result.contains("used_utxos")) {
-                        result.emplace("used_utxos", std::vector<nlohmann::json>());
-                    }
                     return;
                 }
                 asset_ids.emplace(asset_id_from_json(net_params, addressee));

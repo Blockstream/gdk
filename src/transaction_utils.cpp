@@ -423,9 +423,15 @@ namespace sdk {
 
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite)
     {
+        GDK_RUNTIME_ASSERT(!error.empty());
         auto& e = result["error"];
         if (overwrite || e.empty() || e.get<std::string>().empty()) {
             e = error;
+        }
+        if (!result.contains("used_utxos")) {
+            // Callers expect to have used_utxos present even when an error occurs
+            // TODO: See if this can be removed
+            result.emplace("used_utxos", std::vector<nlohmann::json>());
         }
     }
 
