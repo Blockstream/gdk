@@ -90,6 +90,10 @@ namespace sdk {
     // Get the output index of an assets change
     std::optional<int> get_tx_change_index(nlohmann::json& result, const std::string& asset_id);
 
+    // Return whether all addressees and change outputs are unique (different addresses),
+    // and if spk is given, return whether it would be unique if added
+    bool are_tx_outputs_unique(const nlohmann::json& result, const std::string& spk = std::string());
+
     // Update the json tx representation with info from tx
     void update_tx_info(session_impl& session, const Tx& tx, nlohmann::json& result);
 

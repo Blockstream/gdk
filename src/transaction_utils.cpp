@@ -607,6 +607,30 @@ namespace sdk {
         return {};
     }
 
+    bool are_tx_outputs_unique(const nlohmann::json& result, const std::string& spk)
+    {
+        std::set<std::string> spks;
+        // Addressee
+        for (const auto& addressee : result.at("addressees")) {
+            if (!spks.insert(addressee.at("scriptpubkey").get<std::string>()).second) {
+                return false;
+            }
+        }
+
+        // Change output
+        if (const auto p = result.find("change_address"); p != result.end()) {
+            for (const auto& it : p->items()) {
+                if (!spks.insert(it.value().at("scriptpubkey").get<std::string>()).second) {
+                    return false;
+                }
+            }
+        }
+        if (!spk.empty() && !spks.insert(spk).second) {
+            return false;
+        }
+        return true;
+    }
+
     static const nlohmann::json& get_tx_output_source(const nlohmann::json& result, const Tx& tx, size_t i)
     {
         const auto& o = tx.get_output(i);

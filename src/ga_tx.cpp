@@ -730,6 +730,12 @@ namespace sdk {
                 add_tx_addressee_output(session, result, tx, json_addressee);
             }
 
+            if (!are_tx_outputs_unique(result)) {
+                // Addressees must be unique
+                set_tx_error(result, "multiple outputs share the same address");
+                return;
+            }
+
             if (is_rbf) {
                 // Add all the old utxos. Note we don't add them to used_utxos
                 // since the user can't choose to remove them, and we won't
