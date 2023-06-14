@@ -600,6 +600,7 @@ namespace sdk {
         const auto signer = get_signer();
         const bool use_ae_protocol = signer->use_ae_protocol();
         const bool is_local_signer = !signer->is_remote();
+        bool have_inputs_to_sign = false;
 
         // Compute the data we need for the hardware to sign the transaction
         signal_hw_request(hw_request::sign_tx);
@@ -637,29 +638,28 @@ namespace sdk {
                 } else {
                     remove_ae_host_data(input);
                 }
+                have_inputs_to_sign = true;
             }
         }
+
+        nlohmann::json prev_txs;
+        if (is_local_signer && have_inputs_to_sign && !is_liquid) {
+            // BTC: Provide the previous txs data for validation, even
+            // for segwit, in order to mitigate the segwit fee attack.
+            // (Liquid txs are segwit+explicit fee and so not affected)
+            for (const auto& input : signing_inputs) {
+                std::string txhash = input.at("txhash");
+                if (!prev_txs.contains(txhash)) {
+                    auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
+                    prev_txs.emplace(std::move(txhash), std::move(tx_hex));
+                }
+            }
+        }
+        m_twofactor_data["signing_transactions"] = std::move(prev_txs);
 
         // FIXME: Do not duplicate the transaction_outputs in required_data
         m_twofactor_data["transaction_outputs"] = m_details["transaction_outputs"];
         m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
-
-        if (is_local_signer) {
-            nlohmann::json prev_txs;
-            if (!is_liquid) {
-                // BTC: Provide the previous txs data for validation, even
-                // for segwit, in order to mitigate the segwit fee attack.
-                // (Liquid txs are segwit+explicit fee and so not affected)
-                for (const auto& input : m_twofactor_data["signing_inputs"]) {
-                    const std::string txhash = input.at("txhash");
-                    if (!prev_txs.contains(txhash)) {
-                        auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
-                        prev_txs.emplace(txhash, std::move(tx_hex));
-                    }
-                }
-            }
-            m_twofactor_data["signing_transactions"] = std::move(prev_txs);
-        }
     }
 
     // Determine whether to sign with the users key, green backend, or both
