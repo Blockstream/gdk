@@ -67,5 +67,6 @@ add_custom_target(python-wheel
 )
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/dist/
     DESTINATION ${CMAKE_INSTALL_DATADIR}/python
+    COMPONENT gdk-python
     FILES_MATCHING PATTERN *.whl
 )
