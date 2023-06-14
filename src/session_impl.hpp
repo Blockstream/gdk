@@ -183,7 +183,6 @@ namespace sdk {
         virtual nlohmann::json get_transaction_details(const std::string& txhash_hex) const = 0;
 
         virtual void create_transaction(nlohmann::json& details);
-        virtual nlohmann::json user_sign_transaction(const nlohmann::json& details);
         virtual nlohmann::json service_sign_transaction(
             const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;

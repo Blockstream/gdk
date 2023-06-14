@@ -423,7 +423,7 @@ namespace sdk {
 
         // FIXME: refactor to use HWW path
         nlohmann::json tx_details = { { "transaction", tx.to_hex() } };
-        const auto signatures = sign_ga_transaction(*this, tx_details, inputs).first;
+        const auto signatures = sign_ga_transaction(*this, tx_details, inputs);
 
         const bool is_low_r = get_signer()->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
@@ -513,11 +513,6 @@ namespace sdk {
         uint32_t b64_flags = is_partial ? WALLY_PSBT_SERIALIZE_FLAG_REDUNDANT : 0;
         result["psbt"] = psbt_to_base64(psbt, b64_flags);
         return result;
-    }
-
-    nlohmann::json session_impl::user_sign_transaction(const nlohmann::json& details)
-    {
-        return sign_ga_transaction(*this, details);
     }
 
     void session_impl::save_cache()

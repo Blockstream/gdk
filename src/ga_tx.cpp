@@ -820,43 +820,6 @@ namespace sdk {
 #endif
         }
 
-        static std::string sign_input(
-            session_impl& session, Tx& tx, uint32_t index, const nlohmann::json& u, uint32_t sighash)
-        {
-            const auto preimage_hash = tx.get_signing_preimage_hash(u, index, sighash);
-            const std::string private_key_hex = json_get_value(u, "private_key");
-
-            if (!private_key_hex.empty()) {
-                const auto user_sig = ec_sig_from_bytes(h2b(private_key_hex), preimage_hash);
-                const auto der = ec_sig_to_der(user_sig, sighash);
-                tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
-                return b2h(der);
-            } else {
-                const auto script = h2b(u.at("prevout_script"));
-                const uint32_t subaccount = json_get_value(u, "subaccount", 0u);
-                const uint32_t pointer = json_get_value(u, "pointer", 0u);
-                const bool is_internal = json_get_value(u, "is_internal", false);
-                const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
-                auto signer = session.get_nonnull_signer();
-                const auto user_sig = signer->sign_hash(path, preimage_hash);
-                const auto der = ec_sig_to_der(user_sig, sighash);
-
-                if (is_segwit_address_type(u)) {
-                    // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
-                    // Note that this requires setting the inputs sequence number to the CSV time too
-                    auto wit = tx_witness_stack_init(1);
-                    tx_witness_stack_add(wit, der);
-                    tx.set_input_witness(index, wit);
-                    const uint32_t witness_ver = 0;
-                    tx.set_input_script(index, witness_script(script, witness_ver));
-                } else {
-                    const bool is_low_r = signer->supports_low_r();
-                    tx.set_input_script(index, input_script(is_low_r, script, user_sig, sighash));
-                }
-                return b2h(der);
-            }
-        }
-
         static void validate_sighash(uint32_t sighash, bool is_liquid)
         {
             if (sighash != WALLY_SIGHASH_ALL) {
@@ -1236,16 +1199,16 @@ namespace sdk {
 
     void add_input_signature(Tx& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r)
     {
-        GDK_RUNTIME_ASSERT(json_get_value(u, "private_key").empty());
-
-        const auto script = h2b(u.at("prevout_script"));
         auto der = h2b(der_hex);
         const auto addr_type = u.at("address_type");
 
-        if (addr_type == address_type::p2pkh) {
-            // Singlesig pre-segwit
+        if (!json_get_value(u, "private_key").empty() || addr_type == address_type::p2pkh) {
+            // Singlesig (or sweep) p2pkh
             tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
-        } else if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
+            return;
+        }
+
+        if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
             // Singlesig segwit
             const auto public_key = h2b(u.at("public_key"));
             auto wit = tx_witness_stack_init(2);
@@ -1258,7 +1221,10 @@ namespace sdk {
                 // for native segwit ensure the scriptsig is empty
                 tx.set_input_script(index, byte_span_t());
             }
-        } else if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+            return;
+        }
+        const auto script = h2b(u.at("prevout_script"));
+        if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
             // Multisig segwit
             auto wit = tx_witness_stack_init(1);
             tx_witness_stack_add(wit, der);
@@ -1305,7 +1271,7 @@ namespace sdk {
         return result;
     }
 
-    std::pair<std::vector<std::string>, Tx> sign_ga_transaction(
+    std::vector<std::string> sign_ga_transaction(
         session_impl& session, const nlohmann::json& details, const std::vector<nlohmann::json>& inputs)
     {
         const bool is_liquid = session.get_network_parameters().is_liquid();
@@ -1314,23 +1280,23 @@ namespace sdk {
 
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& utxo = inputs.at(i);
-            if (!utxo.value("skip_signing", false)) {
-                uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
-                sigs[i] = sign_input(session, tx, i, utxo, sighash);
+            GDK_RUNTIME_ASSERT(json_get_value(utxo, "private_key").empty());
+            if (utxo.value("skip_signing", false)) {
+                continue;
             }
-        }
-        return std::make_pair(sigs, std::move(tx));
-    }
+            // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
+            // Note that this requires setting the inputs sequence number to the CSV time too
+            uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+            const auto preimage_hash = tx.get_signing_preimage_hash(utxo, i, sighash);
 
-    // FIXME: Only used for sweep txs, refactor to remove
-    nlohmann::json sign_ga_transaction(session_impl& session, const nlohmann::json& details)
-    {
-        auto tx = sign_ga_transaction(session, details, get_ga_signing_inputs(details)).second;
-        nlohmann::json result(details);
-        result.erase("utxos");
-        const auto& net_params = session.get_network_parameters();
-        update_tx_size_info(net_params, tx, result);
-        return result;
+            const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
+            const uint32_t pointer = json_get_value(utxo, "pointer", 0u);
+            const bool is_internal = json_get_value(utxo, "is_internal", false);
+            const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
+            const auto sig = session.get_nonnull_signer()->sign_hash(path, preimage_hash);
+            sigs[i] = b2h(ec_sig_to_der(sig, sighash));
+        }
+        return sigs;
     }
 
     static std::array<unsigned char, SHA256_LEN> hash_prevouts_from_utxos(const nlohmann::json& details)

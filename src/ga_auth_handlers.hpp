@@ -76,6 +76,7 @@ namespace sdk {
         void on_next_handler_complete(auth_handler* next_handler) override;
 
         nlohmann::json m_details;
+        std::vector<std::string> m_sweep_signatures;
         bool m_initialized;
         bool m_user_signed;
         bool m_server_signed;

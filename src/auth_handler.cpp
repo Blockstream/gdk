@@ -546,10 +546,8 @@ namespace sdk {
         } else if (request == hw_request::get_master_blinding_key) {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else if (request == hw_request::sign_tx) {
-            auto sigs = sign_ga_transaction(
-                get_session(), required_data.at("transaction"), required_data.at("signing_inputs"))
-                            .first;
-            result["signatures"] = sigs;
+            result["signatures"] = sign_ga_transaction(
+                get_session(), required_data.at("transaction"), required_data.at("signing_inputs"));
         } else {
             GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");

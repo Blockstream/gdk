@@ -586,6 +586,7 @@ namespace sdk {
     sign_transaction_call::sign_transaction_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "sign_transaction")
         , m_details(std::move(details))
+        , m_sweep_signatures()
         , m_initialized(false)
         , m_user_signed(false)
         , m_server_signed(false)
@@ -598,19 +599,37 @@ namespace sdk {
 
         if (!m_twofactor_data.contains("signing_inputs")) {
             // Compute the data we need for the hardware to sign the transaction
+            const bool is_liquid = m_net_params.is_liquid();
             signal_hw_request(hw_request::sign_tx);
-            m_twofactor_data["transaction"] = m_details;
+            m_twofactor_data["transaction"] = m_details; // FIXME: just the tx hex
 
             // We need the inputs, augmented with types, scripts and paths
             auto signing_inputs = get_ga_signing_inputs(m_details);
-            for (auto& input : signing_inputs) {
+            std::unique_ptr<Tx> tx;
+            m_sweep_signatures.resize(signing_inputs.size());
+            for (size_t i = 0; i < signing_inputs.size(); ++i) {
+                auto& input = signing_inputs[i];
+                if (input.contains("private_key")) {
+                    // Sweep input. Compute the signature using the provided
+                    // private key and store it. Then mark the input as
+                    // skip_signing=true and remove its private key so we
+                    // don't expose it to the signer.
+                    if (!tx) {
+                        tx = std::make_unique<Tx>(json_get_value(m_details, "transaction"), is_liquid);
+                    }
+                    const uint32_t sighash = WALLY_SIGHASH_ALL;
+                    const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
+                    const auto sig = ec_sig_from_bytes(h2b(input["private_key"]), preimage_hash);
+                    m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
+                    input["skip_signing"] = true;
+                    input.erase("private_key");
+                    continue;
+                }
                 if (input.value("skip_signing", false)) {
                     continue;
                 }
                 const auto& addr_type = input.at("address_type");
                 GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-                // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-                GDK_RUNTIME_ASSERT(!input.contains("private_key"));
             }
 
             // FIXME: Do not duplicate the transaction_outputs in required_data
@@ -633,11 +652,9 @@ namespace sdk {
             }
             const auto& addr_type = input.at("address_type");
             GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
-            // TODO: Support mixed/batched sweep transactions with non-sweep inputs
-            GDK_RUNTIME_ASSERT(!input.contains("private_key"));
 
             // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-            if (use_ae_protocol) {
+            if (use_ae_protocol && !input.contains("private_key")) {
                 add_ae_host_data(input);
             } else {
                 remove_ae_host_data(input);
@@ -664,15 +681,6 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        if (json_get_value(m_details, "is_sweep", false)) {
-            // Sweep tx. Sign the tx in software.
-            // TODO: Once tx aggregation is implemented, merge the sweep logic
-            // with general tx construction to allow HW devices to sign individual
-            // inputs (currently HW expects to sign all tx inputs)
-            m_result = m_session->user_sign_transaction(m_details);
-            return state_type::done;
-        }
-
         auto signer = get_signer();
 
         if (!m_initialized) {
@@ -700,8 +708,13 @@ namespace sdk {
 
         if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
-            constexpr bool sign_only = true;
-            add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));
+            auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
+            const auto& inputs = m_twofactor_data.at("signing_inputs");
+            if (std::find_if(inputs.begin(), inputs.end(), do_sign) != inputs.end()) {
+                /* We have inputs that need signing */
+                constexpr bool sign_only = true;
+                add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));
+            }
             m_server_signed = true;
         }
         return state_type::done;
@@ -751,10 +764,13 @@ namespace sdk {
         const bool is_low_r = signer->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& utxo = inputs.at(i);
-            const std::string& signature = signatures.at(i);
+            std::string signature = signatures.at(i);
             if (utxo.value("skip_signing", false)) {
                 GDK_RUNTIME_ASSERT(signature.empty());
-                continue;
+                signature = m_sweep_signatures.at(i);
+                if (signature.empty()) {
+                    continue;
+                }
             }
             add_input_signature(tx, i, utxo, signature, is_low_r);
         }
