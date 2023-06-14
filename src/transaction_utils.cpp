@@ -546,7 +546,9 @@ namespace sdk {
         const auto& net_params = session.get_network_parameters();
         auto& output = result.at("change_address").at(asset_id);
         output["is_change"] = true;
-        output["asset_id"] = asset_id;
+        if (net_params.is_liquid()) {
+            output["asset_id"] = asset_id;
+        }
         output["satoshi"] = 0;
         std::string error;
         const bool allow_unconfidential = true; // Change may not yet be blinded
