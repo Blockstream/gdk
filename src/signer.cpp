@@ -122,7 +122,7 @@ namespace sdk {
             json_add_if_missing(ret, "supports_low_r", false, overwrite_null);
             json_add_if_missing(ret, "supports_arbitrary_scripts", false, overwrite_null);
             json_add_if_missing(ret, "supports_host_unblinding", false, overwrite_null);
-            json_add_if_missing(ret, "supports_external_blinding", true, overwrite_null);
+            json_add_if_missing(ret, "supports_external_blinding", false, overwrite_null);
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
