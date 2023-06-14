@@ -955,11 +955,15 @@ namespace sdk {
         return ret;
     }
 
-    wally_tx_witness_stack_ptr tx_witness_stack_init(size_t allocation_len)
+    wally_tx_witness_stack_ptr make_witness_stack(std::initializer_list<byte_span_t> items)
     {
         struct wally_tx_witness_stack* p;
-        GDK_VERIFY(wally_tx_witness_stack_init_alloc(allocation_len, &p));
-        return wally_tx_witness_stack_ptr(p);
+        GDK_VERIFY(wally_tx_witness_stack_init_alloc(items.size(), &p));
+        auto wit = wally_tx_witness_stack_ptr(p);
+        for (const auto& item : items) {
+            tx_witness_stack_add(wit, item);
+        }
+        return wit;
     }
 
     void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness)

@@ -756,15 +756,15 @@ namespace sdk {
         const bool is_low_r = signer->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& utxo = inputs.at(i);
-            std::string signature = signatures.at(i);
+            std::string der_hex = signatures.at(i);
             if (utxo.value("skip_signing", false)) {
-                GDK_RUNTIME_ASSERT(signature.empty());
-                signature = m_sweep_signatures.at(i);
-                if (signature.empty()) {
+                GDK_RUNTIME_ASSERT(der_hex.empty());
+                der_hex = m_sweep_signatures.at(i);
+                if (der_hex.empty()) {
                     continue;
                 }
             }
-            add_input_signature(tx, i, utxo, signature, is_low_r);
+            tx.set_input_signature(i, utxo, der_hex, is_low_r);
         }
 
         // Return our input details with the signatures updated

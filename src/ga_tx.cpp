@@ -73,7 +73,7 @@ namespace sdk {
             if (utxo.contains("script_sig") && utxo.contains("witness")) {
                 const auto script_sig = h2b(utxo.at("script_sig"));
                 const std::vector<std::string> wit_items = utxo.at("witness");
-                auto witness = tx_witness_stack_init(wit_items.size());
+                auto witness = make_witness_stack();
                 for (const auto& item : wit_items) {
                     tx_witness_stack_add(witness, h2b(item));
                 }
@@ -93,12 +93,12 @@ namespace sdk {
                 if (is_segwit_address_type(utxo)) {
                     // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
                     const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
-                    auto wit = tx_witness_stack_init(4);
-                    tx_witness_stack_add_dummy(wit, WALLY_TX_DUMMY_NULL);
-                    tx_witness_stack_add_dummy(wit, dummy_sig_type);
-                    tx_witness_stack_add_dummy(wit, dummy_sig_type);
-                    tx_witness_stack_add(wit, script);
-                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, wit);
+                    auto witness = make_witness_stack();
+                    tx_witness_stack_add_dummy(witness, WALLY_TX_DUMMY_NULL);
+                    tx_witness_stack_add_dummy(witness, dummy_sig_type);
+                    tx_witness_stack_add_dummy(witness, dummy_sig_type);
+                    tx_witness_stack_add(witness, script);
+                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, witness);
                 } else {
                     tx.add_input(txid, index, sequence, dummy_input_script(low_r, script));
                 }
@@ -922,6 +922,46 @@ namespace sdk {
         GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness.get()));
     }
 
+    void Tx::set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r)
+    {
+        auto der = h2b(der_hex);
+        const auto addr_type = utxo.at("address_type");
+
+        if (addr_type == address_type::p2pkh || addr_type == address_type::p2sh_p2wpkh
+            || addr_type == address_type::p2wpkh) {
+            const auto public_key = h2b(utxo.at("public_key"));
+
+            if (addr_type == address_type::p2pkh) {
+                // Singlesig (or sweep) p2pkh
+                set_input_script(index, scriptsig_p2pkh_from_der(public_key, der));
+                return;
+            }
+            // Singlesig segwit
+            set_input_witness(index, make_witness_stack({ der, public_key }));
+            if (addr_type == address_type::p2sh_p2wpkh) {
+                set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+            } else {
+                // for native segwit ensure the scriptsig is empty
+                set_input_script(index, byte_span_t());
+            }
+            return;
+        }
+        const auto script = h2b(utxo.at("prevout_script"));
+        if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+            // Multisig segwit
+            set_input_witness(index, make_witness_stack({ der }));
+            constexpr uint32_t witness_ver = 0;
+            set_input_script(index, witness_script(script, witness_ver));
+        } else {
+            // Multisig pre-segwit
+            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
+            constexpr bool has_sighash = true;
+            const auto user_sig = ec_sig_from_der(der, has_sighash);
+            const uint32_t user_sighash = der.back();
+            set_input_script(index, input_script(is_low_r, script, user_sig, user_sighash));
+        }
+    }
+
     std::vector<sig_and_sighash_t> Tx::get_input_signatures(const nlohmann::json& utxo, size_t index) const
     {
         const auto& input = get_input(index);
@@ -1194,50 +1234,6 @@ namespace sdk {
             create_ga_transaction_impl(session, details);
         } catch (const std::exception& e) {
             set_tx_error(details, e.what());
-        }
-    }
-
-    void add_input_signature(Tx& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r)
-    {
-        auto der = h2b(der_hex);
-        const auto addr_type = u.at("address_type");
-
-        if (!json_get_value(u, "private_key").empty() || addr_type == address_type::p2pkh) {
-            // Singlesig (or sweep) p2pkh
-            tx.set_input_script(index, scriptsig_p2pkh_from_der(h2b(u.at("public_key")), der));
-            return;
-        }
-
-        if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
-            // Singlesig segwit
-            const auto public_key = h2b(u.at("public_key"));
-            auto wit = tx_witness_stack_init(2);
-            tx_witness_stack_add(wit, der);
-            tx_witness_stack_add(wit, public_key);
-            tx.set_input_witness(index, wit);
-            if (addr_type == address_type::p2sh_p2wpkh) {
-                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
-            } else {
-                // for native segwit ensure the scriptsig is empty
-                tx.set_input_script(index, byte_span_t());
-            }
-            return;
-        }
-        const auto script = h2b(u.at("prevout_script"));
-        if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
-            // Multisig segwit
-            auto wit = tx_witness_stack_init(1);
-            tx_witness_stack_add(wit, der);
-            tx.set_input_witness(index, wit);
-            const uint32_t witness_ver = 0;
-            tx.set_input_script(index, witness_script(script, witness_ver));
-        } else {
-            // Multisig pre-segwit
-            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
-            constexpr bool has_sighash = true;
-            const auto user_sig = ec_sig_from_der(der, has_sighash);
-            const uint32_t user_sighash = der.back();
-            tx.set_input_script(index, input_script(is_low_r, script, user_sig, user_sighash));
         }
     }
 

@@ -427,12 +427,12 @@ namespace sdk {
         const bool is_low_r = get_signer()->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& utxo = inputs.at(i);
-            const std::string& signature = signatures.at(i);
+            const std::string& der_hex = signatures.at(i);
             if (utxo.value("skip_signing", false)) {
-                GDK_RUNTIME_ASSERT(signature.empty());
+                GDK_RUNTIME_ASSERT(der_hex.empty());
                 continue;
             }
-            add_input_signature(tx, i, utxo, signature, is_low_r);
+            tx.set_input_signature(i, utxo, der_hex, is_low_r);
         }
 
         utxos.reserve(inputs.size());

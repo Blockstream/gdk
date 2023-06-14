@@ -344,7 +344,7 @@ namespace sdk {
 
     std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices);
 
-    wally_tx_witness_stack_ptr tx_witness_stack_init(size_t allocation_len);
+    wally_tx_witness_stack_ptr make_witness_stack(std::initializer_list<byte_span_t> items = {});
 
     void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness);
 

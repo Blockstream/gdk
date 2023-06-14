@@ -36,9 +36,7 @@ namespace sdk {
         void add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
             const wally_tx_witness_stack_ptr& witness = {});
 
-        void set_input_script(size_t index, byte_span_t script);
-
-        void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
+        void set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r);
 
         std::vector<sig_and_sighash_t> get_input_signatures(const nlohmann::json& utxo, size_t index) const;
 
@@ -72,6 +70,10 @@ namespace sdk {
 
     private:
         uint32_t get_flags() const;
+
+        void set_input_script(size_t index, byte_span_t script);
+        void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
+
         struct tx_deleter {
             void operator()(struct wally_tx* p);
         };
@@ -87,9 +89,6 @@ namespace sdk {
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
 
     void create_ga_transaction(session_impl& session, nlohmann::json& details);
-
-    void add_input_signature(
-        Tx& tx, uint32_t index, const nlohmann::json& u, const std::string& der_hex, bool is_low_r);
 
     nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 
