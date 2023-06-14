@@ -431,25 +431,38 @@ namespace sdk {
         static void create_change_output(session_impl& session, Tx& tx, nlohmann::json& result,
             const std::string& asset_id, amount::value_type change_amount, bool add_to_tx = true)
         {
-            auto& change_address = result["change_address"][asset_id];
-            if (change_address.empty()) {
+            if (!result.contains("change_address")) {
+                result["change_address"] = nlohmann::json::object();
+            }
+            if (result["change_address"].value(asset_id, nlohmann::json::object()).empty()) {
                 // No previously generated change address, so generate one.
                 if (!result.contains("change_subaccount")) {
                     // Find out where to send any change
-                    try {
-                        const auto subaccounts = get_tx_subaccounts(result);
-                        result["change_subaccount"] = get_single_subaccount(subaccounts);
-                    } catch (const std::exception&) {
-                        result["change_address"].erase(asset_id);
-                        throw;
-                    }
+                    const auto subaccounts = get_tx_subaccounts(result);
+                    result["change_subaccount"] = get_single_subaccount(subaccounts);
                 }
                 const uint32_t change_subaccount = result.at("change_subaccount");
                 nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
-                change_address = session.get_receive_address(details);
-                cleanup_tx_addressee(session, change_address);
+                auto new_change_address = session.get_receive_address(details);
+
+                if (session.get_network_parameters().is_electrum()) {
+                    // FIXME: Workaround for ga_rust returning duplicate addresses
+                    bool is_duplicate_spk = false;
+                    for (size_t i = 0; i < 20u; ++i) {
+                        const auto spk = json_get_value(new_change_address, "scriptpubkey");
+                        is_duplicate_spk = !are_tx_outputs_unique(result, spk);
+                        if (!is_duplicate_spk) {
+                            break;
+                        }
+                        new_change_address = session.get_receive_address(details);
+                        is_duplicate_spk = false;
+                    }
+                    GDK_RUNTIME_ASSERT_MSG(!is_duplicate_spk, "unable to get unique change address");
+                }
+                cleanup_tx_addressee(session, new_change_address);
+                result["change_address"][asset_id] = std::move(new_change_address);
             }
-            change_address["satoshi"] = change_amount;
+            result["change_address"][asset_id]["satoshi"] = change_amount;
             if (add_to_tx) {
                 add_tx_change_output(session, result, tx, asset_id);
             }
