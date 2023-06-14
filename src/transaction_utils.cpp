@@ -627,12 +627,21 @@ namespace sdk {
         throw user_error("No matching addressee or change for transaction output");
     }
 
+    static void update_summary(nlohmann::json& summary, const std::string& asset_id, const nlohmann::json& src,
+        const char* key, amount::signed_value_type multiplier = 1)
+    {
+        auto total = summary.value(asset_id, amount::signed_value_type(0));
+        total += json_get_amount(src, key).signed_value() * multiplier;
+        summary[asset_id] = total;
+    }
+
     void update_tx_info(session_impl& session, const Tx& tx, nlohmann::json& result)
     {
         const auto& net_params = session.get_network_parameters();
         update_tx_size_info(net_params, tx, result);
 
         const bool is_liquid = net_params.is_liquid();
+        const auto policy_asset = net_params.get_policy_asset();
 
         nlohmann::json::array_t outputs;
         if (!tx.get_num_inputs() || !tx.get_num_outputs() || !json_get_value(result, "error").empty()
@@ -661,12 +670,12 @@ namespace sdk {
             } else if (is_liquid) {
                 asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
                 if (is_fee) {
-                    GDK_RUNTIME_ASSERT(asset_id == net_params.get_policy_asset());
+                    GDK_RUNTIME_ASSERT(asset_id == policy_asset);
                 } else {
                     GDK_RUNTIME_ASSERT(src.at("asset_id") == asset_id);
                 }
             } else {
-                asset_id = net_params.get_policy_asset();
+                asset_id = policy_asset;
             }
 
             amount::value_type satoshi = o.satoshi;
@@ -698,6 +707,31 @@ namespace sdk {
             outputs.emplace_back(std::move(output));
         }
         result["transaction_outputs"] = std::move(outputs);
+
+        // Set "satoshi" per-asset elements to the net effect on the wallet
+        auto& summary = result["satoshi"];
+        summary = nlohmann::json::object();
+        for (const auto& key : { "old_used_utxos", "used_utxos" }) {
+            if (auto p = result.find(key); p != result.end()) {
+                for (const auto& input : *p) {
+                    if (input.contains("address_type") && !input.contains("private_key")) {
+                        // Wallet input
+                        const auto asset_id = asset_id_from_json(net_params, input);
+                        update_summary(summary, asset_id, input, "satoshi", -1);
+                    }
+                }
+            }
+        }
+        for (const auto& output : result.at("transaction_outputs")) {
+            if (output.contains("address_type") && !json_get_value(output, "scriptpubkey").empty()) {
+                // Non-fee output to a wallet address
+                const auto asset_id = asset_id_from_json(net_params, output);
+                update_summary(summary, asset_id, output, "satoshi");
+            }
+        }
+        // Remove fee and network fee from the net effect.
+        update_summary(summary, policy_asset, result, "fee");
+        update_summary(summary, policy_asset, result, "network_fee");
     }
 
     static bool is_wallet_input(const nlohmann::json& utxo)

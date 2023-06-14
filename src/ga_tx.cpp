@@ -807,8 +807,6 @@ namespace sdk {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
                 }
             }
-
-            // FIXME: set "satoshi" fields to the net effect on the wallet
         }
 
         static void validate_sighash(uint32_t sighash, bool is_liquid)
