@@ -285,7 +285,7 @@ namespace sdk {
 
     size_t varbuff_get_length(size_t script_len)
     {
-        unsigned char dummy[1];
+        unsigned char dummy[1] = { 0 };
         size_t written;
         GDK_VERIFY(wally_varbuff_get_length(dummy, script_len, &written));
         return written;
