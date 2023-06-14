@@ -139,25 +139,6 @@ namespace sdk {
             utxo["subtype"] = subtype;
         }
 
-        void randomise_inputs(Tx& tx, std::vector<nlohmann::json>& used_utxos)
-        {
-            std::vector<nlohmann::json> unshuffled_utxos(used_utxos.begin(), used_utxos.end());
-            std::shuffle(used_utxos.begin(), used_utxos.end(), uniform_uint32_rng());
-
-            // Update inputs in our created transaction to match the new random order
-            std::map<nlohmann::json, size_t> new_position_of;
-            for (size_t i = 0; i < used_utxos.size(); ++i) {
-                new_position_of.emplace(used_utxos[i], i);
-            }
-            auto* in_p = &tx.get_input(tx.get_num_inputs() - used_utxos.size());
-            std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
-            for (size_t i = 0; i < unshuffled_utxos.size(); ++i) {
-                const size_t new_position = new_position_of[unshuffled_utxos[i]];
-                reordered_inputs[new_position] = in_p[i];
-            }
-            std::copy(reordered_inputs.begin(), reordered_inputs.end(), in_p);
-        }
-
         // Check if a tx to bump is present, and if so add the details required to bump it
         // FIXME: Support bump/CPFP for liquid
         static std::pair<bool, bool> check_bump_tx(
@@ -728,7 +709,7 @@ namespace sdk {
             if (is_rbf) {
                 // Add all the old utxos. Note we don't add them to used_utxos
                 // since the user can't choose to remove them, and we won't
-                // randomise them in the final transaction
+                // randomize them in the final transaction
                 for (auto& utxo : result.at("old_used_utxos")) {
                     btc_details.utxo_sum += add_utxo(session, tx, result, utxo, false); // FIXME: add to used_utxos?
                 }
@@ -795,6 +776,10 @@ namespace sdk {
             if (is_liquid && !is_partial) {
                 add_tx_fee_output(session, result, tx, btc_details.fee.value());
             }
+            auto& used_utxos = result.at("used_utxos");
+            if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
+                tx.randomize_inputs(used_utxos);
+            }
             update_tx_info(session, tx, result);
 
             if (is_rbf && json_get_value(result, "error").empty()) {
@@ -812,12 +797,8 @@ namespace sdk {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
                 }
             }
-#if 0
+
             // FIXME: set "satoshi" fields to the net effect on the wallet
-            if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
-                randomise_inputs(tx, used_utxos);
-            }
-#endif
         }
 
         static void validate_sighash(uint32_t sighash, bool is_liquid)
@@ -960,6 +941,26 @@ namespace sdk {
             const uint32_t user_sighash = der.back();
             set_input_script(index, input_script(is_low_r, script, user_sig, user_sighash));
         }
+    }
+
+    void Tx::randomize_inputs(nlohmann::json& used_utxos)
+    {
+        // Permute positions
+        std::vector<size_t> positions(used_utxos.size());
+        std::iota(positions.begin(), positions.end(), 0);
+        std::shuffle(positions.begin(), positions.end(), uniform_uint32_rng());
+        // Apply permutation
+        nlohmann::json::array_t reordered_utxos(used_utxos.size());
+        std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
+        // We start at txin_offset to avoid permuting any existing rbf inputs
+        const size_t txin_offset = get_num_inputs() - used_utxos.size();
+        for (size_t i = 0; i < used_utxos.size(); ++i) {
+            reordered_utxos[i].swap(used_utxos[positions[i]]);
+            reordered_inputs[i] = m_tx->inputs[txin_offset + positions[i]];
+        }
+        used_utxos.swap(reordered_utxos);
+        const size_t n = reordered_inputs.size() * sizeof(wally_tx_input);
+        memcpy(m_tx->inputs + txin_offset, reordered_inputs.data(), n);
     }
 
     std::vector<sig_and_sighash_t> Tx::get_input_signatures(const nlohmann::json& utxo, size_t index) const
