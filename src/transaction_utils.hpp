@@ -4,6 +4,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <set>
 #include <utility>
 
@@ -35,8 +36,6 @@ namespace sdk {
         extern const std::string p2wsh; // Actually p2sh-p2wsh
         extern const std::string csv;
     } // namespace address_type
-
-    const uint32_t NO_CHANGE_INDEX = 0xffffffff;
 
     bool is_segwit_address_type(const nlohmann::json& utxo);
 
@@ -88,8 +87,8 @@ namespace sdk {
     // Update the json tx size/fee rate information from tx
     void update_tx_size_info(const network_parameters& net_params, const Tx& tx, nlohmann::json& result);
 
-    // Get the output index of an assets change, or NO_CHANGE_INDEX
-    uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id);
+    // Get the output index of an assets change
+    std::optional<int> get_tx_change_index(nlohmann::json& result, const std::string& asset_id);
 
     // Update the json tx representation with info from tx
     void update_tx_info(session_impl& session, const Tx& tx, nlohmann::json& result);

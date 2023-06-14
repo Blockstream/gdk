@@ -586,7 +586,7 @@ namespace sdk {
         }
     }
 
-    uint32_t get_tx_change_index(nlohmann::json& result, const std::string& asset_id)
+    std::optional<int> get_tx_change_index(nlohmann::json& result, const std::string& asset_id)
     {
         const auto change_address_p = result.find("change_address");
         if (change_address_p != result.end()) {
@@ -596,12 +596,12 @@ namespace sdk {
                 auto& transaction_outputs = result.at("transaction_outputs");
                 for (size_t i = 0; i < transaction_outputs.size(); ++i) {
                     if (transaction_outputs.at(i).at("scriptpubkey") == spk) {
-                        return i;
+                        return { static_cast<int>(i) };
                     }
                 }
             }
         }
-        return NO_CHANGE_INDEX;
+        return {};
     }
 
     static const nlohmann::json& get_tx_output_source(const nlohmann::json& result, const Tx& tx, size_t i)

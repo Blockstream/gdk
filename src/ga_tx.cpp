@@ -226,7 +226,8 @@ namespace sdk {
                 const auto& outputs = prev_tx.at("outputs");
                 GDK_RUNTIME_ASSERT(tx.get_num_outputs() == outputs.size());
                 addressees.reserve(outputs.size());
-                uint32_t out_index = 0, change_index = NO_CHANGE_INDEX;
+                size_t out_index = 0;
+                std::optional<size_t> change_index;
                 bool have_explicit_change = false; // True if we found an explicit change output
 
                 if (is_electrum) {
@@ -268,7 +269,7 @@ namespace sdk {
                     }
 
                     bool is_change = false;
-                    if (is_relevant && change_index == NO_CHANGE_INDEX) {
+                    if (is_relevant && !change_index.has_value()) {
                         // No change found so far; this output is possibly change
                         if (!is_electrum) {
                             // Multisig: Treat the first wallet output as change, as we
@@ -294,15 +295,15 @@ namespace sdk {
                 }
 
                 bool is_redeposit = false;
-                if (change_index != NO_CHANGE_INDEX) {
+                if (change_index.has_value()) {
                     // Found an output paying to ourselves.
-                    const auto& output = prev_tx.at("outputs").at(change_index);
+                    const auto& output = prev_tx.at("outputs").at(change_index.value());
                     const std::string address = output.at("address");
                     if (addressees.empty()) {
                         // We didn't pay anyone else; this is actually a re-deposit
                         addressees.emplace_back(nlohmann::json(
                             { { "address", address }, { "satoshi", output.at("satoshi") }, { "is_greedy", true } }));
-                        change_index = NO_CHANGE_INDEX;
+                        change_index.reset();
                         is_redeposit = true;
                     } else {
                         // We paid to someone else, so this output really was
@@ -317,7 +318,7 @@ namespace sdk {
 
                 result["addressees"] = addressees;
 
-                if (change_index == NO_CHANGE_INDEX && !is_redeposit) {
+                if (!change_index.has_value() && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
                         if (json_get_value(in, "is_relevant", false)) {
                             // Use the first inputs subaccount as our change subaccount

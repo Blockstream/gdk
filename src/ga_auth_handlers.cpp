@@ -1749,11 +1749,10 @@ namespace sdk {
                     satoshi += json_get_amount(o, "satoshi").value();
                 }
             }
-            const amount::value_type fee = json_get_amount(m_details, "fee").value();
-            const uint32_t change_index = get_tx_change_index(m_details, "btc");
+            const auto fee = json_get_amount(m_details, "fee").value();
 
             m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
-                { "change_idx", change_index == NO_CHANGE_INDEX ? -1 : static_cast<int>(change_index) } };
+                { "change_idx", get_tx_change_index(m_details, "btc").value_or(-1) } };
 
             // If this transaction has a previous transaction, i.e. it is replacing a previous transaction
             // for example by RBF, then define m_bump_amount as the additional cost of this transaction
