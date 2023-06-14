@@ -686,8 +686,10 @@ namespace sdk {
             if (!is_fee) {
                 GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
             }
-            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) }, { "is_fee", is_fee },
-                { "asset_id", asset_id } };
+            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) }, { "is_fee", is_fee } };
+            if (is_liquid) {
+                output.emplace("asset_id", asset_id);
+            }
 
             if (!is_fee) {
                 // Add the fields from the source addressee/change output
