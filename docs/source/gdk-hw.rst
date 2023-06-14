@@ -223,7 +223,7 @@ outputs.
       ]
     }
 
-:is_partial: ``true`` if the transaction to be blinded is incomplete, ``false`` otherwise.
+:is_partial: ``true`` if transaction is incomplete, e.g. one half of a swap transaction.
 :transaction_outputs: The transaction output details for the outputs to be blinded, in
     the format returned by `GA_create_transaction`. Any output with a ``"blinding_key"``
     key present requires blinding factors to be returned. When ``"is_partial"``
@@ -254,3 +254,42 @@ outputs.
 :assetblinders: An array of hex-encoded, display format asset blinding factors
     (ABFs) to blind the transaction output assets. Any non-required values
     should be returned as empty strings.
+
+.. _hw-action-sign-tx:
+
+Hardware Sign Transaction Action
+--------------------------------
+
+When ``"action"`` is ``"sign_tx"``, this describes a request to sign
+one or more inputs of a transaction.
+
+.. code-block:: json
+
+     {
+       "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed4300000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87040048000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268c9000000"
+       "signing_inputs": [],
+       "transaction_outputs": [],
+       "use_ae_protocol": false,
+       "is_partial": false
+     }
+
+:transaction: The hex-encoded transaction to sign.
+:signing_inputs: Contains details of each of the inputs in the transaction.
+:transaction_outputs: The transaction output details for the outputs to be
+    signed, in the format returned by `GA_create_transaction`. Any output
+    without a ``"skip_signing"`` key present and set to ``true`` requires a
+    signature to be returned. An empty string should be returned for
+    signatures that are not required.
+:use_ae_protocol: ``true`` if the hardware device advertises Anti-Exfil support and it should
+    be used for signing, ``false`` otherwise.
+:is_partial: ``true`` if transaction is incomplete, e.g. one half of a swap transaction.
+
+**Expected response**:
+
+.. code-block:: json
+
+     {
+       "signatures": [ "30440220580c7ef934d5d8f31c1c592fbf0e5bc3267b76995206f0eb61616eb2f8f6e1c4022022e3feaf88469328bdaff3990a6069bda4e320e46e0531ba1e403cd50a9252e901" ]
+     }
+
+:signatures: The ECDSA signatures corresponding to each input in the request, hex-encoded from the DER represention plus sighash byte.
