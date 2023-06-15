@@ -14,13 +14,13 @@ macro(create_greenaddress_target)
     target_include_directories(greenaddress INTERFACE ${_gaIncludeDir})
     target_link_libraries(greenaddress PRIVATE
         gdk-rust
-        sqlite3
+        extern::sqlite3
         Microsoft.GSL::GSL
-        autobahn-cpp
+        extern::autobahn-cpp
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        external::tor
+        extern::tor
         event_static
         PkgConfig::libsecp256k1
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
@@ -32,8 +32,8 @@ macro(create_greenaddress_target)
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
     )
-    if(TARGET bc-ur)
-        target_link_libraries(greenaddress PRIVATE bc-ur)
+    if(TARGET extern::bc-ur)
+        target_link_libraries(greenaddress PRIVATE extern::bc-ur)
     endif()
     get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
     #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
@@ -100,13 +100,13 @@ macro(create_greenaddressstatic_target)
         PkgConfig::wallycore
         PkgConfig::libsecp256k1
         gdk-rust
-        sqlite3
+        extern::sqlite3
         Microsoft.GSL::GSL
-        autobahn-cpp
+        extern::autobahn-cpp
         msgpackc-cxx
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
-        external::tor
+        extern::tor
         event_static
         $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
         Boost::boost
@@ -117,8 +117,8 @@ macro(create_greenaddressstatic_target)
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
     )
-    if(TARGET bc-ur)
-        target_link_libraries(greenaddress-static PRIVATE bc-ur)
+    if(TARGET extern::bc-ur)
+        target_link_libraries(greenaddress-static PRIVATE extern::bc-ur)
     endif()
     target_link_options(greenaddress-static INTERFACE "${GDK_LINK_OPTIONS}")
 endmacro()

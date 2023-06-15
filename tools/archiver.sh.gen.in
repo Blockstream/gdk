@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-sqlite3=$<TARGET_PROPERTY:sqlite3,IMPORTED_LOCATION>
+sqlite3=$<TARGET_PROPERTY:extern::sqlite3,IMPORTED_LOCATION>
 gdk_rust=$<TARGET_FILE:gdk-rust>
 wally=@wallycore_LINK_LIBRARIES@
 secp256k1=@libsecp256k1_LINK_LIBRARIES@
@@ -15,8 +15,8 @@ boost_thread=@Boost_LIBRARY_DIRS@/libboost_thread.a
 openssl_ssl=@OPENSSL_SSL_LIBRARY@
 openssl_crypto=@OPENSSL_CRYPTO_LIBRARY@
 zlib=@ZLIB_LIBRARIES@
-tor="@tor_LINK_LIBRARIES@"
-bc_ur="@BCUR_LIBRARIES@"
+tor=$<TARGET_FILE:extern::tor>
+bc_ur=$<TARGET_FILE:extern::bc-ur>
 
 
 libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $eventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur"
