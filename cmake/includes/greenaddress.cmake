@@ -4,7 +4,7 @@ include(CMakePrintHelpers)
 
 
 macro(create_greenaddress_target)
-    add_library(greenaddress SHARED $<TARGET_OBJECTS:greenaddress-objects>)
+    add_library(greenaddress $<TARGET_OBJECTS:greenaddress-objects>)
     set_target_properties(greenaddress PROPERTIES
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
