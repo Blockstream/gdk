@@ -66,6 +66,8 @@
     changed to use an auth handler and take its arguments as JSON.
     Additionally, the returned results are now returned in the same format as
     GA_get_unspent_outputs. Please see the function documentation for details.
+- Singlesig: GA_get_receive_address: now returns addressess up to the GAP_LIMIT.
+    When the GAP_LIMIT is reached, the last unused address will be returned.
 
 ### Fixed
   - GA_create_transaction: The top-level "satoshi" summary now correctly gives
