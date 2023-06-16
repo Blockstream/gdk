@@ -232,15 +232,7 @@ impl Account {
     pub fn get_next_address(&self, is_internal: bool) -> Result<AddressPointer, Error> {
         let store = &mut self.store.write()?;
         let acc_store = store.account_cache_mut(self.account_num)?;
-        let pointer = {
-            if is_internal {
-                acc_store.indexes.internal += 1;
-                acc_store.indexes.internal
-            } else {
-                acc_store.indexes.external += 1;
-                acc_store.indexes.external
-            }
-        };
+        let pointer = acc_store.increment_last_used(is_internal, 1);
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
@@ -276,11 +268,7 @@ impl Account {
         let is_internal = opt.is_internal;
         let store = self.store.read()?;
         let acc_store = store.account_cache(subaccount)?;
-        let wallet_last_pointer = if is_internal {
-            acc_store.indexes.internal
-        } else {
-            acc_store.indexes.external
-        } + 1;
+        let wallet_last_pointer = acc_store.get_last_used(is_internal) + 1;
         let before_pointer = match opt.last_pointer {
             None => wallet_last_pointer,
             Some(p) => std::cmp::min(p, wallet_last_pointer),
@@ -879,7 +867,7 @@ impl Account {
         drop(acc_store);
         drop(store_read);
         let mut store_write = self.store.write()?;
-        let mut acc_store = store_write.account_cache_mut(self.account_num)?;
+        let acc_store = store_write.account_cache_mut(self.account_num)?;
 
         let changes_used = request.changes_used.unwrap_or(0);
         if changes_used > 0 {
@@ -887,7 +875,7 @@ impl Account {
             // The next sync would update the internal index but we increment the internal index also
             // here after sign so that if we immediately create another tx we are not reusing addresses
             // This implies signing multiple times without broadcasting leads to gaps in the internal chain
-            acc_store.indexes.internal += changes_used;
+            acc_store.increment_last_used(true, changes_used);
         }
 
         if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
@@ -1488,7 +1476,7 @@ pub fn create_tx(
     for (i, change) in changes.iter().enumerate() {
         let change_address = change_addresses.pop().map_or_else(
             || -> Result<_, Error> {
-                let change_index = acc_store.indexes.internal + i as u32 + 1;
+                let change_index = acc_store.get_last_used(true) + i as u32 + 1;
                 Ok(account.derive_address(true, change_index)?.to_string())
             },
             Ok,

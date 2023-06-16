@@ -548,6 +548,32 @@ impl RawAccountCache {
     pub fn get_path(&self, script_pubkey: &BEScript) -> Result<&DerivationPath, Error> {
         self.paths.get(script_pubkey).ok_or_else(|| Error::ScriptPubkeyNotFound)
     }
+
+    pub fn get_last_used(&self, is_internal: bool) -> u32 {
+        if is_internal {
+            self.indexes.internal
+        } else {
+            self.indexes.external
+        }
+    }
+
+    pub fn get_both_last_used(&self) -> Indexes {
+        self.indexes.clone()
+    }
+
+    pub fn set_both_last_used(&mut self, last_used: Indexes) {
+        self.indexes = last_used;
+    }
+
+    pub fn increment_last_used(&mut self, is_internal: bool, n: u32) -> u32 {
+        if is_internal {
+            self.indexes.internal += n;
+            self.indexes.internal
+        } else {
+            self.indexes.external += n;
+            self.indexes.external
+        }
+    }
 }
 
 #[cfg(test)]

@@ -1514,30 +1514,30 @@ impl Syncer {
 
             let store_read = self.store.read()?;
             let acc_store = store_read.account_cache(account.num())?;
-            let store_indexes = acc_store.indexes.clone();
+            let store_last_used = acc_store.get_both_last_used();
 
             drop(acc_store);
             drop(store_read);
 
             let changed = if !new_txs.txs.is_empty()
                 || !headers.is_empty()
-                || store_indexes != last_used
+                || store_last_used != last_used
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
             {
                 info!(
-                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_indexes_changed:{}",
+                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
                     new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
                     headers,
                     txid_height,
                     scripts,
-                    store_indexes != last_used
+                    store_last_used != last_used
                 );
                 let mut store_write = self.store.write()?;
                 store_write.cache.headers.extend(headers);
 
                 let mut acc_store = store_write.account_cache_mut(account.num())?;
-                acc_store.indexes = last_used;
+                acc_store.set_both_last_used(last_used);
                 acc_store
                     .all_txs
                     .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
