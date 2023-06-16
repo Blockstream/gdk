@@ -89,7 +89,8 @@ pub struct RawAccountCache {
     pub unblinded: HashMap<elements::OutPoint, TxOutSecrets>,
 
     /// max used indexes for external derivation /0/* and internal derivation /1/* (change)
-    pub indexes: Indexes,
+    #[serde(rename = "indexes")]
+    pub last_used: Indexes,
 
     /// the xpub of the account
     pub xpub: ExtendedPubKey,
@@ -526,7 +527,7 @@ impl RawAccountCache {
             heights: Default::default(),
             script_statuses: Default::default(),
             unblinded: Default::default(),
-            indexes: Default::default(),
+            last_used: Default::default(),
             xpub,
             bip44_discovered,
         }
@@ -551,27 +552,27 @@ impl RawAccountCache {
 
     pub fn get_last_used(&self, is_internal: bool) -> u32 {
         if is_internal {
-            self.indexes.internal
+            self.last_used.internal
         } else {
-            self.indexes.external
+            self.last_used.external
         }
     }
 
     pub fn get_both_last_used(&self) -> Indexes {
-        self.indexes.clone()
+        self.last_used.clone()
     }
 
     pub fn set_both_last_used(&mut self, last_used: Indexes) {
-        self.indexes = last_used;
+        self.last_used = last_used;
     }
 
     pub fn increment_last_used(&mut self, is_internal: bool, n: u32) -> u32 {
         if is_internal {
-            self.indexes.internal += n;
-            self.indexes.internal
+            self.last_used.internal += n;
+            self.last_used.internal
         } else {
-            self.indexes.external += n;
-            self.indexes.external
+            self.last_used.external += n;
+            self.last_used.external
         }
     }
 }
