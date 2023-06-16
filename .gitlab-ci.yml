@@ -139,7 +139,7 @@ build_clang_osx:
   stage: build
   needs: [ test_format ]
   script:
-    - python3 -m venv venv
+    - python3.9 -m venv venv
     - source venv/bin/activate
     - pip install -r ./tools/requirements.txt
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
