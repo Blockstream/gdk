@@ -1,6 +1,6 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
-use crate::{Error, ScriptStatuses};
+use crate::{Error, ScriptStatuses, GAP_LIMIT};
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
@@ -106,6 +106,14 @@ pub struct RawAccountCache {
     ///
     /// NOTE: is Option to keep cache backwards-compatibility, remove if breaking cache
     pub script_statuses: Option<ScriptStatuses>,
+
+    /// Counters of number of scripts returned to the caller
+    ///
+    /// These counters go up to GAP_LIMIT, then they start again from 0, looping in this set. When
+    /// last_used is updated, this counters are decremented by the number of new addresses seen.
+    ///
+    /// NOTE: this is Option to keep cache backwards-compatibility, remove if breaking cache
+    pub count_given: Option<Indexes>,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain
@@ -528,6 +536,7 @@ impl RawAccountCache {
             script_statuses: Default::default(),
             unblinded: Default::default(),
             last_used: Default::default(),
+            count_given: Some(Default::default()),
             xpub,
             bip44_discovered,
         }
@@ -563,6 +572,19 @@ impl RawAccountCache {
     }
 
     pub fn set_both_last_used(&mut self, last_used: Indexes) {
+        if self.last_used != last_used {
+            // If last_used changed, reset count_given.
+            // Do not repeat given addresses until the GAP_LIMIT is hit.
+            let count_given = self.count_given.clone().unwrap_or_default();
+            let internal =
+                (self.last_used.internal + count_given.internal).saturating_sub(last_used.internal);
+            let external =
+                (self.last_used.external + count_given.external).saturating_sub(last_used.external);
+            self.count_given = Some(Indexes {
+                internal,
+                external,
+            });
+        }
         self.last_used = last_used;
     }
 
@@ -574,6 +596,43 @@ impl RawAccountCache {
             self.last_used.external += n;
             self.last_used.external
         }
+    }
+
+    // TODO: once we can remove the Option from count_given, below things can be simplified.
+    fn get_count_given(&self, is_internal: bool) -> u32 {
+        self.count_given.as_ref().map_or(0, |c| {
+            if is_internal {
+                c.internal
+            } else {
+                c.external
+            }
+        })
+    }
+
+    pub fn get_last_given(&self, is_internal: bool) -> u32 {
+        let count_given = self.get_count_given(is_internal);
+        if is_internal {
+            self.last_used.internal + count_given
+        } else {
+            self.last_used.external + count_given
+        }
+    }
+
+    pub fn increment_last_given(&mut self, is_internal: bool) -> u32 {
+        if is_internal {
+            let count_given = self.count_given.clone().unwrap_or_default();
+            self.count_given = Some(Indexes {
+                internal: (count_given.internal + 1) % GAP_LIMIT,
+                external: count_given.external,
+            });
+        } else {
+            let count_given = self.count_given.clone().unwrap_or_default();
+            self.count_given = Some(Indexes {
+                internal: count_given.internal,
+                external: (count_given.external + 1) % GAP_LIMIT,
+            });
+        }
+        self.get_last_given(is_internal)
     }
 }
 
