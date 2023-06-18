@@ -3,10 +3,79 @@
 ## Release 0.0.65
 
 ### Added
+- Documentation: The JSON examples for many calls are now automatically
+  generated so they are always up to date. Additionally, separate examples
+  are now available for multisig and singlesig, Bitcoin and Liquid.
+- Documentation: The "sign_tx" HWW request is now documented, which
+  completes the documentation of all requests in this interface.
+- Documentation: Improve the GA_create_transaction documentation.
 
 ### Changed
+- Liquid: The hardware wallet capability "supports_external_blinding" now
+  defaults to false. Callers should pass this as true for hardware devices
+  that can support externally blinded outputs.
+- GA_get_transactions: The "transaction_size" element has been removed.
+- GA_get_transactions: The "is_fee" Liquid-only element has been removed. The
+  fee output in Liquid can be determined instead by "scriptpubkey" being an
+  empty string.
+- GA_get_receive_address/GA_get_previous_addresses: The "blinding_script"
+  element has been removed, and "scriptpubkey" added. For generating SLIP177
+  blinding keys, "scriptpubkey" should be used.
+- GA_sign_transaction: The "sign_with" element can now be specified as "all"
+  to indicate that the user wishes to sign with all keys (i.e. include the
+  Green backend if the caller is a multisig wallet).
+- GA_sign_transaction: The "signing_inputs" element has been renamed to
+  "transaction_inputs" and corresponds exactly with "transaction_inputs"
+  from GA_create_transaction".
+- HWW: The "sign_tx" HWW request now passes much less data for signing; in
+  particular the entire GA_create_transaction JSON is no longer included.
+- GA_create_transaction/GA_create_swap_transaction: The JSON interface to
+  these calls has changed:
+  - Creating a transaction with explicit wallet outputs (i.e. a redeposit,
+    consolidation or sweep transaction) now requires that the full metdata
+    from GA_get_receive_address is passed. This ensures that wallet outputs
+    will be correctly identified. If only the address is passed, the "satoshi"
+    summary values returned will likely be incorrect (although the transaction
+    itself is correct and can be submitted). This requirement will be removed
+    in a future update.
+  - The default UTXO selection for Liquid assets now uses a modified
+    branch-and-bound selection strategy. Generally this means that fees
+    will be lower and the chance of creating a changeless output is
+    significantly higher.
+  - The top-level "send_all" element has been removed. Callers can now control
+    this behavior on a per-asset basis by setting "is_greedy":true in the
+    "addressees" elements.
+  - The top-level "addressees_read_only" and "amount_read_only" elements have
+    been removed. Addressees with "is_greedy":true, and all addressees for
+    RBF/CPFP transactions should be considered read only by the caller.
+  - The top-level "is_redeposit" element has been removed. Callers should set
+    "is_greedy":true on the wallet addressee instead.
+  - The "addressees" elements passed in by the caller are no longer reordered
+    when the call returns. Each addressee will now have extra data returned
+    such as their scriptpubkey and any confidential address information.
+  - The "change_index" element has been removed. The amount of any change for
+    an asset is available in "change_amount" and the "satoshi" element of the
+    "change_address" element, when the change amount is non-zero for the asset.
+  - Spurious unused change addresses are no longer created if an asset does
+    not require a change output.
+  - GA_create/blind/sign/send_transaction: The "used_utxos" element has been
+    renamed to "transaction_inputs" to match the element "transaction_outputs".
+    This element now contains the complete set of inputs, notably the inputs
+    inherited from the previous transaction when bumping the fee via RBF.
+- GA_get_unspent_outputs_for_private_key: The interface for this function has
+    changed to use an auth handler and take its arguments as JSON.
+    Additionally, the returned results are now returned in the same format as
+    GA_get_unspent_outputs. Please see the function documentation for details.
 
 ### Fixed
+  - GA_create_transaction: The top-level "satoshi" summary now correctly gives
+    the net effect of the transaction on the wallet. For Liquid, the summary no
+    longer includes the fee in order to match the Bitcoin behaviour. Note also
+    that redeposits correctly show the net effect as zero.
+  - GA_create_transaction: The "satoshi" element of "change_address" change
+    outputs now contains the correct amount of change for the asset.
+  - GA_sign_transaction: The HWWI is no longer invoked for transactions which
+    have no inputs for the user to sign.
 
 ### Removed
 
@@ -19,7 +88,6 @@
 - Singlesig: switch from polling to subscription for transactions data. This
   change is transparent for the caller, but it should improve performances and
   reduce the server load.
-
 
 ## Release 0.0.63 - 23-05-31
 
