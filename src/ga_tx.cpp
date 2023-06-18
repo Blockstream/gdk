@@ -141,14 +141,23 @@ namespace sdk {
 
         static void cleanup_tx_addressee(session_impl& session, nlohmann::json& addressee)
         {
-            // Fix up fields from a bumped tx output to what addressees expect
+            // Fix fields from a bumped tx output or receive address to what addressees expect
             for (const auto& key : { "is_output", "is_relevant", "is_spent", "script_type", "pt_idx" }) {
                 addressee.erase(key);
             }
             if (json_get_value(addressee, "address_type").empty()) {
                 addressee.erase("address_type");
+            } else {
+                utxo_add_paths(session, addressee);
+                if (!addressee.contains("scriptpubkey")) {
+                    const auto& net_params = session.get_network_parameters();
+                    std::string error;
+                    const bool allow_unconfidential = true; // Change may not yet be blinded
+                    const auto spk
+                        = scriptpubkey_from_address(net_params, addressee.at("address"), allow_unconfidential);
+                    addressee["scriptpubkey"] = b2h(spk);
+                }
             }
-            utxo_add_paths(session, addressee);
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
@@ -321,7 +330,7 @@ namespace sdk {
                         // change. Save the change address to re-use it.
                         auto& change_address = result["change_address"][policy_asset];
                         change_address = output;
-                        utxo_add_paths(session, change_address);
+                        cleanup_tx_addressee(session, change_address);
                     }
                     // Save the change subaccount whether we found change or not
                     result["change_subaccount"] = output.at("subaccount");
@@ -461,6 +470,7 @@ namespace sdk {
                 const uint32_t change_subaccount = result.at("change_subaccount");
                 nlohmann::json details = { { "subaccount", change_subaccount }, { "is_internal", true } };
                 auto new_change_address = session.get_receive_address(details);
+                cleanup_tx_addressee(session, new_change_address);
 
                 if (session.get_network_parameters().is_electrum()) {
                     // FIXME: Workaround for ga_rust returning duplicate addresses
@@ -472,11 +482,11 @@ namespace sdk {
                             break;
                         }
                         new_change_address = session.get_receive_address(details);
+                        cleanup_tx_addressee(session, new_change_address);
                         is_duplicate_spk = false;
                     }
                     GDK_RUNTIME_ASSERT_MSG(!is_duplicate_spk, "unable to get unique change address");
                 }
-                cleanup_tx_addressee(session, new_change_address);
                 result["change_address"][asset_id] = std::move(new_change_address);
             }
             result["change_address"][asset_id]["satoshi"] = change_amount;
