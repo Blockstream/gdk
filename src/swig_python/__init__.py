@@ -211,10 +211,8 @@ class Session(object):
     def get_unspent_outputs(self, details={'subaccount': 0, 'num_confs': 1}):
         return Call(get_unspent_outputs(self.session_obj, self._to_json(details)))
 
-    def get_unspent_outputs_for_private_key(self, private_key, password, unused):
-        return json.loads(
-            get_unspent_outputs_for_private_key(self.session_obj, private_key, password, unused)
-        )
+    def get_unspent_outputs_for_private_key(self, details):
+        return Call(get_unspent_outputs_for_private_key(self.session_obj, self._to_json(details)))
 
     def set_unspent_outputs_status(self, details):
         return Call(set_unspent_outputs_status(self.session_obj, self._to_json(details)))

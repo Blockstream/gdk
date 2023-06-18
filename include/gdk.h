@@ -414,16 +414,15 @@ GDK_API int GA_get_unspent_outputs(struct GA_session* session, GA_json* details,
  * Get the unspent transaction outputs associated with a non-wallet private key.
  *
  * :param session: The session to use.
- * :param key: The private key in WIF or BIP 38 format.
- * :param password: The password the key is encrypted with, if any.
- * :param unused: unused, must be 0
- * :param utxos: Destination for the returned utxos (same format as :ref:`tx-list`).
- *|     Returned GA_json should be freed using `GA_destroy_json`.
+ * :param details: :ref:`unspent-outputs-private-request` detailing the private key to check.
+ * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`unspent-outputs`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: Neither the private key or its derived public key are transmitted.
+ * .. note:: Neither the private key or its derived public key are sent to any third party for this call.
  */
 GDK_API int GA_get_unspent_outputs_for_private_key(
-    struct GA_session* session, const char* private_key, const char* password, uint32_t unused, GA_json** utxos);
+    struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Change the status of a user's unspent transaction outputs.

@@ -330,10 +330,8 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_unspent_outputs)
     }
 
-    public func getUnspentOutputsForPrivateKey(private_key: String, password: String, unused: UInt32) throws -> [String: Any]? {
-        var result: OpaquePointer? = nil
-        try callWrapper(fun: GA_get_unspent_outputs_for_private_key(session, private_key, password, unused, &result))
-        return try convertOpaqueJsonToDict(o: result!)
+    public func getUnspentOutputsForPrivateKey(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_get_unspent_outputs_for_private_key)
     }
 
     public func setUnspentOutputsStatus(details: [String: Any]) throws -> TwoFactorCall {

@@ -537,7 +537,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_transactions, GA_auth_handler)
 %returns_struct(GA_get_twofactor_config, GA_json)
 %returns_struct(GA_get_unspent_outputs, GA_auth_handler)
-%returns_struct(GA_get_unspent_outputs_for_private_key, GA_json)
+%returns_struct(GA_get_unspent_outputs_for_private_key, GA_auth_handler)
 %returns_struct(GA_set_unspent_outputs_status, GA_auth_handler)
 %returns_struct(GA_get_receive_address, GA_auth_handler)
 %returns_struct(GA_login_user, GA_auth_handler)

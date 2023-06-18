@@ -107,8 +107,7 @@ namespace sdk {
 
         nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);
         void process_unspent_outputs(nlohmann::json& utxos);
-        nlohmann::json get_unspent_outputs_for_private_key(
-            const std::string& private_key, const std::string& password, uint32_t unused);
+        nlohmann::json get_unspent_outputs_for_private_key(const nlohmann::json& details);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         Tx get_raw_transaction_details(const std::string& txhash_hex) const;
         nlohmann::json get_transaction_details(const std::string& txhash_hex) const;

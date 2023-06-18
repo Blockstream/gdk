@@ -1360,6 +1360,25 @@ namespace sdk {
     }
 
     //
+    // Get unspent outputs for private key
+    //
+    get_unspent_outputs_for_private_key_call::get_unspent_outputs_for_private_key_call(
+        session& session, nlohmann::json details)
+        : auth_handler_impl(session, "get_unspent_outputs_for_private_key")
+        , m_details(std::move(details))
+    {
+    }
+
+    auth_handler::state_type get_unspent_outputs_for_private_key_call::call_impl()
+    {
+        if (m_net_params.is_liquid() || m_net_params.is_electrum()) {
+            throw user_error("Sweeping is not yet implemented for Liquid or singlesig wallets");
+        }
+        m_result = m_session->get_unspent_outputs_for_private_key(m_details);
+        return state_type::done;
+    }
+
+    //
     // Get balance
     //
     get_balance_call::get_balance_call(session& session, nlohmann::json details)

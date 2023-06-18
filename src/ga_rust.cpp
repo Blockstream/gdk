@@ -384,8 +384,7 @@ namespace sdk {
         return rust_call("get_unspent_outputs", details, m_session);
     }
 
-    nlohmann::json ga_rust::get_unspent_outputs_for_private_key(
-        const std::string& private_key, const std::string& password, uint32_t unused)
+    nlohmann::json ga_rust::get_unspent_outputs_for_private_key(const nlohmann::json& /*details*/)
     {
         throw std::runtime_error("get_unspent_outputs_for_private_key not implemented");
     }

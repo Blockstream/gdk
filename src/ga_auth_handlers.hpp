@@ -196,6 +196,17 @@ namespace sdk {
         bool m_initialized;
     };
 
+    class get_unspent_outputs_for_private_key_call : public auth_handler_impl {
+    public:
+        get_unspent_outputs_for_private_key_call(session& session, nlohmann::json details);
+
+    protected:
+        state_type call_impl() override;
+
+    private:
+        nlohmann::json m_details;
+    };
+
     class get_balance_call : public get_unspent_outputs_call {
     public:
         get_balance_call(session& session, nlohmann::json details);

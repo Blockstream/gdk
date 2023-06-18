@@ -412,15 +412,13 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs, struct GA_session*, session, GA_
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::get_unspent_outputs_call(*session, json_move(details))); })
 
+GDK_DEFINE_C_FUNCTION_3(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, GA_json*, details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new ga::sdk::get_unspent_outputs_for_private_key_call(*session, json_move(details))); })
+
 GDK_DEFINE_C_FUNCTION_3(GA_set_unspent_outputs_status, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
     { *call = make_call(new ga::sdk::set_unspent_outputs_status_call(*session, json_move(details))); })
-
-GDK_DEFINE_C_FUNCTION_5(GA_get_unspent_outputs_for_private_key, struct GA_session*, session, const char*, private_key,
-    const char*, password, uint32_t, unused, GA_json**, utxos, {
-        *json_cast(utxos)
-            = new nlohmann::json(session->get_unspent_outputs_for_private_key(private_key, password, unused));
-    })
 
 GDK_DEFINE_C_FUNCTION_3(GA_get_transaction_details, struct GA_session*, session, const char*, txhash_hex, GA_json**,
     transaction, { *json_cast(transaction) = new nlohmann::json(session->get_transaction_details(txhash_hex)); })

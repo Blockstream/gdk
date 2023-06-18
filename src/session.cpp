@@ -345,15 +345,6 @@ namespace sdk {
         });
     }
 
-    nlohmann::json session::get_unspent_outputs_for_private_key(
-        const std::string& private_key, const std::string& password, uint32_t unused)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->get_unspent_outputs_for_private_key(private_key, password, unused);
-        });
-    }
-
     std::string session::broadcast_transaction(const std::string& tx_hex)
     {
         return exception_wrapper([&] {

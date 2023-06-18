@@ -57,9 +57,6 @@ namespace sdk {
         nlohmann::json decrypt_with_pin(const nlohmann::json& details);
         void disable_all_pin_logins();
 
-        nlohmann::json get_unspent_outputs_for_private_key(
-            const std::string& private_key, const std::string& password, uint32_t unused);
-
         nlohmann::json get_transaction_details(const std::string& txhash_hex);
 
         std::string broadcast_transaction(const std::string& tx_hex);

@@ -2635,17 +2635,19 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::get_unspent_outputs_for_private_key(
-        const std::string& private_key, const std::string& password, uint32_t unused)
+    nlohmann::json ga_session::get_unspent_outputs_for_private_key(const nlohmann::json& details)
     {
-        // Unused will be used in the future to support specifying the address type if
-        // it can't be determined from the private_key format
-        GDK_RUNTIME_ASSERT(unused == 0);
+        auto private_key = json_get_value(details, "private_key");
+        auto password = json_get_value(details, "password");
 
         std::vector<unsigned char> private_key_bytes;
         bool compressed;
-        std::tie(private_key_bytes, compressed)
-            = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
+        try {
+            std::tie(private_key_bytes, compressed)
+                = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
+        } catch (const std::exception&) {
+            throw user_error(res::id_invalid_private_key);
+        }
         auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes));
         if (!compressed) {
             public_key_bytes = ec_public_key_decompress(public_key_bytes);
@@ -2665,7 +2667,7 @@ namespace sdk {
         unique_pubkeys_and_scripts_t missing; // Always empty for sweeping
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!cleanup_utxos(locker, utxos, std::string(), missing)); // Should never do unblinding
-        return utxos;
+        return { { "unspent_outputs", { { m_net_params.get_policy_asset(), std::move(utxos) } } } };
     }
 
     // Idempotent
