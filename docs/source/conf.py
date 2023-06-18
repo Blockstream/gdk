@@ -150,6 +150,9 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project
 
+# Don't include the auto-generated source documents
+html_copy_source = False
+html_show_sourcelink = False
 
 # -- Options for LaTeX output ---------------------------------------------
 

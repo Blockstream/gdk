@@ -2,7 +2,7 @@ GDK documentation
 ===========================
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
    gdk
@@ -12,7 +12,7 @@ GDK documentation
    gdk-hw
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Developer Guides
 
    gdk-swap
