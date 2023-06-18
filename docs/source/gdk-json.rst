@@ -1381,6 +1381,27 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
      to ``"oldest"`` for 2of2 subaccounts and ``"largest"`` for other subaccount types.
 
 
+
+.. _unspent-outputs-private-request:
+
+Unspent outputs for private key request JSON
+--------------------------------------------
+
+Describes the private key to search for unspent outputs for
+with `GA_get_unspent_outputs_for_private_key`.
+
+.. code-block:: json
+
+  {
+    "private_key": "6PRK95NQL1rJWZYegfeY1x2vPdsWFsiDDJTziatqkpVFeYi3osJDtiQiw9",
+    "password": "foobar"
+  }
+
+:private_key: Mandatory. The private key in WIF or BIP 38 format.
+:password: Optional. The password the key is encrypted with, if any.
+
+
+
 .. _unspent-outputs:
 
 Unspent outputs JSON
