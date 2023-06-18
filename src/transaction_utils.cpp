@@ -634,7 +634,7 @@ namespace sdk {
     static const nlohmann::json& get_tx_output_source(const nlohmann::json& result, const Tx& tx, size_t i)
     {
         const auto& o = tx.get_output(i);
-        const std::string spk = b2h(gsl::make_span(o.script, o.script_len));
+        const std::string spk = b2h({ o.script, o.script_len });
         auto&& match_spk = [&spk](const auto& a) { return a.at("scriptpubkey") == spk; };
         const auto& addressees = result.at("addressees");
 
@@ -707,7 +707,7 @@ namespace sdk {
             if (is_liquid) {
                 GDK_RUNTIME_ASSERT(o.value);
                 if (*o.value == 1) {
-                    satoshi = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+                    satoshi = tx_confidential_value_to_satoshi({ o.value, o.value_len });
                 } else {
                     GDK_RUNTIME_ASSERT(is_blinded);
                     satoshi = src.at("satoshi");
@@ -716,7 +716,7 @@ namespace sdk {
             // FIXME: Change addresses do not have their satoshi values set
             GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || src.at("satoshi") == satoshi);
 
-            auto spk = is_fee ? std::string() : b2h(gsl::make_span(o.script, o.script_len));
+            auto spk = is_fee ? std::string() : b2h({ o.script, o.script_len });
             if (!is_fee) {
                 GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
             }

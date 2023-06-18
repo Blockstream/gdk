@@ -288,7 +288,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
 
             const auto res = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), column));
-            const auto len = sqlite3_column_bytes(stmt.get(), column);
+            const size_t len = sqlite3_column_bytes(stmt.get(), column);
             try {
                 callback(gsl::make_span(res, len));
             } catch (const std::exception& ex) {
@@ -309,7 +309,7 @@ namespace sdk {
             const uint64_t timestamp = static_cast<uint64_t>(db_timestamp);
 
             const auto txid = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 1));
-            const auto txid_len = sqlite3_column_bytes(stmt.get(), 1);
+            const size_t txid_len = sqlite3_column_bytes(stmt.get(), 1);
             GDK_RUNTIME_ASSERT(txid_len == WALLY_TXHASH_LEN);
 
             const uint32_t block = get_uint32(stmt, 2);
@@ -317,9 +317,9 @@ namespace sdk {
             const uint32_t spv_status = get_uint32(stmt, 4);
 
             const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 5));
-            const auto len = sqlite3_column_bytes(stmt.get(), 5);
+            const size_t len = sqlite3_column_bytes(stmt.get(), 5);
             try {
-                const auto txhash_hex = b2h_rev(gsl::make_span(txid, txid_len));
+                const auto txhash_hex = b2h_rev({ txid, txid_len });
                 const auto span = gsl::make_span(data, len);
                 auto tx_json = nlohmann::json::from_msgpack(span.begin(), span.end());
                 callback(timestamp, txhash_hex, block, spent, spv_status, tx_json);
@@ -466,7 +466,7 @@ namespace sdk {
         const auto intermediate = hmac_sha512(encryption_key, ustring_span(m_network_name));
         // Note: the line below means the file name is endian dependant
         const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&m_type), sizeof(m_type));
-        m_db_name = b2h(gsl::make_span(hmac_sha512(intermediate, type_span).data(), 16));
+        m_db_name = b2h({ hmac_sha512(intermediate, type_span).data(), 16 });
         m_encryption_key = sha256(encryption_key);
 
         const auto path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION);
@@ -757,13 +757,14 @@ namespace sdk {
             return utxo;
         }
         GDK_RUNTIME_ASSERT(rc == SQLITE_ROW);
-        const auto _get_reversed_result = [this](const int column, const int size) {
-            GDK_RUNTIME_ASSERT(sqlite3_column_bytes(m_stmt_liquid_output_search.get(), column) == size);
+        const auto _get_reversed_result = [this](const int column, const size_t size) {
+            const size_t column_size = sqlite3_column_bytes(m_stmt_liquid_output_search.get(), column);
+            GDK_RUNTIME_ASSERT(column_size == size);
             const auto res = reinterpret_cast<const unsigned char*>(
                 sqlite3_column_blob(m_stmt_liquid_output_search.get(), column));
             GDK_RUNTIME_ASSERT(res);
             // cache values are stored in byte order not display order (reversed)
-            return b2h_rev(gsl::make_span(res, size));
+            return b2h_rev({ res, size });
         };
 
         utxo["asset_id"] = _get_reversed_result(0, ASSET_TAG_LEN);

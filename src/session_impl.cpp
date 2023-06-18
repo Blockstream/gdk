@@ -357,8 +357,7 @@ namespace sdk {
             if (!o.script_len) {
                 continue; // Liquid fee
             }
-            const auto scriptpubkey = gsl::make_span(o.script, o.script_len);
-            auto output_data = get_scriptpubkey_data(scriptpubkey);
+            auto output_data = get_scriptpubkey_data({ o.script, o.script_len });
             if (output_data.empty()) {
                 continue; // Scriptpubkey does not belong the wallet
             }

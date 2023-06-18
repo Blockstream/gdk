@@ -103,7 +103,7 @@ namespace sdk {
 
     ext_key bip32_public_key_from_parent(const ext_key& parent, uint32_t pointer)
     {
-        return bip32_public_key_from_parent_path(parent, gsl::make_span(&pointer, 1));
+        return bip32_public_key_from_parent_path(parent, { &pointer, 1u });
     }
 
     wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub)
@@ -664,8 +664,8 @@ namespace sdk {
         auto bytes = base58check_to_bytes(priv_key);
         const size_t flags = bip38_raw_get_flags(bytes);
         const bool compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
-        return { bip38_raw_to_private_key(gsl::make_span(bytes), ustring_span(passphrase),
-                     flags | (mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET)),
+        return { bip38_raw_to_private_key(
+                     bytes, ustring_span(passphrase), flags | (mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET)),
             compressed };
     }
 

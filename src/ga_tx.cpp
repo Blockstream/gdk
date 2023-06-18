@@ -133,8 +133,7 @@ namespace sdk {
                 // The redeem script is the last witness item
                 const auto& witness_item = witness->items[witness->num_items - 1];
                 GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
-                const auto redeem_script = gsl::make_span(witness_item.witness, witness_item.witness_len);
-                subtype = get_csv_blocks_from_csv_redeem_script(redeem_script);
+                subtype = get_csv_blocks_from_csv_redeem_script({ witness_item.witness, witness_item.witness_len });
             }
             utxo["subtype"] = subtype;
         }
@@ -1041,15 +1040,14 @@ namespace sdk {
         // - 2of2 csv, csv path
         const std::string addr_type = utxo.at("address_type");
         if (!is_segwit_address_type(utxo)) {
-            const auto script_sig = gsl::make_span(input.script, input.script_len);
             if (addr_type == address_type::p2pkh) {
                 // p2pkh: script sig: <user_sig> <pubkey>
-                return { get_sig_from_p2pkh_script_sig(script_sig) };
+                return { get_sig_from_p2pkh_script_sig({ input.script, input.script_len }) };
             }
             GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
             // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
             // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
-            return get_sigs_from_multisig_script_sig(script_sig);
+            return get_sigs_from_multisig_script_sig({ input.script, input.script_len });
         }
 
         GDK_RUNTIME_ASSERT(input.witness);
@@ -1177,8 +1175,7 @@ namespace sdk {
                 }
                 if (tx_out.value[0] == 1) {
                     // An explicit value; use it for a better estimate
-                    auto conf_value = gsl::make_span(tx_out.value, tx_out.value_len);
-                    satoshi = tx_confidential_value_to_satoshi(conf_value);
+                    satoshi = tx_confidential_value_to_satoshi({ tx_out.value, tx_out.value_len });
                     // Add the difference between the explicit and blinded value size
                     blinding_weight -= WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN * 4;
                     blinding_weight += WALLY_TX_ASSET_CT_VALUE_LEN * 4;
@@ -1395,13 +1392,13 @@ namespace sdk {
             abf_vbf_t abf_vbf;
             if (need_bfs) {
                 abf_vbf = asset_blinding_key_to_abf_vbf(master_blinding_key, hash_prevouts, i);
-                abfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data(), BLINDING_FACTOR_LEN)));
+                abfs.emplace_back(b2h_rev({ abf_vbf.data(), BLINDING_FACTOR_LEN }));
             } else {
                 abfs.emplace_back(std::string());
             }
             // Skip final vbf for non-partial txs; it is calculated by gdk
             if (need_bfs && (is_partial || i != transaction_outputs.size() - 1)) {
-                vbfs.emplace_back(b2h_rev(gsl::make_span(abf_vbf.data() + BLINDING_FACTOR_LEN, BLINDING_FACTOR_LEN)));
+                vbfs.emplace_back(b2h_rev({ abf_vbf.data() + BLINDING_FACTOR_LEN, BLINDING_FACTOR_LEN }));
             } else {
                 vbfs.emplace_back(std::string());
             }
@@ -1630,11 +1627,11 @@ namespace sdk {
         nlohmann::json result = nlohmann::json::object();
         const auto& o = tx.get_output(vout);
         if (is_explicit(o)) {
-            result["satoshi"] = tx_confidential_value_to_satoshi(gsl::make_span(o.value, o.value_len));
+            result["satoshi"] = tx_confidential_value_to_satoshi({ o.value, o.value_len });
             result["assetblinder"] = ZEROS;
             result["amountblinder"] = ZEROS;
             GDK_RUNTIME_ASSERT(o.asset && *o.asset == 1);
-            result["asset_id"] = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+            result["asset_id"] = b2h_rev({ o.asset + 1, o.asset_len - 1 });
         } else if (is_blinded(o)) {
             const auto scriptpubkey = gsl::make_span(o.script, o.script_len);
             const auto blinding_private_key = session.get_nonnull_signer()->get_blinding_key_from_script(scriptpubkey);

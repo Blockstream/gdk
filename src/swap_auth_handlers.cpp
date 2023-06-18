@@ -28,10 +28,10 @@ namespace sdk {
             nlohmann::json::array_t witness;
             for (size_t i = 0; i < in.witness->num_items; ++i) {
                 const auto* item = in.witness->items + i;
-                witness.push_back(item->witness_len ? b2h(gsl::make_span(item->witness, item->witness_len)) : "");
+                witness.push_back(item->witness_len ? b2h({ item->witness, item->witness_len }) : "");
             }
-            return { { "txhash", b2h_rev(gsl::make_span(in.txhash, sizeof(in.txhash))) }, { "pt_idx", in.index },
-                { "sequence", in.sequence }, { "script_sig", b2h(gsl::make_span(in.script, in.script_len)) },
+            return { { "txhash", b2h_rev({ in.txhash, sizeof(in.txhash) }) }, { "pt_idx", in.index },
+                { "sequence", in.sequence }, { "script_sig", b2h({ in.script, in.script_len }) },
                 { "witness", std::move(witness) } };
         }
 
