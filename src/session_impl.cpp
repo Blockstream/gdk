@@ -375,8 +375,6 @@ namespace sdk {
         return nlohmann::json{ { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } };
     }
 
-    void session_impl::create_transaction(nlohmann::json& details) { create_ga_transaction(*this, details); }
-
     nlohmann::json session_impl::psbt_sign(const nlohmann::json& details)
     {
         const bool is_liquid = m_net_params.is_liquid();

@@ -90,7 +90,7 @@ namespace sdk {
     void confidentialize_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
 
-    void create_ga_transaction(session_impl& session, nlohmann::json& details);
+    void create_transaction(session_impl& session, nlohmann::json& details);
 
     nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 

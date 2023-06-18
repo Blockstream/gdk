@@ -627,7 +627,7 @@ namespace sdk {
             }
         }
 
-        static void create_ga_transaction_impl(session_impl& session, nlohmann::json& result)
+        static void create_transaction_impl(session_impl& session, nlohmann::json& result)
         {
             const auto& net_params = session.get_network_parameters();
             const bool is_liquid = net_params.is_liquid();
@@ -1255,14 +1255,15 @@ namespace sdk {
         addr["is_confidential"] = true;
     }
 
-    void create_ga_transaction(session_impl& session, nlohmann::json& details)
+    void create_transaction(session_impl& session, nlohmann::json& details)
     {
         try {
             // Wrap the actual processing in try/catch
             // The idea here is that result is populated with as much detail as possible
             // before returning any error to allow the caller to make iterative changes
-            // fixes each error
-            create_ga_transaction_impl(session, details);
+            // fixing each error
+            details["error"] = std::string(); // Clear any existing error
+            create_transaction_impl(session, details);
         } catch (const std::exception& e) {
             set_tx_error(details, e.what());
         }

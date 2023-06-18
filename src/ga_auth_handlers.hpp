@@ -133,7 +133,6 @@ namespace sdk {
 
     private:
         state_type call_impl() override;
-        state_type check_change_outputs();
 
         nlohmann::json m_details;
     };

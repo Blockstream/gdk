@@ -927,44 +927,38 @@ namespace sdk {
 
     auth_handler::state_type create_transaction_call::call_impl()
     {
-        if (m_result.empty()) {
-            // Initial call: Create the transaction from the provided details
+        if (!m_details.empty()) {
+            // Initial call: Set up details and create the tx below
             m_result.swap(m_details);
-            m_result["error"] = std::string(); // Clear any previous error
-            m_session->create_transaction(m_result);
-            return check_change_outputs();
-        }
-
-        // Otherwise, we have been called after resolving our blinding keys:
-        // make any non-confidential change addresseses confidential
-        const auto& public_keys = get_hw_reply().at("public_keys");
-        size_t i = 0;
-        for (auto& it : m_result.at("change_address").items()) {
-            auto& addr = it.value();
-            if (!addr.value("is_confidential", false)) {
-                confidentialize_address(m_net_params, addr, public_keys.at(i));
-                ++i;
+        } else {
+            // Otherwise, we have been called after resolving our blinding keys:
+            // make any non-confidential change addresseses confidential
+            const auto& public_keys = get_hw_reply().at("public_keys");
+            size_t i = 0;
+            for (auto& it : m_result.at("change_address").items()) {
+                auto& addr = it.value();
+                if (!addr.value("is_confidential", false)) {
+                    confidentialize_address(m_net_params, addr, public_keys.at(i));
+                    ++i;
+                }
             }
         }
 
-        // Update the transaction
-        m_session->create_transaction(m_result);
-        return check_change_outputs();
-    }
+        // Create/update the transaction
+        create_transaction(*m_session, m_result);
 
-    auth_handler::state_type create_transaction_call::check_change_outputs()
-    {
+        if (!m_net_params.is_liquid()) {
+            return state_type::done; // Nothing to do for non-Liquid
+        }
+
+        // Check whether we have any unblinded change outputs
         nlohmann::json::array_t scripts;
-
-        if (m_net_params.is_liquid()) {
-            // Check whether we have any unblinded change outputs
-            const auto change_addresses_p = m_result.find("change_address");
-            if (change_addresses_p != m_result.end()) {
-                scripts.reserve(change_addresses_p->size());
-                for (auto& it : change_addresses_p->items()) {
-                    if (!it.value().value("is_confidential", false)) {
-                        scripts.push_back(it.value().at("scriptpubkey"));
-                    }
+        const auto change_addresses_p = m_result.find("change_address");
+        if (change_addresses_p != m_result.end()) {
+            scripts.reserve(change_addresses_p->size());
+            for (auto& it : change_addresses_p->items()) {
+                if (!it.value().value("is_confidential", false)) {
+                    scripts.push_back(it.value().at("scriptpubkey"));
                 }
             }
         }
