@@ -351,51 +351,45 @@ namespace sdk {
                     }
                 }
 
-                if (result.find("old_used_utxos") == result.end()) {
-                    // Create 'fake' utxos for the existing inputs
-                    std::map<uint32_t, nlohmann::json> used_utxos_map;
-                    for (const auto& input : prev_tx.at("inputs")) {
-                        GDK_RUNTIME_ASSERT(json_get_value(input, "is_relevant", false));
-                        nlohmann::json utxo(input);
-                        // Note pt_idx on endpoints is the index within the tx, not the previous tx!
-                        const uint32_t i = input.at("pt_idx");
-                        GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
-                        utxo["txhash"] = b2h_rev(tx.get_input(i).txhash);
-                        utxo["pt_idx"] = tx.get_input(i).index;
-                        calculate_input_subtype(utxo, tx, i);
-                        const auto script = session.output_script_from_utxo(utxo);
-                        utxo["prevout_script"] = b2h(script);
-                        if (is_electrum) {
-                            utxo["public_key"] = b2h(session.pubkeys_from_utxo(utxo).at(0));
-                        }
-                        used_utxos_map.emplace(i, utxo);
+                // Add the existing inputs as UTXOs
+                std::map<uint32_t, nlohmann::json> used_utxos_map;
+                for (const auto& input : prev_tx.at("inputs")) {
+                    GDK_RUNTIME_ASSERT(json_get_value(input, "is_relevant", false));
+                    nlohmann::json utxo(input);
+                    // Note pt_idx on endpoints is the index within the tx, not the previous tx!
+                    const uint32_t i = input.at("pt_idx");
+                    GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
+                    utxo["txhash"] = b2h_rev(tx.get_input(i).txhash);
+                    utxo["pt_idx"] = tx.get_input(i).index;
+                    calculate_input_subtype(utxo, tx, i);
+                    const auto script = session.output_script_from_utxo(utxo);
+                    utxo["prevout_script"] = b2h(script);
+                    if (is_electrum) {
+                        utxo["public_key"] = b2h(session.pubkeys_from_utxo(utxo).at(0));
                     }
-                    GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx.get_num_inputs());
-                    std::vector<nlohmann::json> old_used_utxos;
-                    old_used_utxos.reserve(used_utxos_map.size());
-                    for (const auto& input : used_utxos_map) {
-                        old_used_utxos.emplace_back(input.second);
-                    }
-                    result["old_used_utxos"] = old_used_utxos;
+                    used_utxos_map.emplace(i, std::move(utxo));
                 }
-                if (json_get_value(result, "memo").empty()) {
-                    result["memo"] = prev_tx["memo"];
-                }
-                // FIXME: Carry over payment request details?
-
-                // Verify the transaction signatures to prevent outputs
-                // from being modified.
-                uint32_t vin = 0;
-                for (auto& input : result["old_used_utxos"]) {
-                    const auto sigs = tx.get_input_signatures(input, vin);
-                    const auto pubkeys = session.pubkeys_from_utxo(input);
+                GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx.get_num_inputs());
+                std::vector<nlohmann::json> used_utxos;
+                used_utxos.reserve(used_utxos_map.size());
+                for (auto& item : used_utxos_map) {
+                    // Verify the transaction signatures to prevent outputs
+                    // from being modified.
+                    const auto sigs = tx.get_input_signatures(item.second, item.first);
+                    const auto pubkeys = session.pubkeys_from_utxo(item.second);
                     for (size_t i = 0; i < sigs.size(); ++i) {
                         const auto sighash = sigs.at(i).second;
-                        input["user_sighash"] = sighash;
-                        const auto preimage_hash = tx.get_signing_preimage_hash(input, vin, sighash);
+                        item.second["user_sighash"] = sighash;
+                        const auto preimage_hash = tx.get_signing_preimage_hash(item.second, item.first, sighash);
                         GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), preimage_hash, sigs.at(i).first));
                     }
-                    ++vin;
+                    // Add to the used UTXOs
+                    used_utxos.emplace_back(std::move(item.second));
+                }
+                result["used_utxos"] = std::move(used_utxos);
+
+                if (json_get_value(result, "memo").empty()) {
+                    result["memo"] = prev_tx["memo"];
                 }
             } else {
                 // For CPFP construct a tx spending an input from prev_tx
@@ -651,6 +645,9 @@ namespace sdk {
             // Check for RBF/CPFP
             bool is_rbf, is_cpfp;
             std::tie(is_rbf, is_cpfp) = check_bump_tx(session, subaccounts, result);
+            if (is_rbf) {
+                result["randomize_inputs"] = false;
+            }
 
             if (auto p = result.find("change_address"); p != result.end()) {
                 for (auto& it : p->items()) {
@@ -678,11 +675,14 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(manual_selection);
             }
             if (manual_selection) {
+                // Manual selection cannot currently be used with RBF
+                GDK_RUNTIME_ASSERT(!is_rbf);
+
                 if (!result.contains("used_utxos") || !result["used_utxos"].is_array()
                     || result["used_utxos"].empty()) {
                     set_tx_error(result, res::id_no_utxos_found);
                 }
-            } else {
+            } else if (!is_rbf) {
                 // We will recompute the used utxos
                 result["used_utxos"] = nlohmann::json::array();
             }
@@ -740,16 +740,7 @@ namespace sdk {
                 return;
             }
 
-            if (is_rbf) {
-                // Add all the old utxos. Note we don't add them to used_utxos
-                // since the user can't choose to remove them, and we won't
-                // randomize them in the final transaction
-                for (auto& utxo : result.at("old_used_utxos")) {
-                    btc_details.utxo_sum += add_utxo(session, tx, result, utxo, false); // FIXME: add to used_utxos?
-                }
-            }
-
-            if (manual_selection) {
+            if (manual_selection || is_rbf) {
                 // Add all of the given inputs
                 auto& used_utxos = result.at("used_utxos");
                 for (size_t i = 0; i < used_utxos.size(); ++i) {
@@ -1267,36 +1258,6 @@ namespace sdk {
         } catch (const std::exception& e) {
             set_tx_error(details, e.what());
         }
-    }
-
-    std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details)
-    {
-        const std::string error = json_get_value(details, "error");
-        if (!error.empty()) {
-            GDK_LOG_SEV(log_level::debug) << " attempt to sign with error: " << details.dump();
-            throw user_error(error);
-        }
-
-        const auto used_utxos = details.find("used_utxos");
-        const auto old_utxos = details.find("old_used_utxos");
-        const bool have_old = old_utxos != details.end();
-        const bool have_used_utxos = used_utxos != details.end();
-
-        std::vector<nlohmann::json> result;
-        result.reserve((have_used_utxos ? used_utxos->size() : 0) + (have_old ? old_utxos->size() : 0));
-
-        if (have_old) {
-            for (const auto& utxo : *old_utxos) {
-                result.push_back(utxo);
-            }
-        }
-
-        if (have_used_utxos) {
-            for (const auto& utxo : *used_utxos) {
-                result.push_back(utxo);
-            }
-        }
-        return result;
     }
 
     std::vector<std::string> sign_ga_transaction(

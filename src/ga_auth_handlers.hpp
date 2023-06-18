@@ -71,10 +71,11 @@ namespace sdk {
     private:
         state_type call_impl() override;
         void initialize();
-        void sign_user_inputs(const std::shared_ptr<signer>& signer);
+        void sign_user_inputs();
         void on_next_handler_complete(auth_handler* next_handler) override;
 
         nlohmann::json m_details;
+        std::vector<std::string> m_sweep_private_keys;
         std::vector<std::string> m_sweep_signatures;
         bool m_initialized;
         bool m_user_signed;

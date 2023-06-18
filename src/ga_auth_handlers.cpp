@@ -586,6 +586,7 @@ namespace sdk {
     sign_transaction_call::sign_transaction_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "sign_transaction")
         , m_details(std::move(details))
+        , m_sweep_private_keys()
         , m_sweep_signatures()
         , m_initialized(false)
         , m_user_signed(false)
@@ -614,16 +615,18 @@ namespace sdk {
         // Compute the data we need for the hardware to sign the transaction
         signal_hw_request(hw_request::sign_tx);
         m_twofactor_data["transaction"] = std::move(m_details["transaction"]);
+        auto& inputs = m_twofactor_data["transaction_inputs"];
+        inputs = std::move(m_details["used_utxos"]);
         m_twofactor_data["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
         m_twofactor_data["is_partial"] = m_details.value("is_partial", false);
 
         // We need the inputs, augmented with types, scripts and paths
-        auto signing_inputs = get_ga_signing_inputs(m_details);
         std::unique_ptr<Tx> tx;
-        m_sweep_signatures.resize(signing_inputs.size());
-        for (size_t i = 0; i < signing_inputs.size(); ++i) {
-            auto& input = signing_inputs[i];
+        m_sweep_private_keys.resize(inputs.size());
+        m_sweep_signatures.resize(inputs.size());
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            auto& input = inputs[i];
             if (input.contains("private_key")) {
                 // Sweep input. Compute the signature using the provided
                 // private key and store it. Then mark the input as
@@ -634,7 +637,8 @@ namespace sdk {
                 }
                 const uint32_t sighash = WALLY_SIGHASH_ALL;
                 const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
-                const auto sig = ec_sig_from_bytes(h2b(input["private_key"]), preimage_hash);
+                m_sweep_private_keys[i] = input["private_key"];
+                const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), preimage_hash);
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
                 input["skip_signing"] = true;
                 input.erase("private_key");
@@ -657,8 +661,8 @@ namespace sdk {
         if (is_local_signer && have_inputs_to_sign && !is_liquid) {
             // BTC: Provide the previous txs data for validation, even
             // for segwit, in order to mitigate the segwit fee attack.
-            // (Liquid txs are segwit+explicit fee and so not affected)
-            for (const auto& input : signing_inputs) {
+            // (Liquid txs are explicit fee and so not affected)
+            for (const auto& input : inputs) {
                 std::string txhash = input.at("txhash");
                 if (!prev_txs.contains(txhash)) {
                     auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
@@ -667,7 +671,6 @@ namespace sdk {
             }
         }
         m_twofactor_data["signing_transactions"] = std::move(prev_txs);
-        m_twofactor_data["signing_inputs"] = std::move(signing_inputs);
     }
 
     // Determine whether to sign with the users key, green backend, or both
@@ -685,8 +688,6 @@ namespace sdk {
 
     auth_handler::state_type sign_transaction_call::call_impl()
     {
-        auto signer = get_signer();
-
         if (!m_initialized) {
             // Create signing/twofactor data for user signing
             initialize();
@@ -699,19 +700,20 @@ namespace sdk {
 
         if (user_sign && !m_user_signed) {
             // We haven't signed the users inputs yet, do so now
-            sign_user_inputs(signer);
+            sign_user_inputs();
             m_user_signed = true;
         } else {
             // Set the transaction details in the result
             m_result.swap(m_details);
             m_result["transaction"] = std::move(m_twofactor_data["transaction"]);
+            m_result["used_utxos"] = std::move(m_twofactor_data["transaction_inputs"]);
             m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
         }
 
         if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
             auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
-            const auto& inputs = m_twofactor_data.at("signing_inputs");
+            const auto& inputs = m_result.at("used_utxos");
             if (std::find_if(inputs.begin(), inputs.end(), do_sign) != inputs.end()) {
                 /* We have inputs that need signing */
                 constexpr bool sign_only = true;
@@ -722,10 +724,11 @@ namespace sdk {
         return state_type::done;
     }
 
-    void sign_transaction_call::sign_user_inputs(const std::shared_ptr<signer>& signer)
+    void sign_transaction_call::sign_user_inputs()
     {
+        auto signer = get_signer();
         const auto& hw_reply = get_hw_reply();
-        const auto& inputs = m_twofactor_data["signing_inputs"];
+        auto& inputs = m_twofactor_data["transaction_inputs"];
         const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
@@ -764,21 +767,23 @@ namespace sdk {
 
         const bool is_low_r = signer->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
-            const auto& utxo = inputs.at(i);
+            auto& txin = inputs.at(i);
             std::string der_hex = signatures.at(i);
-            if (utxo.value("skip_signing", false)) {
+            if (txin.value("skip_signing", false)) {
                 GDK_RUNTIME_ASSERT(der_hex.empty());
                 der_hex = m_sweep_signatures.at(i);
                 if (der_hex.empty()) {
                     continue;
                 }
+                txin["private_key"] = std::move(m_sweep_private_keys[i]);
             }
-            tx.set_input_signature(i, utxo, der_hex, is_low_r);
+            tx.set_input_signature(i, txin, der_hex, is_low_r);
         }
 
         // Return our input details with the signatures updated
         m_result.swap(m_details);
         m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
+        m_result["used_utxos"] = std::move(m_twofactor_data["transaction_inputs"]);
         update_tx_size_info(m_net_params, tx, m_result);
     }
 

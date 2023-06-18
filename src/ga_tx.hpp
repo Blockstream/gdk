@@ -94,8 +94,6 @@ namespace sdk {
 
     nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 
-    std::vector<nlohmann::json> get_ga_signing_inputs(const nlohmann::json& details);
-
     std::vector<std::string> sign_ga_transaction(
         session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs);
 

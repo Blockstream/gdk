@@ -736,14 +736,12 @@ namespace sdk {
         // Set "satoshi" per-asset elements to the net effect on the wallet
         auto& summary = result["satoshi"];
         summary = nlohmann::json::object();
-        for (const auto& key : { "old_used_utxos", "used_utxos" }) {
-            if (auto p = result.find(key); p != result.end()) {
-                for (const auto& input : *p) {
-                    if (input.contains("address_type") && !input.contains("private_key")) {
-                        // Wallet input
-                        const auto asset_id = asset_id_from_json(net_params, input);
-                        update_summary(summary, asset_id, input, "satoshi", -1);
-                    }
+        if (auto p = result.find("used_utxos"); p != result.end()) {
+            for (const auto& input : *p) {
+                if (input.contains("address_type") && !input.contains("private_key")) {
+                    // Wallet input
+                    const auto asset_id = asset_id_from_json(net_params, input);
+                    update_summary(summary, asset_id, input, "satoshi", -1);
                 }
             }
         }

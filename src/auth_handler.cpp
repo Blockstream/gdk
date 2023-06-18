@@ -520,7 +520,7 @@ namespace sdk {
         } else if (request == hw_request::sign_tx) {
             // Check if there are any inputs that actually require signing
             auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
-            const auto& inputs = required_data.at("signing_inputs");
+            const auto& inputs = required_data.at("transaction_inputs");
             if (std::find_if(inputs.begin(), inputs.end(), do_sign) == inputs.end()) {
                 // No inputs require signing: return empty sigs for each input
                 result["signatures"] = nlohmann::json::array_t(inputs.size(), std::string());
@@ -547,7 +547,7 @@ namespace sdk {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else if (request == hw_request::sign_tx) {
             const Tx tx(required_data.at("transaction").get<std::string>(), signer->is_liquid());
-            result["signatures"] = sign_ga_transaction(get_session(), tx, required_data.at("signing_inputs"));
+            result["signatures"] = sign_ga_transaction(get_session(), tx, required_data.at("transaction_inputs"));
         } else {
             GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");
