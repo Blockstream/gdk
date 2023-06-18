@@ -616,7 +616,7 @@ namespace sdk {
         signal_hw_request(hw_request::sign_tx);
         m_twofactor_data["transaction"] = std::move(m_details["transaction"]);
         auto& inputs = m_twofactor_data["transaction_inputs"];
-        inputs = std::move(m_details["used_utxos"]);
+        inputs = std::move(m_details["transaction_inputs"]);
         m_twofactor_data["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
         m_twofactor_data["is_partial"] = m_details.value("is_partial", false);
@@ -706,14 +706,14 @@ namespace sdk {
             // Set the transaction details in the result
             m_result.swap(m_details);
             m_result["transaction"] = std::move(m_twofactor_data["transaction"]);
-            m_result["used_utxos"] = std::move(m_twofactor_data["transaction_inputs"]);
+            m_result["transaction_inputs"] = std::move(m_twofactor_data["transaction_inputs"]);
             m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
         }
 
         if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
             auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
-            const auto& inputs = m_result.at("used_utxos");
+            const auto& inputs = m_result.at("transaction_inputs");
             if (std::find_if(inputs.begin(), inputs.end(), do_sign) != inputs.end()) {
                 /* We have inputs that need signing */
                 constexpr bool sign_only = true;
@@ -783,7 +783,7 @@ namespace sdk {
         // Return our input details with the signatures updated
         m_result.swap(m_details);
         m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
-        m_result["used_utxos"] = std::move(m_twofactor_data["transaction_inputs"]);
+        m_result["transaction_inputs"] = std::move(m_twofactor_data["transaction_inputs"]);
         update_tx_size_info(m_net_params, tx, m_result);
     }
 
@@ -1024,13 +1024,13 @@ namespace sdk {
         // Ask the HWW for the blinding factors to blind the tx
         signal_hw_request(hw_request::get_blinding_factors);
         nlohmann::json::array_t utxos;
-        const auto& used_utxos = m_details["used_utxos"];
+        const auto& used_utxos = m_details["transaction_inputs"];
         utxos.reserve(used_utxos.size());
         for (const auto& u : used_utxos) {
             nlohmann::json prevout = { { "txhash", u.at("txhash") }, { "pt_idx", u.at("pt_idx") } };
             utxos.emplace_back(std::move(prevout));
         }
-        m_twofactor_data["used_utxos"] = std::move(utxos);
+        m_twofactor_data["transaction_inputs"] = std::move(utxos);
         const bool is_partial = json_get_value(m_details, "is_partial", false);
         m_twofactor_data["is_partial"] = is_partial;
         GDK_RUNTIME_ASSERT(is_partial || m_details["transaction_outputs"].size() >= 2);

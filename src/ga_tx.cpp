@@ -104,7 +104,7 @@ namespace sdk {
                 }
             }
             if (add_to_used_utxos) {
-                result["used_utxos"].push_back(utxo);
+                result["transaction_inputs"].push_back(utxo);
             }
             return json_get_amount(utxo, "satoshi");
         }
@@ -386,7 +386,7 @@ namespace sdk {
                     // Add to the used UTXOs
                     used_utxos.emplace_back(std::move(item.second));
                 }
-                result["used_utxos"] = std::move(used_utxos);
+                result["transaction_inputs"] = std::move(used_utxos);
 
                 if (json_get_value(result, "memo").empty()) {
                     result["memo"] = prev_tx["memo"];
@@ -678,13 +678,13 @@ namespace sdk {
                 // Manual selection cannot currently be used with RBF
                 GDK_RUNTIME_ASSERT(!is_rbf);
 
-                if (!result.contains("used_utxos") || !result["used_utxos"].is_array()
-                    || result["used_utxos"].empty()) {
+                if (!result.contains("transaction_inputs") || !result["transaction_inputs"].is_array()
+                    || result["transaction_inputs"].empty()) {
                     set_tx_error(result, res::id_no_utxos_found);
                 }
             } else if (!is_rbf) {
                 // We will recompute the used utxos
-                result["used_utxos"] = nlohmann::json::array();
+                result["transaction_inputs"] = nlohmann::json::array();
             }
 
             auto& utxos = result.at("utxos");
@@ -742,7 +742,7 @@ namespace sdk {
 
             if (manual_selection || is_rbf) {
                 // Add all of the given inputs
-                auto& used_utxos = result.at("used_utxos");
+                auto& used_utxos = result.at("transaction_inputs");
                 for (size_t i = 0; i < used_utxos.size(); ++i) {
                     const auto asset_id = asset_id_from_json(net_params, used_utxos[i]);
                     const bool is_policy_asset = asset_id == policy_asset;
@@ -801,7 +801,7 @@ namespace sdk {
             if (is_liquid && !is_partial) {
                 add_tx_fee_output(session, result, tx, btc_details.fee.value());
             }
-            auto& used_utxos = result.at("used_utxos");
+            auto& used_utxos = result.at("transaction_inputs");
             if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
                 tx.randomize_inputs(used_utxos);
             }
@@ -1288,7 +1288,7 @@ namespace sdk {
 
     static std::array<unsigned char, SHA256_LEN> hash_prevouts_from_utxos(const nlohmann::json& details)
     {
-        const auto& used_utxos = details.at("used_utxos");
+        const auto& used_utxos = details.at("transaction_inputs");
         std::vector<unsigned char> txhashes;
         std::vector<uint32_t> output_indices;
         txhashes.reserve(used_utxos.size() * WALLY_TXHASH_LEN);
@@ -1347,7 +1347,7 @@ namespace sdk {
         const auto& assetblinders = blinding_data.at("assetblinders");
         const auto& amountblinders = blinding_data.at("amountblinders");
 
-        const auto& used_utxos = details.at("used_utxos");
+        const auto& used_utxos = details.at("transaction_inputs");
         auto& transaction_outputs = details.at("transaction_outputs");
 
         Tx tx(json_get_value(details, "transaction"), is_liquid);

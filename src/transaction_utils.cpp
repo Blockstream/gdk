@@ -363,10 +363,10 @@ namespace sdk {
         if (overwrite || e.empty() || e.get<std::string>().empty()) {
             e = error;
         }
-        if (!result.contains("used_utxos")) {
+        if (!result.contains("transaction_inputs")) {
             // Callers expect to have used_utxos present even when an error occurs
             // TODO: See if this can be removed
-            result.emplace("used_utxos", std::vector<nlohmann::json>());
+            result.emplace("transaction_inputs", std::vector<nlohmann::json>());
         }
     }
 
@@ -736,7 +736,7 @@ namespace sdk {
         // Set "satoshi" per-asset elements to the net effect on the wallet
         auto& summary = result["satoshi"];
         summary = nlohmann::json::object();
-        if (auto p = result.find("used_utxos"); p != result.end()) {
+        if (auto p = result.find("transaction_inputs"); p != result.end()) {
             for (const auto& input : *p) {
                 if (input.contains("address_type") && !input.contains("private_key")) {
                     // Wallet input
@@ -771,7 +771,7 @@ namespace sdk {
     std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details)
     {
         std::set<uint32_t> ret;
-        if (auto utxos_p = details.find("used_utxos"); utxos_p != details.end()) {
+        if (auto utxos_p = details.find("transaction_inputs"); utxos_p != details.end()) {
             for (auto& utxo : *utxos_p) {
                 if (is_wallet_input(utxo)) {
                     ret.insert(utxo.at("subaccount").get<uint32_t>());

@@ -200,7 +200,7 @@ namespace sdk {
             std::vector<nlohmann::json> used_utxos{ send };
             nlohmann::json utxos{ { send.at("asset_id"), used_utxos } };
             nlohmann::json create_details = { { "addressees", std::move(addressees) }, { "is_partial", true },
-                { "utxo_strategy", "manual" }, { "utxos", utxos }, { "used_utxos", std::move(used_utxos) } };
+                { "utxo_strategy", "manual" }, { "utxos", utxos }, { "transaction_inputs", std::move(used_utxos) } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
         }
@@ -216,7 +216,7 @@ namespace sdk {
 
         // Call sign_transaction to sign the callers side
         constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
-        m_create_details.at("used_utxos").at(0)["user_sighash"] = sighash;
+        m_create_details.at("transaction_inputs").at(0)["user_sighash"] = sighash;
         // For AMP, skip server signing for multisig. The taker will ask the
         // backend to sign the completed swap since AMP only signs SIGHASH_ALL
         const bool is_amp_tx = m_create_details.contains("blinding_nonces");
@@ -237,7 +237,7 @@ namespace sdk {
             // Call result is our signed tx
             auto result = std::move(next_handler->move_result());
             // Create liquidex_v1 proposal to return
-            auto& tx_inputs = result.at("used_utxos");
+            auto& tx_inputs = result.at("transaction_inputs");
             auto& tx_outputs = result.at("transaction_outputs");
             nlohmann::json::array_t inputs = liquidex_get_fields(tx_inputs);
             nlohmann::json::array_t outputs = liquidex_get_fields(tx_outputs);
@@ -321,7 +321,7 @@ namespace sdk {
             nlohmann::json create_details
                 = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->get_version() },
                       { "transaction_locktime", m_tx->get_locktime() }, { "utxo_strategy", "manual" },
-                      { "utxos", nlohmann::json::object() }, { "used_utxos", std::move(used_utxos) },
+                      { "utxos", nlohmann::json::object() }, { "transaction_inputs", std::move(used_utxos) },
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
