@@ -595,7 +595,16 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
-        m_details.erase("utxos"); // Not needed anymore
+        if (!m_details.empty()) {
+            m_details.erase("utxos"); // Not needed anymore
+        }
+        if (!json_get_value(m_details, "error").empty()) {
+            // Can't sign a tx with an error, return it as-is
+            m_result = std::move(m_details);
+            m_state = state_type::done;
+            return;
+        }
+
         const bool is_liquid = m_net_params.is_liquid();
         const auto signer = get_signer();
         const bool use_ae_protocol = signer->use_ae_protocol();
@@ -1746,7 +1755,15 @@ namespace sdk {
 
     void send_transaction_call::initialize()
     {
-        m_details.erase("utxos"); // Not needed anymore
+        if (!m_details.empty()) {
+            m_details.erase("utxos"); // Not needed anymore
+        }
+        if (!json_get_value(m_details, "error").empty()) {
+            // Can't send a tx with an error, return it as-is
+            m_result = std::move(m_details);
+            m_state = state_type::done;
+            return;
+        }
 
         signal_2fa_request(m_type + "_raw_tx");
         m_twofactor_required = m_state == state_type::request_code;
