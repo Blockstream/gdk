@@ -1,0 +1,34 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "address": "AzpjM6F3vhwPK3U5p8u79osjbhsduwdGCrbt1Cahy8nD3d7SbQJte99KiMkxWZLBrmUnWPrU3eLtUbVU",
+    "address_type": "p2sh-p2wpkh",
+    "amountblinder": "8efb0d0b21e6f14960f4c2affc166e50555f03bfc5ece3f2992b6ab4fd975caf",
+    "asset_id": "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+    "assetblinder": "a986f588d8f05e337627bc780732efde594ad3cf32cb17e994dc7dcb25bc72fd",
+    "blinding_key": "020de79e60d9d17b22c9f803455eb2fc48becc50fe76d32508bde357bf10c28a8a",
+    "is_blinded": true,
+    "is_confidential": true,
+    "is_internal": false,
+    "is_output": true,
+    "is_relevant": true,
+    "is_spent": false,
+    "pointer": 1,
+    "pt_idx": 1,
+    "satoshi": 12340,
+    "script": "a914007edc4b1153a320e490b5fe29a33e95af2d3c7387",
+    "script_type": 0,
+    "subaccount": 0,
+    "subtype": 0,
+    "unconfidential_address": "XBPrpZvDkTp1TY3kAhNtLBzo4Vycb9BsQt"
+  }
+
+.. raw:: html
+
+  </details>
+

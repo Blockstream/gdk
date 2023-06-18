@@ -82,6 +82,8 @@ def generate_examples(network, session_type, mnemonic):
 
     # get_transaction_details
     tx_details = user.get_transaction_details(incoming_txhash)
+    if 'liquid' in session_type:
+        tx_details['transaction'] = 'Transaction Hex, abbreviated here for length'
     write_json(tx_details, session_type, 'get_transaction_details')
     # get_unspent_outputs
     utxos = user.get_unspent_outputs({'subaccount': 0, 'num_confs': 0}).resolve()

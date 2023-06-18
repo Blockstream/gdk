@@ -24,11 +24,11 @@ Passed to `GA_init` when initializing the library.
 :tordir: An optional directory for tor state data, used when the internal tor
          implementation is enabled in :ref:`net-params`. Note that each process
          using the library at the same time requires its own distinct directory.
-         If not given, a subdirectory ``"tor"`` inside ``"datadir"`` is used.
+         If not given, a sub-directory ``"tor"`` inside ``"datadir"`` is used.
 :registrydir: An optional directory for the registry data, used when the network
          is liquid based. Note that each process using the library at the same
          time requires its own distinct directory.
-         If not given, a subdirectory ``"registry"`` inside ``"datadir"`` is used.
+         If not given, a sub-directory ``"registry"`` inside ``"datadir"`` is used.
 :log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
            ``"error"``, or ``"none"``.
 
@@ -286,12 +286,14 @@ as the array elements of `GA_get_subaccounts`.
 
 .. include:: examples/get_subaccount_multisig.json
 .. include:: examples/get_subaccount_singlesig.json
+.. include:: examples/get_subaccount_multisig_liquid.json
+.. include:: examples/get_subaccount_singlesig_liquid.json
 
 :hidden: Whether the subaccount is hidden.
 :name: The name of the subaccount.
 :pointer: The subaccount number.
 :receiving_id: The Green receiving ID for the subaccount.
-:recovery_chain_code: For ``"2of3"`` subaccounts, the BIP32 chaincode of the users recovery key.
+:recovery_chain_code: For ``"2of3"`` subaccounts, the BIP32 chain code of the users recovery key.
 :recovery_pub_key: For ``"2of3"`` subaccounts, the BIP32 public key of the users recovery key.
 :recovery_xpub: For ``"2of3"`` subaccounts, the BIP32 xpub of the users recovery key.
 :required_ca: For ``"2of2_no_recovery"`` subaccounts, the number of confidential addresses
@@ -359,6 +361,8 @@ Describes a users transaction history returned by `GA_get_transactions`.
 
 .. include:: examples/get_transactions_multisig.json
 .. include:: examples/get_transactions_singlesig.json
+.. include:: examples/get_transactions_multisig_liquid.json
+.. include:: examples/get_transactions_singlesig_liquid.json
 
 
 :transactions: Top level container for the users transaction list.
@@ -366,7 +370,7 @@ Describes a users transaction history returned by `GA_get_transactions`.
     in, or ``0`` if the transaction is in the mempool.
 :can_cpfp: A boolean indicating whether the user can CPFP the transaction.
 :can_rbf: A boolean indicating whether the use can RBF (bump) the transaction fee.
-:created_at_ts: The timestamp in microseconds from the Unix epoc when the transaction
+:created_at_ts: The timestamp in microseconds from the Unix epoch when the transaction
     was seen by gdk or Green servers, or included in a block.
 :fee: The BTC or L-BTC network fee paid by the transaction in satoshi.
 :fee_rate: The fee rate in satoshi per thousand bytes.
@@ -393,6 +397,8 @@ Describes a transaction input in :ref:`tx-list`.
 
 .. include:: examples/get_transactions_input_multisig.json
 .. include:: examples/get_transactions_input_singlesig.json
+.. include:: examples/get_transactions_input_multisig_liquid.json
+.. include:: examples/get_transactions_input_singlesig_liquid.json
 
 
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
@@ -412,24 +418,6 @@ Describes a transaction input in :ref:`tx-list`.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
 
 Liquid inputs have additional fields:
-
-.. code-block:: json
-
-  {
-    "amountblinder": "3ad591ed6289ab0a7fa1777197f84a05cd12f651cca831932eaa8a09ac7cc7d2",
-    "asset_id": "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49",
-    "asset_tag": "0b5ff0a91c05353089cd40250a2b6c81f09507637d90c37c7e372a8465a4dc0458",
-    "assetblinder": "0cd232883f93a3376b88e19a17192495663315a94bd54a24f20299b9af7a696c",
-    "commitment": "09f9ac1dfa5042e25a9791fde4aa8292e21c25479eec7783ec5400805a227be256",
-    "is_blinded": true,
-    "nonce_commitment": "03dcec00304fe2debe04a57f84962966b92db9390b96e9931fef47b002fb265278",
-    "previdx": 1,
-    "prevpointer": 40,
-    "prevsubaccount": null,
-    "prevtxhash": "be5ad6db9598873b1443796aa0b34445aa85145586b3355324130c0fd869948f",
-    "script": "a914759262b6664d3be92ff41f3a06ade42fa429843087",
-  }
-
 
 :amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
 :asset_id: The hex-encoded asset id in display format.
@@ -454,6 +442,8 @@ Describes a transaction output in :ref:`tx-list`.
 
 .. include:: examples/get_transactions_output_multisig.json
 .. include:: examples/get_transactions_output_singlesig.json
+.. include:: examples/get_transactions_output_multisig_liquid.json
+.. include:: examples/get_transactions_output_singlesig_liquid.json
 
 
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
@@ -499,6 +489,8 @@ users wallet. Returned by `GA_get_transaction_details`.
 
 .. include:: examples/get_transaction_details_multisig.json
 .. include:: examples/get_transaction_details_singlesig.json
+.. include:: examples/get_transaction_details_multisig_liquid.json
+.. include:: examples/get_transaction_details_singlesig_liquid.json
 
 
 .. _sign-tx-details:
@@ -820,7 +812,7 @@ Where ``data`` is longer than ``max_fragment_len``, the result is a multi-part
 encoding using approximately 3 times the minimum number of fragments needed to
 decode the data, split into parts of size ``max_fragment_len`` or less.
 
-In this case, the caller must provide all retrned parts to any decoder, e.g. by
+In this case, the caller must provide all returned parts to any decoder, e.g. by
 generating an animated QR code from them.
 
 .. _bcur-encoded:
@@ -883,6 +875,8 @@ Contains the users settings.
 
 .. include:: examples/get_settings_multisig.json
 .. include:: examples/get_settings_singlesig.json
+.. include:: examples/get_settings_multisig_liquid.json
+.. include:: examples/get_settings_singlesig_liquid.json
 
 
 .. _receive-address-details:
@@ -892,6 +886,8 @@ Receive address details JSON
 
 .. include:: examples/get_receive_address_multisig.json
 .. include:: examples/get_receive_address_singlesig.json
+.. include:: examples/get_receive_address_multisig_liquid.json
+.. include:: examples/get_receive_address_singlesig_liquid.json
 
 :address: The wallet address in base58, bech32 or blech32 encoding.
 :address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
@@ -953,6 +949,8 @@ Contains a page of previously generated addresses, from newest to oldest.
 
 .. include:: examples/get_previous_addresses_multisig.json
 .. include:: examples/get_previous_addresses_singlesig.json
+.. include:: examples/get_previous_addresses_multisig_liquid.json
+.. include:: examples/get_previous_addresses_singlesig_liquid.json
 
 
 :last_pointer: If present indicates that there are more addresses to be fetched, and the caller
@@ -1025,6 +1023,8 @@ Contains unspent outputs for the wallet as requested by `GA_get_unspent_outputs`
 
 .. include:: examples/get_unspent_outputs_multisig.json
 .. include:: examples/get_unspent_outputs_singlesig.json
+.. include:: examples/get_unspent_outputs_multisig_liquid.json
+.. include:: examples/get_unspent_outputs_singlesig_liquid.json
 
 :txhash: The txid of the transaction.
 :pt_idx: The index of the output, the vout.
@@ -1052,19 +1052,6 @@ fields, one for each asset owned, and the keys are the hex-encoded policy ids.
 
 For Liquid the inner maps have additional fields:
 
-.. code-block:: json
-
-  {
-    "amountblinder": "3be117b88ba8284b05b89998bdee1ded8cd5b561ae3d05bcd91d4e8abab2cd47",
-    "asset_id": "e4b76d990f27bf6063cb66ff5bbc783d03258a0406ba8ac09abab7610d547e72",
-    "asset_tag": "0b103a2d34cf469987dd06937919f9dae8c9856be17c554fd408fdc226b1769e59",
-    "assetblinder": "aedb6c37d0ea0bc64fbc7036b52d0a0784da0b1ca90ac918c19ee1025b0c944c",
-    "commitment": "094c3f83d5bac22b527ccac141fe04883d79bf04aef10a1dd42f501c5b51318907",
-    "is_blinded": true,
-    "nonce_commitment": "0211b39afe463473e428cfafd387f9c85b350f440131fad03aa5f4809b6c834f30"
-  }
-
-
 :amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
 :asset_id: The hex-encoded asset id in display format.
 :asset_tag: The hex-encoded asset commitment.
@@ -1075,10 +1062,10 @@ For Liquid the inner maps have additional fields:
 
 .. _unspent-outputs-status:
 
-Unspent ouputs set status JSON
-------------------------------
+Unspent outputs set status JSON
+-------------------------------
 
-Valid status values are ``"default"`` for normal behaviour or ``"frozen"``. Frozen
+Valid status values are ``"default"`` for normal behavior or ``"frozen"``. Frozen
 outputs are hidden from the caller's balance and unspent output requests, are
 not returned in nlocktime emails, and cannot be spent. An account containing
 frozen outputs can be deleted, whereas an account with unfrozen outputs can not.
@@ -1191,7 +1178,7 @@ The remaining data returned depends on the current state of the handler, as foll
   }
 
 :action: The action being processed.
-:error: A text description of the error that occured.
+:error: A text description of the error that occurred.
 
 * ``"call"``:
 
@@ -1274,7 +1261,7 @@ The remaining data returned depends on the current state of the handler, as foll
 Reconnect JSON
 --------------
 
-Controls session and internal Tor instance reconnection behaviour.
+Controls session and internal Tor instance reconnection behavior.
 
 .. code-block:: json
 
@@ -1428,7 +1415,7 @@ Asset parameters JSON
 Get assets parameters JSON
 --------------------------
 
-Informations about Liquid assets can be obtained by either passing a list of
+Information about Liquid assets can be obtained by either passing a list of
 asset ids to query:
 
 .. code-block:: json

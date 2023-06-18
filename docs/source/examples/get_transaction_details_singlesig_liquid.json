@@ -1,0 +1,20 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transaction": "Transaction Hex, abbreviated here for length",
+    "transaction_locktime": 200,
+    "transaction_version": 2,
+    "transaction_vsize": 2492,
+    "transaction_weight": 9966,
+    "txhash": "eea0ccc14f823dfcf6afcaf9f57db43aac294d675dd19bb3b563fc11ee169864"
+  }
+
+.. raw:: html
+
+  </details>
+

@@ -1,0 +1,110 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transactions": [
+      {
+        "block_height": 0,
+        "can_cpfp": true,
+        "can_rbf": false,
+        "created_at_ts": 1686642370218278,
+        "fee": 24920,
+        "fee_rate": 10000,
+        "inputs": [
+          {
+            "address": "ert1qer759naur22vw6tnssc2ey3eqg974um62nh0cq",
+            "address_type": "",
+            "is_internal": false,
+            "is_output": false,
+            "is_relevant": false,
+            "is_spent": true,
+            "pointer": 0,
+            "pt_idx": 0,
+            "script_type": 160,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "memo": "",
+        "outputs": [
+          {
+            "address": "AzpsXif2CBq9WEtyZW5JR85LUEBXjvZXi2wx5EaKqXQ1cQh8Jo35fGva7MWcfQmkNZ3D2hZbXD3U16eF",
+            "address_type": "csv",
+            "amountblinder": "337fbb7a7c554a1a11a1fd58524a650811e6a2e655966e5e8870c6aa5bc220c3",
+            "asset_id": "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+            "asset_tag": "0aec3e557312bbe41d1ead85eb9e2a741965f5fb7426a398c882c8bb9b6eb0a1d9",
+            "assetblinder": "0ea4abfc0c7c36929a6d051d9694ac58a5c57a571af89bf34337a02e29552b7a",
+            "blinding_key": "033c13b87298d77941d6e4ec5c754a03a41a7c48ad4196e1e97a734d8646daa231",
+            "commitment": "09f9d304ce60ad52731ea60b64e069623c4df719062cc49f8d3a9e3ca06ef411b2",
+            "is_blinded": true,
+            "is_confidential": true,
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": true,
+            "is_spent": false,
+            "nonce_commitment": "03b4ff371f4545ba5f1f9b58c6fea3ea99939c86f206ca594277a8d24d2d7333ed",
+            "pointer": 1,
+            "pt_idx": 0,
+            "satoshi": 12340,
+            "script": "a91469a22b9f6314c0fe6db92286592ec287ac52c03587",
+            "script_type": 15,
+            "subaccount": 0,
+            "subtype": 65535,
+            "unconfidential_address": "XLyn55q1TtektRH3YrDTT8vMTMkjrcT38u"
+          },
+          {
+            "address": "ert1q0exrx3qfddfjgsv3un8vq0wkh7k4mvjyq48mcc",
+            "address_type": "",
+            "asset_tag": "0a633e984d81a08b8031a688ea5bea540fcdf08b0fb1a2c6ed1242b934804a40ab",
+            "commitment": "085aa714e5253c74d5701770d5c2e97f039c4780036c53dbb0b074659edfe18489",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": false,
+            "is_spent": false,
+            "nonce_commitment": "025f28d0f5766008f1d2bbd19fcd54851d6c754bcef04ba6879649250f281fef2c",
+            "pointer": 0,
+            "pt_idx": 1,
+            "script": "00147e4c3344096b53244191e4cec03dd6bfad5db244",
+            "script_type": 11,
+            "subaccount": 0,
+            "subtype": 0
+          },
+          {
+            "address": "",
+            "address_type": "",
+            "asset_tag": "0125b251070e29ca19043cf33ccd7324e2ddab03ecc4ae0b5e77c4fc0e5cf6c95a",
+            "commitment": "010000000000006158",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": false,
+            "is_spent": false,
+            "nonce_commitment": "000000000000000000000000000000000000000000000000000000000000000000",
+            "pointer": 0,
+            "pt_idx": 2,
+            "script": "",
+            "script_type": 0,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "rbf_optin": true,
+        "satoshi": {
+          "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225": 12340
+        },
+        "spv_verified": "disabled",
+        "transaction_vsize": 2492,
+        "transaction_weight": 9968,
+        "txhash": "46dd2e84591e3a27c85d3ead917a1469dd09458fb1d76bce6b58885bf5d6ebbc",
+        "type": "incoming"
+      }
+    ]
+  }
+
+.. raw:: html
+
+  </details>
+

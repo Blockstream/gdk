@@ -1,0 +1,25 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "address": "ert1qer759naur22vw6tnssc2ey3eqg974um62nh0cq",
+    "address_type": "",
+    "is_internal": false,
+    "is_output": false,
+    "is_relevant": false,
+    "is_spent": true,
+    "pointer": 0,
+    "pt_idx": 0,
+    "script_type": 160,
+    "subaccount": 0,
+    "subtype": 0
+  }
+
+.. raw:: html
+
+  </details>
+

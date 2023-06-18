@@ -1,0 +1,37 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "address": "AzpsXif2CBq9WEtyZW5JR85LUEBXjvZXi2wx5EaKqXQ1cQh8Jo35fGva7MWcfQmkNZ3D2hZbXD3U16eF",
+    "address_type": "csv",
+    "amountblinder": "337fbb7a7c554a1a11a1fd58524a650811e6a2e655966e5e8870c6aa5bc220c3",
+    "asset_id": "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+    "asset_tag": "0aec3e557312bbe41d1ead85eb9e2a741965f5fb7426a398c882c8bb9b6eb0a1d9",
+    "assetblinder": "0ea4abfc0c7c36929a6d051d9694ac58a5c57a571af89bf34337a02e29552b7a",
+    "blinding_key": "033c13b87298d77941d6e4ec5c754a03a41a7c48ad4196e1e97a734d8646daa231",
+    "commitment": "09f9d304ce60ad52731ea60b64e069623c4df719062cc49f8d3a9e3ca06ef411b2",
+    "is_blinded": true,
+    "is_confidential": true,
+    "is_internal": false,
+    "is_output": true,
+    "is_relevant": true,
+    "is_spent": false,
+    "nonce_commitment": "03b4ff371f4545ba5f1f9b58c6fea3ea99939c86f206ca594277a8d24d2d7333ed",
+    "pointer": 1,
+    "pt_idx": 0,
+    "satoshi": 12340,
+    "script": "a91469a22b9f6314c0fe6db92286592ec287ac52c03587",
+    "script_type": 15,
+    "subaccount": 0,
+    "subtype": 65535,
+    "unconfidential_address": "XLyn55q1TtektRH3YrDTT8vMTMkjrcT38u"
+  }
+
+.. raw:: html
+
+  </details>
+

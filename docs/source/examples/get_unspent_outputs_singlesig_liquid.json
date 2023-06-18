@@ -1,0 +1,45 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig Liquid example</a></summary>
+
+.. code-block:: json
+
+  {
+    "unspent_outputs": {
+      "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225": [
+        {
+          "address_type": "p2sh-p2wpkh",
+          "amountblinder": "8efb0d0b21e6f14960f4c2affc166e50555f03bfc5ece3f2992b6ab4fd975caf",
+          "asset_id": "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225",
+          "asset_tag": "0a552d971ca55f71e25de1f4961f0646445ec7233f060af79db1ed5d1b7944adc1",
+          "assetblinder": "a986f588d8f05e337627bc780732efde594ad3cf32cb17e994dc7dcb25bc72fd",
+          "block_height": 0,
+          "commitment": "091a8f5a5542d635303eaa52cf6ed0cf32d084be85fe292266427dfb7e97277111",
+          "is_blinded": true,
+          "is_confidential": false,
+          "is_internal": false,
+          "nonce_commitment": "026500ef0c14658df948d9f99d76c37724377f9f66860c2d3b67bc47be4e763a3f",
+          "pointer": 1,
+          "prevout_script": "76a9144d2af219985cd7e523cf1be0421636fe4f38f4b788ac",
+          "pt_idx": 1,
+          "public_key": "030e18cc1d6474e092264aa44e7b81ce1068f2b12ec748c96f217d8de5cb2555dc",
+          "satoshi": 12340,
+          "subaccount": 0,
+          "txhash": "eea0ccc14f823dfcf6afcaf9f57db43aac294d675dd19bb3b563fc11ee169864",
+          "user_path": [
+            2147483697,
+            2147483649,
+            2147483648,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  }
+
+.. raw:: html
+
+  </details>
+
