@@ -658,11 +658,8 @@ namespace sdk {
                 }
             }
 
-            const bool is_sweep = result.find("private_key") != result.end();
-            result["is_sweep"] = is_sweep;
-
             if (is_partial) {
-                GDK_RUNTIME_ASSERT(!is_rbf && !is_cpfp && !is_sweep);
+                GDK_RUNTIME_ASSERT(!is_rbf && !is_cpfp);
             }
 
             // We must have addressees to send to, and if sending everything, only one
@@ -672,38 +669,6 @@ namespace sdk {
             if (addressees_p == result.end() || addressees_p->empty()) {
                 set_tx_error(result, res::id_no_recipients);
                 return;
-            }
-
-            if (is_sweep) {
-                if (is_liquid) {
-                    set_tx_error(result, "sweep not supported for liquid");
-                    return;
-                }
-
-                if (result.contains("utxos") && !result["utxos"][policy_asset].empty()) {
-                    // check for sweep related keys
-                    for (const auto& utxo : result["utxos"][policy_asset]) {
-                        GDK_RUNTIME_ASSERT(!json_get_value(utxo, "private_key").empty());
-                    }
-                } else {
-                    nlohmann::json sweep_utxos;
-                    try {
-                        sweep_utxos = session.get_unspent_outputs_for_private_key(
-                            result["private_key"], json_get_value(result, "passphrase"), 0);
-                    } catch (const assertion_error& ex) {
-                        set_tx_error(result, res::id_invalid_private_key); // Invalid private key
-                    } catch (const std::exception& ex) {
-                        GDK_LOG_SEV(log_level::error) << "Exception getting outputs for private key: " << ex.what();
-                    }
-                    if (sweep_utxos.empty()) {
-                        set_tx_error(result, res::id_no_utxos_found); // No UTXOs found
-                    }
-                    result["utxos"][policy_asset] = std::move(sweep_utxos);
-                }
-                // Use the provided address
-                GDK_RUNTIME_ASSERT(addressees_p->size() == 1u);
-                addressees_p->at(0)["is_greedy"] = true;
-                addressees_p->at(0)["satoshi"] = 0;
             }
 
             const std::string strategy = json_add_if_missing(result, "utxo_strategy", UTXO_SEL_DEFAULT);
