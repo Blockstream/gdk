@@ -36,12 +36,12 @@ namespace sdk {
         }
 
         static void add_asset_utxos(
-            const nlohmann::json& utxos, const std::string& asset_id, nlohmann::json::array_t& used_utxos)
+            const nlohmann::json& utxos, const std::string& asset_id, nlohmann::json::array_t& tx_inputs)
         {
             const auto p = utxos.find(asset_id);
             if (p != utxos.end()) {
                 for (const auto& u : *p) {
-                    used_utxos.push_back(u);
+                    tx_inputs.push_back(u);
                 }
             }
         }
@@ -197,10 +197,10 @@ namespace sdk {
             m_receive_address["used"] = true; // Make sure m_receive_address.empty() isn't true
             addressee.update(receive);
             nlohmann::json::array_t addressees{ std::move(addressee) };
-            std::vector<nlohmann::json> used_utxos{ send };
-            nlohmann::json utxos{ { send.at("asset_id"), used_utxos } };
+            std::vector<nlohmann::json> tx_inputs{ send };
+            nlohmann::json utxos{ { send.at("asset_id"), tx_inputs } };
             nlohmann::json create_details = { { "addressees", std::move(addressees) }, { "is_partial", true },
-                { "utxo_strategy", "manual" }, { "utxos", utxos }, { "transaction_inputs", std::move(used_utxos) } };
+                { "utxo_strategy", "manual" }, { "utxos", utxos }, { "transaction_inputs", std::move(tx_inputs) } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
         }
@@ -305,10 +305,10 @@ namespace sdk {
         } else if (m_create_details.empty()) {
             // Get the input UTXOs
             auto maker_input = liquidex_get_maker_input(*m_tx, proposal_input);
-            nlohmann::json::array_t used_utxos = { std::move(maker_input) };
+            nlohmann::json::array_t tx_inputs = { std::move(maker_input) };
             std::set<std::string> asset_ids{ maker_asset_id, taker_asset_id, m_net_params.get_policy_asset() };
             for (const auto& asset_id : asset_ids) {
-                add_asset_utxos(utxos, asset_id, used_utxos);
+                add_asset_utxos(utxos, asset_id, tx_inputs);
             }
 
             auto maker_addressee = liquidex_get_maker_addressee(m_net_params, *m_tx, proposal_output);
@@ -321,7 +321,7 @@ namespace sdk {
             nlohmann::json create_details
                 = { { "addressees", std::move(addressees) }, { "transaction_version", m_tx->get_version() },
                       { "transaction_locktime", m_tx->get_locktime() }, { "utxo_strategy", "manual" },
-                      { "utxos", nlohmann::json::object() }, { "transaction_inputs", std::move(used_utxos) },
+                      { "utxos", nlohmann::json::object() }, { "transaction_inputs", std::move(tx_inputs) },
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;

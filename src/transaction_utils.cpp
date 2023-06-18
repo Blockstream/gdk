@@ -364,8 +364,8 @@ namespace sdk {
             e = error;
         }
         if (!result.contains("transaction_inputs")) {
-            // Callers expect to have used_utxos present even when an error occurs
-            // TODO: See if this can be removed
+            // Callers expect to have transaction_inputs present even when an
+            // error occurs. TODO: See if this can be removed
             result.emplace("transaction_inputs", std::vector<nlohmann::json>());
         }
     }

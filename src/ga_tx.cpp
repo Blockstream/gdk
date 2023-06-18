@@ -56,7 +56,7 @@ namespace sdk {
 
         // Add a UTXO to a transaction. Returns the amount added
         static amount add_utxo(
-            session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxo, bool add_to_used_utxos)
+            session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxo, bool add_to_tx_inputs)
         {
             GDK_RUNTIME_ASSERT(!has_utxo(tx, utxo));
 
@@ -103,7 +103,7 @@ namespace sdk {
                     tx.add_input(txid, index, sequence, dummy_input_script(low_r, script));
                 }
             }
-            if (add_to_used_utxos) {
+            if (add_to_tx_inputs) {
                 result["transaction_inputs"].push_back(utxo);
             }
             return json_get_amount(utxo, "satoshi");
@@ -352,7 +352,7 @@ namespace sdk {
                 }
 
                 // Add the existing inputs as UTXOs
-                std::map<uint32_t, nlohmann::json> used_utxos_map;
+                std::map<uint32_t, nlohmann::json> tx_inputs_map;
                 for (const auto& input : prev_tx.at("inputs")) {
                     GDK_RUNTIME_ASSERT(json_get_value(input, "is_relevant", false));
                     nlohmann::json utxo(input);
@@ -367,12 +367,12 @@ namespace sdk {
                     if (is_electrum) {
                         utxo["public_key"] = b2h(session.pubkeys_from_utxo(utxo).at(0));
                     }
-                    used_utxos_map.emplace(i, std::move(utxo));
+                    tx_inputs_map.emplace(i, std::move(utxo));
                 }
-                GDK_RUNTIME_ASSERT(used_utxos_map.size() == tx.get_num_inputs());
-                std::vector<nlohmann::json> used_utxos;
-                used_utxos.reserve(used_utxos_map.size());
-                for (auto& item : used_utxos_map) {
+                GDK_RUNTIME_ASSERT(tx_inputs_map.size() == tx.get_num_inputs());
+                std::vector<nlohmann::json> tx_inputs;
+                tx_inputs.reserve(tx_inputs_map.size());
+                for (auto& item : tx_inputs_map) {
                     // Verify the transaction signatures to prevent outputs
                     // from being modified.
                     const auto sigs = tx.get_input_signatures(item.second, item.first);
@@ -384,9 +384,9 @@ namespace sdk {
                         GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), preimage_hash, sigs.at(i).first));
                     }
                     // Add to the used UTXOs
-                    used_utxos.emplace_back(std::move(item.second));
+                    tx_inputs.emplace_back(std::move(item.second));
                 }
-                result["transaction_inputs"] = std::move(used_utxos);
+                result["transaction_inputs"] = std::move(tx_inputs);
 
                 if (json_get_value(result, "memo").empty()) {
                     result["memo"] = prev_tx["memo"];
@@ -742,9 +742,9 @@ namespace sdk {
 
             if (manual_selection || is_rbf) {
                 // Add all of the given inputs
-                auto& used_utxos = result.at("transaction_inputs");
-                for (size_t i = 0; i < used_utxos.size(); ++i) {
-                    const auto asset_id = asset_id_from_json(net_params, used_utxos[i]);
+                auto& tx_inputs = result.at("transaction_inputs");
+                for (size_t i = 0; i < tx_inputs.size(); ++i) {
+                    const auto asset_id = asset_id_from_json(net_params, tx_inputs[i]);
                     const bool is_policy_asset = asset_id == policy_asset;
                     if (is_liquid && !is_partial && !is_policy_asset) {
                         // Ensure this UTXO has a corresponding recipient
@@ -756,7 +756,7 @@ namespace sdk {
                     }
                     auto& addressee = asset_addressees[asset_id];
                     addressee.utxo_indices.push_back(i);
-                    addressee.utxo_sum += add_utxo(session, tx, result, used_utxos[i], false);
+                    addressee.utxo_sum += add_utxo(session, tx, result, tx_inputs[i], false);
                 }
             }
 
@@ -801,9 +801,9 @@ namespace sdk {
             if (is_liquid && !is_partial) {
                 add_tx_fee_output(session, result, tx, btc_details.fee.value());
             }
-            auto& used_utxos = result.at("transaction_inputs");
-            if (used_utxos.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
-                tx.randomize_inputs(used_utxos);
+            auto& tx_inputs = result.at("transaction_inputs");
+            if (tx_inputs.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
+                tx.randomize_inputs(tx_inputs);
             }
             update_tx_info(session, tx, result);
 
@@ -966,22 +966,22 @@ namespace sdk {
         }
     }
 
-    void Tx::randomize_inputs(nlohmann::json& used_utxos)
+    void Tx::randomize_inputs(nlohmann::json& tx_inputs)
     {
         // Permute positions
-        std::vector<size_t> positions(used_utxos.size());
+        std::vector<size_t> positions(tx_inputs.size());
         std::iota(positions.begin(), positions.end(), 0);
         std::shuffle(positions.begin(), positions.end(), uniform_uint32_rng());
         // Apply permutation
-        nlohmann::json::array_t reordered_utxos(used_utxos.size());
-        std::vector<wally_tx_input> reordered_inputs(used_utxos.size());
+        nlohmann::json::array_t reordered_utxos(tx_inputs.size());
+        std::vector<wally_tx_input> reordered_inputs(tx_inputs.size());
         // We start at txin_offset to avoid permuting any existing rbf inputs
-        const size_t txin_offset = get_num_inputs() - used_utxos.size();
-        for (size_t i = 0; i < used_utxos.size(); ++i) {
-            reordered_utxos[i].swap(used_utxos[positions[i]]);
+        const size_t txin_offset = get_num_inputs() - tx_inputs.size();
+        for (size_t i = 0; i < tx_inputs.size(); ++i) {
+            reordered_utxos[i].swap(tx_inputs[positions[i]]);
             reordered_inputs[i] = m_tx->inputs[txin_offset + positions[i]];
         }
-        used_utxos.swap(reordered_utxos);
+        tx_inputs.swap(reordered_utxos);
         const size_t n = reordered_inputs.size() * sizeof(wally_tx_input);
         memcpy(m_tx->inputs + txin_offset, reordered_inputs.data(), n);
     }
@@ -1288,12 +1288,12 @@ namespace sdk {
 
     static std::array<unsigned char, SHA256_LEN> hash_prevouts_from_utxos(const nlohmann::json& details)
     {
-        const auto& used_utxos = details.at("transaction_inputs");
+        const auto& tx_inputs = details.at("transaction_inputs");
         std::vector<unsigned char> txhashes;
         std::vector<uint32_t> output_indices;
-        txhashes.reserve(used_utxos.size() * WALLY_TXHASH_LEN);
-        output_indices.reserve(used_utxos.size());
-        for (const auto& utxo : used_utxos) {
+        txhashes.reserve(tx_inputs.size() * WALLY_TXHASH_LEN);
+        output_indices.reserve(tx_inputs.size());
+        for (const auto& utxo : tx_inputs) {
             const auto txhash_bin = h2b_rev(utxo.at("txhash"));
             txhashes.insert(txhashes.end(), txhash_bin.begin(), txhash_bin.end());
             output_indices.emplace_back(utxo.at("pt_idx"));
@@ -1347,7 +1347,7 @@ namespace sdk {
         const auto& assetblinders = blinding_data.at("assetblinders");
         const auto& amountblinders = blinding_data.at("amountblinders");
 
-        const auto& used_utxos = details.at("transaction_inputs");
+        const auto& tx_inputs = details.at("transaction_inputs");
         auto& transaction_outputs = details.at("transaction_outputs");
 
         Tx tx(json_get_value(details, "transaction"), is_liquid);
@@ -1369,7 +1369,7 @@ namespace sdk {
         std::vector<uint64_t> values;
         size_t num_inputs = 0;
 
-        const size_t num_in_outs = used_utxos.size() + transaction_outputs.size();
+        const size_t num_in_outs = tx_inputs.size() + transaction_outputs.size();
         assets.reserve(num_in_outs * WALLY_TX_ASSET_TAG_LEN);
         generators.reserve(num_in_outs * ASSET_GENERATOR_LEN);
         abfs.reserve(num_in_outs * BLINDING_FACTOR_LEN);
@@ -1377,7 +1377,7 @@ namespace sdk {
         vbfs.reserve(num_in_outs * BLINDING_FACTOR_LEN);
         values.reserve(num_in_outs);
 
-        for (const auto& utxo : used_utxos) {
+        for (const auto& utxo : tx_inputs) {
             const auto asset_id = h2b_rev(utxo.at("asset_id"));
             assets.insert(assets.end(), std::begin(asset_id), std::end(asset_id));
             const auto abf = h2b_rev(utxo.at("assetblinder"));

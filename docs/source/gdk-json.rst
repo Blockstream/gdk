@@ -501,11 +501,11 @@ Sign transaction JSON
 Contains the details of a caller-generated transaction to sign.
 
 To sign with a specific sighash, set ``"user_sighash"`` for the elements of
-``"used_utxos"`` you wish to sign with a certain sighash, otherwise
+``"transaction_inputs"`` you wish to sign with a certain sighash, otherwise
 ``SIGHASH_ALL`` (``1``) will be used.
 
-Set ``"skip_signing"`` to ``true`` for any input in ``"used_utxos"`` you do
-not wish to have signed.
+Set ``"skip_signing"`` to ``true`` for any input in ``"transaction_inputs"``
+you do not wish to have signed.
 
 All other fields are not user-editable and should be passed unchanged.
 

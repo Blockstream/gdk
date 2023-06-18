@@ -40,7 +40,7 @@ namespace sdk {
 
         std::vector<sig_and_sighash_t> get_input_signatures(const nlohmann::json& utxo, size_t index) const;
 
-        void randomize_inputs(nlohmann::json& used_utxos);
+        void randomize_inputs(nlohmann::json& tx_inputs);
 
         // Outputs
         size_t get_num_outputs() const { return m_tx->num_outputs; }

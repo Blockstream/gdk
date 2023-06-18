@@ -211,7 +211,7 @@ outputs.
     {
       "is_partial": false,
       "transaction_outputs": [],
-      "used_utxos": [
+      "transaction_inputs": [
         {
           "txhash": "797c40d53c4a5372303f765281bb107c40ed9618646c46851514ff0483bee894"
           "pt_idx": 2,
@@ -230,8 +230,8 @@ outputs.
     is ``false``, the final vbf need not be returned. An empty string should be
     returned for blinding factors that are not required. It is not an error to
     provide blinding factors that are not required; they will be ignored.
-:used_utxos: An array of prevout txids and their indices, supplied so the
-    request handler can compute hashPrevouts for deterministic blinding.
+:transaction_inputs: An array of prevout txids and their indices, supplied so the
+                     request handler can compute hashPrevouts for deterministic blinding.
 
 **Expected response**:
 

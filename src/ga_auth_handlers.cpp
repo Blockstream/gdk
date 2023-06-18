@@ -1024,9 +1024,9 @@ namespace sdk {
         // Ask the HWW for the blinding factors to blind the tx
         signal_hw_request(hw_request::get_blinding_factors);
         nlohmann::json::array_t utxos;
-        const auto& used_utxos = m_details["transaction_inputs"];
-        utxos.reserve(used_utxos.size());
-        for (const auto& u : used_utxos) {
+        const auto& tx_inputs = m_details["transaction_inputs"];
+        utxos.reserve(tx_inputs.size());
+        for (const auto& u : tx_inputs) {
             nlohmann::json prevout = { { "txhash", u.at("txhash") }, { "pt_idx", u.at("pt_idx") } };
             utxos.emplace_back(std::move(prevout));
         }

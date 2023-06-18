@@ -91,7 +91,7 @@ Some data returned when creating a transaction may be read by the user:
 :calculated_fee_rate: The expected fee rate for the final signed transaction. This
                       may differ slightly from the requested ``"fee_rate"`` due
                       to variance in the size of witness data such as signatures.
-:used_utxos: An array of the ``"utxos"`` elements that are used by the transaction.
+:transaction_inputs: An array of the ``"utxos"`` elements that are used by the transaction.
 :transaction_outputs: The transaction output details for the outputs of the transaction.
 
 
@@ -146,9 +146,9 @@ attempts to select the minimum number of UTXOs to use without regard for
 their ordering in the ``"utxos"`` element.
 
 For finer control, setting ``"utxo_strategy"`` to ``"manual"`` allows the
-UTXOs to be used to be placed directly into the ``"used_utxos"`` element by
-the caller. In this case, ``"utxos"`` is unused, and all given UTXOs will
-be added to the resulting transaction.
+UTXOs to be used to be placed directly into the ``"transaction_inputs"``
+element by the caller. In this case, ``"utxos"`` is unused, and all given
+UTXOs will be added to the resulting transaction.
 
 The sum of input UTXOs for a given asset must be sufficient to cover the
 amounts sent to any addressees receiving it, or an error will occur unless
