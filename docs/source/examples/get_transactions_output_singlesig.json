@@ -1,0 +1,27 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "address": "2MsHqxhz5fHt2QyvE8TgT1MvzDY9kdMH5Rz",
+    "address_type": "p2sh-p2wpkh",
+    "is_internal": false,
+    "is_output": true,
+    "is_relevant": true,
+    "is_spent": false,
+    "pointer": 1,
+    "pt_idx": 1,
+    "satoshi": 12340,
+    "script": "a914007edc4b1153a320e490b5fe29a33e95af2d3c7387",
+    "script_type": 0,
+    "subaccount": 0,
+    "subtype": 0
+  }
+
+.. raw:: html
+
+  </details>
+

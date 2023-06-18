@@ -1,0 +1,22 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "altimeout": 5,
+    "pricing": {
+      "currency": "USD",
+      "exchange": "BITFINEX"
+    },
+    "required_num_blocks": 12,
+    "sound": true,
+    "unit": "BTC"
+  }
+
+.. raw:: html
+
+  </details>
+

@@ -1,0 +1,80 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transactions": [
+      {
+        "block_height": 0,
+        "can_cpfp": true,
+        "can_rbf": false,
+        "created_at_ts": 1686640441208984,
+        "fee": 1430,
+        "fee_rate": 10000,
+        "inputs": [
+          {
+            "address": "bcrt1qsjtt6hv699fulumf0ravymecm8792shd6hz4kz",
+            "address_type": "",
+            "is_internal": false,
+            "is_output": false,
+            "is_relevant": false,
+            "is_spent": true,
+            "pointer": 0,
+            "pt_idx": 0,
+            "satoshi": 5000000000,
+            "script_type": 160,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "memo": "",
+        "outputs": [
+          {
+            "address": "2N2zyKJEcAtqgHRdYFqCQDKZozDi5GY9wi5",
+            "address_type": "csv",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": true,
+            "is_spent": false,
+            "pointer": 1,
+            "pt_idx": 0,
+            "satoshi": 12340,
+            "script_type": 15,
+            "subaccount": 0,
+            "subtype": 51840
+          },
+          {
+            "address": "2MuhZUoJcSa2XwjejYmrBkA2x5WqM7UcZgg",
+            "address_type": "",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": false,
+            "is_spent": false,
+            "pointer": 0,
+            "pt_idx": 1,
+            "satoshi": 4999986230,
+            "script_type": 9,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "rbf_optin": false,
+        "satoshi": {
+          "btc": 12340
+        },
+        "spv_verified": "disabled",
+        "transaction_vsize": 143,
+        "transaction_weight": 572,
+        "txhash": "1a45e3a1140b17b45277e7e1189ff8385c7e0fd4cd88a5840b15ee600d5dbc30",
+        "type": "incoming"
+      }
+    ]
+  }
+
+.. raw:: html
+
+  </details>
+

@@ -1,0 +1,20 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transaction": "02000000000101c7fc89a3a6b1568916f64c9e9abd77bd53d16daa4de758af8d8a54d19c45b9950000000000feffffff0236bc052a0100000017a9146a60f8f6cd77c44582c04b8912dcba06601503e087343000000000000017a914007edc4b1153a320e490b5fe29a33e95af2d3c73870247304402202023cd3653263959583686168b48cc5f570f34af06a36aef625ffaf50d15b4f102203e4e0d54fa9f6d7d2aef2886adfe57d4ecc7f679b09e12ed4c085cab923fc78a0121022dcbac960c21f79c69e0374669b609ada9a6b38d7bd5171d064e32da4c2b0aafc8000000",
+    "transaction_locktime": 200,
+    "transaction_version": 2,
+    "transaction_vsize": 143,
+    "transaction_weight": 569,
+    "txhash": "8a3974692b29237cb81f545a7891be89d73aed7d0038879da437623b0fd57584"
+  }
+
+.. raw:: html
+
+  </details>
+

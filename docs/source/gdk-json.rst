@@ -284,20 +284,8 @@ Subaccount JSON
 Describes a subaccount within the users wallet. Returned by `GA_get_subaccount` and
 as the array elements of `GA_get_subaccounts`.
 
-.. code-block:: json
-
-  {
-    "hidden": false,
-    "name": "Subaccount Name",
-    "pointer": 0,
-    "receiving_id": "GA7ZnuhsieSMNp2XAB3oEyLy75peM",
-    "recovery_chain_code": "",
-    "recovery_pub_key": "",
-    "recovery_xpub": "",
-    "required_ca": 0,
-    "type": "2of2"
-    "bip44_discovered": false
-  }
+.. include:: examples/get_subaccount_multisig.json
+.. include:: examples/get_subaccount_singlesig.json
 
 :hidden: Whether the subaccount is hidden.
 :name: The name of the subaccount.
@@ -369,76 +357,8 @@ Transaction list JSON
 
 Describes a users transaction history returned by `GA_get_transactions`.
 
-.. code-block:: json
-
-  {
-    "transactions": [
-      {
-        "block_height": 2098691,
-        "can_cpfp": false,
-        "can_rbf": false,
-        "created_at_ts": 1633987189032056,
-        "fee": 207,
-        "fee_rate": 1004,
-        "inputs": [
-          {
-            "address": "",
-            "address_type": "csv",
-            "is_internal": false,
-            "is_output": false,
-            "is_relevant": true,
-            "is_spent": true,
-            "pointer": 287,
-            "pt_idx": 0,
-            "satoshi": 27071081568,
-            "script_type": 15,
-            "subaccount": 0,
-            "subtype": 0
-          }
-        ],
-        "memo": "",
-        "outputs": [
-          {
-            "address": "2MztTCrvpq73a8homScCo659VADSLEfR2FW",
-            "address_type": "csv",
-            "is_internal": false,
-            "is_output": true,
-            "is_relevant": true,
-            "is_spent": false,
-            "pointer": 288,
-            "pt_idx": 0,
-            "satoshi": 26970081361,
-            "script_type": 15,
-            "subaccount": 0,
-            "subtype": 51840
-          },
-          {
-            "address": "tb1qt0lenzqp8ay0ryehj7m3wwuds240mzhgdhqp4c",
-            "address_type": "",
-            "is_internal": false,
-            "is_output": true,
-            "is_relevant": false,
-            "is_spent": false,
-            "pointer": 0,
-            "pt_idx": 1,
-            "satoshi": 101000000,
-            "script_type": 11,
-            "subaccount": 0,
-            "subtype": 0
-          }
-        ],
-        "rbf_optin": false,
-        "satoshi": {
-          "btc": -101000207
-        },
-        "spv_verified": "disabled",
-        "transaction_vsize": 206,
-        "transaction_weight": 824,
-        "txhash": "0a934eaa5c8a7c961c1c3aef51a49d11d7d9a04a839620ec6e796156b429c7b4",
-        "type": "outgoing"
-      }
-    ]
-  }
+.. include:: examples/get_transactions_multisig.json
+.. include:: examples/get_transactions_singlesig.json
 
 
 :transactions: Top level container for the users transaction list.
@@ -471,22 +391,8 @@ Transaction list input element
 
 Describes a transaction input in :ref:`tx-list`.
 
-.. code-block:: json
-
-  {
-    "address": "2MxVC4kQTpovRHiEmzd3q7vGtofM8CAijYY",
-    "address_type": "csv",
-    "is_internal": false,
-    "is_output": false,
-    "is_relevant": true,
-    "is_spent": true,
-    "pointer": 287,
-    "pt_idx": 0,
-    "satoshi": 27071081568,
-    "script_type": 15,
-    "subaccount": 0,
-    "subtype": 0
-  }
+.. include:: examples/get_transactions_input_multisig.json
+.. include:: examples/get_transactions_input_singlesig.json
 
 
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
@@ -546,22 +452,9 @@ Transaction list output element
 
 Describes a transaction output in :ref:`tx-list`.
 
-.. code-block:: json
+.. include:: examples/get_transactions_output_multisig.json
+.. include:: examples/get_transactions_output_singlesig.json
 
-  {
-    "address": "2MwdBCwyJnEtp2Bq8CBxyeSi5JWJQ9nXkjj",
-    "address_type": "p2wsh",
-    "is_internal": false,
-    "is_output": true,
-    "is_relevant": true,
-    "is_spent": true,
-    "pointer": 275,
-    "pt_idx": 0,
-    "satoshi": 1000,
-    "script_type": 14,
-    "subaccount": 0,
-    "subtype": 0
-  }
 
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
 :address_type: For user wallet output addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
@@ -579,23 +472,7 @@ Describes a transaction output in :ref:`tx-list`.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
 
 
-Liquid outputs have additional fields:
-
-.. code-block:: json
-
-  {
-    "amountblinder": "752defd24e9163917aea608a2ff8b77773311a4728551f49761781af9eb4905a",
-    "asset_id": "38fca2d939696061a8f76d4e6b5eecd54e3b4221c846f24a6b279e79952850a5",
-    "asset_tag": "0ad82ac7489779a5303af3c30b1ec8abd47007f3d5ee01cb1f3b0aac2277a1df23",
-    "assetblinder": "d29b09a3f18c7b404ba99338f6427370d0a3b0f6b9591ecf54bce4623a93eb06",
-    "blinding_key": "039f2fd9daf37ae24e6a5311ffc18f60aaf3d8adac755c4ee93bf23bbde62071f7",
-    "commitment": "0920c8c8ffe7a3529d48947ee1102e3ffbaa62ffa941bc00544d4dd90767426f2d",
-    "is_blinded": true,
-    "is_confidential": true,
-    "nonce_commitment": "0389e67d84f9d04fd163ca540efa599fb51433e7891156c96321f9e85a2687b270",
-    "script": "a9144371b94845ee9b316fad126238ccefc05ae74ae587",
-    "unconfidential_address": "8ka5DahqHU82oALm372w9rPLZskn4jwpSu"
-  }
+Liquid outputs have the following additional fields:
 
 :amountblinder: The hex-encoded amount blinder (value blinding factor, vbf).
 :asset_id: The hex-encoded asset id in display format.
@@ -620,16 +497,8 @@ Transaction details JSON
 Contains information about a transaction that may not be associated with the
 users wallet. Returned by `GA_get_transaction_details`.
 
-.. code-block:: json
-
-  {
-    "transaction": "02000000000101ab0dec345ed48b0761411306eae50f90dd34f3c8598e48f1c3ad324a862bc72b0000000000feffffff02f4958b4400000000160014a0573f94da51090f3225ddccab864bf3add1019300e1f5050000000017a914fda46ba3f2fc040df40d8cb8543b3dcdc168b6fa870247304402201420ca8bb17c74eef87d7c26a1bed69ddaec8f389df06f3d0233edf0070eec69022051e7bf1efb00a198a5c9958811246f19a1071ac6b68fa9c2f3d91d7a080a56fa012102be66aba37c4c48c85b6eea4d0d7c6ba0e22803438d3f1e29bc8e6e352786335fb0010000",
-    "transaction_locktime": 432,
-    "transaction_version": 2,
-    "transaction_vsize": 142,
-    "transaction_weight": 565,
-    "txhash": "dc5c908a6c979211e6482766adb69cbcbe760c92923671f6304d12a3f462a2b0"
-  }
+.. include:: examples/get_transaction_details_multisig.json
+.. include:: examples/get_transaction_details_singlesig.json
 
 
 .. _sign-tx-details:
@@ -637,108 +506,7 @@ users wallet. Returned by `GA_get_transaction_details`.
 Sign transaction JSON
 ---------------------
 
-.. code-block:: json
-
-  {
-  "addressees": [
-    {
-      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
-      "satoshi": 5000
-    }
-  ],
-  "addressees_read_only": false,
-  "amount_read_only": false,
-  "available_total": 50000,
-  "calculated_fee_rate": 1000,
-  "change_address": {
-    "btc": {
-      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
-      "address_type": "csv",
-      "branch": 1,
-      "pointer": 3,
-      "script": "2103bff5afb55b115068c2f5d906fc97a41ec3b81446f616a31d2304d2cf18c87db9ad2103eaf7e8cf60e89cfb9fe8cabf141b041b0eb6ade361f9ec84943445bd0abdfe29ac73640380ca00b268",
-      "script_type": 15,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "user_path": [
-        1,
-        3
-      ]
-    }
-  },
-  "change_amount": {
-    "btc": 44792
-  },
-  "change_subaccount": 0,
-  "error": "",
-  "fee": 208,
-  "fee_rate": 1000,
-  "is_sweep": false,
-  "network_fee": 0,
-  "satoshi": {
-    "btc": 5000
-  },
-  "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed4300000000230000000000000000000000000000000000000000000000000000000000000000000000fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87040048000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000480000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000004e210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268c9000000",
-  "transaction_locktime": 201,
-  "transaction_outputs": [
-    {
-      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
-      "address_type": "csv",
-      "asset_id": "btc",
-      "branch": 1,
-      "is_change": true,
-      "pointer": 3,
-      "satoshi": 44792,
-      "scriptpubkey": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
-      "script_type": 15,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "user_path": [
-        1,
-        3
-      ]
-    },
-    {
-      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
-      "asset_id": "btc",
-      "is_change": false,
-      "satoshi": 5000,
-      "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
-    }
-  ],
-  "transaction_version": 2,
-  "transaction_vsize": 208,
-  "transaction_weight": 829,
-  "used_utxos": [
-    {
-      "address_type": "csv",
-      "block_height": 201,
-      "expiry_height": 52041,
-      "is_internal": false,
-      "pointer": 1,
-      "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
-      "pt_idx": 0,
-      "satoshi": 50000,
-      "script_type": 15,
-      "sequence": 4294967293,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
-      "user_path": [
-        1,
-        1
-      ],
-      "user_sighash": 1,
-      "skip_signing": false,
-      "user_status": 0
-    }
-  ],
-  "utxo_strategy": "default",
-  }
-
+Contains the details of a caller-generated transaction to sign.
 
 To sign with a specific sighash, set ``"user_sighash"`` for the elements of
 ``"used_utxos"`` you wish to sign with a certain sighash, otherwise
@@ -747,112 +515,22 @@ To sign with a specific sighash, set ``"user_sighash"`` for the elements of
 Set ``"skip_signing"`` to ``true`` for any input in ``"used_utxos"`` you do
 not wish to have signed.
 
+All other fields are not user-editable and should be passed unchanged.
+
 
 .. _send-tx-details:
 
 Send transaction JSON
 ---------------------
 
-.. code-block:: json
+Contains the details of a caller-generated and signed transaction
+from `GA_sign_transaction` to send to the network.
 
-  {
-  "addressees": [
-    {
-      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
-      "satoshi": 5000
-    }
-  ],
-  "addressees_read_only": false,
-  "amount_read_only": false,
-  "available_total": 50000,
-  "is_blinded": true,
-  "calculated_fee_rate": 1230,
-  "change_address": {
-    "btc": {
-      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
-      "address_type": "csv",
-      "branch": 1,
-      "pointer": 3,
-      "script": "2103bff5afb55b115068c2f5d906fc97a41ec3b81446f616a31d2304d2cf18c87db9ad2103eaf7e8cf60e89cfb9fe8cabf141b041b0eb6ade361f9ec84943445bd0abdfe29ac73640380ca00b268",
-      "script_type": 15,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "user_path": [
-        1,
-        3
-      ]
-    }
-  },
-  "change_amount": {
-    "btc": 44792
-  },
-  "change_subaccount": 0,
-  "error": "",
-  "fee": 208,
-  "fee_rate": 1000,
-  "is_sweep": false,
-  "network_fee": 0,
-  "satoshi": {
-    "btc": 5000
-  },
-  "transaction": "0200000000010135d2bb82963e54a9060567b101760530797590d2b4a636606c4f1e6ac62bed430000000023220020babaa86eeaec7ae0f438218b993c7518e81efe6c8c64e9500648f861ccd590b3fdffffff02f8ae00000000000017a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87881300000000000017a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b870147304402206aa051d8f6b373e9e73ea91967d3d574262a56f66b134804133893bc8b6a797f022069802eccea8174daadee65a6288f23434ed646d328bf184060e2517bd9c5aa3801c9000000",
-  "transaction_locktime": 201,
-  "transaction_outputs": [
-    {
-      "address": "2N7M3gisUPGmZBeU4WnV9UNkJ9zW2n8bEW7",
-      "address_type": "csv",
-      "asset_id": "btc",
-      "branch": 1,
-      "is_change": true,
-      "pointer": 3,
-      "satoshi": 44792,
-      "scriptpubkey": "a9149aaba80ae1e733f8fb4034abcb6bd835608a5c9e87",
-      "script_type": 15,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "user_path": [
-        1,
-        3
-      ]
-    },
-    {
-      "address": "2N5xpcfb1TCjncrKABhw2LWPKTSdzVYSy3A",
-      "asset_id": "btc",
-      "is_change": false,
-      "satoshi": 5000,
-      "script": "a9148b7f781fc9425ffaeafcd4973d3ae1dc9a09d02b87"
-    }
-  ],
-  "transaction_version": 2,
-  "transaction_vsize": 169,
-  "transaction_weight": 675,
-  "used_utxos": [
-    {
-      "address_type": "csv",
-      "block_height": 201,
-      "expiry_height": 52041,
-      "is_internal": false,
-      "pointer": 1,
-      "prevout_script": "210375d1b5be6c3f60759fd594b27a05459095ce0f371372d2f0297691c39357a60aad2102129801c6d879b59f27472ba1ac3e8b20dd1693885ad0e9640827a4bd475dfeafac73640380ca00b268",
-      "pt_idx": 0,
-      "satoshi": 50000,
-      "script_type": 15,
-      "sequence": 4294967293,
-      "service_xpub": "tpubEAUTpVqYYmSyPnSwSTWrdahLK22WRUkFK66kH348bRawwcBDegdUaucPGU28qS1z9ZiMjH7N2Qqc6HPJiQvekLS8GCpHHCxZfmNpF798ECb",
-      "subaccount": 0,
-      "subtype": 51840,
-      "txhash": "43ed2bc66a1e4f6c6036a6b4d290757930057601b1670506a9543e9682bbd235",
-      "user_path": [
-        1,
-        1
-      ],
-      "user_status": 0
-    }
-  ],
-  "utxo_strategy": "default",
-  }
+For multisig session, this will send via the Green backend service, signing
+any inputs that require service signatures before broadcasting.
+
+All fields are not user-editable and should be passed unchanged.
+
 
 .. _create-swap-tx-details:
 
@@ -1201,26 +879,10 @@ Contains CBOR data decoded from UR format using `GA_bcur_decode`.
 Settings JSON
 -------------
 
-.. code-block:: json
+Contains the users settings.
 
-  {
-    "altimeout": 10,
-    "csvtime": 51840,
-    "nlocktime": 12960,
-    "notifications": {
-      "email_incoming": true,
-      "email_outgoing": true,
-      "email_login": true
-    },
-    "pgp": "",
-    "pricing": {
-      "currency": "EUR",
-      "exchange": "KRAKEN"
-    },
-    "required_num_blocks": 12,
-    "sound": true,
-    "unit": "BTC"
-  }
+.. include:: examples/get_settings_multisig.json
+.. include:: examples/get_settings_singlesig.json
 
 
 .. _receive-address-details:
@@ -1228,20 +890,8 @@ Settings JSON
 Receive address details JSON
 ----------------------------
 
-.. code-block:: json
-
-  {
-    "address": "2N2x4EgizS2w3DUiWYWW9pEf4sGYRfo6PAX",
-    "address_type": "p2wsh",
-    "branch": 1,
-    "pointer": 13,
-    "script": "52210338832debc5e15ce143d5cf9241147ac0019e7516d3d9569e04b0e18f3278718921025dfaa85d64963252604e1b139b40182bb859a9e2e1aa2904876c34e82158d85452ae",
-    "scriptpubkey": "a914c2427b28b2796243e1e8ee65be7598d465264b0187",
-    "script_type": 14,
-    "subaccount": 0,
-    "subtype": 0
-    "user_path": [1, 13]
-  }
+.. include:: examples/get_receive_address_multisig.json
+.. include:: examples/get_receive_address_singlesig.json
 
 :address: The wallet address in base58, bech32 or blech32 encoding.
 :address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
@@ -1301,45 +951,9 @@ Previous addresses JSON
 
 Contains a page of previously generated addresses, from newest to oldest.
 
-.. code-block:: json
+.. include:: examples/get_previous_addresses_multisig.json
+.. include:: examples/get_previous_addresses_singlesig.json
 
-  {
-    "last_pointer": 2,
-    "list": [
-      {
-        "address": "2N52RVsChsCi439PpJ1Hn8fHCiTrRjcAEiL",
-        "address_type": "csv",
-        "branch": 1,
-        "is_internal": false,
-        "pointer": 2,
-        "script": "2102df992d7fa8f012d61048349e366f710aa0168a1c08606d7bebb65f980ccf2616ad2102a503dfc70ad1f1a510f7e3c79ffeebc608f27c6670edfb7b420bd32fdb044b73ac73640380ca00b268",
-        "script_type": 15,
-        "subaccount": 0,
-        "subtype": 51840,
-        "tx_count": 0,
-        "user_path": [
-          1,
-          2
-        ],
-      },
-      {
-        "address": "2MzyxeSfodsJkj4YYAyyNpGwqpvdze7qLSf",
-        "address_type": "csv",
-        "branch": 1,
-        "is_internal": false,
-        "pointer": 1,
-        "script": "2102815c7ba597b1e0f08357ddb346dab3952b2a76e189efc9ebde51ec005df0b41cad210328154df2714de6b15e740330b3509ce26bc0a3e21bf77ce0eaefeea0e9e77b59ac73640380ca00b268",
-        "script_type": 15,
-        "subaccount": 0,
-        "subtype": 51840,
-        "tx_count": 0,
-        "user_path": [
-          1,
-          1
-        ],
-      }
-    ],
-  }
 
 :last_pointer: If present indicates that there are more addresses to be fetched, and the caller
                to get the next page should call again `GA_get_previous_addresses` passing this
@@ -1407,36 +1021,10 @@ with `GA_get_unspent_outputs_for_private_key`.
 Unspent outputs JSON
 --------------------
 
-Contains the filtered unspent outputs.
+Contains unspent outputs for the wallet as requested by `GA_get_unspent_outputs`.
 
-.. code-block:: json
-
-  {
-    "unspent_outputs": {
-      "btc": [
-        {
-          "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
-          "pt_idx": 0,
-          "satoshi": 10000,
-          "block_height": 1448369,
-          "address_type": "p2wsh",
-          "is_internal": false,
-          "pointer": 474,
-          "subaccount": 0,
-          "prevout_script": "522102ff54a17dc6efe168673dbf679fe97e06b5cdcaf7dea8ab83dc6732350cd1b4e4210279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e52ae",
-          "user_path": [
-            1,
-            474
-          ],
-          "public_key": "0279979574e0743b4659093c005256c812f68f512c50d7d1622650b891de2cd61e",
-          "expiry_height": 1458369,
-          "script_type": 14,
-          "user_status": 0,
-          "subtype": 0,
-        },
-      ],
-    }
-  }
+.. include:: examples/get_unspent_outputs_multisig.json
+.. include:: examples/get_unspent_outputs_singlesig.json
 
 :txhash: The txid of the transaction.
 :pt_idx: The index of the output, the vout.
@@ -1529,62 +1117,24 @@ Transactions details JSON
 Network JSON
 ------------
 
-.. code-block:: json
+Contains the data describing a network the caller can connect to.
 
-  {
-    "address_explorer_url": "",
-    "bech32_prefix": "bcrt",
-    "bip21_prefix": "bitcoin",
-    "csv_buckets": [
-      144,
-      4320,
-      51840
-    ],
-    "development": true,
-    "electrum_tls": false,
-    "electrum_url": "localhost:19002",
-    "liquid": false,
-    "mainnet": false,
-    "name": "Localtest",
-    "network": "localtest",
-    "p2pkh_version": 111,
-    "p2sh_version": 196,
-    "server_type": "green",
-    "service_chain_code": "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04",
-    "service_pubkey": "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3",
-    "spv_multi": false,
-    "spv_servers": [],
-    "spv_enabled": false,
-    "tx_explorer_url": "",
-    "wamp_cert_pins": [],
-    "wamp_cert_roots": [],
-    "wamp_onion_url": "",
-    "wamp_url": "ws://localhost:8080/v2/ws"
-  }
+.. include:: examples/network.json
+
 
 .. _networks-list:
 
 Network list JSON
 -----------------
 
-Contains a list of all available networks the API can connect to.
+Contains details of all available networks the API can connect to.
 
-
-.. code-block:: json
-
-  {
-    "all_networks": [
-      "mainnet",
-      "liquid",
-      "testnet"
-    ],
-    "liquid": { },
-    "mainnet": { },
-    "testnet": { },
-  }
 
 For each network listed, a :ref:`network` element is present containing
 the networks information.
+
+.. include:: examples/get_networks.json
+
 
 
 .. _transaction-limits:
@@ -1942,7 +1492,7 @@ Error details JSON
 .. code-block:: json
 
    {
-      "details":"assertion failure: ../src/ga_session.cpp:rename_subaccount:2166:Unknown subaccount"
+      "details":"assertion failure: ga_session.cpp:2166:Unknown subaccount"
    }
 
 .. _get-subaccounts-params-data:

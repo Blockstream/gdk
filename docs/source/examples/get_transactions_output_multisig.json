@@ -1,0 +1,26 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "address": "2N2zyKJEcAtqgHRdYFqCQDKZozDi5GY9wi5",
+    "address_type": "csv",
+    "is_internal": false,
+    "is_output": true,
+    "is_relevant": true,
+    "is_spent": false,
+    "pointer": 1,
+    "pt_idx": 0,
+    "satoshi": 12340,
+    "script_type": 15,
+    "subaccount": 0,
+    "subtype": 51840
+  }
+
+.. raw:: html
+
+  </details>
+

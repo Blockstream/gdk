@@ -1,0 +1,31 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "bip44_discovered": false,
+    "core_descriptors": [
+      "sh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/0/*))#fl5guxrs",
+      "sh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/1/*))#u767yek0"
+    ],
+    "hidden": false,
+    "name": "Example subaccount name",
+    "pointer": 0,
+    "receiving_id": "",
+    "required_ca": 0,
+    "slip132_extended_pubkey": "upub5D9ydiUdMxX8SWbX7YzEJtx6NZLf4r4hoyjH84MnSod99KGdFEXywtudqrgq4yKWqo7oBMo9fzjaMqXa8CsrNzo9sLCutCnFndTUkZddR3v",
+    "type": "p2sh-p2wpkh",
+    "user_path": [
+      2147483697,
+      2147483649,
+      2147483648
+    ]
+  }
+
+.. raw:: html
+
+  </details>
+

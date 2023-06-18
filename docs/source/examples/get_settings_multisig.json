@@ -1,0 +1,29 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "altimeout": 5,
+    "csvtime": 51840,
+    "nlocktime": 12960,
+    "notifications": {
+      "email_incoming": false,
+      "email_login": false,
+      "email_outgoing": false
+    },
+    "pricing": {
+      "currency": "USD",
+      "exchange": "BITSTAMP"
+    },
+    "required_num_blocks": 12,
+    "sound": true,
+    "unit": "BTC"
+  }
+
+.. raw:: html
+
+  </details>
+

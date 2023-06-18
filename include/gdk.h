@@ -544,7 +544,8 @@ GDK_API int GA_blind_transaction(
  * Sign the user's inputs to a transaction.
  *
  * :param session: The session to use.
- * :param transaction_details: The :ref:`sign-tx-details` for signing, previously returned from GA_create_transaction.
+ * :param transaction_details: The :ref:`sign-tx-details` for signing, as previously
+ *|     returned from `GA_create_transaction` or (for Liquid) `GA_blind_transaction`.
  * :param call: Destination for the resulting GA_auth_handler to perform the signing.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *

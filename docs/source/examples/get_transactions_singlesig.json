@@ -1,0 +1,83 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transactions": [
+      {
+        "block_height": 0,
+        "can_cpfp": false,
+        "can_rbf": false,
+        "created_at_ts": 1686597244463054,
+        "fee": 1430,
+        "fee_rate": 10052,
+        "inputs": [
+          {
+            "address": "bcrt1qsjtt6hv699fulumf0ravymecm8792shd6hz4kz",
+            "address_type": "",
+            "is_internal": false,
+            "is_output": false,
+            "is_relevant": false,
+            "is_spent": true,
+            "pointer": 0,
+            "pt_idx": 0,
+            "satoshi": 5000000000,
+            "script": "00148496bd5d9a2953cff36978fac26f38d9fc5542ed",
+            "script_type": 0,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "memo": "",
+        "outputs": [
+          {
+            "address": "2N2whnPNT4fYtntAYNTWoCshDVBphCRzyH7",
+            "address_type": "",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": false,
+            "is_spent": false,
+            "pointer": 0,
+            "pt_idx": 0,
+            "satoshi": 4999986230,
+            "script": "a9146a60f8f6cd77c44582c04b8912dcba06601503e087",
+            "script_type": 0,
+            "subaccount": 0,
+            "subtype": 0
+          },
+          {
+            "address": "2MsHqxhz5fHt2QyvE8TgT1MvzDY9kdMH5Rz",
+            "address_type": "p2sh-p2wpkh",
+            "is_internal": false,
+            "is_output": true,
+            "is_relevant": true,
+            "is_spent": false,
+            "pointer": 1,
+            "pt_idx": 1,
+            "satoshi": 12340,
+            "script": "a914007edc4b1153a320e490b5fe29a33e95af2d3c7387",
+            "script_type": 0,
+            "subaccount": 0,
+            "subtype": 0
+          }
+        ],
+        "rbf_optin": false,
+        "satoshi": {
+          "btc": 12340
+        },
+        "spv_verified": "disabled",
+        "transaction_vsize": 143,
+        "transaction_weight": 569,
+        "txhash": "8a3974692b29237cb81f545a7891be89d73aed7d0038879da437623b0fd57584",
+        "type": "incoming"
+      }
+    ]
+  }
+
+.. raw:: html
+
+  </details>
+

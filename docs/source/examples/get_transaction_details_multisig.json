@@ -1,0 +1,20 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "transaction": "020000000001019b763a75636ba2deaefc5cc5cbb7dc201f45de5d2aa1ffcda6636ecc4528f5ca0000000000feffffff02343000000000000017a9146aff2fc8f5ec359f809b3355d6bdc5d30f8e10548736bc052a0100000017a9141aeb565e55f84835c5815bee5b7b2b31b3f6029c8702473044022057c4218260f4dc944a5a25fd3113890e0dca4222f3aff5915f3383fd7c63bc4102203f4c29cf40f3ae0ac3cb5cce92713d3613df237a4dc8520ed2fc40617ff600760121022dcbac960c21f79c69e0374669b609ada9a6b38d7bd5171d064e32da4c2b0aafc8000000",
+    "transaction_locktime": 200,
+    "transaction_version": 2,
+    "transaction_vsize": 143,
+    "transaction_weight": 569,
+    "txhash": "1a45e3a1140b17b45277e7e1189ff8385c7e0fd4cd88a5840b15ee600d5dbc30"
+  }
+
+.. raw:: html
+
+  </details>
+

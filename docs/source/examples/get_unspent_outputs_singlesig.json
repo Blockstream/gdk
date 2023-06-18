@@ -1,0 +1,37 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "unspent_outputs": {
+      "btc": [
+        {
+          "address_type": "p2sh-p2wpkh",
+          "block_height": 0,
+          "is_internal": false,
+          "pointer": 1,
+          "prevout_script": "76a9144d2af219985cd7e523cf1be0421636fe4f38f4b788ac",
+          "pt_idx": 1,
+          "public_key": "030e18cc1d6474e092264aa44e7b81ce1068f2b12ec748c96f217d8de5cb2555dc",
+          "satoshi": 12340,
+          "subaccount": 0,
+          "txhash": "8a3974692b29237cb81f545a7891be89d73aed7d0038879da437623b0fd57584",
+          "user_path": [
+            2147483697,
+            2147483649,
+            2147483648,
+            0,
+            1
+          ]
+        }
+      ]
+    }
+  }
+
+.. raw:: html
+
+  </details>
+
