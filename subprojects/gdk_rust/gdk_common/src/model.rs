@@ -202,8 +202,9 @@ pub struct SetMasterBlindingKeyOpt {
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetAddressOpt {
     pub subaccount: u32,
-    pub address_type: Option<String>, // unused
-    pub is_internal: Option<bool>,    // true = get an internal change address
+    pub address_type: Option<String>,   // unused
+    pub is_internal: Option<bool>,      // true = get an internal change address
+    pub ignore_gap_limit: Option<bool>, // true = allow to return addresses beyond the gap limit
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]

@@ -617,18 +617,26 @@ impl RawAccountCache {
         self.last_used[is_internal] + self.get_count_given(is_internal)
     }
 
-    pub fn increment_last_given(&mut self, is_internal: bool) -> u32 {
+    pub fn increment_last_given(&mut self, is_internal: bool, ignore_gap_limit: bool) -> u32 {
         if is_internal {
             let count_given = self.count_given.clone().unwrap_or_default();
+            let mut internal = count_given.internal + 1;
+            if !ignore_gap_limit {
+                internal %= GAP_LIMIT;
+            }
             self.count_given = Some(Indexes {
-                internal: (count_given.internal + 1) % GAP_LIMIT,
+                internal,
                 external: count_given.external,
             });
         } else {
             let count_given = self.count_given.clone().unwrap_or_default();
+            let mut external = count_given.external + 1;
+            if !ignore_gap_limit {
+                external %= GAP_LIMIT;
+            }
             self.count_given = Some(Indexes {
                 internal: count_given.internal,
-                external: (count_given.external + 1) % GAP_LIMIT,
+                external,
             });
         }
         self.get_last_given(is_internal)

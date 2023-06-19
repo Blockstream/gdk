@@ -891,10 +891,13 @@ Contains the query parameters for requesting an address using `GA_get_receive_ad
   {
     "subaccount": 0,
     "is_internal": false,
+    "ignore_gap_limit": false,
   }
 
 :subaccount: Mandatory. The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for.
 :is_internal: Optional, singlesig only. Whether or not the user key belongs to the internal chain.
+:ignore_gap_limit: Optional, singlesig only. Whether to allow squentially generated addresses to go beyond the GAP_LIMIT.
+    This is potentially dangerous as funds received on such addresses are not synced until an address within the GAP_LIMIT receives funds.
 
 
 .. _receive-address-details:

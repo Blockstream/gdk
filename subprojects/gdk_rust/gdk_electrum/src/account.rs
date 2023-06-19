@@ -229,10 +229,14 @@ impl Account {
         )
     }
 
-    pub fn get_next_address(&self, is_internal: bool) -> Result<AddressPointer, Error> {
+    pub fn get_next_address(
+        &self,
+        is_internal: bool,
+        ignore_gap_limit: bool,
+    ) -> Result<AddressPointer, Error> {
         let store = &mut self.store.write()?;
         let acc_store = store.account_cache_mut(self.account_num)?;
-        let pointer = acc_store.increment_last_given(is_internal);
+        let pointer = acc_store.increment_last_given(is_internal, ignore_gap_limit);
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;

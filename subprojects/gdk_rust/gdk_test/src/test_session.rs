@@ -497,6 +497,7 @@ impl TestSession {
             subaccount,
             address_type: None,
             is_internal: None,
+            ignore_gap_limit: None,
         };
         self.session.get_receive_address(&addr_opt).unwrap()
     }
@@ -1033,6 +1034,7 @@ impl TestSession {
                 subaccount,
                 address_type: None,
                 is_internal: Some(i == 1),
+                ignore_gap_limit: None,
             };
             let ap = self.session.get_receive_address(&addr_opt).unwrap();
 

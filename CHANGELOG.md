@@ -10,6 +10,8 @@
   completes the documentation of all requests in this interface.
 - Documentation: Improve the GA_create_transaction documentation.
 - GA_validate: Now allows validating addresses for other networks.
+- Singlesig: GA_get_receive_address: add new flag "ignore_gap_limit" to
+    return addresses beyond the GAP_LIMIT.
 
 ### Changed
 - Liquid: The hardware wallet capability "supports_external_blinding" now
