@@ -712,9 +712,9 @@ namespace sdk {
 
         if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
-            auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
+            auto&& must_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
             const auto& inputs = m_result.at("transaction_inputs");
-            if (std::find_if(inputs.begin(), inputs.end(), do_sign) != inputs.end()) {
+            if (std::any_of(inputs.begin(), inputs.end(), must_sign)) {
                 /* We have inputs that need signing */
                 constexpr bool sign_only = true;
                 add_next_handler(new send_transaction_call(m_session_parent, m_result, sign_only));

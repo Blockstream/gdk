@@ -519,9 +519,9 @@ namespace sdk {
             }
         } else if (request == hw_request::sign_tx) {
             // Check if there are any inputs that actually require signing
-            auto&& do_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
+            auto&& must_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
             const auto& inputs = required_data.at("transaction_inputs");
-            if (std::find_if(inputs.begin(), inputs.end(), do_sign) == inputs.end()) {
+            if (std::none_of(inputs.begin(), inputs.end(), must_sign)) {
                 // No inputs require signing: return empty sigs for each input
                 result["signatures"] = nlohmann::json::array_t(inputs.size(), std::string());
                 handler->resolve_hw_reply(std::move(result));
