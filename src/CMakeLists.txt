@@ -55,18 +55,15 @@ target_compile_options(greenaddress-objects
         "-fstack-protector-strong"
         "-fno-strict-aliasing"
 )
-### WARNING once on cmake > 3.12 ``target_compile_options(greenaddress-objects $<$<CXX_COMPILER_ID:GNU,Clang>>:[...]>``
-if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_compile_options(greenaddress-objects PRIVATE
-        "-Wall"
-        "-Wextra"
-        "-Wpedantic"
-        "-Wshadow"
-        ##### should be un-commented and errors should be fixed
-        # "-Werror"
-        # "-Wconversion"
-    )
-endif()
+target_compile_options(greenaddress-objects PRIVATE
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wextra>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wpedantic>
+    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wshadow>
+    ##### should be un-commented and errors should be fixed
+    # -Werror
+    # -Wconversion
+)
 target_include_directories(greenaddress-objects
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
