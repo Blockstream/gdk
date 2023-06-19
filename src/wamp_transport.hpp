@@ -2,6 +2,7 @@
 #define GDK_WAMP_TRANSPORT_HPP
 #pragma once
 
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
 #include <vector>

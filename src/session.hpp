@@ -4,7 +4,7 @@
 
 #include <memory>
 #include <mutex>
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 #include "gdk.h"
 

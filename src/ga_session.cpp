@@ -19,6 +19,7 @@
 #include <boost/format.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/multiprecision/cpp_int.hpp>
+#include <nlohmann/json.hpp>
 
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"

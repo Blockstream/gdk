@@ -2,6 +2,7 @@
 #include <array>
 #include <boost/algorithm/string/predicate.hpp>
 #include <ctime>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 

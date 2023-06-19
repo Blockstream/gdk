@@ -3,7 +3,7 @@
 #pragma once
 
 #include "ga_wally.hpp"
-#include <nlohmann/json.hpp>
+#include <nlohmann/json_fwd.hpp>
 
 namespace ga {
 namespace sdk {

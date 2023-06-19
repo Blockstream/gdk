@@ -1,10 +1,10 @@
 #ifndef GDK_GA_CACHE_HPP
 #define GDK_GA_CACHE_HPP
 #pragma once
-
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
-#include <nlohmann/json.hpp>
+#include <functional>
+#include <nlohmann/json_fwd.hpp>
 #include <optional>
 
 struct sqlite3;
