@@ -6,34 +6,34 @@ join_path(_versionFileOut ${CMAKE_SOURCE_DIR} "src" "version.h")
 configure_file( ${_versionFileIn} ${_versionFileOut} @ONLY)
 
 add_library(greenaddress-objects OBJECT
-    amount.cpp
-    assertion.cpp
-    auth_handler.cpp
-    bcur_auth_handlers.cpp
-    client_blob.cpp
-    containers.cpp
-    exception.cpp
+    amount.cpp amount.hpp
+    assertion.cpp assertion.hpp
+    auth_handler.cpp auth_handler.hpp
+    bcur_auth_handlers.cpp bcur_auth_handlers.hpp
+    client_blob.cpp client_blob.hpp
+    containers.cpp containers.hpp
+    exception.cpp exception.hpp
     ffi_c.cpp
-    ga_auth_handlers.cpp
-    ga_cache.cpp
-    ga_rust.cpp
-    ga_session.cpp
-    ga_strings.cpp
-    ga_tor.cpp
-    ga_tx.cpp
-    ga_wally.cpp
-    http_client.cpp
-    network_parameters.cpp
-    session.cpp
-    session_impl.cpp
-    signer.cpp
-    socks_client.cpp
-    swap_auth_handlers.cpp
-    transaction_utils.cpp
-    validate.cpp
-    utils.cpp
-    wamp_transport.cpp
-    xpub_hdkey.cpp
+    ga_auth_handlers.cpp ga_auth_handlers.hpp
+    ga_cache.cpp ga_cache.hpp
+    ga_rust.cpp ga_rust.hpp
+    ga_session.cpp ga_session.hpp
+    ga_strings.cpp ga_strings.hpp
+    ga_tor.cpp ga_tor.hpp
+    ga_tx.cpp ga_tx.hpp
+    ga_wally.cpp ga_wally.hpp
+    http_client.cpp http_client.hpp
+    network_parameters.cpp network_parameters.hpp
+    session.cpp session.hpp
+    session_impl.cpp session_impl.hpp
+    signer.cpp signer.hpp
+    socks_client.cpp socks_client.hpp
+    swap_auth_handlers.cpp swap_auth_handlers.hpp
+    transaction_utils.cpp transaction_utils.hpp
+    validate.cpp validate.hpp
+    utils.cpp utils.hpp
+    wamp_transport.cpp wamp_transport.hpp
+    xpub_hdkey.cpp xpub_hdkey.hpp
 )
 
 generate_export_header(greenaddress-objects 
