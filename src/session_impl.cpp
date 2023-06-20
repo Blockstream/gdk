@@ -394,8 +394,8 @@ namespace sdk {
             for (const auto& utxo : details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
                     input_utxo = utxo;
-                    const uint32_t sighash = psbt->inputs[i].sighash;
-                    input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
+                    const uint32_t sighash_flags = psbt->inputs[i].sighash;
+                    input_utxo["user_sighash"] = sighash_flags ? sighash_flags : WALLY_SIGHASH_ALL;
                     ++num_sigs_required;
                     break;
                 }

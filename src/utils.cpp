@@ -614,11 +614,11 @@ namespace sdk {
     // TODO: any failures here should be tracked/counted by the wallet (eg. in the client-blob)
     // to ensure the hww is abiding by the Anti-Exfil protocol.
     void verify_ae_signature(const pub_key_t& pubkey, byte_span_t data_hash, const std::string& host_entropy_hex,
-        const std::string& signer_commitment_hex, const std::string& der_hex, const bool has_sighash)
+        const std::string& signer_commitment_hex, const std::string& der_hex, const bool has_sighash_byte)
     {
         const auto host_entropy = h2b(host_entropy_hex);
         const auto signer_commitment = h2b(signer_commitment_hex);
-        const auto sig = ec_sig_from_der(h2b(der_hex), has_sighash);
+        const auto sig = ec_sig_from_der(h2b(der_hex), has_sighash_byte);
 
         if (!ae_verify(pubkey, data_hash, host_entropy, signer_commitment, sig)) {
             throw user_error(res::id_signature_validation_failed_if);

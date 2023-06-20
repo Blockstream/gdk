@@ -215,8 +215,8 @@ namespace sdk {
         }
 
         // Call sign_transaction to sign the callers side
-        constexpr uint32_t sighash = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
-        m_create_details.at("transaction_inputs").at(0)["user_sighash"] = sighash;
+        constexpr uint32_t sighash_flags = WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY;
+        m_create_details.at("transaction_inputs").at(0)["user_sighash"] = sighash_flags;
         // For AMP, skip server signing for multisig. The taker will ask the
         // backend to sign the completed swap since AMP only signs SIGHASH_ALL
         const bool is_amp_tx = m_create_details.contains("blinding_nonces");

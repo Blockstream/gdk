@@ -127,7 +127,7 @@ namespace sdk {
     // Scripts
     //
     void scriptsig_multisig_from_bytes(
-        byte_span_t script, byte_span_t signatures, uint32_span_t sighashes, std::vector<unsigned char>& out);
+        byte_span_t script, byte_span_t signatures, uint32_span_t sighash_flagss, std::vector<unsigned char>& out);
 
     std::vector<unsigned char> scriptsig_p2pkh_from_der(byte_span_t public_key, byte_span_t sig);
 
@@ -253,8 +253,8 @@ namespace sdk {
     ecdsa_sig_rec_t ec_sig_rec_from_bytes(
         byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_RECOVERABLE);
 
-    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash = WALLY_SIGHASH_ALL);
-    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool sighash = false);
+    std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash_flags = WALLY_SIGHASH_ALL);
+    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte = false);
 
     bool ec_sig_verify(
         byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);

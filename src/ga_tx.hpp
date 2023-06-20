@@ -67,7 +67,7 @@ namespace sdk {
         size_t get_adjusted_weight(const network_parameters& net_params) const;
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
-        std::array<unsigned char, SHA256_LEN> get_signing_preimage_hash(
+        std::array<unsigned char, SHA256_LEN> get_signature_hash(
             const nlohmann::json& utxo, size_t index, uint32_t sighash) const;
 
     private:

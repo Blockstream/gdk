@@ -78,9 +78,9 @@ namespace sdk {
                 memcpy(pubkey.begin(), derived.pub_key, pubkey.size());
             }
 
-            constexpr bool has_sighash = false;
+            constexpr bool has_sighash_byte = false;
             verify_ae_signature(pubkey, message_hash, twofactor_data.at("ae_host_entropy"),
-                hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash);
+                hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash_byte);
         }
 
         static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
@@ -635,11 +635,11 @@ namespace sdk {
                 if (!tx) {
                     tx = std::make_unique<Tx>(json_get_value(m_twofactor_data, "transaction"), is_liquid);
                 }
-                const uint32_t sighash = WALLY_SIGHASH_ALL;
-                const auto preimage_hash = tx->get_signing_preimage_hash(input, i, sighash);
+                const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
+                const auto tx_signature_hash = tx->get_signature_hash(input, i, sighash_flags);
                 m_sweep_private_keys[i] = input["private_key"];
-                const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), preimage_hash);
-                m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash));
+                const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), tx_signature_hash);
+                m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
                 input["skip_signing"] = true;
                 input.erase("private_key");
             } else if (!input.value("skip_signing", false)) {
@@ -750,7 +750,7 @@ namespace sdk {
                 }
                 const uint32_t subaccount = utxo.at("subaccount");
                 const uint32_t pointer = utxo.at("pointer");
-                const uint32_t sighash = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+                const uint32_t sighash_flags = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
 
                 pub_key_t pubkey;
                 if (!is_electrum) {
@@ -758,10 +758,10 @@ namespace sdk {
                 } else {
                     pubkey = user_pubkeys.derive(subaccount, pointer, utxo.value("is_internal", false));
                 }
-                const auto preimage_hash = tx.get_signing_preimage_hash(utxo, i, sighash);
-                constexpr bool has_sighash = true;
-                verify_ae_signature(pubkey, preimage_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
-                    signatures[i], has_sighash);
+                const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
+                constexpr bool has_sighash_byte = true;
+                verify_ae_signature(pubkey, tx_signature_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
+                    signatures[i], has_sighash_byte);
             }
         }
 

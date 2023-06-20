@@ -52,11 +52,11 @@ namespace sdk {
 
     // Make a multisig scriptSig
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash, uint32_t ga_sighash);
+        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags);
 
     // Make a multisig scriptSig with a user signature and PUSH(0) marker for the GA sig
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, uint32_t user_sighash);
+        const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
 
     // Make a multisig scriptSig with dummy signatures for (fee estimation)
     std::vector<unsigned char> dummy_input_script(bool low_r, const std::vector<unsigned char>& prevout_script);

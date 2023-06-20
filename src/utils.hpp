@@ -93,7 +93,7 @@ namespace sdk {
 
     // Anti-Exfil
     void verify_ae_signature(const pub_key_t& pubkey, byte_span_t data_hash, const std::string& host_entropy_hex,
-        const std::string& signer_commitment_hex, const std::string& der_hex, bool has_sighash);
+        const std::string& signer_commitment_hex, const std::string& der_hex, bool has_sighash_byte);
 
     // Mnemonic handling
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
