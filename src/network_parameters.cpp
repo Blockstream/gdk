@@ -12,7 +12,7 @@
 // clang-format off
 namespace {
 
-static std::vector<std::string> wamp_cert_roots = {
+static std::vector<std::string> default_wamp_cert_roots = {
 
 // TODO: generate these from pem file?
 // https://www.identrust.com/certificates/trustid/root-download-x3.html
@@ -140,7 +140,7 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 -----END CERTIFICATE-----)",
 };
 
-static std::vector<std::string> wamp_cert_pins = {
+static std::vector<std::string> default_wamp_cert_pins = {
     // subject: '/C=US/O=Let's Encrypt/CN=E1'
     // issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
     // not before: Fri Sep  4 00:00:00 2020
@@ -196,7 +196,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", "ws://localhost:8080/v2/ws" },
         })) },
@@ -237,8 +237,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
-            { "wamp_cert_pins", wamp_cert_pins },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_pins", nlohmann::json::array({"default"}) },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", "ws://liquidbtcgecscpokecnr5uwg2de55shdq7dnvlpzeju7tnefbekicqd.onion/v2/ws" },
             { "wamp_url", "wss://green-liquid-mainnet.blockstream.com/v2/ws" },
         })) },
@@ -280,7 +280,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", "ws://localhost:8080/v2/ws" },
         })) },
@@ -322,7 +322,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://esplora.blockstream.com/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", "ws://liqtestulh46kwla3mgenugrcogvjjvzr2qdto663hujwnbaewzpkoad.onion/v2/ws" },
             { "wamp_url", "wss://green-liquid-testnet.blockstream.com/v2/ws" },
         })) },
@@ -358,8 +358,8 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/tx/" },
-            { "wamp_cert_pins", wamp_cert_pins },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_pins", nlohmann::json::array({"default"}) },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", "ws://greenv32e5p4rax6dmfgb4zzl7kq2fbmizd7miyava2actplmipyx2qd.onion:80/v2/ws" },
             { "wamp_url", "wss://green-bitcoin-mainnet.blockstream.com/v2/ws" },
         })) },
@@ -396,7 +396,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", "ws://greent5yfxruca52pkqjtgo2qdxijscqlastnv3jwzpmavvffdldm2yd.onion:80/v2/ws" },
             { "wamp_url", "wss://green-bitcoin-testnet.blockstream.com/v2/ws" },
         })) },
@@ -438,7 +438,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -480,7 +480,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -517,7 +517,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -554,7 +554,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -591,7 +591,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "http://127.0.0.1:8080/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -633,7 +633,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
-            { "wamp_cert_roots", wamp_cert_roots },
+            { "wamp_cert_roots", nlohmann::json::array({"default"}) },
             { "wamp_onion_url", std::string() },
             { "wamp_url", std::string() },
         })) },
@@ -755,10 +755,27 @@ namespace sdk {
 
     std::string network_parameters::network() const { return m_details.at("network"); }
     std::string network_parameters::gait_wamp_url() const { return m_details.at("wamp_url"); }
-    std::vector<std::string> network_parameters::gait_wamp_cert_pins() const { return m_details.at("wamp_cert_pins"); }
+    std::vector<std::string> network_parameters::gait_wamp_cert_pins() const
+    {
+        auto certificates = m_details.value("wamp_cert_pins", std::vector<std::string>{});
+        auto pos = std::find(certificates.cbegin(), certificates.cend(), "default");
+        if (pos == certificates.cend()) {
+            return certificates;
+        }
+        certificates.erase(pos);
+        std::copy(default_wamp_cert_pins.cbegin(), default_wamp_cert_pins.cend(), std::back_inserter(certificates));
+        return certificates;
+    }
     std::vector<std::string> network_parameters::gait_wamp_cert_roots() const
     {
-        return m_details.at("wamp_cert_roots");
+        auto certificates = m_details.value("wamp_cert_roots", std::vector<std::string>{});
+        auto pos = std::find(certificates.cbegin(), certificates.cend(), "default");
+        if (pos == certificates.cend()) {
+            return certificates;
+        }
+        certificates.erase(pos);
+        std::copy(default_wamp_cert_roots.cbegin(), default_wamp_cert_roots.cend(), std::back_inserter(certificates));
+        return certificates;
     }
     std::string network_parameters::block_explorer_address() const { return m_details.at("address_explorer_url"); }
     std::string network_parameters::block_explorer_tx() const { return m_details.at("tx_explorer_url"); }
