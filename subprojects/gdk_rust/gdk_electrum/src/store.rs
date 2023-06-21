@@ -22,6 +22,7 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io::Write;
+use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, RwLock};
 use std::time::Instant;
@@ -172,6 +173,28 @@ impl Drop for StoreMeta {
 pub struct Indexes {
     pub external: u32, // m/0/*
     pub internal: u32, // m/1/*
+}
+
+impl Index<bool> for Indexes {
+    type Output = u32;
+
+    fn index(&self, i: bool) -> &Self::Output {
+        if i {
+            &self.internal
+        } else {
+            &self.external
+        }
+    }
+}
+
+impl IndexMut<bool> for Indexes {
+    fn index_mut(&mut self, i: bool) -> &mut Self::Output {
+        if i {
+            &mut self.internal
+        } else {
+            &mut self.external
+        }
+    }
 }
 
 impl RawCache {
@@ -559,14 +582,6 @@ impl RawAccountCache {
         self.paths.get(script_pubkey).ok_or_else(|| Error::ScriptPubkeyNotFound)
     }
 
-    pub fn get_last_used(&self, is_internal: bool) -> u32 {
-        if is_internal {
-            self.last_used.internal
-        } else {
-            self.last_used.external
-        }
-    }
-
     pub fn get_both_last_used(&self) -> Indexes {
         self.last_used.clone()
     }
@@ -589,33 +604,17 @@ impl RawAccountCache {
     }
 
     pub fn increment_last_used(&mut self, is_internal: bool, n: u32) -> u32 {
-        if is_internal {
-            self.last_used.internal += n;
-            self.last_used.internal
-        } else {
-            self.last_used.external += n;
-            self.last_used.external
-        }
+        self.last_used[is_internal] += n;
+        self.last_used[is_internal]
     }
 
     // TODO: once we can remove the Option from count_given, below things can be simplified.
     fn get_count_given(&self, is_internal: bool) -> u32 {
-        self.count_given.as_ref().map_or(0, |c| {
-            if is_internal {
-                c.internal
-            } else {
-                c.external
-            }
-        })
+        self.count_given.as_ref().map_or(0, |c| c[is_internal])
     }
 
     pub fn get_last_given(&self, is_internal: bool) -> u32 {
-        let count_given = self.get_count_given(is_internal);
-        if is_internal {
-            self.last_used.internal + count_given
-        } else {
-            self.last_used.external + count_given
-        }
+        self.last_used[is_internal] + self.get_count_given(is_internal)
     }
 
     pub fn increment_last_given(&mut self, is_internal: bool) -> u32 {

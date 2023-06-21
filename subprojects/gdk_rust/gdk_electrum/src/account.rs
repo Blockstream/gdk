@@ -1476,7 +1476,7 @@ pub fn create_tx(
     for (i, change) in changes.iter().enumerate() {
         let change_address = change_addresses.pop().map_or_else(
             || -> Result<_, Error> {
-                let change_index = acc_store.get_last_used(true) + i as u32 + 1;
+                let change_index = acc_store.last_used[true] + i as u32 + 1;
                 Ok(account.derive_address(true, change_index)?.to_string())
             },
             Ok,
