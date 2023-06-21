@@ -371,9 +371,10 @@ namespace sdk {
     }
 
     // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
-    std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee)
+    std::string validate_tx_addressee(
+        session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)
     {
-        const auto& net_params = session.get_network_parameters();
+        const bool override_network = session.get_network_parameters().network() != net_params.network();
         const bool is_liquid = net_params.is_liquid();
         const auto blech32_prefix = net_params.blech32_prefix();
 
@@ -432,15 +433,19 @@ namespace sdk {
             // Validate the asset (or lack of it)
             asset_id_from_json(net_params, addressee);
 
-            // Validate and convert the amount to satoshi
-            try {
-                const auto satoshi = json_get_amount(session.convert_amount(addressee), "satoshi");
-                addressee["satoshi"] = satoshi.value();
-                amount::strip_non_satoshi_keys(addressee);
-            } catch (const user_error& ex) {
-                return ex.what();
-            } catch (const std::exception& ex) {
-                return res::id_invalid_amount;
+            // Validate and convert the amount to satoshi, but only if we are
+            // validating for the sessions network (i.e. we have the
+            // corresponding prices available).
+            if (!override_network) {
+                try {
+                    const auto satoshi = json_get_amount(session.convert_amount(addressee), "satoshi");
+                    addressee["satoshi"] = satoshi.value();
+                    amount::strip_non_satoshi_keys(addressee);
+                } catch (const user_error& ex) {
+                    return ex.what();
+                } catch (const std::exception& ex) {
+                    return res::id_invalid_amount;
+                }
             }
 
             if (is_liquid && !is_blinded) {

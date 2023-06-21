@@ -9,6 +9,7 @@
 - Documentation: The "sign_tx" HWW request is now documented, which
   completes the documentation of all requests in this interface.
 - Documentation: Improve the GA_create_transaction documentation.
+- GA_validate: Now allows validating addresses for other networks.
 
 ### Changed
 - Liquid: The hardware wallet capability "supports_external_blinding" now

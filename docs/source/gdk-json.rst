@@ -1510,16 +1510,23 @@ To validate addressees, for example prior to calling `GA_create_transaction`:
 .. code-block:: json
 
   {
-    "addressees": {}
+    "addressees": {},
+    "network": "bitcoin"
   }
 
-:addressees: An array of :ref:`addressee` elements.
+:addressees: Mandatory. An array of :ref:`addressee` elements.
+:network: Optional. The name of a network to validate the addressees against.
 
 Validation includes that the address is correct and supported by the network,
 and that the amount given is valid. The given amount in whatever denomination
 will be converted into ``"satoshi"`` in the returned addressee. For Liquid, a
 valid hex ``"asset_id"`` must be present.
 
+It is also possible to validate an addressee for another network than that of
+the current session. To do so, pass a network name in ``"network"``. Note that
+when validating against a different network, any amount in the addressee will
+not be validated or converted, as the session does not have pricing data for
+other networks than its own.
 
 To validate a LiquiDEX version 1 proposal:
 

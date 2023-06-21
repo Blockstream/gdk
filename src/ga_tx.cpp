@@ -705,7 +705,7 @@ namespace sdk {
             // Validate the given addressees
             for (size_t i = 0; i < addressees_p->size(); ++i) {
                 auto& addressee = addressees_p->at(i);
-                if (auto error = validate_tx_addressee(session, addressee); !error.empty()) {
+                if (auto error = validate_tx_addressee(session, net_params, addressee); !error.empty()) {
                     set_tx_error(result, error);
                     return;
                 }

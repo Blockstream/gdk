@@ -72,7 +72,8 @@ namespace sdk {
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
 
-    std::string validate_tx_addressee(session_impl& session, nlohmann::json& addressee);
+    std::string validate_tx_addressee(
+        session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
     void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee);
