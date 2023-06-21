@@ -373,8 +373,9 @@ GDK_API int GA_get_transactions(struct GA_session* session, GA_json* details, st
  * Get a new address to receive coins to.
  *
  * :param session: The session to use.
- * :param details: :ref:`receive-address-details`.
+ * :param details: :ref:`receive-address-request`.
  * :param call: Destination for the resulting GA_auth_handler to complete the action.
+ *|     The call handlers result is :ref:`receive-address-details`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.

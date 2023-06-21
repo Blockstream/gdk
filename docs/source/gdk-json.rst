@@ -879,6 +879,24 @@ Contains the users settings.
 .. include:: examples/get_settings_singlesig_liquid.json
 
 
+.. _receive-address-request:
+
+Receive address request JSON
+-------------------------------
+
+Contains the query parameters for requesting an address using `GA_get_receive_address`.
+
+.. code-block:: json
+
+  {
+    "subaccount": 0,
+    "is_internal": false,
+  }
+
+:subaccount: Mandatory. The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for.
+:is_internal: Optional, singlesig only. Whether or not the user key belongs to the internal chain.
+
+
 .. _receive-address-details:
 
 Receive address details JSON
