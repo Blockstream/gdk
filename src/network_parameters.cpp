@@ -755,7 +755,10 @@ namespace sdk {
     }
 
     std::string network_parameters::network() const { return m_details.at("network"); }
-    std::string network_parameters::gait_wamp_url() const { return m_details.at("wamp_url"); }
+    std::string network_parameters::gait_wamp_url(const std::string& config_prefix) const
+    {
+        return m_details.at(config_prefix + "wamp_url");
+    }
     std::vector<std::string> network_parameters::gait_wamp_cert_pins() const
     {
         auto certificates = m_details.value("wamp_cert_pins", std::vector<std::string>{});
@@ -796,7 +799,10 @@ namespace sdk {
         return get_url(m_details, "blob_server_url", "blob_server_onion_url", use_tor());
     }
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
-    std::string network_parameters::gait_onion() const { return m_details.at("wamp_onion_url"); }
+    std::string network_parameters::gait_onion(const std::string& config_prefix) const
+    {
+        return m_details.at(config_prefix + "wamp_onion_url");
+    }
     std::string network_parameters::get_policy_asset() const { return m_details.value("policy_asset", "btc"); }
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
     std::string network_parameters::bech32_prefix() const { return m_details.at("bech32_prefix"); }
@@ -811,14 +817,17 @@ namespace sdk {
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
     bool network_parameters::is_spv_enabled() const { return m_details.at("spv_enabled"); }
     std::string network_parameters::user_agent() const { return m_details.value("user_agent", std::string()); }
-    std::string network_parameters::get_connection_string() const { return use_tor() ? gait_onion() : gait_wamp_url(); }
+    std::string network_parameters::get_connection_string(const std::string& config_prefix) const
+    {
+        return use_tor() ? gait_onion(config_prefix) : gait_wamp_url(config_prefix);
+    }
     std::string network_parameters::get_registry_connection_string() const
     {
         return get_url(m_details, "asset_registry_url", "asset_registry_onion_url", use_tor());
     }
-    bool network_parameters::is_tls_connection() const
+    bool network_parameters::is_tls_connection(const std::string& config_prefix) const
     {
-        return boost::algorithm::starts_with(get_connection_string(), "wss://");
+        return boost::algorithm::starts_with(get_connection_string(config_prefix), "wss://");
     }
     std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }

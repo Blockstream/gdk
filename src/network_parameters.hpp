@@ -35,7 +35,7 @@ namespace sdk {
         const nlohmann::json& get_json() const { return m_details; }
 
         std::string network() const;
-        std::string gait_wamp_url() const;
+        std::string gait_wamp_url(const std::string& config_prefix) const;
         std::vector<std::string> gait_wamp_cert_pins() const;
         std::vector<std::string> gait_wamp_cert_roots() const;
         std::string block_explorer_address() const;
@@ -45,7 +45,7 @@ namespace sdk {
         std::string get_pin_server_url() const;
         std::string get_pin_server_public_key() const;
         std::string pub_key() const;
-        std::string gait_onion() const;
+        std::string gait_onion(const std::string& config_prefix) const;
         std::string get_policy_asset() const;
         std::string bip21_prefix() const;
         std::string bech32_prefix() const;
@@ -61,10 +61,10 @@ namespace sdk {
         bool is_spv_enabled() const;
         bool electrum_tls() const;
         std::string user_agent() const;
-        std::string get_connection_string() const;
+        std::string get_connection_string(const std::string& prefix) const;
         std::string get_blob_server_url() const;
         std::string get_registry_connection_string() const;
-        bool is_tls_connection() const;
+        bool is_tls_connection(const std::string& config_prefix) const;
         std::vector<uint32_t> csv_buckets() const;
         uint32_t cert_expiry_threshold() const;
         uint32_t get_max_reorg_blocks() const;

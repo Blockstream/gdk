@@ -43,7 +43,7 @@ namespace sdk {
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
-        wamp_transport(const network_parameters& net_params, notify_fn_t fn);
+        wamp_transport(const network_parameters& net_params, notify_fn_t fn, std::string server_prefix = {});
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
@@ -125,6 +125,7 @@ namespace sdk {
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
         std::thread m_run_thread; // Runs the asio context
         std::thread m_reconnect_thread; // Runs the reconnection logic
+        const std::string m_server_prefix;
         const std::string m_server;
         const std::string m_wamp_host_name;
         const std::string m_wamp_call_prefix;

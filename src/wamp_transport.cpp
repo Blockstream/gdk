@@ -310,12 +310,14 @@ namespace sdk {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
-    wamp_transport::wamp_transport(const network_parameters& net_params, wamp_transport::notify_fn_t fn)
+    wamp_transport::wamp_transport(
+        const network_parameters& net_params, wamp_transport::notify_fn_t fn, std::string server_prefix)
         : m_net_params(net_params)
         , m_io()
         , m_work_guard(asio::make_work_guard(m_io))
-        , m_server(m_net_params.get_connection_string())
-        , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url()).get_host())
+        , m_server_prefix(std::move(server_prefix))
+        , m_server(m_net_params.get_connection_string(m_server_prefix))
+        , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url(m_server_prefix)).get_host())
         , m_wamp_call_prefix("com.greenaddress.")
         , m_wamp_call_options()
         , m_notify_fn(fn)
@@ -331,7 +333,7 @@ namespace sdk {
         m_run_thread = std::thread([this] { m_io.run(); });
         m_reconnect_thread = std::thread([this] { reconnect_handler(); });
 
-        if (!m_net_params.is_tls_connection()) {
+        if (!m_net_params.is_tls_connection(m_server_prefix)) {
             m_client = std::make_unique<client>();
             m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
             m_client->init_asio(&m_io);
@@ -488,7 +490,7 @@ namespace sdk {
 
     void wamp_transport::reconnect_handler()
     {
-        const bool is_tls = m_net_params.is_tls_connection();
+        const bool is_tls = m_net_params.is_tls_connection(m_server_prefix);
         const bool is_debug = gdk_config()["log_level"] == "debug";
         const auto& executor = m_io.get_executor();
 
