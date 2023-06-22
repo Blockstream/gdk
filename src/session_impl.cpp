@@ -168,46 +168,38 @@ namespace sdk {
         return config;
     }
 
-    void session_impl::refresh_assets(const nlohmann::json& params)
+    void session_impl::refresh_assets(nlohmann::json params)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
-        nlohmann::json p = params;
-
-        auto session_signer = get_signer();
-        if (session_signer != nullptr) {
-            GDK_RUNTIME_ASSERT(!p.contains("xpub"));
-            p["xpub"] = session_signer->get_master_bip32_xpub();
+        if (auto signer = get_signer(); signer) {
+            GDK_RUNTIME_ASSERT(!params.contains("xpub"));
+            params["xpub"] = signer->get_master_bip32_xpub();
         }
-
-        p["config"] = get_registry_config();
+        params["config"] = get_registry_config();
 
         try {
-            rust_call("refresh_assets", p);
+            rust_call("refresh_assets", params);
         } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
+            GDK_LOG_SEV(log_level::error) << "error refreshing assets: " << ex.what();
         }
     }
 
-    nlohmann::json session_impl::get_assets(const nlohmann::json& params)
+    nlohmann::json session_impl::get_assets(nlohmann::json params)
     {
         GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
 
-        nlohmann::json p = params;
-
         // We only need to set the xpub if we're accessing the registry cache,
         // which in turn only happens if we're querying via asset ids.
-        if (p.contains("assets_id")) {
-            auto session_signer = get_signer();
-            if (session_signer != nullptr) {
-                p["xpub"] = session_signer->get_master_bip32_xpub();
+        if (params.contains("assets_id")) {
+            if (auto signer = get_signer(); signer) {
+                params["xpub"] = signer->get_master_bip32_xpub();
             }
         }
-
-        p["config"] = get_registry_config();
+        params["config"] = get_registry_config();
 
         try {
-            return rust_call("get_assets", p);
+            return rust_call("get_assets", params);
         } catch (const std::exception& ex) {
             GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
             return { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() },
