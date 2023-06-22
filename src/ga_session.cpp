@@ -237,13 +237,14 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(memo), "Transaction memo not a valid utf-8 string");
         }
 
-        static nlohmann::json get_spv_params(const network_parameters& net_params, const nlohmann::json& proxy_settings)
+        static nlohmann::json get_spv_params(
+            const network_parameters& net_params, const nlohmann::json& proxy_settings, uint32_t timeout_secs)
         {
             auto np = net_params.get_json();
             np.update(proxy_settings);
             np.erase("wamp_cert_pins"); // WMP certs are huge & unused by SPV, remove them
             np.erase("wamp_cert_roots");
-            return { { "network", std::move(np) } };
+            return { { "network", std::move(np) }, { "timeout", timeout_secs } };
         }
 
         // Get cached xpubs from a signer as a cacheable json format
@@ -2407,7 +2408,8 @@ namespace sdk {
 
         nlohmann::json spv_params;
         if (m_spv_enabled) {
-            spv_params = get_spv_params(m_net_params, get_proxy_settings(locker));
+            constexpr uint32_t timeout_secs = 10;
+            spv_params = get_spv_params(m_net_params, get_proxy_settings(locker), timeout_secs);
         }
 
         for (auto& tx_details : tx_list) {
@@ -3457,7 +3459,8 @@ namespace sdk {
                     }
                     block_height = m_last_block_notification["block_height"];
                     if (spv_params.empty()) {
-                        spv_params = get_spv_params(m_net_params, get_proxy_settings(locker));
+                        constexpr uint32_t timeout_secs = 10;
+                        spv_params = get_spv_params(m_net_params, get_proxy_settings(locker), timeout_secs);
                     }
                 }
                 const auto ret = rust_call("spv_download_headers", spv_params);
