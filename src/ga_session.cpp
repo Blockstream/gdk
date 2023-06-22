@@ -2825,7 +2825,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_receive_address(const nlohmann::json& details)
     {
-        const uint32_t subaccount = details.value("subaccount", 0);
+        const uint32_t subaccount = details.at("subaccount");
         const std::string addr_type_ = details.value("address_type", std::string{});
 
         const std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
