@@ -2798,7 +2798,7 @@ namespace sdk {
 
     nlohmann::json ga_session::get_previous_addresses(const nlohmann::json& details)
     {
-        const uint32_t subaccount = json_get_value(details, "subaccount", 0);
+        const uint32_t subaccount = details.at("subaccount");
         const bool get_newest = !details.contains("last_pointer") || details["last_pointer"].is_null();
         const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
         if (!get_newest && last_pointer < 2) {

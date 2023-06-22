@@ -931,7 +931,7 @@ Contains the query parameters for requesting previously generated addresses usin
     "last_pointer": 0,
   }
 
-:subaccount: The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for. Default 0.
+:subaccount: Mandatory. The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for.
 :last_pointer: The address pointer from which results should be returned. If this key is not present, the
                newest generated addresses are returned. If present, the "last_pointer" value from the
                resulting :ref:`previous-addresses` should then be given, until sufficient pages have been
