@@ -67,8 +67,8 @@ namespace sdk {
         virtual void reconnect() = 0;
         virtual void reconnect_hint(const nlohmann::json& hint);
         // Get the tor or user connection proxy address
-        nlohmann::json get_proxy_settings() const;
-        nlohmann::json get_registry_config() const;
+        nlohmann::json get_proxy_settings();
+        nlohmann::json get_registry_config();
 
         virtual void connect() = 0;
         virtual void disconnect() = 0;
@@ -252,6 +252,8 @@ namespace sdk {
         // to multiple threads in a single process or actions in another
         // process (e.g. the user is logged in twice in different apps)
         //
+        nlohmann::json get_proxy_settings(locker_t& locker);
+
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;
 

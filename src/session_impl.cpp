@@ -153,7 +153,7 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json session_impl::get_registry_config() const
+    nlohmann::json session_impl::get_registry_config()
     {
         nlohmann::json config = nlohmann::json::object();
         config["proxy"] = get_proxy_settings()["proxy"];
@@ -263,14 +263,16 @@ namespace sdk {
         }
     }
 
-    nlohmann::json session_impl::get_proxy_settings() const
+    nlohmann::json session_impl::get_proxy_settings()
     {
-        std::string proxy = m_user_proxy;
-        if (m_tor_ctrl) {
-            locker_t locker(m_mutex);
-            proxy = m_tor_proxy;
-        }
-        return { { "proxy", proxy }, { "use_tor", m_net_params.use_tor() } };
+        locker_t locker(m_mutex);
+        return get_proxy_settings(locker);
+    }
+
+    nlohmann::json session_impl::get_proxy_settings(locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        return { { "proxy", m_tor_ctrl ? m_tor_proxy : m_user_proxy }, { "use_tor", m_net_params.use_tor() } };
     }
 
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,

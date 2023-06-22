@@ -307,17 +307,18 @@ namespace sdk {
     void ga_session::reconnect_hint(const nlohmann::json& hint)
     {
         session_impl::reconnect_hint(hint);
-        const auto proxy_settings = get_proxy_settings();
+        locker_t locker(m_mutex);
+        const auto proxy_settings = get_proxy_settings(locker);
         const auto& proxy = proxy_settings.at("proxy");
         const auto hint_p = proxy.find("hint");
         if (hint_p != proxy.end() && *hint_p != "connect") {
             // Stop any outstanding header sync when disconnecting. Leave
             // resuming until after the session is authed and we know what
             // the current block is.
-            locker_t locker(m_mutex);
             constexpr bool do_start = false;
             download_headers_ctl(locker, do_start);
         }
+        locker.unlock();
         m_wamp->reconnect_hint(hint, proxy);
     }
 
@@ -2406,7 +2407,7 @@ namespace sdk {
 
         nlohmann::json spv_params;
         if (m_spv_enabled) {
-            spv_params = get_spv_params(m_net_params, get_proxy_settings());
+            spv_params = get_spv_params(m_net_params, get_proxy_settings(locker));
         }
 
         for (auto& tx_details : tx_list) {
@@ -3440,7 +3441,7 @@ namespace sdk {
 
     void ga_session::download_headers_thread_fn()
     {
-        const auto spv_params = get_spv_params(m_net_params, get_proxy_settings());
+        nlohmann::json spv_params;
         uint32_t last_fetched_height = 0;
 
         // Loop downloading block headers until we are caught up, then exit
@@ -3455,6 +3456,9 @@ namespace sdk {
                         break; // We have been asked to terminate; do so
                     }
                     block_height = m_last_block_notification["block_height"];
+                    if (spv_params.empty()) {
+                        spv_params = get_spv_params(m_net_params, get_proxy_settings(locker));
+                    }
                 }
                 const auto ret = rust_call("spv_download_headers", spv_params);
                 const auto fetched_height = ret.at("height");
