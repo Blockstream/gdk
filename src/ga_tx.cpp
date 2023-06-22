@@ -466,14 +466,15 @@ namespace sdk {
                 cleanup_tx_addressee(session, new_change_address);
 
                 if (session.get_network_parameters().is_electrum()) {
-                    // FIXME: Workaround for ga_rust returning duplicate addresses
+                    constexpr size_t default_gap_limit = 20;
                     bool is_duplicate_spk = false;
-                    for (size_t i = 0; i < 20u; ++i) {
+                    for (size_t i = 0; i < default_gap_limit * 2u; ++i) {
                         const auto spk = json_get_value(new_change_address, "scriptpubkey");
                         is_duplicate_spk = !are_tx_outputs_unique(result, spk);
                         if (!is_duplicate_spk) {
                             break;
                         }
+                        details["ignore_gap_limit"] = i >= default_gap_limit;
                         new_change_address = session.get_receive_address(details);
                         cleanup_tx_addressee(session, new_change_address);
                         is_duplicate_spk = false;
