@@ -21,6 +21,8 @@ export CC_aarch64_linux_android=aarch64-linux-android21-clang
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${CC_aarch64_linux_android}
 export AR=${ARCHIVER}
 
+export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
+
 
 if [ "$(uname)" = "Darwin" ]; then
     export CARGO_PROFILE_DEV_LTO=true

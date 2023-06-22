@@ -72,6 +72,7 @@ test_rust:
     RUSTFLAGS: "-C instrument-coverage"
     RUST_BACKTRACE: "1"
     LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
+    CARGO_REGISTRIES_CRATES_IO_PROTOCOL: "sparse"
   script:
     - cargo nextest run --profile ci --manifest-path subprojects/gdk_rust/Cargo.toml
     - grcov --binary-path subprojects/gdk_rust/target/debug/ -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml -p `pwd` subprojects/gdk_rust
