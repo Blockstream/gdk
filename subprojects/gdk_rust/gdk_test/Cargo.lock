@@ -322,9 +322,9 @@ dependencies = [
 
 [[package]]
 name = "electrum-client"
-version = "0.13.0"
+version = "0.14.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43224a43201a58034759d2682c603607d98ea0ff459a8d3622e0616b2badcd5c"
+checksum = "4b8debf63f96e20e6d9e94170227b4329806f5fbb87b1f0f10a597fd26f26902"
 dependencies = [
  "bitcoin",
  "byteorder",
@@ -445,7 +445,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin",
- "electrum-client 0.13.0",
+ "electrum-client 0.14.1",
  "elements",
  "libc",
  "log",
@@ -733,9 +733,9 @@ checksum = "624a8340c38c1b80fd549087862da4ba43e08858af025b236e509b6649fc13d5"
 
 [[package]]
 name = "openssl"
-version = "0.10.48"
+version = "0.10.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "518915b97df115dd36109bfa429a48b8f737bd05508cf9588977b599648926d2"
+checksum = "345df152bc43501c5eb9e4654ff05f794effb78d4efe3d53abc158baddc0703d"
 dependencies = [
  "bitflags",
  "cfg-if",
@@ -759,11 +759,10 @@ dependencies = [
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.83"
+version = "0.9.90"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "666416d899cf077260dac8698d60a60b435a46d57e82acb1be3d0dad87284e5b"
+checksum = "374533b0e45f3a7ced10fcaeccca020e66656bc03dac384f852e4e5a7a8104a6"
 dependencies = [
- "autocfg",
  "cc",
  "libc",
  "pkg-config",
