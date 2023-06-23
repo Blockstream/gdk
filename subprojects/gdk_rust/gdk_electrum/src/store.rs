@@ -169,7 +169,10 @@ impl Drop for StoreMeta {
             self.remove_file(Kind::Cache);
             std::fs::remove_dir(&self.path).unwrap();
         } else {
-            let _ = self.flush();
+            let res = self.flush();
+            if let Err(e) = res {
+                warn!("Cannot flush on StoreMeta::drop because: {e:?}");
+            }
         }
     }
 }

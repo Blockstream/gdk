@@ -357,7 +357,8 @@ impl ElectrumSession {
                     let agent = self.build_request_agent()?;
                     Some(BlobClient::new(agent, url, wallet_hash_id))
                 }
-                Err(_) => None,
+                Err(gdk_common::error::Error::BlobServerUrlAbsent(_)) => None,
+                Err(e) => return Err(Error::Common(e)),
             };
 
             info!("Store root path: {:?}", path);
