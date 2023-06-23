@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.0.65
+## Release 0.0.66
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.0.65 - 2023-06-23
 
 ### Added
 - Documentation: The JSON examples for many calls are now automatically
