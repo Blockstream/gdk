@@ -15,7 +15,7 @@ boost_thread=@Boost_LIBRARY_DIRS@/libboost_thread.a
 openssl_ssl=@OPENSSL_SSL_LIBRARY@
 openssl_crypto=@OPENSSL_CRYPTO_LIBRARY@
 zlib=@ZLIB_LIBRARIES@
-tor="@TOR_LINK_LIBRARIES@"
+tor="@tor_LINK_LIBRARIES@"
 bc_ur="@BCUR_LIBRARIES@"
 
 
