@@ -281,4 +281,58 @@ mod tests {
 
         Ok(())
     }
+
+    #[test]
+    fn blob_server_wrong_hmac() {
+        let id = "Client456";
+
+        // insert some data to have initial hmac
+        let mut client = BlobClient::new(
+            Agent::new(),
+            url::Url::from_str(&BLOBSERVER_STAGING).unwrap(),
+            id.to_string(),
+        );
+        let data = "Hello, world!";
+
+        client.set_blob(data).unwrap();
+
+        let (returned, _) = client.get_blob().unwrap().unwrap();
+        assert_eq!(data, std::str::from_utf8(&returned).unwrap());
+
+        // If two client start at the same time and try to update the blob, the second one
+        // will fail to do so, because the previous hmac mismatch
+        let mut client1 = BlobClient::new(
+            Agent::new(),
+            url::Url::from_str(&BLOBSERVER_STAGING).unwrap(),
+            id.to_string(),
+        );
+        assert!(client1.last_hmac.is_some());
+        let mut client2 = BlobClient::new(
+            Agent::new(),
+            url::Url::from_str(&BLOBSERVER_STAGING).unwrap(),
+            id.to_string(),
+        );
+        let other_data1 = "client1";
+        client1.set_blob(other_data1).unwrap();
+        let (returned, _) = client1.get_blob().unwrap().unwrap();
+        assert_eq!(other_data1, std::str::from_utf8(&returned).unwrap());
+
+        let other_data2 = "client2";
+        let err = client2.set_blob(other_data2);
+        assert!(format!("{err:?}").contains("BlobClientError(\"incorrect previous hmac\""));
+
+        // Another client starts, will get last value set by client1 and can succesfully update
+        // data
+        let mut client3 = BlobClient::new(
+            Agent::new(),
+            url::Url::from_str(&BLOBSERVER_STAGING).unwrap(),
+            id.to_string(),
+        );
+        let (returned, _) = client3.get_blob().unwrap().unwrap();
+        assert_eq!(other_data1, std::str::from_utf8(&returned).unwrap());
+        let other_data3 = "client3";
+        client3.set_blob(other_data3).unwrap();
+        let (returned, _) = client3.get_blob().unwrap().unwrap();
+        assert_eq!(other_data3, std::str::from_utf8(&returned).unwrap());
+    }
 }
