@@ -3,6 +3,7 @@
 ## Release 0.0.66
 
 ### Added
+- Singlesig: GA_connect: add new option "gap_limit".
 
 ### Changed
 

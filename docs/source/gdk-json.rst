@@ -46,6 +46,7 @@ Connection parameters JSON
       "user_agent": "green_android v2.33",
       "spv_enabled": false,
       "cert_expiry_threshold": 1
+      "gap_limit": 20,
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
@@ -57,6 +58,7 @@ Connection parameters JSON
 :user_agent: The user agent string to pass to the server for multisig connections.
 :spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
 :cert_expiry_threshold: Ignore certificates expiring within this many days from today. Used to pre-empt problems with expiring embedded certificates.
+:gap_limit: Optional, singlesig only. Number of consecutive empty scripts/addresses to monitor. Defaults to 20.
 
 
  .. _proxy-info:
@@ -896,8 +898,8 @@ Contains the query parameters for requesting an address using `GA_get_receive_ad
 
 :subaccount: Mandatory. The value of "pointer" from :ref:`subaccount-list` or :ref:`subaccount-detail` for the subaccount to fetch addresses for.
 :is_internal: Optional, singlesig only. Whether or not the user key belongs to the internal chain.
-:ignore_gap_limit: Optional, singlesig only. Whether to allow squentially generated addresses to go beyond the GAP_LIMIT.
-    This is potentially dangerous as funds received on such addresses are not synced until an address within the GAP_LIMIT receives funds.
+:ignore_gap_limit: Optional, singlesig only. Whether to allow squentially generated addresses to go beyond the ``"gap_limit"`` passed to or defaulted by `GA_connect`.
+    This is potentially dangerous as funds received on such addresses are not synced until an address within the gap_limit receives funds.
 
 
 .. _receive-address-details:

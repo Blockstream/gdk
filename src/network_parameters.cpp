@@ -688,6 +688,7 @@ namespace sdk {
             set_override(defaults, "user_agent", user_overrides, empty);
             set_override(defaults, "blob_server_onion_url", user_overrides, empty);
             set_override(defaults, "blob_server_url", user_overrides, empty);
+            set_override(defaults, "gap_limit", user_overrides, 20);
 
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;

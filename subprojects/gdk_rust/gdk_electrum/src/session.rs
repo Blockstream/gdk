@@ -29,6 +29,7 @@ impl ExchangeRatesCacher for ElectrumSession {
 impl Session for ElectrumSession {
     fn new(network_parameters: NetworkParameters) -> Result<Self, JsonError> {
         let url = determine_electrum_url(&network_parameters)?;
+        let gap_limit = network_parameters.gap_limit.unwrap_or(DEFAULT_GAP_LIMIT);
 
         Ok(Self {
             proxy: socksify(network_parameters.proxy.as_deref()),
@@ -48,7 +49,7 @@ impl Session for ElectrumSession {
             xr_cache: ExchangeRatesCache::default(),
             available_currencies: None,
             first_sync: Arc::new(AtomicBool::new(true)),
-            gap_limit: DEFAULT_GAP_LIMIT,
+            gap_limit,
         })
     }
 

@@ -53,6 +53,8 @@ pub struct NetworkParameters {
     /// if on the same network, share the same headers chain file but it's
     /// required to use a single process.
     pub state_dir: String,
+
+    pub gap_limit: Option<u32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
