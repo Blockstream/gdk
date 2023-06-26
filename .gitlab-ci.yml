@@ -125,6 +125,12 @@ build_mingw64_windows:
     INSTALL_PATH: "install-gdk"
   script:
     - ./tools/build.sh --mingw-w64 --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/mingw-w64 --parallel 16
+  artifacts:
+    name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 1h
+    when: on_success
+    paths:
+    - build-windows-mingw-w64/archiver.sh
 
 
 

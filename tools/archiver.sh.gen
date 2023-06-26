@@ -1,20 +1,20 @@
 #! /usr/bin/env bash
 set -e
 
-sqlite3=$<TARGET_PROPERTY:extern::sqlite3,IMPORTED_LOCATION>
+sqlite3=$<TARGET_FILE:extern::sqlite3>
 gdk_rust=$<TARGET_FILE:gdk-rust>
-wally=@wallycore_LINK_LIBRARIES@
-secp256k1=@libsecp256k1_LINK_LIBRARIES@
+wally=$<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_LINK_LIBRARIES>
+secp256k1=$<TARGET_PROPERTY:PkgConfig::libsecp256k1,INTERFACE_LINK_LIBRARIES>
 libevent=$<TARGET_FILE:event_static>
-eventpthreads=@_maybeLibeventPthreads@
-boost_log=@Boost_LIBRARY_DIRS@/libboost_log.a
-boost_chrono=@Boost_LIBRARY_DIRS@/libboost_chrono.a
-boost_date_time=@Boost_LIBRARY_DIRS@/libboost_date_time.a
-boost_system=@Boost_LIBRARY_DIRS@/libboost_system.a
-boost_thread=@Boost_LIBRARY_DIRS@/libboost_thread.a
-openssl_ssl=@OPENSSL_SSL_LIBRARY@
-openssl_crypto=@OPENSSL_CRYPTO_LIBRARY@
-zlib=@ZLIB_LIBRARIES@
+libeventpthreads=$<$<TARGET_EXISTS:event_pthreads_static>:$<TARGET_FILE:event_pthreads_static>>
+boost_log=$<TARGET_FILE:Boost::log>
+boost_chrono=$<TARGET_FILE:Boost::chrono>
+boost_date_time=$<TARGET_FILE:Boost::date_time>
+boost_system=$<TARGET_FILE:Boost::system>
+boost_thread=$<TARGET_FILE:Boost::thread>
+openssl_ssl=$<TARGET_FILE:OpenSSL::SSL>
+openssl_crypto=$<TARGET_FILE:OpenSSL::Crypto>
+zlib=$<TARGET_FILE:ZLIB::ZLIB>
 tor=$<TARGET_FILE:extern::tor>
 bc_ur=$<TARGET_FILE:extern::bc-ur>
 

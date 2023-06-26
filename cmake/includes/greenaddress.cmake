@@ -136,16 +136,7 @@ macro(create_greenaddressfull_target)
     add_dependencies(greenaddress-full gdk-rust)
     get_target_property(_gaIncludeDir greenaddress-objects INTERFACE_INCLUDE_DIRECTORIES)
     target_include_directories(greenaddress-full INTERFACE ${_gaIncludeDir})
-    set(_maybeLibeventPthreads "")
-    if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        if(CMAKE_BUILD_TYPE STREQUAL Debug)
-            get_target_property(_maybeLibeventPthreads event_pthreads_static IMPORTED_LOCATION_DEBUG)
-        else()
-            get_target_property(_maybeLibeventPthreads event_pthreads_static IMPORTED_LOCATION_RELEASE)
-        endif()
-    endif()
-    configure_file(${CMAKE_SOURCE_DIR}/tools/archiver.sh.gen.in  archiver.sh.gen)
-    file(GENERATE OUTPUT archiver.sh INPUT ${CMAKE_CURRENT_BINARY_DIR}/archiver.sh.gen)
+    file(GENERATE OUTPUT archiver.sh INPUT ${CMAKE_SOURCE_DIR}/tools/archiver.sh.gen)
     add_custom_command(TARGET greenaddress-full POST_BUILD
         COMMAND mv $<TARGET_FILE:greenaddress-full> libgreenaddress-partial.a
         COMMAND ./archiver.sh
