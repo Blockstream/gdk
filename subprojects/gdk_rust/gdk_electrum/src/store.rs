@@ -1,6 +1,6 @@
 use crate::account::xpubs_equivalent;
 use crate::spv::CrossValidationResult;
-use crate::{Error, ScriptStatuses, GAP_LIMIT};
+use crate::{Error, ScriptStatuses};
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
@@ -110,7 +110,7 @@ pub struct RawAccountCache {
 
     /// Counters of number of scripts returned to the caller
     ///
-    /// These counters go up to GAP_LIMIT, then they start again from 0, looping in this set. When
+    /// These counters go up to gap_limit, then they start again from 0, looping in this set. When
     /// last_used is updated, this counters are decremented by the number of new addresses seen.
     ///
     /// NOTE: this is Option to keep cache backwards-compatibility, remove if breaking cache
@@ -589,7 +589,7 @@ impl RawAccountCache {
     pub fn set_both_last_used(&mut self, last_used: Indexes) {
         if self.last_used != last_used {
             // If last_used changed, reset count_given.
-            // Do not repeat given addresses until the GAP_LIMIT is hit.
+            // Do not repeat given addresses until the gap_limit is hit.
             let count_given = self.count_given.clone().unwrap_or_default();
             let internal =
                 (self.last_used.internal + count_given.internal).saturating_sub(last_used.internal);
@@ -617,12 +617,17 @@ impl RawAccountCache {
         self.last_used[is_internal] + self.get_count_given(is_internal)
     }
 
-    pub fn increment_last_given(&mut self, is_internal: bool, ignore_gap_limit: bool) -> u32 {
+    pub fn increment_last_given(
+        &mut self,
+        is_internal: bool,
+        ignore_gap_limit: bool,
+        gap_limit: u32,
+    ) -> u32 {
         if is_internal {
             let count_given = self.count_given.clone().unwrap_or_default();
             let mut internal = count_given.internal + 1;
             if !ignore_gap_limit {
-                internal %= GAP_LIMIT;
+                internal %= gap_limit;
             }
             self.count_given = Some(Indexes {
                 internal,
@@ -632,7 +637,7 @@ impl RawAccountCache {
             let count_given = self.count_given.clone().unwrap_or_default();
             let mut external = count_given.external + 1;
             if !ignore_gap_limit {
-                external %= GAP_LIMIT;
+                external %= gap_limit;
             }
             self.count_given = Some(Indexes {
                 internal: count_given.internal,

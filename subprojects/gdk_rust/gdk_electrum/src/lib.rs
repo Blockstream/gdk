@@ -72,7 +72,7 @@ use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
-pub const GAP_LIMIT: u32 = 20;
+pub const DEFAULT_GAP_LIMIT: u32 = 20;
 
 type ScriptStatuses = HashMap<bitcoin::Script, ScriptStatus>;
 
@@ -82,6 +82,7 @@ struct Syncer {
     master_blinding: Option<MasterBlindingKey>,
     network: NetworkParameters,
     recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
+    gap_limit: u32,
 }
 
 pub struct Tipper {
@@ -146,6 +147,9 @@ pub struct ElectrumSession {
     available_currencies: Option<HashMap<String, Vec<Currency>>>,
 
     first_sync: Arc<AtomicBool>,
+
+    /// Number of consecutive unused scripts/addresses to monitor.
+    gap_limit: u32,
 }
 
 #[derive(Clone)]
@@ -662,6 +666,7 @@ impl ElectrumSession {
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
             recent_spent_utxos: self.recent_spent_utxos.clone(),
+            gap_limit: self.gap_limit,
         };
 
         let tipper = Tipper {
@@ -825,6 +830,7 @@ impl ElectrumSession {
         let address = self.get_account(opt.subaccount)?.get_next_address(
             opt.is_internal.unwrap_or(false),
             opt.ignore_gap_limit.unwrap_or(false),
+            self.gap_limit,
         )?;
         debug!("get_address {:?}", address);
         Ok(address)
@@ -934,7 +940,13 @@ impl ElectrumSession {
     }
 
     pub fn discover_subaccount(&self, opt: DiscoverAccountOpt) -> Result<bool, Error> {
-        discover_account(&self.url, self.proxy.as_deref(), &opt.xpub, opt.script_type)
+        discover_account(
+            &self.url,
+            self.proxy.as_deref(),
+            &opt.xpub,
+            opt.script_type,
+            self.gap_limit,
+        )
     }
 
     pub fn get_next_subaccount(&self, opt: GetNextAccountOpt) -> Result<u32, Error> {
@@ -1479,7 +1491,7 @@ impl Syncer {
                         None => {
                             // Script never had a tx, initially and neither via updates
                             count_consecutive_empty += 1;
-                            if count_consecutive_empty >= GAP_LIMIT {
+                            if count_consecutive_empty >= self.gap_limit {
                                 break;
                             } else {
                                 continue;

@@ -15,7 +15,10 @@ use gdk_common::{
 };
 use serde_json::Value;
 
-use crate::{account::Account, error::Error, interface::ElectrumUrl, socksify, ElectrumSession};
+use crate::{
+    account::Account, error::Error, interface::ElectrumUrl, socksify, ElectrumSession,
+    DEFAULT_GAP_LIMIT,
+};
 
 impl ExchangeRatesCacher for ElectrumSession {
     fn xr_cache(&self) -> ExchangeRatesCache {
@@ -45,6 +48,7 @@ impl Session for ElectrumSession {
             xr_cache: ExchangeRatesCache::default(),
             available_currencies: None,
             first_sync: Arc::new(AtomicBool::new(true)),
+            gap_limit: DEFAULT_GAP_LIMIT,
         })
     }
 

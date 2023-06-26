@@ -41,7 +41,7 @@ use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::{RawAccountCache, Store};
-use crate::{ScriptStatuses, GAP_LIMIT};
+use crate::ScriptStatuses;
 
 // The number of account types, including these reserved for future use.
 // Currently only 3 are used: P2SH-P2WPKH, P2WPKH and P2PKH
@@ -233,10 +233,11 @@ impl Account {
         &self,
         is_internal: bool,
         ignore_gap_limit: bool,
+        gap_limit: u32,
     ) -> Result<AddressPointer, Error> {
         let store = &mut self.store.write()?;
         let acc_store = store.account_cache_mut(self.account_num)?;
-        let pointer = acc_store.increment_last_given(is_internal, ignore_gap_limit);
+        let pointer = acc_store.increment_last_given(is_internal, ignore_gap_limit, gap_limit);
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
@@ -1132,6 +1133,7 @@ pub fn discover_account(
     proxy: Option<&str>,
     account_xpub: &ExtendedPubKey,
     script_type: ScriptType,
+    gap_limit: u32,
 ) -> Result<bool, Error> {
     use gdk_common::electrum_client::ElectrumApi;
 
@@ -1139,7 +1141,7 @@ pub fn discover_account(
     let client = electrum_url.build_client(proxy, None)?;
 
     let external_xpub = account_xpub.ckd_pub(&crate::EC, 0.into())?;
-    for index in 0..GAP_LIMIT {
+    for index in 0..gap_limit {
         let child_key = external_xpub.ckd_pub(&crate::EC, index.into())?;
         // Every network has the same scriptpubkey
         let script = bitcoin_address(&child_key.to_pub(), script_type, bitcoin::Network::Bitcoin)
