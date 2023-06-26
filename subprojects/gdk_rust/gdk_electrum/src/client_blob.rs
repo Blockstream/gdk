@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::time::Instant;
 
 use bitcoin::hashes::{sha256, Hash, HashEngine, HmacEngine};
@@ -96,8 +95,8 @@ impl BlobClient {
             return Ok(());
         }
 
-        let b64_blob_hmac = base64::encode(Borrow::<[u8]>::borrow(&blob_hmac));
-        let b64_previous_hmac = base64::encode(Borrow::<[u8]>::borrow(previous_hmac));
+        let b64_blob_hmac = base64::encode(blob_hmac.as_inner());
+        let b64_previous_hmac = base64::encode(previous_hmac.as_inner());
 
         info!("set_client_blob client_id:{} hmac:{:?}", self.client_id, b64_blob_hmac);
 
