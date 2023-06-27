@@ -105,8 +105,8 @@ pub enum Error {
     #[error("invalid sighash")]
     InvalidSigHash,
 
-    #[error("Sync interrupted because user don't want to sync")]
-    UserDontWantToSync,
+    #[error("Sync interrupted because user doesn't want to sync")]
+    UserDoesntWantToSync,
 
     #[error(transparent)]
     InvalidStringUtf8(#[from] std::string::FromUtf8Error),

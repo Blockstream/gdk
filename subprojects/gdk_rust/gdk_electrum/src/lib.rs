@@ -770,8 +770,8 @@ impl ElectrumSession {
                         }
                         first_sync.store(false, Ordering::Relaxed);
                     }
-                    Err(Error::UserDontWantToSync) => {
-                        info!("{}", Error::UserDontWantToSync);
+                    Err(Error::UserDoesntWantToSync) => {
+                        info!("{}", Error::UserDoesntWantToSync);
                         break;
                     }
                     Err(e) => {
@@ -1433,7 +1433,7 @@ impl Syncer {
                 let mut count_consecutive_empty = 0;
                 for j in 0.. {
                     if !user_wants_to_sync.load(Ordering::Relaxed) {
-                        return Err(Error::UserDontWantToSync);
+                        return Err(Error::UserDoesntWantToSync);
                     }
                     let (cached, path, script) = account.get_script(is_internal, j)?;
                     if !cached {
