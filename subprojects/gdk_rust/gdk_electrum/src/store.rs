@@ -396,7 +396,14 @@ impl StoreMeta {
 
         match (self.blob_client.as_mut(), encrypted_store) {
             (Some(client), Some(encrypted_store)) => {
-                let _ = client.set_blob(&encrypted_store);
+                let r = client.set_blob(&encrypted_store);
+                if let Err(Error::BlobClientError(s)) = r.as_ref() {
+                    if s.contains("incorrect previous hmac") {
+                        // prevent a client that hasn't seen updates from another concurrent session
+                        // to continue
+                        return r;
+                    }
+                }
             }
             _ => (),
         }

@@ -335,4 +335,58 @@ mod tests {
         let (returned, _) = client3.get_blob().unwrap().unwrap();
         assert_eq!(other_data3, std::str::from_utf8(&returned).unwrap());
     }
+
+    #[test]
+    fn two_concurrent_session() -> Result<(), Box<dyn std::error::Error>> {
+        let _ = env_logger::try_init();
+        let state_dir = tempfile::TempDir::new()?;
+
+        let network_parameters = {
+            let mut p = NetworkParameters::default();
+            p.electrum_url = Some("blockstream.info:700".to_owned());
+            p.blob_server_url = BLOBSERVER_STAGING.to_owned();
+            p.state_dir = state_dir.path().display().to_string();
+            p
+        };
+
+        let load_opts = serde_json::from_value::<LoadStoreOpt>(json! {{
+            "master_xpub": "tpubD8G8MPH9RK9uk4EV97RxhzaY8SJPUWXnViHUwji92i8B7vYdht797PPDrJveeathnKxonJe8SbaScAC1YJ8xAzZbH9UvywrzpQTQh5pekkk",
+        }})?;
+
+        let settings = Settings {
+            unit: "foo".to_owned(),
+            required_num_blocks: 13,
+            altimeout: 42,
+            pricing: Pricing::default(),
+            sound: true,
+        };
+
+        let mut session = ElectrumSession::new(network_parameters.clone())?;
+        session.load_store(&load_opts)?;
+        session.connect(&json! {{}})?;
+
+        let another_state_dir = tempfile::TempDir::new()?;
+        let mut another_network_params = network_parameters.clone();
+        another_network_params.state_dir = another_state_dir.path().display().to_string();
+        let mut another_session = ElectrumSession::new(another_network_params)?;
+        another_session.load_store(&load_opts)?;
+        another_session.connect(&json! {{}})?;
+
+        // Modify the store on the first session
+        {
+            let store = session.store()?;
+            let mut store = store.write().unwrap();
+            store.insert_settings(settings.clone())?;
+        }
+
+        // Modify the store on the other session.
+        {
+            let store = another_session.store()?;
+            let mut store = store.write().unwrap();
+            let err = store.insert_settings(settings.clone()).unwrap_err();
+            assert!(format!("{err:?}").contains("BlobClientError(\"incorrect previous hmac\")"));
+        }
+
+        Ok(())
+    }
 }
