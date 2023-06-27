@@ -189,7 +189,12 @@ pub extern "C" fn GDKRUST_call_session(
         }
 
         Err(err) => {
-            log::error!("error: {:?}", err);
+            let suppress_log =
+                &err.message == "Scriptpubkey not found" && &method == "get_scriptpubkey_data";
+
+            if !suppress_log {
+                log::error!("error: {:?}", err);
+            }
 
             let retv = if "id_invalid_pin" == err.error {
                 GA_NOT_AUTHORIZED
