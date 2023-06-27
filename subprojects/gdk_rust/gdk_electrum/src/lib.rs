@@ -771,7 +771,7 @@ impl ElectrumSession {
                         first_sync.store(false, Ordering::Relaxed);
                     }
                     Err(Error::UserDontWantToSync) => {
-                        warn!("{}", Error::UserDontWantToSync);
+                        info!("{}", Error::UserDontWantToSync);
                         break;
                     }
                     Err(e) => {
