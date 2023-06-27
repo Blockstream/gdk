@@ -217,8 +217,12 @@ impl NetworkParameters {
 
 /// Creates a new [`ureq::Agent`] from an optional proxy string, using
 /// [`NETWORK_REQUEST_TIMEOUT`] as timeout.
-pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ureq::Error> {
-    let mut builder = ureq::AgentBuilder::new().timeout(NETWORK_REQUEST_TIMEOUT);
+pub fn build_request_agent(
+    maybe_proxy: Option<&str>,
+    timeout: Option<u8>,
+) -> Result<ureq::Agent, ureq::Error> {
+    let timeout = timeout.map(|s| Duration::from_secs(s as u64)).unwrap_or(NETWORK_REQUEST_TIMEOUT);
+    let mut builder = ureq::AgentBuilder::new().timeout(timeout);
 
     if let Some(proxy) = maybe_proxy {
         if !proxy.is_empty() {

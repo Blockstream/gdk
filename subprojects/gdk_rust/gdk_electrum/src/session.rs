@@ -57,7 +57,7 @@ impl Session for ElectrumSession {
     }
 
     fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
-        gdk_common::network::build_request_agent(self.proxy.as_deref())
+        gdk_common::network::build_request_agent(self.proxy.as_deref(), self.timeout.clone())
     }
 
     fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {

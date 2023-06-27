@@ -240,7 +240,8 @@ impl ElectrumSession {
     }
 
     pub fn build_request_agent(&self) -> Result<ureq::Agent, Error> {
-        network::build_request_agent(self.proxy.as_deref()).map_err(Into::into)
+        network::build_request_agent(self.proxy.as_deref(), self.timeout.clone())
+            .map_err(Into::into)
     }
 
     pub fn poll_session(&self) -> Result<(), Error> {

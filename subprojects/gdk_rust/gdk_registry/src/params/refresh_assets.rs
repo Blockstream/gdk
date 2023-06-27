@@ -35,7 +35,8 @@ pub struct RefreshAssetsParams {
 
 impl RefreshAssetsParams {
     pub(crate) fn agent(&self) -> Result<ureq::Agent> {
-        network::build_request_agent(self.config.proxy.as_deref()).map_err(Into::into)
+        // TODO include timeout in Config
+        network::build_request_agent(self.config.proxy.as_deref(), None).map_err(Into::into)
     }
 
     pub(crate) const fn network(&self) -> ElementsNetwork {
