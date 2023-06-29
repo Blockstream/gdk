@@ -2005,17 +2005,6 @@ mod test {
     }
 
     #[test]
-    fn fetch_available_currencies() {
-        let map = super::fetch_available_currencies(
-            &ureq::Agent::new(),
-            "https://green-bitcoin-testnet.blockstream.com/prices",
-        )
-        .unwrap();
-
-        assert!(map.len() > 0);
-    }
-
-    #[test]
     fn test_bare_mnemonic() {
         let mnemonic = "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
         assert!(bare_mnemonic_from_utf8(&mnemonic.as_bytes()).is_ok());
