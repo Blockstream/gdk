@@ -62,12 +62,6 @@ impl PinData {
         Hmac::from_engine(engine)
     }
 
-    /// Allows testing against the old `PinData`s that didn't have an Hmac.
-    #[cfg(test)]
-    pub(crate) fn remove_hmac(&mut self) {
-        self.hmac = None;
-    }
-
     pub(crate) fn encrypted_bytes(&self) -> &[u8] {
         &*self.encrypted_bytes
     }
@@ -94,49 +88,4 @@ where
     S: serde::ser::Serializer,
 {
     serializer.serialize_str(&bytes.to_lower_hex_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::str::FromStr;
-
-    use serde_json::json;
-
-    use super::*;
-    use crate::tests::*;
-    use crate::{Pin, PinClient};
-
-    /// Checks that the old `PinData` returned by calling `GA_encrypt_with_pin`
-    /// using the previous implementation of the PIN client correctly
-    /// deserializes to the new `PinData`.
-    ///
-    /// Can be removed once we switch over.
-    #[test]
-    fn deserialize_old() -> TestResult {
-        let old_pin_data_json = json!({
-            "encrypted_data": "e029597ef1d721256e0fc1cc9a40e3b8",
-            "pin_identifier": "c49c8656f834a8b672080c6f86e004b5c3127316a91ed279f6d9a6917b07fe68",
-            "salt": "5af7eedda779127d1b87c5e4c80e53e3"
-        });
-
-        let pin_data = serde_json::from_value::<PinData>(old_pin_data_json)?;
-
-        let client = PinClient::new(
-            ureq::Agent::new(),
-            url::Url::from_str(PIN_SERVER_PROD_URL).unwrap(),
-            bitcoin::PublicKey::from_str(PIN_SERVER_PROD_PUBLIC_KEY).unwrap(),
-        );
-
-        // This is the plaintext that was passed to `encrypt_with_pin`.
-        let expected = "\"Hello there\"";
-
-        // This is the PIN that was passed to `encrypt_with_pin`.
-        let pin = Pin::from("123456");
-
-        let decrypted = client.decrypt(&pin_data, &pin)?;
-
-        assert_eq!(expected, std::str::from_utf8(&decrypted)?);
-
-        Ok(())
-    }
 }

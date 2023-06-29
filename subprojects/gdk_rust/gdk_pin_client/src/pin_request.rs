@@ -235,15 +235,19 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::str::FromStr;
+
     use serde_json::json;
 
     use super::*;
-    use crate::tests::{TestResult, PIN_SERVER_PUBLIC_KEY};
+
+    const PIN_SERVER_PROD_PUBLIC_KEY: &str =
+        "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547";
 
     /// Tests that a handshake deserializes correctly from a JSON string and
     /// that it verifies against its PIN server public key.
     #[test]
-    fn deserialize_handshake() -> TestResult {
+    fn deserialize_handshake() {
         // Handshake taken from a random response from the production PIN
         // server.
         let json = json!({
@@ -251,10 +255,9 @@ mod tests {
             "ske": "032541c31f808a28750daf386e52ad70f16db153fa9e8375a6178021a0c7a74c09",
         });
 
-        let handshake = serde_json::from_value::<HandShake>(json)?;
+        let handshake = serde_json::from_value::<HandShake>(json).unwrap();
+        let pubkey = bitcoin::PublicKey::from_str(PIN_SERVER_PROD_PUBLIC_KEY).unwrap();
 
-        assert!(handshake.verify(&*PIN_SERVER_PUBLIC_KEY).is_ok());
-
-        Ok(())
+        assert!(handshake.verify(&pubkey).is_ok());
     }
 }

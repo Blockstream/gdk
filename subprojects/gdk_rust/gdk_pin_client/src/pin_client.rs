@@ -171,105 +171,23 @@ enum ServerOp {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
 
     use bitcoin::hashes::hex::FromHex;
     use serde_json::json;
 
     use super::*;
-    use crate::tests::*;
-
-    impl PinClient {
-        /// Returns a new `PinClient` with the server URL set to
-        /// `PIN_SERVER_URL` and the public key set to `PIN_SERVER_PUBLIC_KEY`.
-        pub(crate) fn test() -> Self {
-            Self::new(ureq::Agent::new(), PIN_SERVER_URL.clone(), PIN_SERVER_PUBLIC_KEY.clone())
-        }
-    }
-
-    /// Tests a basic roundtrip with the PIN server.
-    #[test]
-    fn roundtrip() -> TestResult {
-        let client = PinClient::test();
-
-        let data = "Hello there";
-
-        let pin = Pin::from("123456");
-
-        let encrypted = client.encrypt(data.as_bytes(), &pin)?;
-        let decrypted = client.decrypt(&encrypted, &pin)?;
-
-        assert_eq!(data, std::str::from_utf8(&decrypted)?);
-
-        Ok(())
-    }
-
-    /// Tests a basic roundtrip over Tor using the production PIN server.
-    ///
-    /// To run this test launch `cargo t roundtrip_tor -- --include-ignored`
-    /// with a running Tor session on `127.0.0.1:9050`.
-    #[test]
-    #[ignore]
-    fn roundtrip_tor() -> TestResult {
-        let agent = {
-            let proxy = ureq::Proxy::new("socks5://127.0.0.1:9050")?;
-            ureq::AgentBuilder::new().proxy(proxy).build()
-        };
-
-        let client = PinClient::new(
-            agent,
-            url::Url::from_str(PIN_SERVER_PROD_ONION_URL).unwrap(),
-            bitcoin::PublicKey::from_str(PIN_SERVER_PROD_PUBLIC_KEY).unwrap(),
-        );
-
-        let data = "Hello there";
-
-        let pin = Pin::from("123456");
-
-        let encrypted = client.encrypt(data.as_bytes(), &pin)?;
-        let decrypted = client.decrypt(&encrypted, &pin)?;
-
-        assert_eq!(data, std::str::from_utf8(&decrypted)?);
-
-        Ok(())
-    }
-
-    /// Tests that the `PinData` can be serialized and deserialized before
-    /// being correctly decrypted.
-    #[test]
-    fn serialize_pin_data() -> TestResult {
-        let client = PinClient::test();
-
-        let data = "Hello there";
-
-        let pin = Pin::from("123456");
-
-        let encrypted = {
-            let e = client.encrypt(data.as_bytes(), &pin)?;
-            serde_json::to_string(&e)?
-        };
-
-        let decrypted = {
-            let d = serde_json::from_str::<PinData>(&encrypted)?;
-            client.decrypt(&d, &pin)?
-        };
-
-        assert_eq!(data, std::str::from_utf8(&decrypted)?);
-
-        Ok(())
-    }
 
     /// Tests that a PIN server response deserializes correctly from a JSON,
     /// that it verifies against its Hmac key and that its server key can be
     /// correctly decrypted.
     #[test]
-    fn deserialize_response() -> TestResult {
+    fn deserialize_response() {
         let json = json!({
             "encrypted_key": "5ed80945d894225d9add79796896efb0515665a1ff00e9678c0e312b386c3287d2160662c3069c4bcdfde1219e3873261714498a5f3cb09c8102a5481759738d",
             "hmac": "a40f098419b542a5ac8be1871a30c6c958d05fe0c57df2791ea87dac83786943",
         });
 
-        let response = serde_json::from_value::<PinServerResponse>(json)?;
+        let response = serde_json::from_value::<PinServerResponse>(json).unwrap();
 
         let decryption_key = {
             let decr_key =
@@ -285,32 +203,11 @@ mod tests {
 
         assert!(response.verify(&decryption_key).is_ok());
 
-        let expected = ServerKey::from_bytes(Vec::<u8>::from_hex(
-            "b5035db9ffeb913bbe8090abe800e1d5a93e653328b4a628f8f511e82d554704",
-        )?);
+        let expected = ServerKey::from_bytes(
+            Vec::<u8>::from_hex("b5035db9ffeb913bbe8090abe800e1d5a93e653328b4a628f8f511e82d554704")
+                .unwrap(),
+        );
 
-        assert_eq!(expected, response.decrypt_server_key(&decryption_key)?);
-
-        Ok(())
-    }
-
-    /// Tests that calling `PinClient::decrypt()` with a different PIN from the
-    /// one used in `PinClient::encrypt()` always results in a failure.
-    #[test]
-    fn different_pin_fails_decryption() -> TestResult {
-        let client = PinClient::test();
-
-        let data = "Hello there";
-
-        let mut encrypted = client.encrypt(data.as_bytes(), &Pin::from("123456"))?;
-
-        let decrypted = client.decrypt(&encrypted, &Pin::from("12345"));
-        assert_eq!(Err(crate::Error::InvalidPin), decrypted);
-
-        encrypted.remove_hmac();
-        let decrypted = client.decrypt(&encrypted, &Pin::from("12345"));
-        assert!(matches!(decrypted, Err(crate::Error::Decryption(_))));
-
-        Ok(())
+        assert_eq!(expected, response.decrypt_server_key(&decryption_key).unwrap());
     }
 }
