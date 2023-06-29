@@ -165,7 +165,7 @@ if [[ "$install" == "false" ]]; then
 fi
 
 if [[ "${BUILD}" == "--ndk" ]]; then
-    cmake --install $bld_root --prefix $install_prefix --component gdk-java
+    cmake --install $bld_root --prefix $install_prefix --component gdk-java --strip
     exit 0
 fi
 

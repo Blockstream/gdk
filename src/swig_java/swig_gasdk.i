@@ -10,14 +10,14 @@
 #define LOCALFUNC static
 #endif
 
-static const char* SDK_CLASS  = "com/blockstream/libgreenaddress/GDK";
+static const char* SDK_CLASS  = "com/blockstream/libgreenaddress/GDKJNI";
 static const char* TO_OBJECT_METHOD_NAME = "toJSONObject";
 static const char* TO_OBJECT_METHOD_ARGS = "(Ljava/lang/String;)Ljava/lang/Object;";
 static const char* TO_STRING_METHOD_NAME = "toJSONString";
 static const char* TO_STRING_METHOD_ARGS = "(Ljava/lang/Object;)Ljava/lang/String;";
 static const char* NOTIFY_METHOD_NAME = "callNotificationHandler";
 static const char* NOTIFY_METHOD_ARGS = "(Ljava/lang/Object;Ljava/lang/Object;)V";
-static const char* OBJ_CLASS  = "com/blockstream/libgreenaddress/GDK$Obj";
+static const char* OBJ_CLASS  = "com/blockstream/libgreenaddress/GDKJNI$Obj";
 
 static JavaVM* g_jvm;
 

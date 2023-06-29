@@ -49,23 +49,16 @@ target_include_directories(greenaddress-java
 target_link_options(greenaddress-java PRIVATE ${GDK_LINK_OPTIONS})
 
 swig_link_libraries(greenaddress-java greenaddress-static)
-set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
-if(APPLE)
-    list(APPEND _gdkLinkOptions "-Wl,-force_load" "SHELL:${_wallycoreLib}")
-else()
-    list(APPEND _gdkLinkOptions "LINKER:SHELL:--whole-archive" "SHELL:${_wallycoreLib}" "LINKER:SHELL:--no-whole-archive")
-endif()
+get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
+set(_gdkLinkOptions ${GDK_LINK_OPTIONS} "LINKER:SHELL:--whole-archive" "SHELL:${_wallycoreLib}" "LINKER:SHELL:--no-whole-archive")
 target_link_options(greenaddress-java PRIVATE "${_gdkLinkOptions}")
 
 add_custom_command(TARGET greenaddress-java
     POST_BUILD
-    COMMAND rm -f GDK.java
-    COMMAND cp GDKJNI.java GDK.java
-    COMMAND ${SED} -i 's/GDKJNI/GDK/g' GDK.java
-    COMMAND ${SED} -i 's/^}$$//g' GDK.java
-    COMMAND grep "public final static" GDKConstants.java >> GDK.java
-    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/jni_extra.java_in >> GDK.java
-    COMMAND echo "}" >> GDK.java
+    COMMAND ${SED} -i 's/^}$$//g' GDKJNI.java
+    COMMAND grep "public final static" GDKConstants.java >> GDKJNI.java
+    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/jni_extra.java_in >> GDKJNI.java
+    COMMAND echo "}" >> GDKJNI.java
 )
 
 get_library_install_dir(_libInstallDir)
@@ -83,11 +76,12 @@ if(OBJCOPY)
     install(FILES ${CMAKE_BINARY_DIR}/libgreenaddress.syms
         DESTINATION ${_libInstallDir}
         COMPONENT gdk-java
+        EXCLUDE_FROM_ALL
     )
 endif()
 
 install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/GDK.java
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/GDKJNI.java
     DESTINATION ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libgreenaddress
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL
