@@ -957,6 +957,23 @@ impl ElectrumSession {
         Ok(next_account)
     }
 
+    pub fn get_last_empty_subaccount(&self, opt: GetLastEmptyAccountOpt) -> Result<u32, Error> {
+        let (last_account, next_account) = get_last_next_account_nums(
+            self.accounts.read()?.keys().copied().collect(),
+            opt.script_type,
+        );
+        match last_account {
+            Some(last_account) => {
+                if self.get_account(last_account)?.info()?.bip44_discovered {
+                    Ok(next_account)
+                } else {
+                    Ok(last_account)
+                }
+            }
+            None => Ok(next_account),
+        }
+    }
+
     pub fn get_block_height(&self) -> Result<u32, Error> {
         Ok(self.store()?.read()?.cache.tip_height())
     }

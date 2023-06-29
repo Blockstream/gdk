@@ -244,6 +244,12 @@ pub struct GetNextAccountOpt {
     pub script_type: ScriptType,
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct GetLastEmptyAccountOpt {
+    #[serde(rename = "type")]
+    pub script_type: ScriptType,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct GetAvailableCurrenciesParams {
     /// The url to use to fetch the available currency pairs.

@@ -103,6 +103,10 @@ impl Session for ElectrumSession {
                 let opt: GetNextAccountOpt = serde_json::from_value(input)?;
                 self.get_next_subaccount(opt).to_json()
             }
+            "get_last_empty_subaccount" => {
+                let opt: GetLastEmptyAccountOpt = serde_json::from_value(input)?;
+                self.get_last_empty_subaccount(opt).to_json()
+            }
             "rename_subaccount" => {
                 let opt: RenameAccountOpt = serde_json::from_value(input)?;
                 self.rename_subaccount(opt).to_json()

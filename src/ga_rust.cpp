@@ -163,6 +163,11 @@ namespace sdk {
         return rust_call("get_next_subaccount", nlohmann::json({ { "type", type } }), m_session);
     }
 
+    uint32_t ga_rust::get_last_empty_subaccount(const std::string& type)
+    {
+        return rust_call("get_last_empty_subaccount", nlohmann::json({ { "type", type } }), m_session);
+    }
+
     nlohmann::json ga_rust::create_subaccount(
         const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
     {

@@ -299,6 +299,12 @@ namespace sdk {
         return false;
     }
 
+    uint32_t session_impl::get_last_empty_subaccount(const std::string& /*type*/)
+    {
+        // Overriden for ga_rust
+        throw std::runtime_error("not implemented");
+    }
+
     bool session_impl::encache_blinding_data(const std::string& /*pubkey_hex*/, const std::string& /*script_hex*/,
         const std::string& /*nonce_hex*/, const std::string& /*blinding_pubkey_hex*/)
     {
