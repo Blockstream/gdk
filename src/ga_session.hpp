@@ -18,6 +18,7 @@ namespace ga {
 namespace sdk {
     struct cache;
     class ga_user_pubkeys;
+    class io_runner;
     class wamp_transport;
 
     class ga_session final : public session_impl {
@@ -25,7 +26,7 @@ namespace sdk {
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(network_parameters&& net_params);
-        ~ga_session();
+        ~ga_session() override;
 
         void connect();
         void reconnect();

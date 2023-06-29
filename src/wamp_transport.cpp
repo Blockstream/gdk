@@ -1,4 +1,5 @@
 #include <array>
+#include <boost/asio/io_context.hpp>
 #include <cstdio>
 #include <fstream>
 #include <map>
@@ -16,6 +17,7 @@
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "http_client.hpp"
+#include "io_runner.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
@@ -310,11 +312,11 @@ namespace sdk {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
-    wamp_transport::wamp_transport(
-        const network_parameters& net_params, wamp_transport::notify_fn_t fn, std::string server_prefix)
+    wamp_transport::wamp_transport(const network_parameters& net_params, io_runner& runner,
+        boost::asio::io_context::strand& strand, wamp_transport::notify_fn_t fn, std::string server_prefix)
         : m_net_params(net_params)
-        , m_io()
-        , m_work_guard(asio::make_work_guard(m_io))
+        , m_io(runner)
+        , m_strand(strand)
         , m_server_prefix(std::move(server_prefix))
         , m_server(m_net_params.get_connection_string(m_server_prefix))
         , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url(m_server_prefix)).get_host())
@@ -330,13 +332,12 @@ namespace sdk {
 
         m_wamp_call_options.set_timeout(std::chrono::seconds(WAMP_CALL_TIMEOUT_SECS));
 
-        m_run_thread = std::thread([this] { m_io.run(); });
         m_reconnect_thread = std::thread([this] { reconnect_handler(); });
 
         if (!m_net_params.is_tls_connection(m_server_prefix)) {
             m_client = std::make_unique<client>();
             m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            m_client->init_asio(&m_io);
+            m_client->init_asio(&m_io.get_io_context());
             return;
         }
 
@@ -346,15 +347,13 @@ namespace sdk {
             return tls_init(m_wamp_host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
                 m_net_params.cert_expiry_threshold());
         });
-        m_client_tls->init_asio(&m_io);
+        m_client_tls->init_asio(&m_io.get_io_context());
     }
 
     wamp_transport::~wamp_transport()
     {
         no_std_exception_escape([this] { change_state_to(state_t::exited, std::string(), false); }, "wamp dtor(1)");
         no_std_exception_escape([this] { m_reconnect_thread.join(); }, "wamp dtor(2)");
-        no_std_exception_escape([this] { m_work_guard.reset(); }, "wamp dtor(2)");
-        no_std_exception_escape([this] { m_run_thread.join(); }, "wamp dtor(3)");
     }
 
     void wamp_transport::connect(const std::string& proxy) { change_state_to(state_t::connected, proxy, true); }
@@ -492,7 +491,7 @@ namespace sdk {
     {
         const bool is_tls = m_net_params.is_tls_connection(m_server_prefix);
         const bool is_debug = gdk_config()["log_level"] == "debug";
-        const auto& executor = m_io.get_executor();
+        const auto& executor = m_io.get_io_context().get_executor();
 
         // The last failure number that we handled
         auto last_handled_failure_count = m_failure_count.load();
@@ -580,7 +579,7 @@ namespace sdk {
                 } else {
                     t = std::make_shared<transport>(*m_client, m_server, proxy, is_debug);
                 }
-                s = std::make_shared<autobahn::wamp_session>(m_io, is_debug);
+                s = std::make_shared<autobahn::wamp_session>(m_io.get_io_context(), is_debug);
                 t->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(s));
                 bool failed = false;
                 if (no_std_exception_escape(

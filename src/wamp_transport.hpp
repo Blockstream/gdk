@@ -2,6 +2,7 @@
 #define GDK_WAMP_TRANSPORT_HPP
 #pragma once
 
+#include <boost/asio/io_context.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
@@ -16,6 +17,7 @@ namespace sdk {
     class exponential_backoff;
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
+    class io_runner;
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);
@@ -44,7 +46,8 @@ namespace sdk {
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
-        wamp_transport(const network_parameters& net_params, notify_fn_t fn, std::string server_prefix = {});
+        wamp_transport(const network_parameters& net_params, io_runner& runner, boost::asio::io_context::strand& strand,
+            notify_fn_t fn, std::string server_prefix = {});
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
@@ -90,7 +93,7 @@ namespace sdk {
         }
 
         // Post a function to run on the asio executor thread
-        template <typename FN> void post(FN&& fn) { boost::asio::post(m_io.get_executor(), fn); }
+        template <typename FN> void post(FN&& fn) { boost::asio::post(m_strand, fn); }
 
     private:
         using session_ptr = std::shared_ptr<autobahn::wamp_session>;
@@ -122,9 +125,8 @@ namespace sdk {
 
         // These members are immutable after construction
         const network_parameters& m_net_params;
-        boost::asio::io_context m_io;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-        std::thread m_run_thread; // Runs the asio context
+        io_runner& m_io;
+        boost::asio::io_context::strand& m_strand;
         std::thread m_reconnect_thread; // Runs the reconnection logic
         const std::string m_server_prefix;
         const std::string m_server;

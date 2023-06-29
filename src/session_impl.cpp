@@ -6,11 +6,13 @@
 #include "ga_tor.hpp"
 #include "ga_tx.hpp"
 #include "http_client.hpp"
+#include "io_runner.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
+#include <boost/asio/io_context.hpp>
 
 namespace ga {
 namespace sdk {
@@ -26,17 +28,6 @@ namespace sdk {
 
     } // namespace
 
-    struct io_context_and_guard {
-        io_context_and_guard()
-            : m_io()
-            , m_work_guard(boost::asio::make_work_guard(m_io))
-        {
-        }
-
-        boost::asio::io_context m_io;
-        boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
-    };
-
     std::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
     {
         auto defaults = network_parameters::get(net_params.value("name", std::string()));
@@ -50,7 +41,8 @@ namespace sdk {
 
     session_impl::session_impl(network_parameters&& net_params)
         : m_net_params(net_params)
-        , m_io(std::make_unique<io_context_and_guard>())
+        , m_io(std::make_unique<io_runner>())
+        , m_strand(std::make_unique<boost::asio::io_context::strand>(m_io->get_io_context()))
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
@@ -60,13 +52,12 @@ namespace sdk {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();
         }
-        m_run_thread = std::thread([this] { m_io->m_io.run(); });
     }
 
     session_impl::~session_impl()
     {
-        no_std_exception_escape([this] { m_io->m_work_guard.reset(); }, "session_impl dtor(1)");
-        no_std_exception_escape([this] { m_run_thread.join(); }, "session_impl dtor(2)");
+        no_std_exception_escape([this] { m_io.reset(); }, "session_impl m_io");
+        no_std_exception_escape([this] { m_strand.reset(); }, "session_impl m_strand");
     }
 
     void session_impl::set_notification_handler(GA_notification_handler handler, void* context)
@@ -129,7 +120,7 @@ namespace sdk {
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
-                client = make_http_client(m_io->m_io, ssl_ctx.get());
+                client = make_http_client(m_io->get_io_context(), ssl_ctx.get());
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
                 const auto verb = boost::beast::http::string_to_verb(params["method"]);
