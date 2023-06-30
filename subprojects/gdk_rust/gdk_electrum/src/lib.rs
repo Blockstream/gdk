@@ -896,6 +896,15 @@ impl ElectrumSession {
         let master_blinding = store.read()?.cache.master_blinding.clone();
         let network = self.network.clone();
         let mut accounts = self.accounts.write()?;
+
+        // Allow discovery of already created subaccounts
+        if opt.discovered {
+            if let Entry::Occupied(entry) = accounts.entry(opt.subaccount) {
+                store.write()?.account_cache_mut(opt.subaccount)?.bip44_discovered = opt.discovered;
+                return entry.get().info();
+            }
+        }
+
         if !opt.allow_gaps {
             // Check that the given subaccount number is the next available one for its script type.
             let (script_type, _) = get_account_script_purpose(opt.subaccount)?;
