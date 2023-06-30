@@ -8,6 +8,8 @@
 ### Changed
 
 ### Fixed
+- Singlesig: GA_get_subaccount(s): set "bip44_discovered" correctly for
+  subaccounts created but not discovered (including subaccount 0).
 
 ### Removed
 

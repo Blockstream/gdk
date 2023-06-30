@@ -1091,7 +1091,7 @@ namespace sdk {
         }
 
         // Ask for the xpub for the next subaccount of the current type
-        m_subaccount = m_session->get_next_subaccount(m_subaccount_type);
+        m_subaccount = m_session->get_last_empty_subaccount(m_subaccount_type);
         signal_hw_request(hw_request::get_xpubs);
         auto& paths = m_twofactor_data["paths"];
         paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
