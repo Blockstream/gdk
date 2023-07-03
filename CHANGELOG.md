@@ -3,17 +3,14 @@
 ## Release 0.0.66
 
 ### Added
-- Singlesig: GA_connect: add new option "gap_limit".
 
 ### Changed
 
 ### Fixed
-- Singlesig: GA_get_subaccount(s): set "bip44_discovered" correctly for
-  subaccounts created but not discovered (including subaccount 0).
 
 ### Removed
 
-## Release 0.0.65 - 2023-06-23
+## Release 0.0.65 - 2023-07-03
 
 ### Added
 - Documentation: The JSON examples for many calls are now automatically
@@ -24,7 +21,8 @@
 - Documentation: Improve the GA_create_transaction documentation.
 - GA_validate: Now allows validating addresses for other networks.
 - Singlesig: GA_get_receive_address: add new flag "ignore_gap_limit" to
-    return addresses beyond the GAP_LIMIT.
+  return addresses beyond the GAP_LIMIT.
+- Singlesig: GA_connect: add new option "gap_limit".
 
 ### Changed
 - Liquid: The hardware wallet capability "supports_external_blinding" now
@@ -79,21 +77,25 @@
     This element now contains the complete set of inputs, notably the inputs
     inherited from the previous transaction when bumping the fee via RBF.
 - GA_get_unspent_outputs_for_private_key: The interface for this function has
-    changed to use an auth handler and take its arguments as JSON.
-    Additionally, the returned results are now returned in the same format as
-    GA_get_unspent_outputs. Please see the function documentation for details.
+  changed to use an auth handler and take its arguments as JSON.
+  Additionally, the returned results are now returned in the same format as
+  GA_get_unspent_outputs. Please see the function documentation for details.
 - Singlesig: GA_get_receive_address: now returns addressess up to the GAP_LIMIT.
-    When the GAP_LIMIT is reached, the last unused address will be returned.
+  When the GAP_LIMIT is reached, the last unused address will be returned.
+- Java bindings: GDK class renamed GDKJNI, file name changed accordingly,
+  from GDK.java to GDKJNI.java
 
 ### Fixed
-  - GA_create_transaction: The top-level "satoshi" summary now correctly gives
-    the net effect of the transaction on the wallet. For Liquid, the summary no
-    longer includes the fee in order to match the Bitcoin behaviour. Note also
-    that redeposits correctly show the net effect as zero.
-  - GA_create_transaction: The "satoshi" element of "change_address" change
-    outputs now contains the correct amount of change for the asset.
-  - GA_sign_transaction: The HWWI is no longer invoked for transactions which
-    have no inputs for the user to sign.
+- GA_create_transaction: The top-level "satoshi" summary now correctly gives
+  the net effect of the transaction on the wallet. For Liquid, the summary no
+  longer includes the fee in order to match the Bitcoin behaviour. Note also
+  that redeposits correctly show the net effect as zero.
+- GA_create_transaction: The "satoshi" element of "change_address" change
+  outputs now contains the correct amount of change for the asset.
+- GA_sign_transaction: The HWWI is no longer invoked for transactions which
+  have no inputs for the user to sign.
+- Singlesig: GA_get_subaccount(s): set "bip44_discovered" correctly for
+  subaccounts created but not discovered (including subaccount 0).
 
 ### Removed
 
