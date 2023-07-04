@@ -1041,6 +1041,7 @@ impl ElectrumSession {
                     pointer: pointer,
                     subtype: 0,
                     is_internal: is_internal,
+                    address_type: account.script_type().to_string(),
                 });
             }
         }

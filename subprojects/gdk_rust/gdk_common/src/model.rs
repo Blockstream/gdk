@@ -1129,6 +1129,8 @@ pub struct ScriptPubKeyData {
     pub pointer: u32,
     pub subtype: u32, // Always 0
     pub is_internal: bool,
+    #[serde(skip_serializing)]
+    pub address_type: String,
 }
 
 impl From<&BETransactionEntry> for TransactionDetails {
