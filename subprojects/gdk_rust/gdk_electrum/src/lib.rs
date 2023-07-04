@@ -1008,7 +1008,21 @@ impl ElectrumSession {
     }
 
     pub fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
-        let txs = self.get_account(opt.subaccount)?.list_tx(opt)?;
+        let mut txs = self.get_account(opt.subaccount)?.list_tx(opt)?;
+        for tx in txs.iter_mut() {
+            for output in tx.outputs.iter_mut() {
+                if !output.is_relevant {
+                    // Update the output with the information necessary for bumping
+                    if let Ok(data) = self.get_scriptpubkey_data(&output.script_pubkey) {
+                        // This is an output belonging to the wallet, but not to opt.subaccount
+                        output.subaccount = data.subaccount;
+                        output.pointer = data.pointer;
+                        output.is_internal = data.is_internal;
+                        output.address_type = data.address_type;
+                    }
+                }
+            }
+        }
         Ok(TxsResult(txs))
     }
 

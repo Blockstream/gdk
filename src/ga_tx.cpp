@@ -174,7 +174,7 @@ namespace sdk {
 
             // RBF or CPFP. The previous transaction must be in the format
             // returned from the get_transactions call
-            auto& prev_tx = result["previous_transaction"];
+            const auto& prev_tx = result["previous_transaction"];
             bool is_rbf = false, is_cpfp = false;
             if (json_get_value(prev_tx, "can_rbf", false)) {
                 is_rbf = true;
@@ -185,23 +185,6 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT_MSG(false, "Transaction can not be fee-bumped");
             }
 
-            if (is_electrum) {
-                // FIXME: Singlesig is missing wallet metadata for outputs
-                // that belong to the wallet but are is_relevant: false
-                // because the tx list was fetched for another subaccount.
-                // Work around this by looking up non-relevant outputs
-                // and providing this data if they belong to the wallet.
-                for (auto& output : prev_tx.at("outputs")) {
-                    auto data = session.get_scriptpubkey_data(h2b(output.at("script")));
-                    if (!data.empty() && !data.is_null()) {
-                        const uint32_t subaccount = data.at("subaccount");
-                        output["subaccount"] = subaccount;
-                        output["address_type"] = session.get_subaccount_type(subaccount);
-                        output["pointer"] = std::move(data.at("pointer"));
-                        output["subtype"] = std::move(data.at("subtype"));
-                    }
-                }
-            }
             // TODO: Remove this check once cross subaccount bumps/full RBF is tested.
             // You cannot bump a tx from another subaccount, this is a
             // programming error so assert it rather than returning in "error"
