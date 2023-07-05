@@ -166,7 +166,7 @@ public class Session {
     private typealias NotificationHandler = @convention(c) (UnsafeMutableRawPointer?, OpaquePointer?) -> Void
 
     private let notificationHandler : NotificationHandler = { (context: UnsafeMutableRawPointer?, details: OpaquePointer?) -> Void in
-        queue.async(flags: .barrier) {
+        queue.sync() {
             if let context = context {
                 let string = String(cString: context.assumingMemoryBound(to: CChar.self))
                 if let nsString = NSString(utf8String: string),
@@ -184,7 +184,7 @@ public class Session {
     private let uuid: String
 
     func setNotificationHandler(notificationCompletionHandler: NotificationCompletionHandler?) {
-        queue.sync() {
+        queue.sync(flags: .barrier) {
             guard let notificationCompletionHandler = notificationCompletionHandler else {
                 let nsString = NSString(string: self.uuid)
                 if notificationContexts.keys.contains(nsString) {
