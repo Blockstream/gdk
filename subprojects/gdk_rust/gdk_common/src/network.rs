@@ -84,6 +84,13 @@ impl NetworkId {
             _ => None,
         }
     }
+
+    pub fn default_min_fee_rate(&self) -> u64 {
+        match self {
+            NetworkId::Elements(_) => 100,
+            NetworkId::Bitcoin(_) => 1000,
+        }
+    }
 }
 
 pub const LIQUID_TESTNET: elements::AddressParams = elements::AddressParams {

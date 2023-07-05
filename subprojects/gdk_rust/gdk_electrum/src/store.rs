@@ -441,20 +441,13 @@ impl StoreMeta {
         account_nums
     }
 
-    fn default_min_fee_rate(&self) -> u64 {
-        match self.id {
-            NetworkId::Bitcoin(_) => 1000,
-            NetworkId::Elements(_) => 100,
-        }
-    }
-
     pub fn min_fee_rate(&self) -> u64 {
-        self.cache.fee_estimates.get(0).map_or_else(|| self.default_min_fee_rate(), |f| f.0)
+        self.cache.fee_estimates.get(0).map_or_else(|| self.id.default_min_fee_rate(), |f| f.0)
     }
 
     pub fn fee_estimates(&self) -> Vec<FeeEstimate> {
         if self.cache.fee_estimates.is_empty() {
-            let min_fee = self.default_min_fee_rate();
+            let min_fee = self.id.default_min_fee_rate();
             vec![FeeEstimate(min_fee); 25]
         } else {
             self.cache.fee_estimates.clone()

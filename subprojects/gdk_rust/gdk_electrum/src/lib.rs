@@ -1167,10 +1167,7 @@ impl ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     pub fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        let min_fee = match self.network.id() {
-            NetworkId::Bitcoin(_) => 1000,
-            NetworkId::Elements(_) => 100,
-        };
+        let min_fee = self.network.id().default_min_fee_rate();
         let fee_estimates =
             try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
                 .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);

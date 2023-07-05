@@ -1167,10 +1167,7 @@ pub fn create_tx(
 
     let network = &account.network;
 
-    let default_min_fee_rate = match network.id() {
-        NetworkId::Bitcoin(_) => 1000,
-        NetworkId::Elements(_) => 100,
-    };
+    let default_min_fee_rate = network.id().default_min_fee_rate();
     let fee_rate_sat_kb = request.fee_rate.get_or_insert(default_min_fee_rate);
     if *fee_rate_sat_kb < default_min_fee_rate {
         return Err(Error::FeeRateBelowMinimum(default_min_fee_rate));
