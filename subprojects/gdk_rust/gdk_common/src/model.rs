@@ -833,10 +833,13 @@ impl Settings {
         if let Some(altimeout) = json.get("altimeout").and_then(|v| v.as_u64()) {
             self.altimeout = altimeout as u32;
         }
-        if let Some(pricing) =
-            json.get("pricing").and_then(|v| serde_json::from_value(v.clone()).ok())
-        {
-            self.pricing = pricing;
+        if let Some(pricing) = json.get("pricing") {
+            if let Some(currency) = pricing.get("currency").and_then(|v| v.as_str()) {
+                self.pricing.currency = currency.to_string();
+            }
+            if let Some(exchange) = pricing.get("exchange").and_then(|v| v.as_str()) {
+                self.pricing.exchange = exchange.to_string();
+            }
         }
         if let Some(sound) = json.get("sound").and_then(|v| v.as_bool()) {
             self.sound = sound;
