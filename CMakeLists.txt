@@ -12,7 +12,7 @@ cmake_policy(SET CMP0074 NEW)
 
 ### project options
 option(ENABLE_TESTS "enable building tests" FALSE)
-option(BUILD_SHARED_LIBS "build gdk as shared library" FALSE)
+option(BUILD_SHARED_LIBS "build gdk as shared library" TRUE)
 option(DEV_MODE "dev mode enables a faster developing-testing loop when working with the python-wheel" FALSE)
 option(ENABLE_SWIFT "enable build of swift bindings" FALSE)
 OPTION(ENABLE_RUSTCPP "enable dependency of C++ over Rust" TRUE)
