@@ -1,6 +1,7 @@
 use std::{
     collections::{HashMap, HashSet},
-    sync::{atomic::AtomicBool, Arc, RwLock},
+    sync::{atomic::AtomicBool, Arc, Mutex, RwLock},
+    time::SystemTime,
 };
 
 use gdk_common::{
@@ -50,6 +51,7 @@ impl Session for ElectrumSession {
             available_currencies: None,
             first_sync: Arc::new(AtomicBool::new(true)),
             gap_limit,
+            fee_fetched_at: Arc::new(Mutex::new(SystemTime::UNIX_EPOCH)),
         })
     }
 

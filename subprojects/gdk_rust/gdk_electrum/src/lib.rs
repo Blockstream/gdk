@@ -50,7 +50,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use std::{iter, thread};
 
 use crate::headers::bitcoin::HeadersChain;
@@ -67,11 +67,12 @@ use gdk_common::ureq;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::Hasher;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 pub const DEFAULT_GAP_LIMIT: u32 = 20;
+const FEE_ESTIMATE_INTERVAL: Duration = Duration::from_secs(120);
 
 type ScriptStatuses = HashMap<bitcoin::ScriptBuf, ScriptStatus>;
 
@@ -149,6 +150,9 @@ pub struct ElectrumSession {
 
     /// Number of consecutive unused scripts/addresses to monitor.
     gap_limit: u32,
+
+    /// Last time fees were asked to the server
+    fee_fetched_at: Arc<Mutex<SystemTime>>,
 }
 
 #[derive(Clone)]
@@ -530,10 +534,13 @@ impl ElectrumSession {
         if let Ok(fee_client) = self.url.build_client(self.proxy.as_deref(), None) {
             info!("building built end");
             let fee_store = self.store()?;
+            let fee_fetched_at = self.fee_fetched_at.clone();
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client) {
                     Ok(fee_estimates) => {
-                        fee_store.write().unwrap().cache.fee_estimates = fee_estimates
+                        fee_store.write().unwrap().cache.fee_estimates = fee_estimates;
+                        let mut fee_fetched_at = fee_fetched_at.lock().unwrap();
+                        *fee_fetched_at = SystemTime::now();
                     }
                     Err(e) => {
                         warn!("can't update fee estimates {:?}", e)
@@ -1167,12 +1174,19 @@ impl ElectrumSession {
     /// network, while the remaining elements are the current estimates to use
     /// for a transaction to confirm from 1 to 24 blocks.
     pub fn get_fee_estimates(&mut self) -> Result<Vec<FeeEstimate>, Error> {
-        let min_fee = self.network.id().default_min_fee_rate();
-        let fee_estimates =
-            try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
-                .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
-        self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
-        Ok(fee_estimates)
+        let mut fee_fetched_at = self.fee_fetched_at.lock()?;
+        if *fee_fetched_at + FEE_ESTIMATE_INTERVAL > SystemTime::now() {
+            // Skip network call
+            Ok(self.store()?.read()?.fee_estimates())
+        } else {
+            let min_fee = self.network.id().default_min_fee_rate();
+            let fee_estimates =
+                try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
+                    .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
+            self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
+            *fee_fetched_at = SystemTime::now();
+            Ok(fee_estimates)
+        }
         //TODO better implement default
     }
 
