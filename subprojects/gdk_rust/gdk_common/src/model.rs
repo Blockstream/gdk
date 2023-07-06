@@ -1,5 +1,6 @@
 use crate::be::{BEOutPoint, BEScript, BESigHashType, BETransaction, BETransactionEntry, BETxid};
 use crate::descriptor::parse_single_sig_descriptor;
+use crate::exchange_rates::Currency;
 use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
 use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
 use crate::NetworkId;
@@ -21,6 +22,7 @@ use bitcoin::util::bip32::{
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
+use std::str::FromStr;
 
 #[derive(Debug, Deserialize)]
 pub struct InitParam {
@@ -822,7 +824,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn update(&mut self, json: &serde_json::Value) {
+    pub fn update(&mut self, json: &serde_json::Value) -> Result<(), Error> {
         if let Some(unit) = json.get("unit").and_then(|v| v.as_str()) {
             self.unit = unit.to_string();
         }
@@ -835,6 +837,7 @@ impl Settings {
         }
         if let Some(pricing) = json.get("pricing") {
             if let Some(currency) = pricing.get("currency").and_then(|v| v.as_str()) {
+                let currency = Currency::from_str(currency)?;
                 self.pricing.currency = currency.to_string();
             }
             if let Some(exchange) = pricing.get("exchange").and_then(|v| v.as_str()) {
@@ -844,6 +847,7 @@ impl Settings {
         if let Some(sound) = json.get("sound").and_then(|v| v.as_bool()) {
             self.sound = sound;
         }
+        Ok(())
     }
 }
 
