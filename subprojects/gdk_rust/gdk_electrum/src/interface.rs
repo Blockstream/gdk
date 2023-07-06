@@ -79,22 +79,22 @@ impl FromStr for ElectrumUrl {
 
 #[cfg(test)]
 mod test {
+    use bitcoin_private::hex::exts::DisplayHex;
+    use gdk_common::bitcoin::bip32::{ExtendedPrivKey, ExtendedPubKey};
     use gdk_common::bitcoin::consensus::deserialize;
-    use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
-    use gdk_common::bitcoin::hashes::Hash;
+    use gdk_common::bitcoin::hashes::hex::FromHex;
+    use gdk_common::bitcoin::key::PrivateKey;
+    use gdk_common::bitcoin::key::PublicKey;
     use gdk_common::bitcoin::secp256k1::{Message, SecretKey};
-    use gdk_common::bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
-    use gdk_common::bitcoin::util::key::PrivateKey;
-    use gdk_common::bitcoin::util::key::PublicKey;
-    use gdk_common::bitcoin::util::sighash::SighashCache;
+    use gdk_common::bitcoin::sighash::{EcdsaSighashType, SighashCache};
+    use gdk_common::bitcoin::ScriptBuf;
     use gdk_common::bitcoin::{Address, Network, Transaction};
-    use gdk_common::bitcoin::{EcdsaSighashType, Script};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
     use super::*;
 
-    fn p2pkh_hex(pk: &str) -> (PublicKey, Script) {
+    fn p2pkh_hex(pk: &str) -> (PublicKey, ScriptBuf) {
         let pk = Vec::<u8>::from_hex(pk).unwrap();
         let pk = PublicKey::from_slice(pk.as_slice()).unwrap();
         let witness_script = Address::p2pkh(&pk, Network::Bitcoin).script_pubkey();
@@ -121,7 +121,7 @@ mod test {
         let (public_key, witness_script) =
             p2pkh_hex("03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873");
         assert_eq!(
-            witness_script.to_bytes().to_hex(),
+            witness_script.to_bytes().to_lower_hex_string(),
             "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
         );
         let value = 1_000_000_000;
@@ -130,7 +130,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            &hash.into_inner().to_hex(),
+            &hash.to_string(),
             "64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6"
         );
 
@@ -144,7 +144,7 @@ mod test {
         let script_sig = p2shwpkh_script_sig(&public_key);
 
         assert_eq!(
-            script_sig.as_bytes().to_hex(),
+            script_sig.as_bytes().to_lower_hex_string(),
             "16001479091972186c449eb1ded22b78e40d009bdf0089"
         );
     }
@@ -156,7 +156,7 @@ mod test {
         let private_key = xprv.to_priv();
         let public_key = xpub.to_pub();
         let public_key_bytes = public_key.to_bytes();
-        let public_key_str = public_key_bytes.to_hex();
+        let public_key_str = public_key_bytes.to_lower_hex_string();
 
         let address = Address::p2shwpkh(&public_key, Network::Testnet).unwrap();
         assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
@@ -172,7 +172,7 @@ mod test {
 
         let (_, witness_script) = p2pkh_hex(&public_key_str);
         assert_eq!(
-            witness_script.to_bytes().to_hex(),
+            witness_script.as_bytes().to_lower_hex_string(),
             "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
         );
         let value = 10_202;
@@ -181,7 +181,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            hash.into_inner().to_hex(),
+            hash.to_string(),
             "58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995",
         );
 

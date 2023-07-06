@@ -6,10 +6,11 @@ use gdk_common::bitcoin::blockdata::constants::{
     genesis_block, DIFFCHANGE_INTERVAL, TARGET_BLOCK_SPACING,
 };
 use gdk_common::bitcoin::consensus::{deserialize, serialize};
-use gdk_common::bitcoin::hashes::hex::FromHex;
+use gdk_common::bitcoin::hash_types::TxMerkleNode;
+use gdk_common::bitcoin::{block, CompactTarget, Network};
 use gdk_common::bitcoin::{BlockHash, Txid};
-use gdk_common::bitcoin::{BlockHeader, Network};
 use gdk_common::electrum_client;
+use gdk_common::elements::hashes::Hash;
 use gdk_common::log::{info, warn};
 use gdk_common::once_cell::sync::Lazy;
 use std::collections::HashMap;
@@ -17,6 +18,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Mutex;
 
 pub static HEADERS_FILE_MUTEX: Lazy<HashMap<Network, Mutex<()>>> = Lazy::new(|| {
@@ -32,7 +34,7 @@ pub static HEADERS_FILE_MUTEX: Lazy<HashMap<Network, Mutex<()>>> = Lazy::new(|| 
 pub struct HeadersChain {
     path: PathBuf,
     height: u32,
-    last: BlockHeader,
+    last: block::Header,
     checkpoints: HashMap<u32, BlockHash>,
     pub network: Network,
 }
@@ -77,7 +79,7 @@ impl HeadersChain {
             let mut buf = [0u8; 80];
             file.read_exact(&mut buf)?;
             let height = (file_size as u32 / 80) - 1;
-            let last: BlockHeader = deserialize(&buf)?;
+            let last: block::Header = deserialize(&buf)?;
 
             Ok(HeadersChain {
                 path: filepath,
@@ -110,21 +112,18 @@ impl HeadersChain {
             // loop at most DIFFCHANGE_INTERVAL times
             let bits = loop {
                 let header = self.get(height)?;
-                if height == 0
-                    || height % DIFFCHANGE_INTERVAL == 0
-                    || header.difficulty(self.network) != 1
-                {
+                if height == 0 || height % DIFFCHANGE_INTERVAL == 0 || header.difficulty() != 1 {
                     break header.bits;
                 }
                 height -= 1;
             };
-            Ok(bits)
+            Ok(bits.to_consensus())
         } else {
-            Ok(self.tip().bits)
+            Ok(self.tip().bits.to_consensus())
         }
     }
 
-    pub fn get(&self, height: u32) -> Result<BlockHeader, Error> {
+    pub fn get(&self, height: u32) -> Result<block::Header, Error> {
         let mut file = File::open(&self.path)?;
         let wanted_seek = height as u64 * 80;
         let effective_seek = file.seek(SeekFrom::Start(wanted_seek))?;
@@ -134,7 +133,7 @@ impl HeadersChain {
         }
         let mut buf = [0u8; 80];
         file.read_exact(&mut buf)?;
-        let header: BlockHeader = deserialize(&buf)?;
+        let header: block::Header = deserialize(&buf)?;
         Ok(header)
     }
 
@@ -150,19 +149,19 @@ impl HeadersChain {
         Ok(())
     }
 
-    pub fn tip(&self) -> BlockHeader {
+    pub fn tip(&self) -> block::Header {
         self.last
     }
 
     /// write new headers to the file if checks are passed
-    pub fn push(&mut self, new_headers: Vec<BlockHeader>) -> Result<(), Error> {
+    pub fn push(&mut self, new_headers: Vec<block::Header>) -> Result<(), Error> {
         let mut curr_bits = self.curr_bits()?;
         let mut serialized = Vec::with_capacity(new_headers.len() * 80);
         let mut cache = HashMap::new();
         for new_header in new_headers {
             let new_height = self.height + 1;
             if self.last.block_hash() != new_header.prev_blockhash
-                || new_header.validate_pow(&new_header.target()).is_err()
+                || new_header.validate_pow(new_header.target()).is_err()
             {
                 return Err(Error::InvalidHeaders);
             }
@@ -177,15 +176,17 @@ impl HeadersChain {
                         None => self.get(first_height)?,
                     };
                     let new_target = calc_difficulty_retarget(&first, &self.last);
-                    if new_header.bits != BlockHeader::compact_target_from_u256(&new_target) {
+                    if new_header.bits.to_consensus()
+                        != bitcoin_29::BlockHeader::compact_target_from_u256(&new_target)
+                    {
                         return Err(Error::InvalidHeaders);
                     }
-                    curr_bits = new_header.bits;
+                    curr_bits = new_header.bits.to_consensus();
                 }
             } else {
-                if new_header.bits != curr_bits {
+                if new_header.bits != CompactTarget::from_consensus(curr_bits) {
                     if !self.pow_allow_min_difficulty_blocks()
-                        || new_header.difficulty(self.network) != 1
+                        || new_header.difficulty() != 1
                         || new_header.time.checked_sub(self.last.time).unwrap_or(0)
                             <= 2 * TARGET_BLOCK_SPACING
                     {
@@ -221,7 +222,8 @@ impl HeadersChain {
         height: u32,
         merkle: GetMerkleRes,
     ) -> Result<(), Error> {
-        let calculated_merkle_root = compute_merkle_root(txid, merkle)?;
+        let calculated_merkle_root =
+            TxMerkleNode::from_byte_array(compute_merkle_root(txid.to_byte_array(), merkle)?);
 
         let header = self.get(height)?;
         if header.merkle_root == calculated_merkle_root {
@@ -247,7 +249,7 @@ impl HeadersChain {
 
 fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
     let mut checkpoints = HashMap::new();
-    let mut i = |n, s| checkpoints.insert(n, BlockHash::from_hex(s).unwrap());
+    let mut i = |n, s| checkpoints.insert(n, BlockHash::from_str(s).unwrap());
     match network {
         Network::Bitcoin => {
             i(100_000, "000000000003ba27aa200b1cecaad478d2b00432346c3f1f3986da1afd33e506");
@@ -264,7 +266,7 @@ fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
             i(2_000_000, "000000000000010dd0863ec3d7a0bae17c1957ae1de9cbcdae8e77aad33e3b8c");
             i(2_100_000, "000000000000002befeeec5aaa3b675ef421896c870e28669f00b0932e277eef");
         }
-        Network::Regtest | Network::Signet => (),
+        _ => (),
     };
     checkpoints
 }
@@ -272,12 +274,14 @@ fn get_checkpoints(network: Network) -> HashMap<u32, BlockHash> {
 #[cfg(test)]
 mod test {
     use crate::headers::bitcoin::HeadersChain;
+    use gdk_common::bitcoin::block;
     use gdk_common::bitcoin::consensus::encode::Decodable;
     use gdk_common::bitcoin::hash_types::BlockHash;
     use gdk_common::bitcoin::hashes::hex::FromHex;
-    use gdk_common::bitcoin::{BlockHeader, Network, Txid};
+    use gdk_common::bitcoin::{Network, Txid};
     use gdk_common::electrum_client::GetMerkleRes;
     use std::io::Cursor;
+    use std::str::FromStr;
     use tempfile::TempDir;
 
     #[test]
@@ -287,7 +291,7 @@ mod test {
         let bitcoin_headers = Vec::<u8>::from_hex(bitcoin_headers).unwrap();
         let mut cursor = Cursor::new(&bitcoin_headers);
         let mut parsed_headers = vec![];
-        while let Ok(header) = BlockHeader::consensus_decode(&mut cursor) {
+        while let Ok(header) = block::Header::consensus_decode(&mut cursor) {
             parsed_headers.push(header);
         }
         assert_eq!(parsed_headers.len(), 199);
@@ -298,14 +302,14 @@ mod test {
         assert_eq!(chain.height(), 199);
 
         assert_eq!(
-            BlockHash::from_hex("000000007bc154e0fa7ea32218a72fe2c1bb9f86cf8c9ebf9a715ed27fdb229a")
+            BlockHash::from_str("000000007bc154e0fa7ea32218a72fe2c1bb9f86cf8c9ebf9a715ed27fdb229a")
                 .unwrap(),
             chain.get(100).unwrap().block_hash()
         );
 
         // first non-coinbase tx
         let txid =
-            Txid::from_hex("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
+            Txid::from_str("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
                 .unwrap();
         let block_height = 170;
         let merkle_tree = GetMerkleRes {
@@ -320,7 +324,7 @@ mod test {
 
         // test a coinbase,
         let txid =
-            Txid::from_hex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b")
+            Txid::from_str("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b")
                 .unwrap();
         let block_height = 0;
         let merkle_tree = GetMerkleRes {
@@ -342,7 +346,7 @@ mod test {
 
         // first non-coinbase tx, changed first byte of merkle proof
         let txid =
-            Txid::from_hex("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
+            Txid::from_str("f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16")
                 .unwrap();
         let block_height = 170;
         let merkle_tree = GetMerkleRes {
@@ -367,12 +371,12 @@ mod test {
         chain.push(vec![old_tip]).unwrap();
         assert_eq!(chain.height, 199);
         assert_eq!(
-            BlockHash::from_hex("00000000e85458c1467176b04a65d5efaccfecaaab717b17a587b4069276e143")
+            BlockHash::from_str("00000000e85458c1467176b04a65d5efaccfecaaab717b17a587b4069276e143")
                 .unwrap(),
             chain.get(198).unwrap().block_hash()
         );
         assert_eq!(
-            BlockHash::from_hex("00000000b7691ccc084542565697eca256e56bb7f67e560b48789db27f0468eb")
+            BlockHash::from_str("00000000b7691ccc084542565697eca256e56bb7f67e560b48789db27f0468eb")
                 .unwrap(),
             chain.get(199).unwrap().block_hash()
         );

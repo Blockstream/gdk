@@ -5,7 +5,7 @@ use std::{
 
 use gdk_common::{
     be::BEOutPoint,
-    bitcoin::util::bip32::Fingerprint,
+    bitcoin::bip32::Fingerprint,
     exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher},
     log,
     model::*,

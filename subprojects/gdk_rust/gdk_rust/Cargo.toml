@@ -24,9 +24,9 @@ android_logger = "0.8.6"
 [dev-dependencies]
 gdk-test = { path = "../gdk_test" }
 tempfile = "3.2.0"
-bitcoin = { version = "0.29", features = [ "serde" ] }
-elements = { version = "0.20", features = ["serde"] }
+bitcoin = { version = "0.30", features = [ "serde" ] }
+elements = { version = "0.22", features = ["serde"] }
 # TODO: remove "legacy" feature when upgrading electrs binaries
-electrsd = { version = "0.23.0", features = [ "legacy" ] }
+electrsd = { version = "0.24.0", features = [ "legacy" ] }
 env_logger = "0.10.0"
 base64 = "0.13"

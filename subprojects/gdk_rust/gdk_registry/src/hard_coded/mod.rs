@@ -1,4 +1,6 @@
-use gdk_common::elements::{hashes::hex::FromHex, AssetId};
+use std::str::FromStr;
+
+use gdk_common::elements::AssetId;
 
 use crate::assets_or_icons::AssetsOrIcons;
 use crate::params::ElementsNetwork;
@@ -43,7 +45,7 @@ const POLICY_ASSET: [&str; ElementsNetwork::len()] = [
 /// Return the policy asset of the network, for Liquid mainnet it is the
 /// Liquid Bitcoin
 pub fn policy_asset_id(network: ElementsNetwork) -> AssetId {
-    AssetId::from_hex(POLICY_ASSET[network as usize]).expect("verified at test time")
+    AssetId::from_str(POLICY_ASSET[network as usize]).expect("verified at test time")
 }
 
 #[cfg(test)]

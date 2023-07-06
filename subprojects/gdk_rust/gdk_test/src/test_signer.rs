@@ -1,12 +1,14 @@
+use bitcoin_private::hex::exts::DisplayHex;
+use gdk_common::bitcoin::address::Address;
+use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use gdk_common::bitcoin::blockdata::script::Builder as ScriptBuilder;
-use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
+use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::network::constants::Network as Bip32Network;
+use gdk_common::bitcoin::script::PushBytesBuf;
 use gdk_common::bitcoin::secp256k1::{All, Message, Secp256k1};
-use gdk_common::bitcoin::util::address::Address;
-use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey};
-use gdk_common::bitcoin::util::sighash::SighashCache;
-use gdk_common::bitcoin::{self, EcdsaSighashType, Witness};
+use gdk_common::bitcoin::sighash::{EcdsaSighashType, SighashCache};
+use gdk_common::bitcoin::{self, Witness};
 use gdk_common::EC;
 
 use gdk_common::be::BETransaction;
@@ -81,17 +83,21 @@ impl TestSigner {
                 assert_eq!(utxo.public_key, public_key.to_string());
                 let script_code =
                     Address::p2pkh(&public_key, Bip32Network::Regtest).script_pubkey();
-                assert_eq!(utxo.script_code, script_code.to_hex());
+                assert_eq!(utxo.script_code, script_code.as_bytes().to_lower_hex_string());
 
                 let signature_hash = if utxo.address_type != "p2pkh" {
                     SighashCache::new(&tx)
                         .segwit_signature_hash(i, &script_code, utxo.satoshi, sighash)
                         .unwrap()
+                        .to_byte_array()
                 } else {
-                    tx.signature_hash(i, &script_code, sighash.to_u32())
+                    SighashCache::new(&tx)
+                        .legacy_signature_hash(i, &script_code, sighash.to_u32())
+                        .unwrap()
+                        .to_byte_array()
                 };
 
-                let message = Message::from_slice(&signature_hash.into_inner()[..]).unwrap();
+                let message = Message::from_slice(&signature_hash[..]).unwrap();
                 let signature = self.secp.sign_ecdsa(&message, &private_key.inner);
 
                 let mut der = signature.serialize_der().to_vec();
@@ -101,8 +107,8 @@ impl TestSigner {
                 let (script_sig, witness) = match utxo.address_type.as_str() {
                     "p2pkh" => (
                         ScriptBuilder::new()
-                            .push_slice(der.as_slice())
-                            .push_slice(pk.as_slice())
+                            .push_slice(PushBytesBuf::try_from(der).unwrap())
+                            .push_slice(PushBytesBuf::try_from(pk).unwrap())
                             .into_script(),
                         vec![],
                     ),
@@ -112,12 +118,12 @@ impl TestSigner {
                             .script_pubkey(),
                         vec![der, pk],
                     ),
-                    "p2wpkh" => (bitcoin::Script::new(), vec![der, pk]),
+                    "p2wpkh" => (bitcoin::ScriptBuf::new(), vec![der, pk]),
                     _ => unimplemented!(),
                 };
 
                 out_tx.input[i].script_sig = script_sig;
-                out_tx.input[i].witness = Witness::from_vec(witness);
+                out_tx.input[i].witness = Witness::from_slice(&witness);
             }
             BETransaction::Bitcoin(out_tx)
         };

@@ -195,8 +195,7 @@ mod tests {
     use crate::hard_coded;
     use crate::params::GetAssetsBuilder;
     use crate::params::{AssetCategory, ElementsNetwork};
-    use gdk_common::bitcoin::hashes::hex::FromHex;
-    use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+    use gdk_common::bitcoin::bip32::ExtendedPubKey;
     use gdk_common::elements::AssetId;
     use gdk_common::log::info;
     use httptest::{matchers::*, responders::*, Expectation, Server};
@@ -484,7 +483,7 @@ mod tests {
             // now we make the server response to return updated icons (all become empty) and
             // verify the local cache it's different
             let asset_id_hex = "11f91cb5edd5d0822997ad81f068ed35002daec33986da173461a8427ac857e1";
-            let asset_id = AssetId::from_hex(asset_id_hex).unwrap();
+            let asset_id = AssetId::from_str(asset_id_hex).unwrap();
             let before = get_assets(Some(&[asset_id_hex]), None).unwrap();
             let before = before.icons.get(&asset_id).unwrap();
             test_refresh_assets(true, true, true).unwrap();
@@ -511,10 +510,10 @@ mod tests {
 
             assert!(new_icons.len() > icons.len(), "{} vs {}", new_icons.len(), icons.len());
 
-            let asset_id = AssetId::from_hex("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d").unwrap();
+            let asset_id = AssetId::from_str("6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d").unwrap();
             assert_eq!(icons.get(&asset_id), new_icons.get(&asset_id), "hard coded icon should not get updated");
 
-            let asset_id = AssetId::from_hex("de091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
+            let asset_id = AssetId::from_str("de091c998b83c78bb71a632313ba3760f1763d9cfcffae02258ffa9865a37bd2").unwrap();
             assert_ne!(icons.get(&asset_id), new_icons.get(&asset_id), "non hard coded icon should get updated");
         }
 

@@ -1,7 +1,4 @@
-use bitcoin::{
-    hashes::{hex::ToHex, Hash},
-    BlockHash,
-};
+use bitcoin::{hashes::Hash, BlockHash};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
@@ -13,15 +10,15 @@ pub enum BEBlockHash {
 impl BEBlockHash {
     pub fn to_hex(&self) -> String {
         match self {
-            Self::Bitcoin(blockhash) => blockhash.to_hex(),
-            Self::Elements(blockhash) => blockhash.to_hex(),
+            Self::Bitcoin(blockhash) => blockhash.to_string(),
+            Self::Elements(blockhash) => blockhash.to_string(),
         }
     }
 
     pub fn into_bitcoin(&self) -> bitcoin::BlockHash {
         match self {
             Self::Bitcoin(h) => *h,
-            Self::Elements(h) => bitcoin::BlockHash::from_hash(h.as_hash()),
+            Self::Elements(h) => bitcoin::BlockHash::from_raw_hash(h.to_raw_hash()),
         }
     }
 }

@@ -1,8 +1,8 @@
-use bitcoin::hashes::hex::ToHex;
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::secp256k1::{
     ecdh::SharedSecret, ecdsa::Signature, Message, PublicKey, Secp256k1, SecretKey,
 };
+use bitcoin_private::hex::exts::DisplayHex;
 use block_modes::BlockMode;
 use once_cell::sync::Lazy;
 
@@ -48,7 +48,7 @@ impl PinServerRequest {
         let payload = {
             let hashed_data = sha256::Hash::hash(&data);
 
-            let message = Message::from_slice(&hashed_data.into_inner())?;
+            let message = Message::from_slice(&hashed_data.as_ref())?;
 
             let (recovery_id, signature) =
                 EC.sign_ecdsa_recoverable(&message, client_key.secret_key()).serialize_compact();
@@ -89,10 +89,10 @@ impl PinServerRequest {
         };
 
         Ok(Self {
-            ske: encryption_key.ske.serialize().to_hex(),
-            cke: serialized_cke.to_hex(),
-            encrypted_data: encrypted_data.to_hex(),
-            hmac_encrypted_data: hmac_encrypted_data.to_hex(),
+            ske: encryption_key.ske.serialize().to_lower_hex_string(),
+            cke: serialized_cke.to_lower_hex_string(),
+            encrypted_data: encrypted_data.to_lower_hex_string(),
+            hmac_encrypted_data: hmac_encrypted_data.as_byte_array().to_lower_hex_string(),
         })
     }
 }
@@ -111,7 +111,7 @@ impl HandShake {
     /// which should match the one passed to [`PinClient::new`].
     pub(crate) fn verify(&self, pin_server_public_key: &bitcoin::PublicKey) -> Result<()> {
         let ske_hash = &self.ske.1;
-        let message = Message::from_slice(&ske_hash.into_inner())?;
+        let message = Message::from_slice(ske_hash.as_ref())?;
         Ok(EC.verify_ecdsa(&message, &self.signature, &pin_server_public_key.inner)?)
     }
 

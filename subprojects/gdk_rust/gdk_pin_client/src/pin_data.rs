@@ -1,4 +1,5 @@
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
+use bitcoin_private::hex::exts::DisplayHex;
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::{ClientKey, Salt, ServerKey};
@@ -92,8 +93,7 @@ pub(super) fn serialize_bytes_to_hex<S>(
 where
     S: serde::ser::Serializer,
 {
-    use bitcoin::hashes::hex::ToHex;
-    serializer.serialize_str(&bytes.to_hex())
+    serializer.serialize_str(&bytes.to_lower_hex_string())
 }
 
 #[cfg(test)]

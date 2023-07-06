@@ -6,8 +6,8 @@ use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
 };
+use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::hashes::{sha256, Hash};
-use gdk_common::bitcoin::util::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::{Transaction, Txid};
 use gdk_common::elements;
 use gdk_common::elements::TxOutSecrets;
@@ -651,7 +651,7 @@ impl RawAccountCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+    use gdk_common::bitcoin::bip32::ExtendedPubKey;
     use gdk_common::bitcoin::{Network, Txid};
     use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;

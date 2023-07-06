@@ -6,7 +6,6 @@ use electrum_client::{Client, ElectrumApi, GetMerkleRes};
 use gdk_common::aes::aead::NewAead;
 use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::be::{BETxid, BETxidConvert};
-use gdk_common::bitcoin::hashes::hex::ToHex;
 use gdk_common::bitcoin::hashes::{sha256, sha256d, Hash};
 use gdk_common::electrum_client;
 use gdk_common::elements;
@@ -34,13 +33,9 @@ pub enum ChainOrVerifier {
 }
 
 /// compute the merkle root from the merkle path of a tx in electrum format (note the hash.reverse())
-fn compute_merkle_root<T, N>(txid: &T, merkle: GetMerkleRes) -> Result<N, Error>
-where
-    T: Hash<Inner = [u8; 32]>, // bitcoin::Txid or elements::Txid
-    N: Hash<Inner = [u8; 32]>, // bitcoin::TxMerkleNode or elements::TxMerkleNode
-{
+fn compute_merkle_root(txid: [u8; 32], merkle: GetMerkleRes) -> Result<[u8; 32], Error> {
     let mut pos = merkle.pos;
-    let mut current = txid.into_inner();
+    let mut current = txid;
 
     for mut hash in merkle.merkle {
         let mut engine = sha256d::Hash::engine();
@@ -52,11 +47,11 @@ where
             engine.write(&hash)?;
             engine.write(&current)?;
         }
-        current = sha256d::Hash::from_engine(engine).into_inner();
+        current = sha256d::Hash::from_engine(engine).to_byte_array();
         pos /= 2;
     }
 
-    Ok(N::from_slice(&current)?)
+    Ok(current)
 }
 
 trait ParamsMethods {
@@ -217,10 +212,10 @@ impl VerifiedCache {
             Some(key) => {
                 let mut filepath: PathBuf = path.as_ref().into();
                 let filename_preimage = format!("{:?}{}", network, key);
-                let filename = sha256::Hash::hash(filename_preimage.as_bytes()).as_ref().to_hex();
-                let key_bytes = sha256::Hash::hash(key.as_bytes()).into_inner();
+                let filename = sha256::Hash::hash(filename_preimage.as_bytes()).to_string();
+                let key_bytes = sha256::Hash::hash(key.as_bytes()).to_byte_array();
                 filepath.push(format!("verified_cache_{}", filename));
-                let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes));
+                let cipher = Aes256GcmSiv::new(Key::from_slice(&key_bytes[..]));
                 let set = match VerifiedCache::read_and_decrypt(&mut filepath, &cipher) {
                     Ok(set) => set,
                     Err(_) => HashSet::new(),

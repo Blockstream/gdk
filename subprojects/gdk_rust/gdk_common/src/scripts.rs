@@ -1,10 +1,12 @@
+use bitcoin::script::PushBytesBuf;
 use serde::{Deserialize, Serialize};
 
 use bitcoin::blockdata::script::Builder;
 use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
-use bitcoin::{Address, Network, PublicKey, Script, Witness};
+use bitcoin::{Address, Network, PublicKey, ScriptBuf, Witness};
 
+use std::convert::TryFrom;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -43,20 +45,18 @@ impl ScriptType {
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
 
-pub fn p2shwpkh_script(pk: &PublicKey) -> Script {
+pub fn p2shwpkh_script(pk: &PublicKey) -> ScriptBuf {
     Address::p2shwpkh(pk, Network::Regtest).unwrap().script_pubkey()
 }
 
-pub fn p2pkh_script(pk: &PublicKey) -> Script {
+pub fn p2pkh_script(pk: &PublicKey) -> ScriptBuf {
     Address::p2pkh(pk, Network::Regtest).script_pubkey()
 }
 
-pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> Script {
-    let internal = Builder::new()
-        .push_int(0)
-        .push_slice(&PubkeyHash::hash(&public_key.to_bytes())[..])
-        .into_script();
-    Builder::new().push_slice(internal.as_bytes()).into_script()
+pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> ScriptBuf {
+    let mut vec = vec![0, 20];
+    vec.extend(PubkeyHash::hash(&public_key.to_bytes()).as_byte_array());
+    Builder::new().push_slice(&PushBytesBuf::try_from(vec).unwrap()).into_script()
 }
 
 impl ScriptType {
@@ -74,11 +74,15 @@ impl ScriptType {
 
     /// Returns a mock witness with the expected size
     pub fn mock_witness(self) -> Witness {
-        Witness::from_vec(match self {
+        let a = vec![0u8; 72];
+        let b = vec![0u8; 33];
+        let c = vec![&a, &b];
+        let d = vec![];
+        Witness::from_slice(match self {
             // signature (72) + compressed public key (33)
-            ScriptType::P2wpkh | ScriptType::P2shP2wpkh => vec![vec![0u8; 72], vec![0u8; 33]],
+            ScriptType::P2wpkh | ScriptType::P2shP2wpkh => &c,
             // empty for non-witness inputs
-            ScriptType::P2pkh => vec![],
+            ScriptType::P2pkh => &d,
         })
     }
 

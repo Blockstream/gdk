@@ -5,12 +5,14 @@
 use std::ptr;
 
 use bitcoin::secp256k1;
+use elements::hex::ToHex;
 use std::fmt;
 
-use bitcoin::hashes::hex::ToHex;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
+
+use crate::EC;
 
 pub mod ffi;
 
@@ -140,20 +142,8 @@ pub fn asset_blinding_key_to_ec_private_key(
     secp256k1::SecretKey::from_slice(&out).expect("size is 32")
 }
 
-//TODO to be replaced by secp256k1::PublicKey::from_secret_key
 pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256k1::PublicKey {
-    let mut pub_key = [0; 33];
-
-    let ret = unsafe {
-        ffi::wally_ec_public_key_from_private_key(
-            priv_key.as_ptr(),
-            priv_key.len(),
-            pub_key.as_mut_ptr(),
-            pub_key.len(),
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    secp256k1::PublicKey::from_slice(&pub_key[..]).unwrap() // TODO return Result?
+    secp256k1::PublicKey::from_secret_key(&EC, &priv_key)
 }
 
 pub fn pbkdf2_hmac_sha512_256(password: Vec<u8>, salt: Vec<u8>, cost: u32) -> [u8; 32] {
@@ -188,7 +178,7 @@ pub fn read_str(s: *const c_char) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin::hashes::hex::{FromHex, ToHex};
+    use elements::hex::FromHex;
     use elements::Script;
     use std::convert::TryInto;
     use std::str::FromStr;
@@ -228,7 +218,7 @@ mod tests {
         );
 
         let unconfidential_addr = "2dpWh6jbhAowNsQ5agtFzi7j6nKscj6UnEr";
-        let script: Script =
+        let script =
             Script::from_hex("76a914a579388225827d9f2fe9014add644487808c695d88ac").unwrap();
         let blinding_key = asset_blinding_key_to_ec_private_key(&master_blinding_key, &script);
         let public_key = ec_public_key_from_private_key(blinding_key);
@@ -247,7 +237,7 @@ mod tests {
     fn test_pbkdf2() {
         // abandon abandon ... about
         // expected value got from a session with server_type green
-        let xpub = bitcoin::util::bip32::ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
+        let xpub = bitcoin::bip32::ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
         let password = xpub.encode().to_vec();
         let salt = "testnet".as_bytes().to_vec();
         let cost = 2048;

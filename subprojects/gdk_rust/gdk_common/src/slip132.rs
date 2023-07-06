@@ -1,6 +1,7 @@
-use bitcoin::util::base58;
-use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey};
 use std::convert::TryInto;
+
+use bitcoin::base58;
+use bitcoin::bip32::{ChildNumber, ExtendedPubKey};
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
@@ -36,7 +37,7 @@ fn decode_slip132_version(bytes: &[u8; 4]) -> Result<(bool, ScriptType), Error> 
 }
 
 pub fn decode_from_slip132_string(s: &str) -> Result<(bool, ScriptType, ExtendedPubKey), Error> {
-    let mut bytes = base58::from_check(s)?;
+    let mut bytes = base58::decode_check(s)?;
     if bytes.len() < 4 {
         return Err(Error::InvalidSlip132Version);
     }

@@ -1,10 +1,12 @@
+use std::str::FromStr;
+
+use gdk_common::elements::hashes::Hash;
 use gdk_common::elements::BlockExtData;
 
 use crate::error::*;
 use crate::headers::compute_merkle_root;
 use electrum_client::GetMerkleRes;
 use gdk_common::bitcoin::hashes::hex::FromHex;
-use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::secp256k1::{ecdsa::Signature, Message};
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::electrum_client;
@@ -40,7 +42,7 @@ impl Verifier {
         };
         Verifier {
             challenge: Script::from(Vec::<u8>::from_hex(CHALLENGE).unwrap()),
-            genesis: BlockHash::from_hex(genesis_hash).unwrap(),
+            genesis: BlockHash::from_str(genesis_hash).unwrap(),
             is_regtest,
         }
     }
@@ -53,7 +55,8 @@ impl Verifier {
         header: &BlockHeader,
     ) -> Result<(), Error> {
         self.verify_header(header)?;
-        let root: TxMerkleNode = compute_merkle_root(txid, merkle)?;
+        let root =
+            TxMerkleNode::from_byte_array(compute_merkle_root(txid.to_byte_array(), merkle)?);
         if header.merkle_root == root {
             info!("proof for txid {}, block height {}, merkle root matches", txid, header.height);
             Ok(())
@@ -130,7 +133,8 @@ impl Verifier {
                 signatures.push(Signature::from_der(&el).map_err(|_| Error::InvalidHeaders)?);
             }
 
-            let msg = Message::from_slice(&hash.into_inner()).map_err(|_| Error::InvalidHeaders)?;
+            let msg =
+                Message::from_slice(&hash.to_byte_array()).map_err(|_| Error::InvalidHeaders)?;
             let mut verified = 0;
             let mut pubkey_index = 0usize;
             for signature in signatures.iter() {
@@ -204,7 +208,7 @@ mod test {
         {
             wrong_header.ext = BlockExtData::Proof {
                 challenge,
-                solution: Script::default(),
+                solution: Script::new(),
             };
             assert!(
                 verifier.verify_header(&wrong_header).is_err(),

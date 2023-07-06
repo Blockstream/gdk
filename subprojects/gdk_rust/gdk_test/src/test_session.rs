@@ -879,7 +879,7 @@ impl TestSession {
                 BEAddress::Elements(elements::Address::from_str(address).unwrap())
             }
             NetworkId::Elements(_) => {
-                BEAddress::Bitcoin(bitcoin::Address::from_str(address).unwrap())
+                BEAddress::Bitcoin(bitcoin::Address::from_str(address).unwrap().assume_checked())
             }
         }
     }

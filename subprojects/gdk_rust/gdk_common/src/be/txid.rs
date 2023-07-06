@@ -1,6 +1,7 @@
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use elements::hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use std::str::FromStr;
 
 use crate::error::Error;
 use crate::NetworkId;
@@ -20,8 +21,8 @@ impl BETxid {
     }
     pub fn from_hex(s: &str, network: NetworkId) -> Result<Self, Error> {
         Ok(match network {
-            NetworkId::Bitcoin(_) => bitcoin::Txid::from_hex(s)?.into(),
-            NetworkId::Elements(_) => elements::Txid::from_hex(s)?.into(),
+            NetworkId::Bitcoin(_) => bitcoin::Txid::from_str(s)?.into(),
+            NetworkId::Elements(_) => elements::Txid::from_str(s)?.into(),
         })
     }
 
@@ -77,7 +78,7 @@ impl BETxidConvert for bitcoin::Txid {
         self
     }
     fn into_elements(self) -> elements::Txid {
-        elements::Txid::from_hash(self.as_hash())
+        elements::Txid::from_raw_hash(*self.as_raw_hash())
     }
     fn into_be(self) -> BETxid {
         self.into()
@@ -86,7 +87,7 @@ impl BETxidConvert for bitcoin::Txid {
 
 impl BETxidConvert for elements::Txid {
     fn into_bitcoin(self) -> bitcoin::Txid {
-        bitcoin::Txid::from_hash(self.as_hash())
+        bitcoin::Txid::from_raw_hash(*self.as_raw_hash())
     }
     fn into_elements(self) -> elements::Txid {
         self

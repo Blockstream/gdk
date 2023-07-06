@@ -4,8 +4,8 @@ use std::io::{Read, Seek, SeekFrom};
 use crate::error::fn_err;
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
+use bitcoin::bip32::ExtendedPubKey;
 use bitcoin::hashes::{sha256, Hash};
-use bitcoin::util::bip32::ExtendedPubKey;
 use rand::Rng;
 
 use crate::Result;
@@ -59,8 +59,11 @@ impl ToCipher for ExtendedPubKey {
         let mut enc_key_data = vec![];
         enc_key_data.extend(&self.to_pub().to_bytes());
         enc_key_data.extend(&self.chain_code.to_bytes());
-        enc_key_data.extend(&self.network.magic().to_be_bytes());
-        let key_bytes = sha256::Hash::hash(&enc_key_data).into_inner();
+        let mut v = self.network.magic().to_bytes().to_vec();
+        v.reverse(); // test_hardcoded_decryption fail otherwise
+        enc_key_data.extend(&v);
+        let hash = sha256::Hash::hash(&enc_key_data);
+        let key_bytes = hash.as_ref();
         let key = Key::from_slice(&key_bytes);
         Ok(Aes256GcmSiv::new(&key))
     }

@@ -1,17 +1,19 @@
 use std::string::ToString;
 
+use bitcoin::sighash::NonStandardSighashType;
+
 pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    BtcAddressError(#[from] bitcoin::util::address::Error),
+    BtcAddressError(#[from] bitcoin::address::Error),
 
     #[error(transparent)]
-    BtcBase58DecodingError(#[from] bitcoin::util::base58::Error),
+    BtcBase58DecodingError(#[from] bitcoin::base58::Error),
 
     #[error(transparent)]
-    BtcBip32Error(#[from] bitcoin::util::bip32::Error),
+    BtcBip32Error(#[from] bitcoin::bip32::Error),
 
     #[error(transparent)]
     BtcEncodingError(#[from] bitcoin::consensus::encode::Error),
@@ -23,10 +25,10 @@ pub enum Error {
     BtcHexDecodingError(#[from] bitcoin::hashes::hex::Error),
 
     #[error(transparent)]
-    BtcKeyError(#[from] bitcoin::util::key::Error),
+    BtcKeyError(#[from] bitcoin::key::Error),
 
     #[error(transparent)]
-    BtcNonStandardSigHashType(#[from] bitcoin::blockdata::transaction::NonStandardSighashType),
+    BtcNonStandardSigHashType(#[from] NonStandardSighashType),
 
     #[error(transparent)]
     BtcSecp256k1Error(#[from] bitcoin::secp256k1::Error),
@@ -80,7 +82,7 @@ pub enum Error {
     Utf8(#[from] std::str::Utf8Error),
 
     #[error(transparent)]
-    Sighash(#[from] bitcoin::util::sighash::Error),
+    Sighash(#[from] bitcoin::sighash::Error),
 
     #[error("Generic({0})")]
     Generic(String),

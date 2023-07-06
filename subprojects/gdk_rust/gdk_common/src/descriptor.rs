@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::scripts::ScriptType;
-use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
+use bitcoin::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
 use miniscript::descriptor::{Descriptor, DescriptorPublicKey, ShInner};
 
 /// Make sure the key origin is in the expected format

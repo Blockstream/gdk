@@ -1,14 +1,14 @@
+use bitcoin_29::blockdata::constants::max_target;
+use bitcoin_29::util::uint::Uint256;
+use bitcoin_29::util::BitArray;
 use gdk_common::log::warn;
 use gdk_common::rand::seq::SliceRandom;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use electrum_client::{Client as ElectrumClient, ElectrumApi};
-use gdk_common::bitcoin::blockdata::constants::{
-    max_target, DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN,
-};
-use gdk_common::bitcoin::BlockHash;
-use gdk_common::bitcoin::{util::uint::Uint256, util::BitArray, BlockHeader};
+use gdk_common::bitcoin::blockdata::constants::{DIFFCHANGE_INTERVAL, DIFFCHANGE_TIMESPAN};
+use gdk_common::bitcoin::{block, BlockHash, CompactTarget, Target, Work};
 use gdk_common::once_cell::sync::Lazy;
 use gdk_common::{bitcoin, electrum_client};
 
@@ -197,7 +197,9 @@ pub fn spv_cross_validate(
     let fork = get_fork_branch(chain, &client, remote_tip_height, None)?;
 
     let our_work: Uint256 = (fork.common_ancestor + 1..=chain.height())
-        .fold(Uint256::zero(), |total, height| total + chain.get(height).unwrap().work());
+        .fold(Uint256::zero(), |total, height| {
+            total + chain.get(height).unwrap().work().as_uint256()
+        });
 
     // The remote is on a minority fork chain
     if fork.total_fork_work <= our_work {
@@ -222,6 +224,22 @@ struct ForkBranch {
     total_fork_work: Uint256,
 }
 
+trait AsUint256 {
+    fn as_uint256(&self) -> Uint256;
+}
+
+impl AsUint256 for Target {
+    fn as_uint256(&self) -> Uint256 {
+        Uint256::from_be_bytes(self.to_be_bytes())
+    }
+}
+
+impl AsUint256 for Work {
+    fn as_uint256(&self) -> Uint256 {
+        Uint256::from_be_bytes(self.to_be_bytes())
+    }
+}
+
 /// Analyse the forked branch and return the common ancestor, the fork work and the fork tip height.
 fn get_fork_branch(
     chain: &HeadersChain,
@@ -232,14 +250,14 @@ fn get_fork_branch(
     // A sensible target threshold used as anti-DoS while traversing blocks backwards. This is needed because
     // the exact expected target can only be determined later when reaching the period's first block.
     // Expects that all blocks involved in a reorg have a difficulty of at least 1/4 of our local tip.
-    let sensible_target_threshold = chain.tip().target().mul_u32(4);
+    let sensible_target_threshold = chain.tip().target().as_uint256().mul_u32(4);
 
     // Will not reorg past that
     let height_limit = known_ancestor.unwrap_or(0);
 
     let mut total_fork_work = Uint256::zero();
-    let mut curr_retarget: Option<(u32, BlockHeader, Option<BlockHeader>)> = None;
-    let mut last_header: Option<BlockHeader> = None;
+    let mut curr_retarget: Option<(u32, block::Header, Option<block::Header>)> = None;
+    let mut last_header: Option<block::Header> = None;
 
     let mut chunk_size = INIT_CHUNK_SIZE;
     let mut curr_height = remote_tip_height + 1;
@@ -292,8 +310,11 @@ fn get_fork_branch(
             // the sensible minimal threshold used as an anti-DoS measure. The validity of target is indirectly
             // verified later by comparing against the parent (above) and by validating the retargets (below).
             let target = header.target();
-            ensure!(header.validate_pow(&target).is_ok(), CrossValidationError::InvalidPow);
-            ensure!(target < sensible_target_threshold, CrossValidationError::UnsensibleTarget);
+            ensure!(header.validate_pow(target).is_ok(), CrossValidationError::InvalidPow);
+            ensure!(
+                target.as_uint256() < sensible_target_threshold,
+                CrossValidationError::UnsensibleTarget
+            );
 
             // Verify retargets. Doing this as we go along backwards requires keeping around some state.
             if is_retarget {
@@ -308,7 +329,7 @@ fn get_fork_branch(
                 }
             }
 
-            total_fork_work = total_fork_work + header.work();
+            total_fork_work = total_fork_work + header.work().as_uint256();
             last_header = Some(header);
         }
 
@@ -337,27 +358,30 @@ fn get_fork_branch(
 }
 
 fn verify_retarget(
-    retarget_block: &BlockHeader,
-    period_first: &BlockHeader,
-    period_last: &BlockHeader,
+    retarget_block: &block::Header,
+    period_first: &block::Header,
+    period_last: &block::Header,
 ) -> Result<(), CrossValidationError> {
     let expected_target = calc_difficulty_retarget(period_first, period_last);
     ensure!(
-        retarget_block.bits == BlockHeader::compact_target_from_u256(&expected_target),
+        retarget_block.bits
+            == CompactTarget::from_consensus(bitcoin_29::BlockHeader::compact_target_from_u256(
+                &expected_target
+            )),
         CrossValidationError::InvalidRetarget
     );
     Ok(())
 }
 
-pub fn calc_difficulty_retarget(first: &BlockHeader, last: &BlockHeader) -> Uint256 {
+pub fn calc_difficulty_retarget(first: &block::Header, last: &block::Header) -> Uint256 {
     let timespan = last.time - first.time;
     let timespan = timespan.min(DIFFCHANGE_TIMESPAN * 4);
     let timespan = timespan.max(DIFFCHANGE_TIMESPAN / 4);
 
-    let new_target = last.target() * Uint256::from_u64(timespan as u64).unwrap()
+    let new_target = last.target().as_uint256() * Uint256::from_u64(timespan as u64).unwrap()
         / Uint256::from_u64(DIFFCHANGE_TIMESPAN as u64).unwrap();
 
-    new_target.min(max_target(bitcoin::Network::Bitcoin))
+    new_target.min(max_target(bitcoin_29::Network::Bitcoin))
 }
 
 impl CrossValidationInvalid {
@@ -365,7 +389,9 @@ impl CrossValidationInvalid {
     // on the proof-of-work added to our local chain since the forking point
     fn is_resolved(&self, chain: &HeadersChain) -> bool {
         let local_work_since = (self.our_height + 1..=chain.height())
-            .fold(Uint256::zero(), |total, height| total + chain.get(height).unwrap().work());
+            .fold(Uint256::zero(), |total, height| {
+                total + chain.get(height).unwrap().work().as_uint256()
+            });
 
         local_work_since >= self.work_diff
     }
@@ -418,6 +444,7 @@ pub fn get_cross_servers(network: &NetworkParameters) -> Result<Vec<ElectrumUrl>
                 bitcoin::Network::Bitcoin => SERVER_LIST_MAINNET.clone(),
                 bitcoin::Network::Testnet => SERVER_LIST_TESTNET.clone(),
                 bitcoin::Network::Regtest | bitcoin::Network::Signet => vec![],
+                _ => panic!("unknown network"),
             };
             // Filter the default cross validation servers list.
             // Note that if the user is using tor it might still want to use non-onion urls,

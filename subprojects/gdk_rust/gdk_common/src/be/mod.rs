@@ -8,7 +8,7 @@ mod transaction;
 mod txid;
 
 pub use address::*;
-use bitcoin::util::bip32::DerivationPath;
+use bitcoin::bip32::DerivationPath;
 pub use blockhash::*;
 pub use blockheader::*;
 pub use outpoint::*;

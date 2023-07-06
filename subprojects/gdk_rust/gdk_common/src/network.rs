@@ -2,8 +2,9 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::error::Error;
-use bitcoin::util::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
-use bitcoin::{hashes::hex::ToHex, PublicKey};
+use bitcoin::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
+use bitcoin::PublicKey;
+use elements::hex::ToHex;
 use serde::{Deserialize, Serialize};
 
 /// The default time duration that a network request is allowed to take before
@@ -220,7 +221,7 @@ pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ure
 #[cfg(test)]
 mod tests {
     use crate::EC;
-    use bitcoin::util::bip32::{ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::bip32::{ExtendedPrivKey, ExtendedPubKey};
 
     #[test]
     fn test_wallet_hash_id() {

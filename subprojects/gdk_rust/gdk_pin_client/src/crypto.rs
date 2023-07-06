@@ -97,6 +97,7 @@ mod serde_impls {
     //! `Serialize` and `Deserialize` impls for `ClientKey` and `Salt`.
 
     use super::*;
+    use bitcoin_private::hex::exts::DisplayHex;
     use serde::{de, ser};
 
     impl<'de> de::Deserialize<'de> for ClientKey {
@@ -138,8 +139,7 @@ mod serde_impls {
         where
             S: ser::Serializer,
         {
-            use bitcoin::hashes::hex::ToHex;
-            serializer.serialize_str(&self.key.secret_bytes().to_hex())
+            serializer.serialize_str(&self.key.secret_bytes().to_lower_hex_string())
         }
     }
 
@@ -189,8 +189,7 @@ mod serde_impls {
         where
             S: ser::Serializer,
         {
-            use bitcoin::hashes::hex::ToHex;
-            serializer.serialize_str(&self.bytes.to_hex())
+            serializer.serialize_str(&self.bytes.to_lower_hex_string())
         }
     }
 }

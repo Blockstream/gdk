@@ -1,11 +1,13 @@
+use std::str::FromStr;
+
 use crate::error::Error;
 use crate::NetworkId;
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use elements::hex::ToHex;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub enum BEScript {
-    Bitcoin(bitcoin::Script),
+    Bitcoin(bitcoin::ScriptBuf),
     Elements(elements::Script),
 }
 
@@ -19,8 +21,10 @@ impl BEScript {
 
     pub fn from_hex(s: &str, network: NetworkId) -> Result<Self, Error> {
         Ok(match network {
-            NetworkId::Bitcoin(_) => bitcoin::Script::from_hex(s)?.into(),
-            NetworkId::Elements(_) => elements::Script::from_hex(s)?.into(),
+            NetworkId::Bitcoin(_) => bitcoin::ScriptBuf::from_hex(s)?.into(),
+            NetworkId::Elements(_) => elements::Script::from_str(s)
+                .map_err(|e| Error::Generic(format!("hex decoding error {e}")))?
+                .into(),
         })
     }
 
@@ -51,13 +55,13 @@ impl Default for BEScript {
 }
 
 pub trait BEScriptConvert {
-    fn into_bitcoin(self) -> bitcoin::Script;
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf;
     fn into_elements(self) -> elements::Script;
     fn into_be(self) -> BEScript;
 }
 
 impl BEScriptConvert for BEScript {
-    fn into_bitcoin(self) -> bitcoin::Script {
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf {
         match self {
             Self::Bitcoin(script) => script,
             Self::Elements(script) => script.into_bitcoin(),
@@ -74,8 +78,8 @@ impl BEScriptConvert for BEScript {
     }
 }
 
-impl BEScriptConvert for bitcoin::Script {
-    fn into_bitcoin(self) -> bitcoin::Script {
+impl BEScriptConvert for bitcoin::ScriptBuf {
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf {
         self
     }
     fn into_elements(self) -> elements::Script {
@@ -87,8 +91,8 @@ impl BEScriptConvert for bitcoin::Script {
 }
 
 impl BEScriptConvert for elements::Script {
-    fn into_bitcoin(self) -> bitcoin::Script {
-        bitcoin::Script::from(self.into_bytes())
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf {
+        bitcoin::ScriptBuf::from(self.into_bytes())
     }
     fn into_elements(self) -> elements::Script {
         self
@@ -99,7 +103,7 @@ impl BEScriptConvert for elements::Script {
 }
 
 impl BEScriptConvert for &elements::Script {
-    fn into_bitcoin(self) -> bitcoin::Script {
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf {
         self.clone().into_bitcoin()
     }
     fn into_elements(self) -> elements::Script {
@@ -111,11 +115,11 @@ impl BEScriptConvert for &elements::Script {
 }
 
 impl BEScriptConvert for &bitcoin::Script {
-    fn into_bitcoin(self) -> bitcoin::Script {
-        self.clone().into_bitcoin()
+    fn into_bitcoin(self) -> bitcoin::ScriptBuf {
+        self.to_owned().into_bitcoin()
     }
     fn into_elements(self) -> elements::Script {
-        self.clone().into_elements()
+        self.to_owned().into_elements()
     }
     fn into_be(self) -> BEScript {
         self.clone().into()
@@ -131,8 +135,8 @@ impl ToString for BEScript {
     }
 }
 
-impl From<bitcoin::Script> for BEScript {
-    fn from(script: bitcoin::Script) -> BEScript {
+impl From<bitcoin::ScriptBuf> for BEScript {
+    fn from(script: bitcoin::ScriptBuf) -> BEScript {
         BEScript::Bitcoin(script)
     }
 }

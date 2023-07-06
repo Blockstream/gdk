@@ -27,10 +27,8 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
-use gdk_common::bitcoin::util::bip32::{
-    DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
-};
+use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
+use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::model::*;
@@ -59,6 +57,7 @@ use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use crate::spv::SpvCrossValidator;
+use bitcoin_private::hex::display::DisplayHex;
 use electrum_client::{Client, ElectrumApi};
 use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
@@ -74,7 +73,7 @@ use std::thread::JoinHandle;
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 pub const DEFAULT_GAP_LIMIT: u32 = 20;
 
-type ScriptStatuses = HashMap<bitcoin::Script, ScriptStatus>;
+type ScriptStatuses = HashMap<bitcoin::ScriptBuf, ScriptStatus>;
 
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
@@ -1030,7 +1029,7 @@ impl ElectrumSession {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let store = self.store()?;
         let store = store.read()?;
-        store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_hex())
+        store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_lower_hex_string())
     }
 
     pub fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
@@ -1238,7 +1237,7 @@ impl ElectrumSession {
             }
             let asset_id = match &utxo.txoutsecrets {
                 None => "btc".to_string(),
-                Some(s) => s.asset.to_hex(),
+                Some(s) => s.asset.to_string(),
             };
             (*unspent_outputs.entry(asset_id).or_insert(vec![])).push(utxo.try_into()?);
         }
@@ -1247,7 +1246,9 @@ impl ElectrumSession {
 
     pub fn get_address_data(&self, opt: AddressDataRequest) -> Result<AddressDataResult, Error> {
         let address = match self.network.id() {
-            NetworkId::Bitcoin(_) => BEAddress::Bitcoin(bitcoin::Address::from_str(&opt.address)?),
+            NetworkId::Bitcoin(_) => {
+                BEAddress::Bitcoin(bitcoin::Address::from_str(&opt.address)?.assume_checked())
+            }
             NetworkId::Elements(_) => {
                 BEAddress::Elements(elements::Address::from_str(&opt.address)?)
             }
@@ -1920,7 +1921,7 @@ fn unblind_output(
             info!(
                 "Unblinded outpoint:{} asset:{} value:{}",
                 outpoint.map(|out| out.to_string()).unwrap_or_default(),
-                txout_secrets.asset.to_hex(),
+                txout_secrets.asset.to_string(),
                 txout_secrets.value
             );
 

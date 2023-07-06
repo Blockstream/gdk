@@ -5,20 +5,18 @@ use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
 use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
 use crate::NetworkId;
 use crate::NetworkParameters;
+use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::Network;
 use elements::confidential;
+use elements::hex::ToHex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
-use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
-use bitcoin::hashes::hex::ToHex;
+use bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
 use bitcoin::hashes::{sha256, Hash};
-use bitcoin::util::bip32::{
-    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
-};
 use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Display;
@@ -741,7 +739,7 @@ impl WatchOnlyCredentials {
         };
         let b = serde_json::to_vec(self).unwrap();
         let seed = sha256::Hash::hash(&b);
-        let xprv = ExtendedPrivKey::new_master(network, &seed)?;
+        let xprv = ExtendedPrivKey::new_master(network, seed.as_byte_array())?;
         let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
         Ok(xpub)
     }
@@ -1038,7 +1036,7 @@ pub struct UnspentOutput {
 impl UnspentOutput {
     pub fn sighash(&self) -> Result<BESigHashType, Error> {
         let is_elements = self.asset_id.is_some();
-        let sighash = self.sighash.unwrap_or(BitcoinSigHashType::All as u32);
+        let sighash = self.sighash.unwrap_or(EcdsaSighashType::All as u32);
         BESigHashType::from_u32(sighash, is_elements)
     }
 }
@@ -1235,7 +1233,7 @@ pub struct AddressDataResult {
 #[cfg(test)]
 mod test {
     use crate::model::{parse_path, CreateTxUtxos, GetUnspentOutputs};
-    use bitcoin::util::bip32::DerivationPath;
+    use bitcoin::bip32::DerivationPath;
 
     #[test]
     fn test_path() {

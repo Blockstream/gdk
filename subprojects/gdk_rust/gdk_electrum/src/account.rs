@@ -1,20 +1,21 @@
 use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::str::FromStr;
 
-use gdk_common::bitcoin::util::sighash::SighashCache;
+use gdk_common::bitcoin::script::PushBytesBuf;
+use gdk_common::bitcoin::sighash::SighashCache;
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
-use gdk_common::bitcoin::blockdata::script;
-use gdk_common::bitcoin::hashes::hex::{FromHex, ToHex};
-use gdk_common::bitcoin::hashes::Hash;
-use gdk_common::bitcoin::secp256k1::{self, Message};
-use gdk_common::bitcoin::util::address::Payload;
-use gdk_common::bitcoin::util::bip32::{
+use gdk_common::bitcoin::address::Payload;
+use gdk_common::bitcoin::bip32::{
     ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
 };
+use gdk_common::bitcoin::blockdata::script;
+use gdk_common::bitcoin::hashes::hex::FromHex;
+use gdk_common::bitcoin::hashes::Hash;
+use gdk_common::bitcoin::secp256k1::{self, Message};
 use gdk_common::bitcoin::{PublicKey, Witness};
 use gdk_common::elements::confidential::Value;
 use gdk_common::{bitcoin, elements, rand};
@@ -168,7 +169,7 @@ impl Account {
             let mut xpub_bytes = self.xpub.encode();
             xpub_bytes[0..4]
                 .copy_from_slice(&slip132_version(self.network.mainnet, self.script_type));
-            Some(bitcoin::util::base58::check_encode_slice(&xpub_bytes))
+            Some(bitcoin::base58::encode_check(&xpub_bytes))
         }
     }
 
@@ -243,7 +244,7 @@ impl Account {
         let address = self.derive_address(is_internal, pointer)?;
         let (is_blinded, unconfidential_address, blinding_key) = match address {
             BEAddress::Elements(ref a) => {
-                let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
+                let blinding_key = a.blinding_pubkey.map(|p| p.to_string());
                 (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
             }
             _ => (None, None, None),
@@ -287,7 +288,7 @@ impl Account {
                 DerivationPath::from(&[(is_internal as u32).into(), index.into()][..]);
             let (is_confidential, unconfidential_address, blinding_key) = match address {
                 BEAddress::Elements(ref a) => {
-                    let blinding_key = a.blinding_pubkey.map(|p| p.to_hex());
+                    let blinding_key = a.blinding_pubkey.map(|p| p.to_string());
                     (Some(a.is_blinded()), Some(a.to_unconfidential().to_string()), blinding_key)
                 }
                 _ => (None, None, None),
@@ -454,7 +455,7 @@ impl Account {
                                 acc_store
                                     .all_txs
                                     .get_previous_output_asset(*outpoint, &acc_store.unblinded)
-                                    .map(|a| a.to_hex()),
+                                    .map(|a| a.to_string()),
                                 acc_store.all_txs.get_previous_output_assetblinder_hex(
                                     *outpoint,
                                     &acc_store.unblinded,
@@ -546,7 +547,8 @@ impl Account {
                     };
 
                     let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or(0);
-                    let asset_id = tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_hex());
+                    let asset_id =
+                        tx.output_asset(vout, &acc_store.unblinded).map(|a| a.to_string());
                     let asset_blinder = tx.output_assetblinder_hex(vout, &acc_store.unblinded);
                     let amount_blinder = tx.output_amountblinder_hex(vout, &acc_store.unblinded);
                     let is_blinded = is_blinded(&asset_blinder, &amount_blinder);
@@ -813,7 +815,7 @@ impl Account {
                     )?;
 
                     out_tx.input[i].script_sig = script_sig;
-                    out_tx.input[i].witness = Witness::from_vec(witness);
+                    out_tx.input[i].witness = Witness::from_slice(&witness);
                 }
                 let tx = BETransaction::Bitcoin(out_tx);
                 info!(
@@ -1009,7 +1011,7 @@ where
         data.push_str(&format!("{txid}:{height}:"));
     }
     let hash = bitcoin::hashes::sha256::Hash::hash(data.as_bytes());
-    let hash_arr: [u8; 32] = hash.as_ref().try_into().unwrap();
+    let hash_arr: [u8; 32] = hash.to_byte_array();
     hash_arr.into()
 }
 
@@ -1063,6 +1065,7 @@ fn get_coin_type(network_id: NetworkId) -> u32 {
             bitcoin::Network::Testnet => 1,
             bitcoin::Network::Regtest => 1,
             bitcoin::Network::Signet => 1,
+            _ => panic!("unknown network"),
         },
         NetworkId::Elements(elements_network) => match elements_network {
             ElementsNetwork::Liquid => 1776,
@@ -1189,11 +1192,9 @@ pub fn create_tx(
                             && network == bitcoin::Network::Regtest)
                     {
                         // FIXME: use address.is_standard() once rust-bitcoin has P2tr variant
-                        if let Payload::WitnessProgram {
-                            version: v,
-                            program: p,
-                        } = &address.payload
-                        {
+                        if let Payload::WitnessProgram(witness_program) = &address.payload {
+                            let v = witness_program.version();
+                            let p = witness_program.program();
                             // Do not support segwit greater than v1 and non-P2TR v1
                             if v.to_num() > 1 || (v.to_num() == 1 && p.len() != 32) {
                                 return Err(Error::InvalidAddress);
@@ -1541,7 +1542,7 @@ fn internal_sign_bitcoin(
     value: u64,
     script_type: ScriptType,
     sighash: &BESigHashType,
-) -> Result<(bitcoin::Script, Vec<Vec<u8>>), Error> {
+) -> Result<(bitcoin::ScriptBuf, Vec<Vec<u8>>), Error> {
     let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
     let private_key = &xprv.to_priv();
     let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
@@ -1549,12 +1550,16 @@ fn internal_sign_bitcoin(
 
     let sighash = sighash.into_bitcoin()?;
     let hash = if script_type.is_segwit() {
-        SighashCache::new(tx).segwit_signature_hash(input_index, &script_code, value, sighash)?
+        SighashCache::new(tx)
+            .segwit_signature_hash(input_index, &script_code, value, sighash)?
+            .to_byte_array()
     } else {
-        tx.signature_hash(input_index, &script_code, sighash.to_u32())
+        SighashCache::new(tx)
+            .legacy_signature_hash(input_index, &script_code, sighash.to_u32())?
+            .to_byte_array()
     };
 
-    let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
+    let message = Message::from_slice(&hash[..]).unwrap();
     let signature = crate::EC.sign_ecdsa(&message, &private_key.inner);
 
     let mut signature = signature.serialize_der().to_vec();
@@ -1602,16 +1607,16 @@ fn prepare_input(
     public_key: &PublicKey,
     signature: Vec<u8>,
     script_type: ScriptType,
-) -> (bitcoin::Script, Vec<Vec<u8>>) {
+) -> (bitcoin::ScriptBuf, Vec<Vec<u8>>) {
     let pk = public_key.to_bytes();
 
     match script_type {
         ScriptType::P2shP2wpkh => (p2shwpkh_script_sig(public_key), vec![signature, pk]),
-        ScriptType::P2wpkh => (bitcoin::Script::new(), vec![signature, pk]),
+        ScriptType::P2wpkh => (bitcoin::ScriptBuf::new(), vec![signature, pk]),
         ScriptType::P2pkh => (
             script::Builder::new()
-                .push_slice(signature.as_slice())
-                .push_slice(pk.as_slice())
+                .push_slice(PushBytesBuf::try_from(signature).unwrap())
+                .push_slice(PushBytesBuf::try_from(pk).unwrap())
                 .into_script(),
             vec![],
         ),
@@ -1759,7 +1764,7 @@ mod test {
 
         for (&txs, expected) in inputs.iter().zip(expected) {
             let txs = txs.iter().map(|(txid, height)| {
-                let txid = BETxid::Bitcoin(bitcoin::Txid::from_hex(txid).unwrap());
+                let txid = BETxid::Bitcoin(bitcoin::Txid::from_str(txid).unwrap());
                 (txid, *height)
             });
             let script_status = compute_script_status(txs);

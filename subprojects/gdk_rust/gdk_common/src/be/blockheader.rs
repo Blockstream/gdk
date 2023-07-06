@@ -6,7 +6,7 @@ use super::BEBlockHash;
 #[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum BEBlockHeader {
-    Bitcoin(bitcoin::BlockHeader),
+    Bitcoin(bitcoin::block::Header),
     Elements(elements::BlockHeader),
 }
 

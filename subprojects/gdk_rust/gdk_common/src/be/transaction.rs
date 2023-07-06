@@ -4,18 +4,18 @@ use crate::model::{Balances, TransactionType};
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::NetworkId;
 use bitcoin::blockdata::script::Instruction;
-use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
-use bitcoin::hashes::hex::{FromHex, ToHex};
+use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
-use bitcoin::util::sighash::SighashCache;
-use bitcoin::{PackedLockTime, PublicKey, Sequence};
+use bitcoin::sighash::SighashCache;
+use bitcoin::{PublicKey, Sequence};
 use elements::confidential;
 use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
+use elements::hex::ToHex;
 use elements::{TxInWitness, TxOutWitness};
 use log::{info, trace};
 use rand::seq::SliceRandom;
@@ -43,13 +43,13 @@ impl BETransaction {
         match id {
             NetworkId::Bitcoin(_) => BETransaction::Bitcoin(bitcoin::Transaction {
                 version: 2,
-                lock_time: PackedLockTime(0),
+                lock_time: bitcoin::blockdata::locktime::absolute::LockTime::ZERO,
                 input: vec![],
                 output: vec![],
             }),
             NetworkId::Elements(_) => BETransaction::Elements(elements::Transaction {
                 version: 2,
-                lock_time: 0,
+                lock_time: elements::LockTime::ZERO,
                 input: vec![],
                 output: vec![],
             }),
@@ -97,8 +97,8 @@ impl BETransaction {
 
     pub fn lock_time(&self) -> u32 {
         match self {
-            Self::Bitcoin(tx) => tx.lock_time.to_u32(),
-            Self::Elements(tx) => tx.lock_time,
+            Self::Bitcoin(tx) => tx.lock_time.to_consensus_u32(),
+            Self::Elements(tx) => tx.lock_time.to_consensus_u32(),
         }
     }
 
@@ -145,7 +145,7 @@ impl BETransaction {
             Self::Elements(tx) => tx
                 .input
                 .iter()
-                .map(|i| (i.sequence, BEOutPoint::Elements(i.previous_output)))
+                .map(|i| (i.sequence.to_consensus_u32(), BEOutPoint::Elements(i.previous_output)))
                 .collect(),
         }
     }
@@ -276,7 +276,7 @@ impl BETransaction {
 
     pub fn get_weight(&self) -> usize {
         match self {
-            Self::Bitcoin(tx) => tx.weight(),
+            Self::Bitcoin(tx) => tx.weight().to_wu() as usize,
             Self::Elements(tx) => tx.weight(),
         }
     }
@@ -298,7 +298,8 @@ impl BETransaction {
     ) -> Result<(), Error> {
         match (self, id) {
             (BETransaction::Bitcoin(tx), NetworkId::Bitcoin(_)) => {
-                let script_pubkey = bitcoin::Address::from_str(&address)?.script_pubkey();
+                let address = bitcoin::Address::from_str(&address)?.assume_checked();
+                let script_pubkey = address.script_pubkey();
                 let new_out = bitcoin::TxOut {
                     script_pubkey,
                     value,
@@ -355,7 +356,7 @@ impl BETransaction {
                         script_pubkey: script_type.mock_script_pubkey().into(),
                     })
                 }
-                let vbytes = tx.weight() as f64 / 4.0;
+                let vbytes = tx.weight().to_wu() as f64 / 4.0;
                 let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee TODO improve fee estimation and lower this
                 info!(
                     "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
@@ -606,7 +607,7 @@ impl BETransaction {
             (BEOutPoint::Bitcoin(outpoint), BETransaction::Bitcoin(tx)) => {
                 let new_in = bitcoin::TxIn {
                     previous_output: outpoint,
-                    script_sig: bitcoin::Script::default(),
+                    script_sig: bitcoin::ScriptBuf::new(),
                     sequence: Sequence(0xffff_fffd), // nSequence is disabled, nLocktime is enabled, RBF is signaled.
                     witness: bitcoin::Witness::default(),
                 };
@@ -617,7 +618,7 @@ impl BETransaction {
                     previous_output: outpoint,
                     is_pegin: false,
                     script_sig: elements::Script::default(),
-                    sequence: 0xffff_fffe, // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
+                    sequence: elements::Sequence(0xffff_fffe), // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
                     asset_issuance: Default::default(),
                     witness: TxInWitness::default(),
                 };
@@ -680,7 +681,9 @@ impl BETransaction {
     pub fn rbf_optin(&self) -> bool {
         match self {
             Self::Bitcoin(tx) => tx.input.iter().any(|e| e.sequence < Sequence(0xffff_fffe)),
-            Self::Elements(tx) => tx.input.iter().any(|e| e.sequence < 0xffff_fffe),
+            Self::Elements(tx) => {
+                tx.input.iter().any(|e| e.sequence < elements::Sequence(0xffff_fffe))
+            }
         }
     }
 
@@ -867,22 +870,25 @@ impl BETransaction {
                 tx.input[inv].witness.to_vec().get(0).cloned().ok_or(Error::InputValidationFailed)
             }
             ScriptType::P2pkh => match tx.input[inv].script_sig.instructions().next() {
-                Some(Ok(Instruction::PushBytes(sig))) => Ok(sig.to_vec()),
+                Some(Ok(Instruction::PushBytes(sig))) => Ok(sig.as_bytes().to_vec()),
                 _ => Err(Error::InputValidationFailed),
             },
         }?;
 
         let sighash = sig.pop().ok_or_else(|| Error::InputValidationFailed)?;
-        let sighash = BitcoinSigHashType::from_standard(sighash as u32)?;
+        let sighash = bitcoin::sighash::EcdsaSighashType::from_standard(sighash as u32)?;
 
         let script_code = p2pkh_script(public_key);
         let hash = if script_type.is_segwit() {
             let hashcache = hashcache.get_or_insert_with(|| SighashCache::new(tx));
-            hashcache.segwit_signature_hash(inv, &script_code, value, sighash)?
+            hashcache.segwit_signature_hash(inv, &script_code, value, sighash)?.to_byte_array()
         } else {
-            tx.signature_hash(inv, &script_code, sighash.to_u32())
+            let sighash_cache = SighashCache::new(tx);
+            sighash_cache
+                .legacy_signature_hash(inv, &script_code, sighash.to_u32())?
+                .to_byte_array()
         };
-        let message = Message::from_slice(&hash.into_inner()[..]).unwrap();
+        let message = Message::from_slice(&hash[..]).unwrap();
 
         secp.verify_ecdsa(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
         Ok(())

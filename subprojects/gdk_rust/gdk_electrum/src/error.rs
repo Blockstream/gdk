@@ -1,6 +1,6 @@
 use crate::BETxid;
-use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
-use gdk_common::bitcoin::util::sighash;
+use gdk_common::bitcoin::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::sighash;
 use gdk_common::error::Error as CommonError;
 use gdk_common::{bitcoin, electrum_client, elements, ureq};
 use serde::ser::Serialize;
@@ -28,13 +28,13 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
 
     #[error(transparent)]
-    Bitcoin(#[from] bitcoin::util::Error),
+    Bitcoin(#[from] bitcoin::Error),
 
     #[error(transparent)]
-    BitcoinAddressError(#[from] bitcoin::util::address::Error),
+    BitcoinAddressError(#[from] bitcoin::address::Error),
 
     #[error(transparent)]
-    BitcoinBIP32Error(#[from] bitcoin::util::bip32::Error),
+    BitcoinBIP32Error(#[from] bitcoin::bip32::Error),
 
     #[error(transparent)]
     BitcoinConsensus(#[from] bitcoin::consensus::encode::Error),
@@ -46,7 +46,7 @@ pub enum Error {
     BitcoinHexError(#[from] bitcoin::hashes::hex::Error),
 
     #[error(transparent)]
-    BitcoinKeyError(#[from] bitcoin::util::key::Error),
+    BitcoinKeyError(#[from] bitcoin::key::Error),
 
     #[error(transparent)]
     ClientError(#[from] electrum_client::Error),

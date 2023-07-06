@@ -6,8 +6,8 @@ use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
+use gdk_common::bitcoin::bip32::ExtendedPubKey;
 use gdk_common::bitcoin::hashes::{sha256, Hash};
-use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
 use gdk_common::elements::AssetId;
 use gdk_common::log::{debug, warn};
 use gdk_common::once_cell::sync::{Lazy, OnceCell};

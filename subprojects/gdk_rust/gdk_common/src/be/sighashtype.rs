@@ -1,11 +1,11 @@
-use bitcoin::blockdata::transaction::EcdsaSighashType as BitcoinSigHashType;
+use bitcoin::sighash::EcdsaSighashType;
 use elements::EcdsaSigHashType as ElementsSigHashType;
 
 use crate::error::Error;
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum BESigHashType {
-    Bitcoin(BitcoinSigHashType),
+    Bitcoin(EcdsaSighashType),
     Elements(ElementsSigHashType),
 }
 
@@ -21,15 +21,15 @@ impl BESigHashType {
                 Err(Error::InvalidSigHash)
             }
         } else {
-            let sighash =
-                BitcoinSigHashType::from_standard(n).map_err(|_| Error::InvalidSigHash)?;
+            let sighash: EcdsaSighashType =
+                EcdsaSighashType::from_standard(n).map_err(|_| Error::InvalidSigHash)?;
             let sighash = BESigHashType::Bitcoin(sighash);
             sighash.is_allowed()?;
             Ok(sighash)
         }
     }
 
-    pub fn into_bitcoin(&self) -> Result<BitcoinSigHashType, Error> {
+    pub fn into_bitcoin(&self) -> Result<EcdsaSighashType, Error> {
         match self {
             BESigHashType::Bitcoin(sighash) => Ok(sighash.clone()),
             BESigHashType::Elements(_) => Err(Error::InvalidSigHash),
@@ -45,7 +45,7 @@ impl BESigHashType {
 
     fn is_allowed(&self) -> Result<(), Error> {
         match self {
-            BESigHashType::Bitcoin(BitcoinSigHashType::All)
+            BESigHashType::Bitcoin(EcdsaSighashType::All)
             | BESigHashType::Elements(ElementsSigHashType::All)
             | BESigHashType::Elements(ElementsSigHashType::SinglePlusAnyoneCanPay) => Ok(()),
             _ => Err(Error::UnsupportedSigHash),

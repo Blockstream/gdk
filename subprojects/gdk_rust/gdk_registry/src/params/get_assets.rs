@@ -1,4 +1,4 @@
-use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::ExtendedPubKey;
 use gdk_common::elements::AssetId;
 use serde::{Deserialize, Serialize};
 

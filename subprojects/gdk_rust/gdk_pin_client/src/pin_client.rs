@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::PublicKey;
 use url::Url;
@@ -154,7 +156,7 @@ impl PinServerResponse {
             Hmac::from_engine(engine)
         };
 
-        if hmac == Hmac::from_hex(&self.hmac)? {
+        if hmac == Hmac::from_str(&self.hmac)? {
             Ok(())
         } else {
             Err(crate::Error::InvalidResponse)
@@ -271,11 +273,11 @@ mod tests {
 
         let decryption_key = {
             let decr_key =
-                Hmac::from_hex("795d9b98328cf9606eabbf3ef4c42faabffb86e98949f68c6bf7a45b89e9461b")
+                Hmac::from_str("795d9b98328cf9606eabbf3ef4c42faabffb86e98949f68c6bf7a45b89e9461b")
                     .unwrap();
 
             let hmac_key =
-                Hmac::from_hex("2a19879506bc560a2120187ca4871c79845d19019874435cde4be9115ca31ec0")
+                Hmac::from_str("2a19879506bc560a2120187ca4871c79845d19019874435cde4be9115ca31ec0")
                     .unwrap();
 
             ResponseDecryptionKey::new(decr_key, hmac_key)

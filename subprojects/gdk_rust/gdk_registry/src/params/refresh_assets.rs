@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use gdk_common::bitcoin::util::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::ExtendedPubKey;
 use gdk_common::ureq;
 use serde::{Deserialize, Serialize};
 
