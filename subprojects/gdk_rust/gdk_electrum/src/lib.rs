@@ -38,7 +38,7 @@ use gdk_common::wally::{
 };
 use gdk_common::{be::*, State};
 
-use gdk_common::electrum_client::{self, ScriptStatus};
+use gdk_common::electrum_client::{self, RawHeaderNotification, ScriptStatus};
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
@@ -47,7 +47,7 @@ use gdk_common::NetworkId;
 use gdk_common::EC;
 use std::collections::hash_map::Entry;
 use std::collections::{HashMap, HashSet};
-use std::convert::TryInto;
+use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::{Duration, Instant, SystemTime};
@@ -94,6 +94,19 @@ impl From<(u32, BEBlockHeader)> for HeightHeader {
             height: value.0,
             header: value.1,
         }
+    }
+}
+
+impl TryFrom<(RawHeaderNotification, NetworkId)> for HeightHeader {
+    type Error = crate::error::Error;
+
+    fn try_from(value: (RawHeaderNotification, NetworkId)) -> Result<Self, Self::Error> {
+        let new_height = value.0.height as u32;
+        let new_header = BEBlockHeader::deserialize(&value.0.header, value.1)?;
+        Ok(Self {
+            height: new_height,
+            header: new_header,
+        })
     }
 }
 
@@ -1338,9 +1351,7 @@ pub fn keys_from_credentials(
 impl Tipper {
     pub fn server_tip(&self, client: &Client) -> Result<HeightHeader, Error> {
         let header = client.block_headers_subscribe_raw()?;
-        let new_height = header.height as u32;
-        let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
-        Ok((new_height, new_header).into())
+        Ok((header, self.network.id()).try_into()?)
     }
     pub fn update_cache_if_needed(
         &self,
