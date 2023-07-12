@@ -76,6 +76,27 @@ const FEE_ESTIMATE_INTERVAL: Duration = Duration::from_secs(120);
 
 type ScriptStatuses = HashMap<bitcoin::ScriptBuf, ScriptStatus>;
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct HeightHeader {
+    height: u32,
+    header: BEBlockHeader,
+}
+
+impl From<HeightHeader> for (u32, BEBlockHeader) {
+    fn from(value: HeightHeader) -> Self {
+        (value.height, value.header)
+    }
+}
+
+impl From<(u32, BEBlockHeader)> for HeightHeader {
+    fn from(value: (u32, BEBlockHeader)) -> Self {
+        Self {
+            height: value.0,
+            header: value.1,
+        }
+    }
+}
+
 struct Syncer {
     accounts: Arc<RwLock<HashMap<u32, Account>>>,
     store: Store,
@@ -807,8 +828,10 @@ impl ElectrumSession {
                     // consistency.
                     continue;
                 }
-                if let Ok(Some((height, header))) =
-                    tipper.update_cache_if_needed(tip_after_sync.0, tip_after_sync.1)
+                if let Ok(Some(HeightHeader {
+                    height,
+                    header,
+                })) = tipper.update_cache_if_needed(tip_after_sync.height, tip_after_sync.header)
                 {
                     notify.block_from_header(height, &header);
                 }
@@ -1313,17 +1336,17 @@ pub fn keys_from_credentials(
 }
 
 impl Tipper {
-    pub fn server_tip(&self, client: &Client) -> Result<(u32, BEBlockHeader), Error> {
+    pub fn server_tip(&self, client: &Client) -> Result<HeightHeader, Error> {
         let header = client.block_headers_subscribe_raw()?;
         let new_height = header.height as u32;
         let new_header = BEBlockHeader::deserialize(&header.header, self.network.id())?;
-        Ok((new_height, new_header))
+        Ok((new_height, new_header).into())
     }
     pub fn update_cache_if_needed(
         &self,
         new_height: u32,
         new_header: BEBlockHeader,
-    ) -> Result<Option<(u32, BEBlockHeader)>, Error> {
+    ) -> Result<Option<HeightHeader>, Error> {
         let do_update = match &self.store.read()?.cache.tip_ {
             None => true,
             Some((current_height, current_header)) => {
@@ -1333,7 +1356,7 @@ impl Tipper {
         if do_update {
             info!("saving in store new tip {:?}", new_height);
             self.store.write()?.update_tip(new_height, new_header.clone())?;
-            Ok(Some((new_height, new_header)))
+            Ok(Some((new_height, new_header).into()))
         } else {
             Ok(None)
         }
@@ -1601,7 +1624,7 @@ impl Syncer {
                     store_last_used != last_used
                 );
                 let mut store_write = self.store.write()?;
-                store_write.cache.headers.extend(headers);
+                store_write.cache.headers.extend(headers.into_iter().map(Into::into));
 
                 let mut acc_store = store_write.account_cache_mut(account.num())?;
                 acc_store.set_both_last_used(last_used);
@@ -1769,7 +1792,7 @@ impl Syncer {
         account_num: u32,
         heights_set: &HashSet<u32>,
         client: &Client,
-    ) -> Result<Vec<(u32, BEBlockHeader)>, Error> {
+    ) -> Result<Vec<HeightHeader>, Error> {
         let heights_in_db: HashSet<u32> = {
             let store_read = self.store.read()?;
             let acc_store = store_read.account_cache(account_num)?;
@@ -1790,7 +1813,7 @@ impl Syncer {
             for (header, height) in
                 headers_downloaded.into_iter().zip(heights_to_download.into_iter())
             {
-                result.push((height, header));
+                result.push((height, header).into());
             }
         }
 
