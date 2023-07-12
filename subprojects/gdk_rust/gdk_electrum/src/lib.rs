@@ -73,10 +73,11 @@ use std::thread::JoinHandle;
 const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 pub const DEFAULT_GAP_LIMIT: u32 = 20;
 const FEE_ESTIMATE_INTERVAL: Duration = Duration::from_secs(120);
+const KEEP_ALIVE: Duration = Duration::from_secs(5);
 
 type ScriptStatuses = HashMap<bitcoin::ScriptBuf, ScriptStatus>;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct HeightHeader {
     height: u32,
     header: BEBlockHeader,
@@ -122,6 +123,7 @@ struct Syncer {
 pub struct Tipper {
     pub store: Store,
     pub network: NetworkParameters,
+    pub last: Option<HeightHeader>,
 }
 
 pub struct Headers {
@@ -709,9 +711,10 @@ impl ElectrumSession {
             gap_limit: self.gap_limit,
         };
 
-        let tipper = Tipper {
+        let mut tipper = Tipper {
             store: self.store()?,
             network: self.network.clone(),
+            last: None,
         };
 
         info!("login STATUS block:{:?} tx:{}", self.block_status()?, self.tx_status()?);
@@ -765,6 +768,7 @@ impl ElectrumSession {
             };
 
             let mut avoid_first_wait = true;
+            let mut last_network_call = Instant::now();
             loop {
                 let is_connected = state_updater.current.load(Ordering::Relaxed);
                 debug!("loop start is_connected:{is_connected}");
@@ -784,6 +788,17 @@ impl ElectrumSession {
                             continue;
                         }
                     };
+                } else {
+                    // since both script and headers are subscription based, it may happen nothing
+                    // is sent on the wire, and many endpoint close the connection in such cases.
+                    // Therefore we ping the server every once in a while.
+                    if last_network_call + KEEP_ALIVE > Instant::now() {
+                        last_network_call = Instant::now();
+                        if let Err(_) = client.ping() {
+                            state_updater.update_if_needed(false);
+                            continue;
+                        }
+                    }
                 }
 
                 let tip_before_sync = match tipper.server_tip(&client) {
@@ -1349,9 +1364,19 @@ pub fn keys_from_credentials(
 }
 
 impl Tipper {
-    pub fn server_tip(&self, client: &Client) -> Result<HeightHeader, Error> {
-        let header = client.block_headers_subscribe_raw()?;
-        Ok((header, self.network.id()).try_into()?)
+    pub fn server_tip(&mut self, client: &Client) -> Result<HeightHeader, Error> {
+        match client.block_headers_pop_raw() {
+            Ok(Some(header)) => {
+                self.last = Some((header, self.network.id()).try_into()?);
+            }
+            Ok(None) => (),
+            Err(electrum_client::Error::NotSubscribedToHeaders) => {
+                let header = client.block_headers_subscribe_raw()?;
+                self.last = Some((header, self.network.id()).try_into()?);
+            }
+            Err(e) => return Err(Error::ClientError(e)),
+        }
+        Ok(self.last.clone().ok_or(Error::Generic("last tip isn't present".to_owned()))?)
     }
     pub fn update_cache_if_needed(
         &self,
