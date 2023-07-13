@@ -9,7 +9,7 @@ else
     export ARCHS="-arch $(uname -m)"
     export IOS_SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
     export IOS_SDK_PLATFORM=$(xcrun --sdk iphonesimulator --show-sdk-platform-path)
-    export IOS_MIN_VERSION="-mios-simulator-version-min=13.7"
+    export IOS_MIN_VERSION="-mios-simulator-version-min=13.0"
 fi
 
 export XCODE_DEFAULT_PATH=$(xcode-select --print-path)"/Toolchains/XcodeDefault.xctoolchain/usr/bin"
