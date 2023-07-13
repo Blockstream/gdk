@@ -3,7 +3,7 @@ if test "x$1" == "x--iphone"; then
     export ARCHS="-arch arm64"
     export IOS_SDK_PATH=$(xcrun --sdk iphoneos --show-sdk-path)
     export IOS_SDK_PLATFORM=$(xcrun --sdk iphoneos --show-sdk-platform-path)
-    export IOS_MIN_VERSION="-miphoneos-version-min=11.0"
+    export IOS_MIN_VERSION="-miphoneos-version-min=13.0"
 else
     export IOS_PLATFORM=iPhoneSimulator
     export ARCHS="-arch $(uname -m)"
