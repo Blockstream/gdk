@@ -740,13 +740,15 @@ namespace sdk {
 
         // Set "satoshi" per-asset elements to the net effect on the wallet
         auto& summary = result["satoshi"];
-        summary = nlohmann::json::object();
+        summary = { { policy_asset, 0u } };
+        bool have_input_paying_fee = false;
         if (auto p = result.find("transaction_inputs"); p != result.end()) {
             for (const auto& input : *p) {
                 if (input.contains("address_type") && !input.contains("private_key")) {
                     // Wallet input
                     const auto asset_id = asset_id_from_json(net_params, input);
                     update_summary(summary, asset_id, input, "satoshi", -1);
+                    have_input_paying_fee |= asset_id == policy_asset;
                 }
             }
         }
@@ -757,9 +759,11 @@ namespace sdk {
                 update_summary(summary, asset_id, output, "satoshi");
             }
         }
-        // Remove fee and network fee from the net effect.
-        update_summary(summary, policy_asset, result, "fee");
-        update_summary(summary, policy_asset, result, "network_fee");
+        if (have_input_paying_fee) {
+            // Remove fee and network fee from the net effect.
+            update_summary(summary, policy_asset, result, "fee");
+            update_summary(summary, policy_asset, result, "network_fee");
+        }
     }
 
     static bool is_wallet_input(const nlohmann::json& utxo)
