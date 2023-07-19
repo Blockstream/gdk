@@ -24,6 +24,7 @@ add_library(greenaddress-objects OBJECT
     ga_wally.cpp ga_wally.hpp
     http_client.cpp http_client.hpp
     io_runner.cpp io_runner.hpp
+    json_utils.cpp json_utils.hpp
     network_parameters.cpp network_parameters.hpp
     session.cpp session.hpp
     session_impl.cpp session_impl.hpp
