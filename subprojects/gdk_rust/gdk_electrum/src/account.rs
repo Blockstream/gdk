@@ -871,7 +871,6 @@ impl Account {
         betx.create_transaction = request.create_transaction.clone();
         betx.used_utxos = request.used_utxos.clone();
 
-        drop(acc_store);
         drop(store_read);
         let mut store_write = self.store.write()?;
         let acc_store = store_write.account_cache_mut(self.account_num)?;

@@ -1379,7 +1379,6 @@ impl Headers {
                 .filter(|(t, _)| store_read.cache.txs_verif.get(*t).is_none())
                 .map(|(t, h)| (t.clone(), h))
                 .collect();
-            drop(acc_store);
             drop(store_read);
 
             let mut txs_verified = HashMap::new();
@@ -1583,7 +1582,6 @@ impl Syncer {
             let acc_store = store_read.account_cache(account.num())?;
             let store_last_used = acc_store.get_both_last_used();
 
-            drop(acc_store);
             drop(store_read);
 
             let changed = if !new_txs.txs.is_empty()
