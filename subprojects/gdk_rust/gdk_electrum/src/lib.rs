@@ -1601,7 +1601,7 @@ impl Syncer {
                 let mut store_write = self.store.write()?;
                 store_write.cache.headers.extend(headers);
 
-                let mut acc_store = store_write.account_cache_mut(account.num())?;
+                let acc_store = store_write.account_cache_mut(account.num())?;
                 acc_store.set_both_last_used(last_used);
                 acc_store
                     .all_txs
