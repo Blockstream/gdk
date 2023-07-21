@@ -117,6 +117,15 @@ struct Syncer {
     network: NetworkParameters,
     recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
     gap_limit: u32,
+    synced_accounts: HashSet<u32>,
+}
+
+struct SyncResult {
+    /// The transaction notifications to emit
+    tx_ntfs: Vec<TransactionNotification>,
+
+    /// The accounts synced
+    accounts: Vec<u32>,
 }
 
 pub struct Tipper {
@@ -700,13 +709,14 @@ impl ElectrumSession {
             self.handles.push(headers_handle);
         }
 
-        let syncer = Syncer {
+        let mut syncer = Syncer {
             accounts: self.accounts.clone(),
             store: self.store()?,
             master_blinding: master_blinding.clone(),
             network: self.network.clone(),
             recent_spent_utxos: self.recent_spent_utxos.clone(),
             gap_limit: self.gap_limit,
+            synced_accounts: HashSet::new(),
         };
 
         let tipper = Tipper {
@@ -802,7 +812,7 @@ impl ElectrumSession {
                 };
 
                 match syncer.sync(&client, &mut last_statuses, &user_wants_to_sync) {
-                    Ok(tx_ntfs) => {
+                    Ok(sync_result) => {
                         state_updater.update_if_needed(true);
                         // Skip sending transaction notifications if it's the
                         // first call to sync. This allows us to _not_ notify
@@ -811,9 +821,17 @@ impl ElectrumSession {
                         if first_sync.load(Ordering::Relaxed) {
                             info!("first sync completed");
                         } else {
-                            txs_to_notify.extend(tx_ntfs);
+                            txs_to_notify.extend(sync_result.tx_ntfs);
                         }
                         first_sync.store(false, Ordering::Relaxed);
+
+                        for pointer in sync_result.accounts {
+                            if syncer.synced_accounts.insert(pointer) {
+                                // First sync loop for this account, notify the caller that the
+                                // transactions received offline have been synced.
+                                notify.subaccount_synced(pointer);
+                            }
+                        }
                     }
                     Err(Error::UserDoesntWantToSync) => {
                         info!("{}", Error::UserDoesntWantToSync);
@@ -1506,13 +1524,16 @@ struct DownloadTxResult {
 }
 
 impl Syncer {
-    /// Sync the wallet, return the set of updated accounts
+    /// Sync the wallet
+    ///
+    /// Return a vector of transaction notifications to emit and a vector of
+    /// accounts that have been synced.
     pub fn sync(
         &self,
         client: &Client,
         last_statuses: &mut ScriptStatuses,
         user_wants_to_sync: &Arc<AtomicBool>,
-    ) -> Result<Vec<TransactionNotification>, Error> {
+    ) -> Result<SyncResult, Error> {
         trace!("start sync");
         let start = Instant::now();
 
@@ -1772,7 +1793,12 @@ impl Syncer {
         }
 
         self.empty_recent_spent_utxos()?;
-        Ok(updated_txs.into_values().collect())
+        let mut account_nums: Vec<u32> = accounts.keys().copied().collect();
+        account_nums.sort();
+        Ok(SyncResult {
+            tx_ntfs: updated_txs.into_values().collect(),
+            accounts: account_nums,
+        })
     }
 
     fn empty_recent_spent_utxos(&self) -> Result<(), Error> {
