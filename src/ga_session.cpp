@@ -636,6 +636,11 @@ namespace sdk {
             }
         }
 
+        for (const auto& sa : m_subaccounts) {
+            nlohmann::json ntf = { { "pointer", sa.first }, { "event_type", "synced" } };
+            emit_notification({ { "event", "subaccount" }, { "subaccount", std::move(ntf) } }, false);
+        }
+
         subscribe_all(locker);
 
         // Notify the caller of their current block
