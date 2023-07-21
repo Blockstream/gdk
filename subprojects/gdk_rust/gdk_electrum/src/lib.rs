@@ -826,25 +826,22 @@ impl ElectrumSession {
                     }
                 }
 
-                let tip_after_sync = match tipper.server_tip(&client) {
-                    Ok(height) => height,
-                    Err(_) => {
-                        continue;
-                    }
-                };
-
-                if tip_before_sync != tip_after_sync {
+                match tipper.pop_tip(&client) {
                     // If a block arrives while we are syncing
                     // transactions, transactions might be returned as
                     // unconfirmed even if they belong to the newly
                     // notified block. Sync again to ensure
                     // consistency.
-                    continue;
+                    Ok(true) => continue,
+                    Err(_) => continue,
+                    _ => (),
                 }
+
                 if let Ok(Some(HeightHeader {
                     height,
                     header,
-                })) = tipper.update_cache_if_needed(tip_after_sync.height, tip_after_sync.header)
+                })) =
+                    tipper.update_cache_if_needed(tip_before_sync.height, tip_before_sync.header)
                 {
                     notify.block_from_header(height, &header);
                 }
@@ -1352,6 +1349,10 @@ impl Tipper {
     pub fn server_tip(&self, client: &Client) -> Result<HeightHeader, Error> {
         let header = client.block_headers_subscribe_raw()?;
         Ok((header, self.network.id()).try_into()?)
+    }
+    pub fn pop_tip(&self, client: &Client) -> Result<bool, Error> {
+        let header = client.block_headers_pop_raw()?;
+        Ok(header.is_some())
     }
     pub fn update_cache_if_needed(
         &self,
