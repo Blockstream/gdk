@@ -3,6 +3,9 @@
 ## Release 0.0.66
 
 ### Added
+- Add new subaccount notifications. These signal the creation of a
+  subaccount or if it completed the first sync.
+  Please see the notification documentation for details.
 
 ### Changed
 
@@ -10,7 +13,7 @@
 
 ### Removed
 
-## Release 0.0.65 - 2023-07-03
+## Release 0.0.65 - 2023-07-20
 
 ### Added
 - Documentation: The JSON examples for many calls are now automatically

@@ -169,3 +169,26 @@ Notified when the user's exchange rate changes.
 :ticker/currency: The user's chosen fiat currency.
 :ticker/exhange: The user's chosen exchange source.
 :ticker/rate: The price of 1 Bitcoin expressed in the user's fiat currency, expressed as a floating point string.
+
+
+.. _ntf-subaccount:
+
+Subaccount notification
+-----------------------
+
+Notified when a subaccount is created or synced.
+
+.. code-block:: json
+
+  {
+    "event": "subaccount",
+    "subaccount": {
+      "pointer": 0,
+      "event_type": "new"
+    }
+  }
+
+
+:subaccount/pointer: The subaccount number.
+:subaccount/event_type: ``"new"`` if the subaccount has been created.
+    ``"synced"`` if the subaccount has been synced.
