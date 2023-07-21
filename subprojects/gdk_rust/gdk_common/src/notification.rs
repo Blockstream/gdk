@@ -29,6 +29,9 @@ pub struct Notification {
     #[serde(skip_serializing_if = "Option::is_none")]
     block: Option<BlockNotification>,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    subaccount: Option<SubaccountNotification>,
+
     event: Kind,
 }
 
@@ -38,6 +41,7 @@ enum Kind {
     Network,
     Transaction,
     Block,
+    Subaccount,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -82,6 +86,22 @@ pub struct BlockNotification {
     pub previous_hash: bitcoin::BlockHash,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(rename_all = "snake_case")]
+pub enum SubaccountEventType {
+    New,
+    Synced,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct SubaccountNotification {
+    /// The subaccount number.
+    pub pointer: u32,
+
+    /// The type of subaccount event occurred.
+    pub event_type: SubaccountEventType,
+}
+
 impl Notification {
     pub fn new_network(current: State, next: State) -> Self {
         Notification {
@@ -92,6 +112,7 @@ impl Notification {
             }),
             transaction: None,
             block: None,
+            subaccount: None,
             event: Kind::Network,
         }
     }
@@ -101,6 +122,7 @@ impl Notification {
             network: None,
             transaction: Some(ntf.clone()),
             block: None,
+            subaccount: None,
             event: Kind::Transaction,
         }
     }
@@ -114,6 +136,7 @@ impl Notification {
                 block_hash: hash.into_bitcoin(),
                 previous_hash: prev_hash.into_bitcoin(),
             }),
+            subaccount: None,
             event: Kind::Block,
         }
     }
@@ -127,7 +150,21 @@ impl Notification {
                 block_hash: header.block_hash().into_bitcoin(),
                 previous_hash: header.prev_block_hash().into_bitcoin(),
             }),
+            subaccount: None,
             event: Kind::Block,
+        }
+    }
+
+    pub fn subaccount(pointer: u32, event_type: SubaccountEventType) -> Self {
+        Notification {
+            network: None,
+            transaction: None,
+            block: None,
+            subaccount: Some(SubaccountNotification {
+                pointer,
+                event_type,
+            }),
+            event: Kind::Subaccount,
         }
     }
 }
@@ -184,6 +221,14 @@ impl NativeNotif {
 
     pub fn network(&self, current: State, desired: State) {
         self.notify(Notification::new_network(current, desired));
+    }
+
+    pub fn subaccount_new(&self, pointer: u32) {
+        self.notify(Notification::subaccount(pointer, SubaccountEventType::New));
+    }
+
+    pub fn subaccount_synced(&self, pointer: u32) {
+        self.notify(Notification::subaccount(pointer, SubaccountEventType::Synced));
     }
 
     #[cfg(not(feature = "testing"))]

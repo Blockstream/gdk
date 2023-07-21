@@ -984,6 +984,9 @@ impl ElectrumSession {
                 account
             }
         };
+        if !opt.is_already_created {
+            self.notify.subaccount_new(opt.subaccount);
+        }
         account.info()
     }
 
