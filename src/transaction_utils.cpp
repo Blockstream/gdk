@@ -768,13 +768,7 @@ namespace sdk {
 
     static bool is_wallet_input(const nlohmann::json& utxo)
     {
-        if (!json_get_value(utxo, "private_key").empty()) {
-            return false; // Sweep input
-        }
-        if (utxo.contains("script_sig") && utxo.contains("witness")) {
-            return false; // External input (e.g. in a swap)
-        }
-        return true; // Wallet input
+        return json_get_value(utxo, "private_key").empty() && !json_get_value(utxo, "address_type").empty();
     }
 
     std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details)
