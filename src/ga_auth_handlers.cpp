@@ -217,6 +217,18 @@ namespace sdk {
             }
             return state_type::done;
         }
+
+        static void sync_scriptpubkeys(session_impl& session)
+        {
+            if (session.get_network_parameters().is_liquid()) {
+                const bool have_master_key = session.get_signer()->has_master_blinding_key();
+                GDK_RUNTIME_ASSERT_MSG(have_master_key, "Master blinding key must be exported for PSBT operations");
+            }
+            // FIXME: Updating the scriptpubkey cache can be very expensive
+            for (const auto subaccount : session.get_subaccount_pointers()) {
+                session.encache_new_scriptpubkeys(subaccount);
+            }
+        }
     } // namespace
 
     //
@@ -902,26 +914,18 @@ namespace sdk {
     psbt_get_details_call::psbt_get_details_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "psbt_get_details")
         , m_details(std::move(details))
+        , m_is_synced(false)
     {
     }
 
     auth_handler::state_type psbt_get_details_call::call_impl()
     {
-        const bool is_liquid = m_net_params.is_liquid();
-        if (is_liquid) {
-            GDK_RUNTIME_ASSERT_MSG(
-                get_signer()->has_master_blinding_key(), "Master blinding key must be exported to get PSBT details");
+        if (!m_is_synced) {
+            sync_scriptpubkeys(*m_session);
+            m_is_synced = true;
         }
 
-        // Currently updating the scriptpubkey cache is quite expensive
-        // and requires multiple network calls, so for the time being
-        // we only update it here.
-        for (const auto& sa : m_session->get_subaccounts()) {
-            const uint32_t subaccount = sa.at("pointer");
-            m_session->encache_new_scriptpubkeys(subaccount);
-        }
-
-        const Psbt psbt(m_details.at("psbt"), is_liquid);
+        const Psbt psbt(m_details.at("psbt"), m_net_params.is_liquid());
         m_result = psbt.get_details(*m_session, std::move(m_details));
         return state_type::done;
     }

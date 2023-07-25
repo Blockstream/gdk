@@ -107,6 +107,7 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_details;
+        bool m_is_synced;
     };
 
     class get_receive_address_call : public auth_handler_impl {
