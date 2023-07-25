@@ -323,50 +323,6 @@ namespace sdk {
         return nlohmann::json();
     }
 
-    nlohmann::json session_impl::psbt_get_details(const nlohmann::json& details)
-    {
-        const bool is_liquid = m_net_params.is_liquid();
-        const Psbt psbt(details.at("psbt"), is_liquid);
-        Tx tx(psbt.extract());
-
-        nlohmann::json::array_t inputs;
-        inputs.reserve(tx.get_num_inputs());
-        for (const auto& tx_in : tx.get_inputs()) {
-            const std::string txhash_hex = b2h_rev(tx_in.txhash);
-            const uint32_t vout = tx_in.index;
-            for (const auto& utxo : details.at("utxos")) {
-                if (utxo.value("txhash", std::string()) == txhash_hex && utxo.at("pt_idx") == vout) {
-                    inputs.emplace_back(std::move(utxo));
-                    break;
-                }
-            }
-        }
-
-        nlohmann::json::array_t outputs;
-        outputs.reserve(tx.get_num_outputs());
-        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
-            const auto& o = tx.get_output(i);
-            if (!o.script_len) {
-                continue; // Liquid fee
-            }
-            auto output_data = get_scriptpubkey_data({ o.script, o.script_len });
-            if (output_data.empty()) {
-                continue; // Scriptpubkey does not belong the wallet
-            }
-            if (is_liquid) {
-                const auto unblinded = unblind_output(*this, tx, i);
-                if (unblinded.contains("error")) {
-                    GDK_LOG_SEV(log_level::warning) << "output " << i << ": " << unblinded.at("error");
-                    continue; // Failed to unblind
-                }
-                output_data.update(unblinded);
-            }
-            outputs.emplace_back(output_data);
-        }
-
-        return nlohmann::json{ { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } };
-    }
-
     void session_impl::save_cache()
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions

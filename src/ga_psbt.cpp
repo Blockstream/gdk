@@ -1,6 +1,10 @@
 #include "ga_psbt.hpp"
 #include "exception.hpp"
 #include "ga_tx.hpp"
+#include "logging.hpp"
+#include "session_impl.hpp"
+
+#include <nlohmann/json.hpp>
 
 #define BUILD_ELEMENTS
 #include <wally_psbt.h>
@@ -78,6 +82,48 @@ namespace sdk {
         const auto& txin = tx.get_input(index);
         GDK_VERIFY(wally_psbt_set_input_final_witness(m_psbt.get(), index, txin.witness));
         GDK_VERIFY(wally_psbt_set_input_final_scriptsig(m_psbt.get(), index, txin.script, txin.script_len));
+    }
+
+    nlohmann::json Psbt::get_details(session_impl& session, nlohmann::json details) const
+    {
+        const Tx tx(extract());
+
+        nlohmann::json::array_t inputs;
+        inputs.reserve(tx.get_num_inputs());
+        for (const auto& tx_in : tx.get_inputs()) {
+            const std::string txhash_hex = b2h_rev(tx_in.txhash);
+            const uint32_t vout = tx_in.index;
+            for (const auto& utxo : details.at("utxos")) {
+                if (utxo.value("txhash", std::string()) == txhash_hex && utxo.at("pt_idx") == vout) {
+                    inputs.emplace_back(std::move(utxo));
+                    break;
+                }
+            }
+        }
+
+        nlohmann::json::array_t outputs;
+        outputs.reserve(tx.get_num_outputs());
+        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+            const auto& o = tx.get_output(i);
+            if (!o.script_len) {
+                continue; // Liquid fee
+            }
+            auto output_data = session.get_scriptpubkey_data({ o.script, o.script_len });
+            if (output_data.empty()) {
+                continue; // Scriptpubkey does not belong the wallet
+            }
+            if (m_is_liquid) {
+                const auto unblinded = unblind_output(session, tx, i);
+                if (unblinded.contains("error")) {
+                    GDK_LOG_SEV(log_level::warning) << "output " << i << ": " << unblinded.at("error");
+                    continue; // Failed to unblind
+                }
+                output_data.update(unblinded);
+            }
+            outputs.emplace_back(output_data);
+        }
+
+        return { { "inputs", std::move(inputs) }, { "outputs", std::move(outputs) } };
     }
 
 } // namespace sdk

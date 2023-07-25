@@ -5,10 +5,13 @@
 #include <memory>
 #include <string>
 
+#include <nlohmann/json_fwd.hpp>
+
 struct wally_psbt;
 
 namespace ga {
 namespace sdk {
+    class session_impl;
     class Tx;
 
     class Psbt {
@@ -25,6 +28,8 @@ namespace sdk {
         std::string to_base64(bool include_redundant) const;
 
         Tx extract() const;
+
+        nlohmann::json get_details(session_impl& session, nlohmann::json details) const;
 
         // Inputs
         size_t get_num_inputs() const;

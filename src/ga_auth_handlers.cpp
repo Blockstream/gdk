@@ -907,9 +907,11 @@ namespace sdk {
 
     auth_handler::state_type psbt_get_details_call::call_impl()
     {
-        GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
-        // TODO: replace the following line with a user error once we have the string res.
-        GDK_RUNTIME_ASSERT(get_signer()->has_master_blinding_key());
+        const bool is_liquid = m_net_params.is_liquid();
+        if (is_liquid) {
+            GDK_RUNTIME_ASSERT_MSG(
+                get_signer()->has_master_blinding_key(), "Master blinding key must be exported to get PSBT details");
+        }
 
         // Currently updating the scriptpubkey cache is quite expensive
         // and requires multiple network calls, so for the time being
@@ -919,7 +921,8 @@ namespace sdk {
             m_session->encache_new_scriptpubkeys(subaccount);
         }
 
-        m_result = m_session->psbt_get_details(m_details);
+        const Psbt psbt(m_details.at("psbt"), is_liquid);
+        m_result = psbt.get_details(*m_session, std::move(m_details));
         return state_type::done;
     }
 
