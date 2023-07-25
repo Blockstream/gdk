@@ -4,6 +4,8 @@
 
 #include "auth_handler.hpp"
 
+struct wally_psbt;
+
 namespace ga {
 namespace sdk {
     class register_call : public auth_handler_impl {
@@ -85,13 +87,16 @@ namespace sdk {
     class psbt_sign_call : public auth_handler_impl {
     public:
         psbt_sign_call(session& session, nlohmann::json details);
+        ~psbt_sign_call();
 
     private:
         state_type call_impl() override;
-        void initialize();
+        void on_next_handler_complete(auth_handler* next_handler) override;
 
         nlohmann::json m_details;
-        bool m_initialized;
+        nlohmann::json m_signing_details;
+        std::unique_ptr<struct wally_psbt> m_psbt;
+        bool m_is_partial;
     };
 
     class psbt_get_details_call : public auth_handler_impl {

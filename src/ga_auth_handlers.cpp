@@ -657,7 +657,7 @@ namespace sdk {
             }
         }
 
-        nlohmann::json prev_txs;
+        nlohmann::json prev_txs; // FIXME: allow caller to pass in (e.g. from PSBT)
         if (is_local_signer && have_inputs_to_sign && !is_liquid) {
             // BTC: Provide the previous txs data for validation, even
             // for segwit, in order to mitigate the segwit fee attack.
@@ -799,28 +799,105 @@ namespace sdk {
     psbt_sign_call::psbt_sign_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "psbt_sign")
         , m_details(std::move(details))
-        , m_initialized(false)
+        , m_is_partial(false)
     {
     }
 
-    void psbt_sign_call::initialize()
-    {
-        if (m_net_params.is_liquid() && !get_signer()->is_hardware()) {
-            m_result = m_session->psbt_sign(m_details);
-            m_state = state_type::done;
-        } else {
-            // TODO: hww interactions (anti exfil, set signing data, etc)
-            GDK_RUNTIME_ASSERT_MSG(false, "PSBT signing not implemented.");
-        }
-    }
+    psbt_sign_call::~psbt_sign_call() {}
 
     auth_handler::state_type psbt_sign_call::call_impl()
     {
-        if (!m_initialized) {
-            initialize();
-            m_initialized = true;
+        GDK_RUNTIME_ASSERT(m_signing_details.empty());
+
+        m_psbt = psbt_from_base64(m_details.at("psbt"));
+        Tx tx(m_psbt);
+
+        // Get our inputs in order, with UTXO details for signing,
+        // or a "skip_signing" indicator if they aren't ours.
+        std::vector<nlohmann::json> inputs;
+        inputs.reserve(tx.get_num_inputs());
+        size_t num_sigs_required = 0;
+        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+            const auto& txin = tx.get_input(i);
+            const std::string txhash_hex = b2h_rev(txin.txhash);
+            const uint32_t vout = tx.get_input(i).index;
+            // FIXME: script_sig/witness are just to satisfy is_wallet_input().
+            // Along with add_utxo() they should be updated to use the same
+            // data as elsewhere to identify wallet inputs.
+            nlohmann::json input_utxo({ { "skip_signing", true }, { "script_sig", "" }, { "witness", "" } });
+            for (const auto& utxo : m_details.at("utxos")) {
+                if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
+                    input_utxo = utxo;
+                    const uint32_t sighash = m_psbt->inputs[i].sighash;
+                    input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
+                    ++num_sigs_required;
+                    break;
+                }
+            }
+            inputs.emplace_back(input_utxo);
         }
-        return m_state;
+
+        if (!num_sigs_required) {
+            // No signatures required, return the PSBT unchanged
+            m_result = std::move(m_details);
+            return state_type::done;
+        }
+        m_is_partial = num_sigs_required != tx.get_num_inputs();
+        if (m_is_partial && !m_net_params.is_electrum()) {
+            // Multisig partial signing. Ensure all inputs to be signed are segwit
+            for (const auto& utxo : inputs) {
+                if (json_get_value(utxo, "address_type") == "p2sh") {
+                    throw user_error("Non-segwit utxos cannnot be used with psbt_sign");
+                }
+            }
+        }
+
+        nlohmann::json::array_t sign_with;
+        sign_with.push_back("all");
+        m_signing_details = { { "is_partial", m_is_partial }, { "transaction", tx.to_hex() },
+            { "transaction_inputs", std::move(inputs) },
+            { "transaction_outputs", nlohmann::json::array() }, // FIXME: required for HWW
+            { "sign_with", m_details.value("sign_with", sign_with) } };
+
+        if (m_details.contains("blinding_nonces")) {
+            m_signing_details.emplace("blinding_nonces", m_details["blinding_nonces"]);
+        }
+        // FIXME: pass in prev_txs from PSBT if present
+
+        // Use the sign_transaction handler to sign
+        add_next_handler(new sign_transaction_call(m_session_parent, m_signing_details));
+        return state_type::done;
+    }
+
+    void psbt_sign_call::on_next_handler_complete(auth_handler* next_handler)
+    {
+        // User/server signing is complete: add the signing data to our psbt
+        auto signed_data = std::move(next_handler->move_result());
+        if (!json_get_value(signed_data, "error").empty()) {
+            m_result = std::move(m_details);
+            m_result["error"] = std::move(signed_data["error"]);
+            return;
+        }
+
+        const Tx tx(json_get_value(signed_data, "transaction"), m_net_params.is_liquid());
+        const auto& tx_inputs = signed_data.at("transaction_inputs");
+        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+            if (tx_inputs.at(i).value("skip_signing", false)) {
+                continue;
+            }
+            /* "Finalize" the input, but don't remove its finalization data.
+             * FIXME: see comment below on partial signing */
+            const auto& txin = tx.get_input(i);
+            GDK_VERIFY(wally_psbt_set_input_final_witness(m_psbt.get(), i, txin.witness));
+            GDK_VERIFY(wally_psbt_set_input_final_scriptsig(m_psbt.get(), i, txin.script, txin.script_len));
+        }
+        /* For partial signing, we must keep the redeem script in the PSBT
+         * for inputs that we have finalized, despite this breaking the spec
+         * behaviour. FIXME: Use an extension field for this, since some
+         * inputs may have been already properly finalized before we sign.
+         */
+        uint32_t b64_flags = m_is_partial ? WALLY_PSBT_SERIALIZE_FLAG_REDUNDANT : 0;
+        m_result = { { "psbt", psbt_to_base64(m_psbt, b64_flags) }, { "utxos", std::move(m_details.at("utxos")) } };
     }
 
     //

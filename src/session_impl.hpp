@@ -187,7 +187,6 @@ namespace sdk {
         virtual nlohmann::json service_sign_transaction(
             const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;
-        virtual nlohmann::json psbt_sign(const nlohmann::json& details);
         virtual nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;
         virtual std::string broadcast_transaction(const std::string& tx_hex) = 0;
