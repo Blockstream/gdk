@@ -673,70 +673,72 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
         const auto policy_asset = net_params.get_policy_asset();
 
-        nlohmann::json::array_t outputs;
-        if (!tx.get_num_inputs() || !tx.get_num_outputs() || !json_get_value(result, "error").empty()
-            || !result.contains("addressees")) {
+        if (!tx.get_num_inputs() || !tx.get_num_outputs() || !json_get_value(result, "error").empty()) {
             // The tx is not valid/is incomplete
-            result["transaction_outputs"] = std::move(outputs);
+            result["transaction_outputs"] = nlohmann::json::array_t();
             return;
         }
 
-        outputs.reserve(tx.get_num_outputs());
-        nlohmann::json empty;
+        if (result.contains("addressees")) {
+            // Populate any missing output data from our addressees
+            nlohmann::json::array_t outputs;
+            outputs.reserve(tx.get_num_outputs());
+            nlohmann::json empty;
 
-        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
-            const auto& o = tx.get_output(i);
-            const bool is_fee = !o.script;
-            const auto& src = is_fee ? empty : get_tx_output_source(result, tx, i);
+            for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+                const auto& o = tx.get_output(i);
+                const bool is_fee = !o.script;
+                const auto& src = is_fee ? empty : get_tx_output_source(result, tx, i);
 
-            auto addressee = nlohmann::json::object();
-            GDK_RUNTIME_ASSERT(!is_liquid || o.asset);
-            const bool is_blinded = is_liquid && *o.asset != 1 && o.value && *o.value != 1;
-            std::string asset_id;
+                auto addressee = nlohmann::json::object();
+                GDK_RUNTIME_ASSERT(!is_liquid || o.asset);
+                const bool is_blinded = is_liquid && *o.asset != 1 && o.value && *o.value != 1;
+                std::string asset_id;
 
-            if (is_blinded) {
-                GDK_RUNTIME_ASSERT(!is_fee && src.at("index") == i);
-                asset_id = src.at("asset_id");
-            } else if (is_liquid) {
-                asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
-                if (is_fee) {
-                    GDK_RUNTIME_ASSERT(asset_id == policy_asset);
+                if (is_blinded) {
+                    GDK_RUNTIME_ASSERT(!is_fee && src.at("index") == i);
+                    asset_id = src.at("asset_id");
+                } else if (is_liquid) {
+                    asset_id = b2h_rev(gsl::make_span(o.asset, o.asset_len).subspan(1));
+                    if (is_fee) {
+                        GDK_RUNTIME_ASSERT(asset_id == policy_asset);
+                    } else {
+                        GDK_RUNTIME_ASSERT(src.at("asset_id") == asset_id);
+                    }
                 } else {
-                    GDK_RUNTIME_ASSERT(src.at("asset_id") == asset_id);
+                    asset_id = policy_asset;
                 }
-            } else {
-                asset_id = policy_asset;
-            }
 
-            amount::value_type satoshi = o.satoshi;
-            if (is_liquid) {
-                GDK_RUNTIME_ASSERT(o.value);
-                if (*o.value == 1) {
-                    satoshi = tx_confidential_value_to_satoshi({ o.value, o.value_len });
-                } else {
-                    GDK_RUNTIME_ASSERT(is_blinded);
-                    satoshi = src.at("satoshi");
+                amount::value_type satoshi = o.satoshi;
+                if (is_liquid) {
+                    GDK_RUNTIME_ASSERT(o.value);
+                    if (*o.value == 1) {
+                        satoshi = tx_confidential_value_to_satoshi({ o.value, o.value_len });
+                    } else {
+                        GDK_RUNTIME_ASSERT(is_blinded);
+                        satoshi = src.at("satoshi");
+                    }
                 }
-            }
-            // FIXME: Change addresses do not have their satoshi values set
-            GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || src.at("satoshi") == satoshi);
+                // FIXME: Change addresses do not have their satoshi values set
+                GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || src.at("satoshi") == satoshi);
 
-            auto spk = is_fee ? std::string() : b2h({ o.script, o.script_len });
-            if (!is_fee) {
-                GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
-            }
-            nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) } };
-            if (is_liquid) {
-                output.emplace("asset_id", asset_id);
-            }
+                auto spk = is_fee ? std::string() : b2h({ o.script, o.script_len });
+                if (!is_fee) {
+                    GDK_RUNTIME_ASSERT(spk == src.at("scriptpubkey"));
+                }
+                nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", std::move(spk) } };
+                if (is_liquid) {
+                    output.emplace("asset_id", asset_id);
+                }
 
-            if (!is_fee) {
-                // Add the fields from the source addressee/change output
-                output.insert(src.begin(), src.end());
+                if (!is_fee) {
+                    // Add the fields from the source addressee/change output
+                    output.insert(src.begin(), src.end());
+                }
+                outputs.emplace_back(std::move(output));
             }
-            outputs.emplace_back(std::move(output));
+            result["transaction_outputs"] = std::move(outputs);
         }
-        result["transaction_outputs"] = std::move(outputs);
 
         // Set "satoshi" per-asset elements to the net effect on the wallet
         auto& summary = result["satoshi"];
