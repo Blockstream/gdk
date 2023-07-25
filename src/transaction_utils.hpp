@@ -106,6 +106,9 @@ namespace sdk {
 
     // Returns true if a tx has AMP inputs
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
+
+    // Returns address_type from script_type
+    std::string get_utxo_address_type_from_script_type(const nlohmann::json& utxo);
 } // namespace sdk
 } // namespace ga
 
