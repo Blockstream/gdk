@@ -89,15 +89,14 @@ namespace sdk {
 
     void confidentialize_address(
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
+    nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 
     void create_transaction(session_impl& session, nlohmann::json& details);
 
-    nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
-
-    std::vector<std::string> sign_ga_transaction(
+    std::vector<std::string> sign_transaction(
         session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs);
 
-    void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
+    void blind_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 
 } // namespace sdk
 } // namespace ga

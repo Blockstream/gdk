@@ -1015,7 +1015,7 @@ namespace sdk {
             // For txs containing AMP v1 inputs, ask the HWW to return the
             // nonces the service requires.
             m_details["blinding_nonces_required"] = tx_has_amp_inputs(*m_session, m_details);
-            blind_ga_transaction(*m_session, m_details, get_hw_reply());
+            blind_transaction(*m_session, m_details, get_hw_reply());
             m_details.erase("blinding_nonces_required");
             m_result = std::move(m_details);
             return state_type::done;

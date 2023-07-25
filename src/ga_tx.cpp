@@ -1245,7 +1245,7 @@ namespace sdk {
         }
     }
 
-    std::vector<std::string> sign_ga_transaction(
+    std::vector<std::string> sign_transaction(
         session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs)
     {
         std::vector<std::string> sigs(inputs.size());
@@ -1318,7 +1318,7 @@ namespace sdk {
         return { { "amountblinders", std::move(vbfs) }, { "assetblinders", std::move(abfs) } };
     }
 
-    void blind_ga_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data)
+    void blind_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data)
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_liquid = net_params.is_liquid();
