@@ -16,6 +16,7 @@ add_library(greenaddress-objects OBJECT
     ffi_c.cpp
     ga_auth_handlers.cpp ga_auth_handlers.hpp
     ga_cache.cpp ga_cache.hpp
+    ga_psbt.cpp ga_psbt.hpp
     ga_rust.cpp ga_rust.hpp
     ga_session.cpp ga_session.hpp
     ga_strings.cpp ga_strings.hpp

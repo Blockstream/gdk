@@ -4,10 +4,10 @@
 
 #include "auth_handler.hpp"
 
-struct wally_psbt;
-
 namespace ga {
 namespace sdk {
+    class Psbt;
+
     class register_call : public auth_handler_impl {
     public:
         register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data);
@@ -95,7 +95,7 @@ namespace sdk {
 
         nlohmann::json m_details;
         nlohmann::json m_signing_details;
-        std::unique_ptr<struct wally_psbt> m_psbt;
+        std::unique_ptr<Psbt> m_psbt;
         bool m_is_partial;
     };
 

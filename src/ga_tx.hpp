@@ -15,7 +15,7 @@ namespace sdk {
         Tx(uint32_t locktime, uint32_t version, bool is_liquid);
         Tx(byte_span_t tx_bin, bool is_liquid);
         Tx(const std::string& tx_hex, bool is_liquid);
-        Tx(const wally_psbt_ptr& psbt);
+        Tx(struct wally_tx* tx, bool is_liquid); // Takes ownership
 
         Tx(Tx&& rhs) = default;
         Tx(Tx& rhs) = delete;
@@ -34,7 +34,7 @@ namespace sdk {
         auto get_inputs() const { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
 
         void add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
-            const wally_tx_witness_stack_ptr& witness = {});
+            const struct wally_tx_witness_stack* witness = nullptr);
 
         void set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r);
 
@@ -67,14 +67,13 @@ namespace sdk {
         size_t get_adjusted_weight(const network_parameters& net_params) const;
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
-        std::array<unsigned char, SHA256_LEN> get_signature_hash(
-            const nlohmann::json& utxo, size_t index, uint32_t sighash) const;
+        std::vector<unsigned char> get_signature_hash(const nlohmann::json& utxo, size_t index, uint32_t sighash) const;
 
     private:
         uint32_t get_flags() const;
 
         void set_input_script(size_t index, byte_span_t script);
-        void set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness);
+        void set_input_witness(size_t index, const struct wally_tx_witness_stack* witness);
 
         struct tx_deleter {
             void operator()(struct wally_tx* p);

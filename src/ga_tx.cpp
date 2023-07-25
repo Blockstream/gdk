@@ -78,7 +78,7 @@ namespace sdk {
                 for (const auto& item : wit_items) {
                     tx_witness_stack_add(witness, h2b(item));
                 }
-                tx.add_input(txid, index, sequence, script_sig, witness);
+                tx.add_input(txid, index, sequence, script_sig, witness.get());
             } else if (is_external) {
                 const auto script = dummy_external_input_script(low_r, h2b(utxo.at("public_key")));
                 tx.add_input(txid, index, sequence, script);
@@ -99,7 +99,7 @@ namespace sdk {
                     tx_witness_stack_add_dummy(witness, dummy_sig_type);
                     tx_witness_stack_add_dummy(witness, dummy_sig_type);
                     tx_witness_stack_add(witness, script);
-                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, witness);
+                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, witness.get());
                 } else {
                     tx.add_input(txid, index, sequence, dummy_input_script(low_r, script));
                 }
@@ -844,12 +844,11 @@ namespace sdk {
         m_tx.reset(p);
     }
 
-    Tx::Tx(const wally_psbt_ptr& psbt)
-        : m_is_liquid(psbt_is_elements(psbt))
+    Tx::Tx(struct wally_tx* tx, bool is_liquid)
+        : m_tx(tx)
+        , m_is_liquid(is_liquid)
     {
-        struct wally_tx* p;
-        GDK_VERIFY(wally_psbt_extract(psbt.get(), WALLY_PSBT_EXTRACT_NON_FINAL, &p));
-        m_tx.reset(p);
+        GDK_RUNTIME_ASSERT(m_tx.get());
     }
 
     void Tx::swap(Tx& rhs)
@@ -887,17 +886,17 @@ namespace sdk {
     }
 
     void Tx::add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
-        const wally_tx_witness_stack_ptr& witness)
+        const struct wally_tx_witness_stack* witness)
     {
         constexpr uint32_t flags = 0;
         if (!m_is_liquid) {
             GDK_VERIFY(wally_tx_add_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
-                script.size(), witness.get(), flags));
+                script.size(), witness, flags));
             return;
         }
         GDK_VERIFY(wally_tx_add_elements_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence,
-            script.data(), script.size(), witness.get(), nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0,
-            nullptr, 0, nullptr, flags));
+            script.data(), script.size(), witness, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr,
+            0, nullptr, flags));
     }
 
     void Tx::set_input_script(size_t index, byte_span_t script)
@@ -906,9 +905,9 @@ namespace sdk {
         GDK_VERIFY(wally_tx_set_input_script(m_tx.get(), index, data, script.size()));
     }
 
-    void Tx::set_input_witness(size_t index, const wally_tx_witness_stack_ptr& witness)
+    void Tx::set_input_witness(size_t index, const struct wally_tx_witness_stack* witness)
     {
-        GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness.get()));
+        GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness));
     }
 
     void Tx::set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r)
@@ -926,7 +925,7 @@ namespace sdk {
                 return;
             }
             // Singlesig segwit
-            set_input_witness(index, make_witness_stack({ der, public_key }));
+            set_input_witness(index, make_witness_stack({ der, public_key }).get());
             if (addr_type == address_type::p2sh_p2wpkh) {
                 set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
@@ -938,7 +937,7 @@ namespace sdk {
         const auto script = h2b(utxo.at("prevout_script"));
         if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
             // Multisig segwit
-            set_input_witness(index, make_witness_stack({ der }));
+            set_input_witness(index, make_witness_stack({ der }).get());
             constexpr uint32_t witness_ver = 0;
             set_input_script(index, witness_script(script, witness_ver));
         } else {
@@ -1158,7 +1157,7 @@ namespace sdk {
         return static_cast<uint64_t>(std::ceil(fee));
     }
 
-    std::array<unsigned char, SHA256_LEN> Tx::get_signature_hash(
+    std::vector<unsigned char> Tx::get_signature_hash(
         const nlohmann::json& utxo, size_t index, uint32_t sighash_flags) const
     {
         std::array<unsigned char, SHA256_LEN> ret;
@@ -1171,7 +1170,7 @@ namespace sdk {
         if (!m_is_liquid) {
             GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
                 sighash_flags, flags, ret.data(), ret.size()));
-            return ret;
+            return { ret.begin(), ret.end() };
         }
 
         // Liquid case - has a value-commitment in place of a satoshi value
@@ -1184,7 +1183,7 @@ namespace sdk {
         }
         GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
             ct_value.data(), ct_value.size(), sighash_flags, flags, ret.data(), ret.size()));
-        return ret;
+        return { ret.begin(), ret.end() };
     }
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)

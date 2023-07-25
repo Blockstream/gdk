@@ -37,7 +37,6 @@ namespace ga {
 namespace sdk {
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
     using wally_tx_witness_stack_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
-    using wally_psbt_ptr = std::unique_ptr<struct wally_psbt>;
 
     using byte_span_t = gsl::span<const unsigned char>;
     using uint32_span_t = gsl::span<const uint32_t>;
@@ -351,17 +350,6 @@ namespace sdk {
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
-
-    //
-    // PSBT/PSET
-    //
-    wally_psbt_ptr psbt_from_base64(const std::string& b64);
-
-    std::string psbt_to_base64(const wally_psbt_ptr& psbt, uint32_t flags = 0);
-
-    bool psbt_is_elements(const wally_psbt_ptr& psbt);
-
-    std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index);
 
 } /* namespace sdk */
 } /* namespace ga */

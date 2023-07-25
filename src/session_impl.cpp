@@ -1,6 +1,7 @@
 #include "session_impl.hpp"
 #include "boost_wrapper.hpp"
 #include "exception.hpp"
+#include "ga_psbt.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
 #include "ga_tor.hpp"
@@ -325,8 +326,8 @@ namespace sdk {
     nlohmann::json session_impl::psbt_get_details(const nlohmann::json& details)
     {
         const bool is_liquid = m_net_params.is_liquid();
-        const auto psbt = psbt_from_base64(details.at("psbt"));
-        Tx tx(psbt);
+        const Psbt psbt(details.at("psbt"), is_liquid);
+        Tx tx(psbt.extract());
 
         nlohmann::json::array_t inputs;
         inputs.reserve(tx.get_num_inputs());

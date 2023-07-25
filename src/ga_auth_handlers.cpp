@@ -6,6 +6,7 @@
 #include "assertion.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
+#include "ga_psbt.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
@@ -809,8 +810,8 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(m_signing_details.empty());
 
-        m_psbt = psbt_from_base64(m_details.at("psbt"));
-        Tx tx(m_psbt);
+        m_psbt = std::make_unique<Psbt>(m_details.at("psbt"), m_net_params.is_liquid());
+        Tx tx(m_psbt->extract());
 
         // Get our inputs in order, with UTXO details for signing,
         // or a "skip_signing" indicator if they aren't ours.
@@ -828,7 +829,7 @@ namespace sdk {
             for (const auto& utxo : m_details.at("utxos")) {
                 if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
                     input_utxo = utxo;
-                    const uint32_t sighash = m_psbt->inputs[i].sighash;
+                    const uint32_t sighash = m_psbt->get_input_sighash(i);
                     input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
                     ++num_sigs_required;
                     break;
@@ -882,22 +883,17 @@ namespace sdk {
         const Tx tx(json_get_value(signed_data, "transaction"), m_net_params.is_liquid());
         const auto& tx_inputs = signed_data.at("transaction_inputs");
         for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-            if (tx_inputs.at(i).value("skip_signing", false)) {
-                continue;
+            if (!tx_inputs.at(i).value("skip_signing", false)) {
+                m_psbt->set_input_finalization_data(i, tx);
             }
-            /* "Finalize" the input, but don't remove its finalization data.
-             * FIXME: see comment below on partial signing */
-            const auto& txin = tx.get_input(i);
-            GDK_VERIFY(wally_psbt_set_input_final_witness(m_psbt.get(), i, txin.witness));
-            GDK_VERIFY(wally_psbt_set_input_final_scriptsig(m_psbt.get(), i, txin.script, txin.script_len));
         }
         /* For partial signing, we must keep the redeem script in the PSBT
          * for inputs that we have finalized, despite this breaking the spec
          * behaviour. FIXME: Use an extension field for this, since some
          * inputs may have been already properly finalized before we sign.
          */
-        uint32_t b64_flags = m_is_partial ? WALLY_PSBT_SERIALIZE_FLAG_REDUNDANT : 0;
-        m_result = { { "psbt", psbt_to_base64(m_psbt, b64_flags) }, { "utxos", std::move(m_details.at("utxos")) } };
+        const bool include_redundant = m_is_partial;
+        m_result = { { "psbt", m_psbt->to_base64(include_redundant) }, { "utxos", std::move(m_details.at("utxos")) } };
     }
 
     //

@@ -1021,39 +1021,5 @@ namespace sdk {
         return make_string(s);
     }
 
-    wally_psbt_ptr psbt_from_base64(const std::string& b64)
-    {
-        struct wally_psbt* p;
-        GDK_VERIFY(wally_psbt_from_base64(b64.c_str(), 0, &p));
-        return wally_psbt_ptr(p);
-    }
-
-    std::string psbt_to_base64(const wally_psbt_ptr& psbt, uint32_t flags)
-    {
-        char* s;
-        GDK_VERIFY(wally_psbt_to_base64(psbt.get(), flags, &s));
-        return make_string(s);
-    }
-
-    bool psbt_is_elements(const wally_psbt_ptr& psbt)
-    {
-        size_t is_elements;
-        GDK_VERIFY(wally_psbt_is_elements(psbt.get(), &is_elements));
-        return is_elements != 0;
-    }
-
-    std::vector<unsigned char> psbt_get_input_redeem_script(const wally_psbt_ptr& psbt, size_t index)
-    {
-        size_t len;
-        GDK_VERIFY(wally_psbt_get_input_redeem_script_len(psbt.get(), index, &len));
-        std::vector<unsigned char> ret;
-        if (len) {
-            ret.resize(len);
-            GDK_VERIFY(wally_psbt_get_input_redeem_script(psbt.get(), index, ret.data(), len, &len));
-            GDK_RUNTIME_ASSERT(len == ret.size());
-        }
-        return ret;
-    }
-
 } /* namespace sdk */
 } /* namespace ga */
