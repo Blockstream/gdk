@@ -1538,7 +1538,7 @@ impl Syncer {
         let start = Instant::now();
 
         let accounts = self.accounts.read().unwrap();
-        let mut updated_txs: HashMap<BETxid, TransactionNotification> = HashMap::new();
+        let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
             let mut new_statuses = ScriptStatuses::new();
@@ -1740,37 +1740,10 @@ impl Syncer {
                     .extend(new_statuses);
 
                 for tx in new_txs.txs.iter() {
-                    if new_txs.is_previous.contains(&tx.0) {
-                        // This is a previous transaction that we fetched to compute the fee,
-                        // do not emit a notification for it.
-                        continue;
-                    }
-                    if let Some(ntf) = updated_txs.get_mut(&tx.0) {
-                        // Make sure ntf.subaccounts is ordered and has no duplicates.
-                        let subaccount = account.num();
-                        match ntf.subaccounts.binary_search(&subaccount) {
-                            Ok(_) => {} // already there
-                            Err(pos) => {
-                                ntf.subaccounts.insert(pos, subaccount);
-                                if pos == 0 {
-                                    // For transactions involving multiple subaccounts, the net effect for
-                                    // the transaction is the one considering the first subaccount.
-                                    // So replace it here.
-                                    let (satoshi, type_) = self.ntf_satoshi_type(&tx.1, &acc_store);
-                                    ntf.satoshi = satoshi;
-                                    ntf.type_ = type_;
-                                }
-                            }
-                        }
-                    } else {
-                        let (satoshi, type_) = self.ntf_satoshi_type(&tx.1, &acc_store);
-                        let ntf = TransactionNotification {
-                            subaccounts: vec![account.num()],
-                            txid: tx.0.into_bitcoin(),
-                            satoshi,
-                            type_,
-                        };
-                        updated_txs.insert(tx.0, ntf);
+                    // Do not emit notifications for previous transactions that we fetched to
+                    // compute the fee.
+                    if !new_txs.is_previous.contains(&tx.0) {
+                        updated_txs.insert(tx.0, tx.1.clone());
                     }
                 }
 
@@ -1795,8 +1768,62 @@ impl Syncer {
         self.empty_recent_spent_utxos()?;
         let mut account_nums: Vec<u32> = accounts.keys().copied().collect();
         account_nums.sort();
+
+        // Create the transaction notifications.
+        // In theory we could create the notifications in the above loop,
+        // however, in the case where we have a transaction involving more than one (sub)account,
+        // it can happen that when we sync one (sub)account the transaction is returned,
+        // but when we sync another the transaction is not;
+        // in this case, our notification would miss one of the (sub)accounts.
+        // Thus we compute the transaction notifications here even though this comes with a
+        // performance penalty.
+        // TODO: skip this computation if it's the first sync (no transaction notifications)
+        let mut tx_ntfs = Vec::<TransactionNotification>::new();
+        let store_read = self.store.read()?;
+
+        for tx in updated_txs.values() {
+            let mut tx_accounts = vec![];
+            'account_loop: for account_num in &account_nums {
+                let acc_store = store_read.account_cache(*account_num)?;
+                // Iterate first on outputs since its cheaper to check them
+                for vout in 0..(tx.output_len() as u32) {
+                    let script_pubkey = tx.output_script(vout);
+                    if let Ok(_) = acc_store.get_path(&script_pubkey) {
+                        tx_accounts.push(*account_num);
+                        continue 'account_loop;
+                    }
+                }
+
+                for outpoint in tx.previous_outputs().iter() {
+                    if let Some(script_pubkey) =
+                        acc_store.all_txs.get_previous_output_script_pubkey(outpoint)
+                    {
+                        if let Ok(_) = acc_store.get_path(&script_pubkey) {
+                            tx_accounts.push(*account_num);
+                            continue 'account_loop;
+                        }
+                    }
+                }
+            }
+
+            // For transactions involving multiple subaccounts, the net effect for
+            // the transaction is the one considering the first subaccount.
+            // Since account_nums is ordered we are taking the first one.
+            if let Some(account_num) = tx_accounts.first() {
+                let acc_store = store_read.account_cache(*account_num)?;
+                let (satoshi, type_) = self.ntf_satoshi_type(&tx, &acc_store);
+                let ntf = TransactionNotification {
+                    subaccounts: tx_accounts,
+                    txid: tx.txid().into_bitcoin(),
+                    satoshi,
+                    type_,
+                };
+                tx_ntfs.push(ntf);
+            }
+        }
+
         Ok(SyncResult {
-            tx_ntfs: updated_txs.into_values().collect(),
+            tx_ntfs,
             accounts: account_nums,
         })
     }
