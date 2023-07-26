@@ -57,7 +57,7 @@
     # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    BUILD_IDX: "0"
+    BUILD_IDX: "1"
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
     - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
