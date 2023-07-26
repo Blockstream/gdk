@@ -14,13 +14,13 @@ ENV GDK_KEEP_DOWNLOADS=1
 
 FROM base AS builderlinux
 #wally absolutely wants a running python -- it doesn't really matter the version here
-RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
+RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
 FROM rust:1.68-bullseye as builderrust
 
 FROM base as final
 
-COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
+COPY --from=builderlinux /prebuild/clang /prebuild/clang
 
 COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup

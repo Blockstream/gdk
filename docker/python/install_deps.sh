@@ -3,7 +3,7 @@ set -e
 
 yum update -yqq
 # cargo openssl-devel and libffi-devel needed for python's ``cryptography`` package
-yum install swig perl-core autoconf libstdc++-static -yqq
+yum install swig perl-core autoconf libstdc++-static -yqq clang
 
 python_versions=(cp38-cp38 cp39-cp39 pp39-pypy39_pp73 cp310-cp310 cp311-cp311)
 

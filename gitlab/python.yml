@@ -10,7 +10,7 @@ include:
   needs: [ test_format ]
   script:
     - source /root/python-$PYTHON_VERSION-venv/bin/activate
-    - ./tools/build.sh --gcc --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir /prebuild/gcc --parallel 16
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir /prebuild/clang --parallel 16
     - auditwheel repair -w wheelhouse $INSTALL_PATH/share/python/*.whl
 
 
