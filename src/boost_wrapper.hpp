@@ -9,7 +9,9 @@
 #endif
 
 #if __clang_major__ >= 7
+#ifndef BOOST_ASIO_HAS_STD_STRING_VIEW
 #define BOOST_ASIO_HAS_STD_STRING_VIEW
+#endif
 #endif
 #define BOOST_ASIO_DISABLE_IOCP
 #define BOOST_ASIO_DISABLE_VISIBILITY

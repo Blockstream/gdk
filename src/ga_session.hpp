@@ -26,7 +26,7 @@ namespace sdk {
         using nlocktime_t = std::map<std::string, nlohmann::json>; // txhash:pt_idx -> lock info
 
         explicit ga_session(network_parameters&& net_params);
-        ~ga_session() override;
+        ~ga_session();
 
         void connect();
         void reconnect();
