@@ -9,7 +9,7 @@
   tags: [ ga ]
 
 .python-image:
-  image: blockstream/gdk-python-builder@sha256:c7eb715f79cc9c5d28bf04caaf4f47adbadfe051ba099d740028cb124a5a8b9c
+  image: blockstream/gdk-python-builder@sha256:877852df7968ee7c1fedc05f1a56ca171c9afbfcd776c678b8c3184e35323201
   tags: [ ga ]
 
 .ubuntu-image:
