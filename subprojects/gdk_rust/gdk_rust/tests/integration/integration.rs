@@ -90,6 +90,12 @@ fn spv_cross_validate() {
         test_session1.wait_blockheight(126);
         test_session2.wait_blockheight(1141);
 
+        // The previous wait_blockheight is based on data kept in memory while
+        // the following assert check the file on disk that may have not been written yet.
+        // This is not elegant but we are going to move this test anyway so this is a workaround
+        // to improve flakyness in the meantime
+        thread::sleep(Duration::from_secs(3));
+
         // Grab direct access to session1's HeadersChain
         let session1_chain = get_chain(&mut test_session1);
         assert_eq!(session1_chain.height(), 126);
