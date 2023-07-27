@@ -48,6 +48,9 @@ pub enum Error {
     #[error("Invalid address")]
     InvalidAddress,
 
+    #[error("Invalid address type")]
+    InvalidAddressType,
+
     #[error("Invalid sighash")]
     InvalidSigHash,
 
