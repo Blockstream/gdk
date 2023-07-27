@@ -2652,23 +2652,9 @@ namespace sdk {
     }
 
     // Idempotent
-    nlohmann::json ga_session::get_unspent_outputs_for_private_key(const nlohmann::json& details)
+    nlohmann::json ga_session::get_unspent_outputs_for_private_key(
+        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool compressed)
     {
-        auto private_key = json_get_value(details, "private_key");
-        auto password = json_get_value(details, "password");
-
-        std::vector<unsigned char> private_key_bytes;
-        bool compressed;
-        try {
-            std::tie(private_key_bytes, compressed)
-                = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
-        } catch (const std::exception&) {
-            throw user_error(res::id_invalid_private_key);
-        }
-        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes));
-        if (!compressed) {
-            public_key_bytes = ec_public_key_decompress(public_key_bytes);
-        }
         const auto script_bytes = scriptpubkey_p2pkh_from_hash160(hash160(public_key_bytes));
         const auto script_hash_hex = electrum_script_hash_hex(script_bytes);
 

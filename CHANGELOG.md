@@ -6,6 +6,8 @@
 - Add new subaccount notifications. These signal the creation of a
   subaccount or if it completed the first sync.
   Please see the notification documentation for details.
+- GA_get_unspent_outputs_for_private_key: add support for Electrum
+  sessions.
 
 ### Changed
 

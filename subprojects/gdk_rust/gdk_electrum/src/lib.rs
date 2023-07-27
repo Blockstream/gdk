@@ -1309,6 +1309,44 @@ impl ElectrumSession {
         Ok(GetUnspentOutputs(unspent_outputs))
     }
 
+    pub fn get_unspent_outputs_for_private_key(
+        &self,
+        opt: &SweepOpt,
+    ) -> Result<Vec<UnspentOutput>, Error> {
+        let client = self.url.build_client(self.proxy.as_deref(), None)?;
+        let (script_pubkey, script_code) = opt.scripts()?;
+        let listunspent = client.script_list_unspent(&script_pubkey.clone().into_bitcoin())?;
+        let utxos: Vec<UnspentOutput> = listunspent
+            .iter()
+            .map(|unspent| UnspentOutput {
+                address_type: opt.address_type.clone(),
+                block_height: unspent.height as u32,
+                pointer: 0,
+                pt_idx: unspent.tx_pos as u32,
+                satoshi: unspent.value,
+                subaccount: 0,
+                txhash: unspent.tx_hash.to_string(),
+                is_internal: false,
+                user_path: vec![],
+                scriptpubkey: script_pubkey.clone(),
+                sequence: None,
+                sighash: None,
+                script_code: script_code.to_hex(),
+                public_key: opt.public_key.clone(),
+                skip_signing: false,
+                is_blinded: None,
+                is_confidential: None,
+                asset_id: None,
+                asset_blinder: None,
+                amount_blinder: None,
+                asset_commitment: None,
+                value_commitment: None,
+                nonce_commitment: None,
+            })
+            .collect();
+        Ok(utxos)
+    }
+
     pub fn get_address_data(&self, opt: AddressDataRequest) -> Result<AddressDataResult, Error> {
         let address = match self.network.id() {
             NetworkId::Bitcoin(_) => {

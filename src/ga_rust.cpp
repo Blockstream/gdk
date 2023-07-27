@@ -389,9 +389,20 @@ namespace sdk {
         return rust_call("get_unspent_outputs", details, m_session);
     }
 
-    nlohmann::json ga_rust::get_unspent_outputs_for_private_key(const nlohmann::json& /*details*/)
+    nlohmann::json ga_rust::get_unspent_outputs_for_private_key(
+        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool compressed)
     {
-        throw std::runtime_error("get_unspent_outputs_for_private_key not implemented");
+        auto opt = nlohmann::json({
+            { "public_key", b2h(public_key_bytes) },
+            { "address_type", "p2pkh" },
+            { "compressed", compressed },
+        });
+        auto utxos = rust_call("get_unspent_outputs_for_private_key", opt, m_session);
+        for (auto& utxo : utxos) {
+            utxo["private_key"] = b2h(private_key_bytes);
+            utxo["compressed"] = compressed;
+        }
+        return { { "unspent_outputs", { { m_net_params.get_policy_asset(), std::move(utxos) } } } };
     }
 
     nlohmann::json ga_rust::set_unspent_outputs_status(
