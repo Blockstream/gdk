@@ -14,9 +14,8 @@ use gdk_electrum::headers::bitcoin::HeadersChain;
 use gdk_electrum::interface::ElectrumUrl;
 use gdk_electrum::{headers, spv, ElectrumSession};
 use gdk_test::utils;
+use gdk_test::RpcNodeExt;
 use gdk_test::TestSession;
-
-static MEMO1: &str = "hello memo";
 
 #[test]
 fn test_electrum_disconnect() {
@@ -268,7 +267,6 @@ fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
     let mut test_session = TestSession::new(false, |_| ());
 
-    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     test_session.fund(100_000_000, None);
 
     let initial_block = 101;
@@ -281,15 +279,10 @@ fn test_spv_over_period() {
         test_session.wait_blockheight(initial_block + i * block_to_mine);
     }
 
-    let txid = test_session.send_tx(
-        &node_address,
-        10_000,
-        None,
-        Some(MEMO1.to_string()),
-        None,
-        None,
-        None,
-    ); // p2shwpkh
+    let satoshi = 10_000;
+    let ap = test_session.get_receive_address(0);
+    let txid = test_session.node.client.sendtoaddress(&ap.address, satoshi, None).unwrap();
+    test_session.wait_tx(vec![0], &txid, Some(satoshi), Some(TransactionType::Incoming));
     test_session.mine_block();
 
     test_session.spv_verify_tx(&txid, initial_block + block_to_mine * times + 1, Some(100));
@@ -309,22 +302,16 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
     let mut test_session = TestSession::new(false, |n| n.spv_enabled = Some(spv_enabled));
     // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
-    let node_address = test_session.node_getnewaddress(Some("p2sh-segwit"));
     test_session.fund(100_000_000, None);
 
     let initial_block = 101u32;
 
     let mut txids = vec![];
+    let satoshi = 10_000;
     for _ in 0..10u32 {
-        let txid = test_session.send_tx(
-            &node_address,
-            10_000,
-            None,
-            Some(MEMO1.to_string()),
-            None,
-            None,
-            None,
-        ); // p2shwpkh
+        let ap = test_session.get_receive_address(0);
+        let txid = test_session.node.client.sendtoaddress(&ap.address, satoshi, None).unwrap();
+        test_session.wait_tx(vec![0], &txid, Some(satoshi), Some(TransactionType::Incoming));
         test_session.mine_block();
 
         txids.push(txid);
