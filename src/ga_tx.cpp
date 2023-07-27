@@ -694,7 +694,7 @@ namespace sdk {
                     set_tx_error(result, error);
                     return;
                 }
-                auto asset_id = asset_id_from_json(net_params, addressee);
+                auto asset_id = j_asset(net_params, addressee);
                 auto& a = asset_addressees[asset_id];
                 a.asset_id = asset_id;
                 if (json_get_value(addressee, "is_greedy", false)) {
@@ -729,7 +729,7 @@ namespace sdk {
                 // Add all of the given inputs
                 auto& tx_inputs = result.at("transaction_inputs");
                 for (size_t i = 0; i < tx_inputs.size(); ++i) {
-                    const auto asset_id = asset_id_from_json(net_params, tx_inputs[i]);
+                    const auto asset_id = j_asset(net_params, tx_inputs[i]);
                     const bool is_policy_asset = asset_id == policy_asset;
                     if (is_liquid && !is_partial && !is_policy_asset) {
                         // Ensure this UTXO has a corresponding recipient

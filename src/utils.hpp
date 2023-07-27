@@ -1,5 +1,6 @@
 #ifndef GDK_UTILS_HPP
 #define GDK_UTILS_HPP
+#include <string_view>
 #pragma once
 
 #include <cstddef>
@@ -77,8 +78,8 @@ namespace sdk {
     }
 
     // Returns the 32 byte asset id in hex, or "btc" for bitcoin
-    std::string asset_id_from_json(
-        const network_parameters& net_params, const nlohmann::json& json, const std::string& key = "asset_id");
+    std::string j_asset(
+        const network_parameters& net_params, const nlohmann::json& json, std::string_view key = "asset_id");
 
     // Parse a BIP-21 style URI into its components
     // If the uri passed is not a bitcoin uri returns an empty json object

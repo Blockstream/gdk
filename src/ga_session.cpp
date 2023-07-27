@@ -2277,7 +2277,7 @@ namespace sdk {
                 const bool is_relevant = ep.at("is_relevant");
 
                 if (is_relevant && ep.find("error") == ep.end()) {
-                    const auto asset_id = asset_id_from_json(m_net_params, ep);
+                    const auto asset_id = j_asset(m_net_params, ep);
                     unique_asset_ids.emplace(asset_id);
 
                     // Compute the effect of the input/output on the wallets balance
@@ -2644,7 +2644,7 @@ namespace sdk {
             if (utxo.contains("error")) {
                 asset_utxos["error"].emplace_back(utxo);
             } else {
-                const auto utxo_asset_id = asset_id_from_json(m_net_params, utxo);
+                const auto utxo_asset_id = j_asset(m_net_params, utxo);
                 asset_utxos[utxo_asset_id].emplace_back(utxo);
             }
         }

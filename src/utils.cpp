@@ -40,6 +40,7 @@
 #include "ga_wally.hpp"
 #include "gdk_rust.h"
 #include "gsl_wrapper.hpp"
+#include "json_utils.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
 #include "utils.hpp"
@@ -405,10 +406,9 @@ namespace sdk {
         return encryption_key;
     }
 
-    std::string asset_id_from_json(
-        const network_parameters& net_params, const nlohmann::json& json, const std::string& key)
+    std::string j_asset(const network_parameters& net_params, const nlohmann::json& json, std::string_view key)
     {
-        const std::string asset_id_hex = json_get_value(json, key);
+        const std::string asset_id_hex = j_str(json, key).value_or(std::string());
         const bool is_empty = asset_id_hex.empty();
         if (net_params.is_liquid()) {
             if (is_empty || !validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
@@ -460,7 +460,7 @@ namespace sdk {
             if (params.contains("assetid")) {
                 // Lowercase and validate the asset id
                 params["assetid"] = boost::to_lower_copy(json_get_value(params, "assetid"));
-                asset_id_from_json(net_params, params, "assetid"); // Validate it
+                j_asset(net_params, params, "assetid"); // Validate it
             } else if (net_params.is_liquid() && params.contains("amount")) {
                 // Asset id is mandatory if an amount is present
                 throw user_error(res::id_invalid_payment_request_assetid);
