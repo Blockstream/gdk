@@ -130,30 +130,6 @@ impl Default for UtxoStrategy {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct CreateTransaction {
-    #[serde(default)]
-    pub addressees: Vec<AddressAmount>,
-    pub fee_rate: Option<u64>, // in satoshi/kbyte
-    pub subaccount: u32,
-    #[serde(default)]
-    pub send_all: bool,
-    #[serde(default)]
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub previous_transaction: Option<TxListItem>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub memo: Option<String>,
-    #[serde(default)]
-    pub utxos: CreateTxUtxos,
-    /// Minimum number of confirmations for coin selection
-    #[serde(default)]
-    pub num_confs: u32,
-    #[serde(default)]
-    pub confidential_utxos_only: bool,
-    #[serde(default)]
-    pub utxo_strategy: UtxoStrategy,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetTransactionsOpt {
     pub first: usize,
     pub count: usize,
