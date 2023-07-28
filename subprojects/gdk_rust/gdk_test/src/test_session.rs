@@ -278,10 +278,6 @@ impl TestSession {
         block[0].to_string()
     }
 
-    pub fn node_sendtoaddress(&self, address: &str, satoshi: u64, asset: Option<&str>) -> String {
-        self.node.client.sendtoaddress(address, satoshi, asset).unwrap()
-    }
-
     pub fn node_generate(&self, block_num: u32) -> Vec<String> {
         let client = &self.node.client;
         let hashes = RpcNodeExt::generate(client, block_num, None).unwrap();

@@ -155,7 +155,7 @@ fn spv_cross_validation_session() {
     // Send a payment to session1
     let sat = 999999;
     let ap = test_session1.get_receive_address(0);
-    let txid = test_session1.node_sendtoaddress(&ap.address, sat, None);
+    let txid = test_session1.node.client.sendtoaddress(&ap.address, sat, None).unwrap();
     test_session1.wait_tx(vec![0], &txid, Some(sat), Some(TransactionType::Incoming));
     let txitem = test_session1.get_tx_from_list(0, &txid);
     assert_eq!(txitem.block_height, 0);
