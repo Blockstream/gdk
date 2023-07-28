@@ -1,9 +1,9 @@
-use crate::be::{BEOutPoint, BEScript, BEScriptConvert, BETransactionEntry};
+use crate::be::{BEOutPoint, BEScript, BEScriptConvert};
 use crate::descriptor::parse_single_sig_descriptor;
 use crate::exchange_rates::Currency;
 use crate::scripts::p2pkh_script;
 use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
-use crate::util::{is_confidential_txoutsecrets, weight_to_vsize};
+use crate::util::is_confidential_txoutsecrets;
 use crate::NetworkParameters;
 use bitcoin::Network;
 use elements::confidential;
@@ -875,19 +875,6 @@ pub fn parse_path(path: &DerivationPath) -> Result<(bool, u32), Error> {
     Ok((is_internal, address_pointer))
 }
 
-// Output of get_transaction_details
-#[derive(Serialize, Debug, Clone)]
-pub struct TransactionDetails {
-    pub transaction: String,
-    pub txhash: String,
-    pub transaction_locktime: u32,
-    pub transaction_version: u32,
-    #[serde(skip)]
-    pub transaction_size: usize,
-    pub transaction_vsize: usize,
-    pub transaction_weight: usize,
-}
-
 // Output of get_scriptpubkey_data
 #[derive(Serialize, Debug, Clone)]
 pub struct ScriptPubKeyData {
@@ -897,20 +884,6 @@ pub struct ScriptPubKeyData {
     pub subtype: u32, // Always 0
     pub is_internal: bool,
     pub address_type: String,
-}
-
-impl From<&BETransactionEntry> for TransactionDetails {
-    fn from(tx_entry: &BETransactionEntry) -> Self {
-        Self {
-            transaction: tx_entry.tx.serialize().to_hex(),
-            txhash: tx_entry.tx.txid().to_string(),
-            transaction_locktime: tx_entry.tx.lock_time(),
-            transaction_version: tx_entry.tx.version(),
-            transaction_size: tx_entry.size,
-            transaction_vsize: weight_to_vsize(tx_entry.weight),
-            transaction_weight: tx_entry.weight,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

@@ -1093,13 +1093,6 @@ impl ElectrumSession {
         store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_lower_hex_string())
     }
 
-    pub fn get_transaction_details(&self, txid: &str) -> Result<TransactionDetails, Error> {
-        let txid = BETxid::from_hex(txid, self.network.id())?;
-        let store = self.store()?;
-        let store = store.read()?;
-        store.get_tx_entry(&txid).map(|e| e.into())
-    }
-
     pub fn get_scriptpubkey_data(&self, script_pubkey: &str) -> Result<ScriptPubKeyData, Error> {
         let script = BEScript::from_hex(script_pubkey, self.network.id())?;
         let store = self.store()?;

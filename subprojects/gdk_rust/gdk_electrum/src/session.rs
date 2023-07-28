@@ -128,11 +128,6 @@ impl Session for ElectrumSession {
             }
 
             "get_transaction_hex" => get_transaction_hex(self, &input).to_json(),
-            "get_transaction_details" => self
-                .get_transaction_details(input.as_str().ok_or_else(|| {
-                    Error::Generic("get_transaction_details: input is not a string".into())
-                })?)
-                .to_json(),
             "get_balance" => self.get_balance(&serde_json::from_value(input)?).to_json(),
             "set_transaction_memo" => set_transaction_memo(self, &input),
             "get_scriptpubkey_data" => self
