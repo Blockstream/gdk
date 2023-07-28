@@ -8,6 +8,8 @@
   Please see the notification documentation for details.
 - GA_get_unspent_outputs_for_private_key: add support for Electrum
   sessions.
+- GA_get_unspent_outputs_for_private_key: rename "compressed" to
+  "is_compressed".
 
 ### Changed
 

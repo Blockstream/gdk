@@ -2653,7 +2653,7 @@ namespace sdk {
 
     // Idempotent
     nlohmann::json ga_session::get_unspent_outputs_for_private_key(
-        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool compressed)
+        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool is_compressed)
     {
         const auto script_bytes = scriptpubkey_p2pkh_from_hash160(hash160(public_key_bytes));
         const auto script_hash_hex = electrum_script_hash_hex(script_bytes);
@@ -2661,7 +2661,7 @@ namespace sdk {
         auto utxos = wamp_cast_json(m_wamp->call("vault.get_utxos_for_script_hash", script_hash_hex));
         for (auto& utxo : utxos) {
             utxo["private_key"] = b2h(private_key_bytes);
-            utxo["compressed"] = compressed;
+            utxo["is_compressed"] = is_compressed;
             utxo["public_key"] = b2h(public_key_bytes);
             utxo["prevout_script"] = b2h(script_bytes);
             utxo["script_type"] = script_type::ga_pubkey_hash_out;

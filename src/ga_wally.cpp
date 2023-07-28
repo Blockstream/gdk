@@ -644,29 +644,29 @@ namespace sdk {
             GDK_VERIFY(bip32_key_from_base58(priv_key.c_str(), &master));
             std::vector<unsigned char> ret(master.priv_key + 1, master.priv_key + 1 + EC_PRIVATE_KEY_LEN);
             wally_bzero(&master, sizeof(master));
-            constexpr bool compressed = false;
-            return { ret, compressed };
+            constexpr bool is_compressed = false;
+            return { ret, is_compressed };
         }
 
         // FIXME: Add wally constants for the WIF base58 lengths
         if (priv_key.size() == 51u || priv_key.size() == 52u) {
             // WIF
-            const bool compressed = priv_key.size() == 52u;
+            const bool is_compressed = priv_key.size() == 52u;
             std::vector<unsigned char> priv_key_bytes(EC_PRIVATE_KEY_LEN);
             GDK_VERIFY(wally_wif_to_bytes(priv_key.c_str(), mainnet ? 0x80 : 0xef,
-                compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED, priv_key_bytes.data(),
+                is_compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED, priv_key_bytes.data(),
                 priv_key_bytes.size()));
-            return { priv_key_bytes, compressed };
+            return { priv_key_bytes, is_compressed };
         }
 
         // BIP38
         GDK_RUNTIME_ASSERT(priv_key.size() == 58);
         auto bytes = base58check_to_bytes(priv_key);
         const size_t flags = bip38_raw_get_flags(bytes);
-        const bool compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
+        const bool is_compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
         return { bip38_raw_to_private_key(
                      bytes, ustring_span(passphrase), flags | (mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET)),
-            compressed };
+            is_compressed };
     }
 
     bool ec_private_key_verify(byte_span_t bytes)

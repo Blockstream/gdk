@@ -1386,18 +1386,18 @@ namespace sdk {
         auto password = json_get_value(m_details, "password");
 
         std::vector<unsigned char> private_key_bytes;
-        bool compressed;
+        bool is_compressed;
         try {
-            std::tie(private_key_bytes, compressed)
+            std::tie(private_key_bytes, is_compressed)
                 = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
         } catch (const std::exception&) {
             throw user_error(res::id_invalid_private_key);
         }
         auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes));
-        if (!compressed) {
+        if (!is_compressed) {
             public_key_bytes = ec_public_key_decompress(public_key_bytes);
         }
-        m_result = m_session->get_unspent_outputs_for_private_key(private_key_bytes, public_key_bytes, compressed);
+        m_result = m_session->get_unspent_outputs_for_private_key(private_key_bytes, public_key_bytes, is_compressed);
         return state_type::done;
     }
 

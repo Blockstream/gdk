@@ -390,17 +390,17 @@ namespace sdk {
     }
 
     nlohmann::json ga_rust::get_unspent_outputs_for_private_key(
-        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool compressed)
+        byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool is_compressed)
     {
         auto opt = nlohmann::json({
             { "public_key", b2h(public_key_bytes) },
             { "address_type", "p2pkh" },
-            { "compressed", compressed },
+            { "is_compressed", is_compressed },
         });
         auto utxos = rust_call("get_unspent_outputs_for_private_key", opt, m_session);
         for (auto& utxo : utxos) {
             utxo["private_key"] = b2h(private_key_bytes);
-            utxo["compressed"] = compressed;
+            utxo["is_compressed"] = is_compressed;
         }
         return { { "unspent_outputs", { { m_net_params.get_policy_asset(), std::move(utxos) } } } };
     }
