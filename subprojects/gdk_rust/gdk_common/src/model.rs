@@ -269,26 +269,6 @@ pub enum SPVVerifyTxResult {
     Disabled,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransactionOutput {
-    pub address: String, // Only used by Trezor
-    pub address_type: String,
-
-    /// True if the corresponding scriptpubkey belongs to the account (not the wallet)
-    pub is_relevant: bool,
-
-    pub subaccount: u32,
-    pub is_internal: bool,
-    pub is_change: bool, // Same as is_internal
-    pub pointer: u32,    // child_number in bip32 terminology
-    pub user_path: Vec<ChildNumber>,
-
-    pub pt_idx: u32, // vout
-    #[serde(rename = "script")]
-    pub script_pubkey: String,
-    pub satoshi: u64,
-}
-
 /// Input and output element for get_transactions
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GetTxInOut {
