@@ -323,6 +323,14 @@ namespace sdk {
         return nlohmann::json();
     }
 
+    nlohmann::json session_impl::get_transaction_details(const std::string& txhash_hex) const
+    {
+        const auto tx = get_raw_transaction_details(txhash_hex);
+        nlohmann::json ret = { { "txhash", txhash_hex } };
+        update_tx_size_info(m_net_params, tx, ret);
+        return ret;
+    }
+
     void session_impl::save_cache()
     {
         // Refers to the ga_session cache at the moment, so a no-op for rust sessions

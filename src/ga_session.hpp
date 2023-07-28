@@ -112,7 +112,6 @@ namespace sdk {
             byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool is_compressed);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         Tx get_raw_transaction_details(const std::string& txhash_hex) const;
-        nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
         nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
