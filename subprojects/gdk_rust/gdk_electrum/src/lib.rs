@@ -1283,7 +1283,6 @@ impl ElectrumSession {
                 user_path: vec![],
                 scriptpubkey: script_pubkey.clone(),
                 sequence: None,
-                sighash: None,
                 script_code: script_code.to_hex(),
                 public_key: opt.public_key.clone(),
                 skip_signing: false,
