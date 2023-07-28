@@ -18,8 +18,6 @@ use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
 use elements::TxInWitness;
 use log::{info, trace};
-use rand::seq::SliceRandom;
-use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
@@ -284,20 +282,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
-        }
-    }
-
-    pub fn scramble(&mut self) {
-        let mut rng = thread_rng();
-        match self {
-            BETransaction::Bitcoin(tx) => {
-                tx.input.shuffle(&mut rng);
-                tx.output.shuffle(&mut rng);
-            }
-            BETransaction::Elements(tx) => {
-                tx.input.shuffle(&mut rng);
-                tx.output.shuffle(&mut rng);
-            }
         }
     }
 
