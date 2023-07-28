@@ -14,7 +14,6 @@ use bitcoin::{PublicKey, Sequence};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
-use elements::TxInWitness;
 use log::trace;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -275,32 +274,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
-        }
-    }
-
-    pub fn add_input(&mut self, outpoint: BEOutPoint) {
-        match (outpoint, self) {
-            (BEOutPoint::Bitcoin(outpoint), BETransaction::Bitcoin(tx)) => {
-                let new_in = bitcoin::TxIn {
-                    previous_output: outpoint,
-                    script_sig: bitcoin::ScriptBuf::new(),
-                    sequence: Sequence(0xffff_fffd), // nSequence is disabled, nLocktime is enabled, RBF is signaled.
-                    witness: bitcoin::Witness::default(),
-                };
-                tx.input.push(new_in);
-            }
-            (BEOutPoint::Elements(outpoint), BETransaction::Elements(tx)) => {
-                let new_in = elements::TxIn {
-                    previous_output: outpoint,
-                    is_pegin: false,
-                    script_sig: elements::Script::default(),
-                    sequence: elements::Sequence(0xffff_fffe), // nSequence is disabled, nLocktime is enabled, RBF is not signaled.
-                    asset_issuance: Default::default(),
-                    witness: TxInWitness::default(),
-                };
-                tx.input.push(new_in);
-            }
-            _ => panic!("unexpected mix of bitcoin and elements types"),
         }
     }
 
