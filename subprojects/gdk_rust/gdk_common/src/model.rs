@@ -94,20 +94,6 @@ impl ExchangeRateOk {
 // =========== ^ exchange rate stuff ^ ===========
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct AddressAmount {
-    pub address: String, // could be bitcoin or elements
-    pub satoshi: u64,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub asset_id: Option<String>,
-}
-
-impl AddressAmount {
-    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
-        self.asset_id.as_ref().and_then(|a| a.parse().ok())
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct LoginData {
     pub wallet_hash_id: String,
     pub xpub_hash_id: String,
