@@ -1,11 +1,9 @@
-use crate::be::{
-    BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETransactionEntry, BETxid,
-};
+use crate::be::{BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransactionEntry, BETxid};
 use crate::descriptor::parse_single_sig_descriptor;
 use crate::exchange_rates::Currency;
 use crate::scripts::p2pkh_script;
 use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
-use crate::util::{is_confidential_txoutsecrets, now, weight_to_vsize};
+use crate::util::{is_confidential_txoutsecrets, weight_to_vsize};
 use crate::NetworkId;
 use crate::NetworkParameters;
 use bitcoin::sighash::EcdsaSighashType;
@@ -326,117 +324,6 @@ pub enum SPVVerifyTxResult {
     Disabled,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TransactionMeta {
-    #[serde(flatten)]
-    pub create_transaction: Option<CreateTransaction>,
-    #[serde(rename = "transaction")]
-    pub hex: String,
-    #[serde(rename = "txhash")]
-    pub txid: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub height: Option<u32>,
-    pub timestamp: u64, // in microseconds, for confirmed tx is block time for unconfirmed is when created or when list_tx happens
-    pub error: String,
-    pub addressees_read_only: bool,
-    pub is_sweep: bool,
-    pub satoshi: Balances,
-    pub fee: u64,
-    pub network: Option<Network>,
-    #[serde(rename = "type")]
-    pub type_: String,
-    pub changes_used: Option<u32>,
-    pub rbf_optin: bool,
-    pub spv_verified: SPVVerifyTxResult,
-    #[serde(rename = "transaction_weight")]
-    pub weight: usize,
-    #[serde(rename = "transaction_vsize")]
-    pub vsize: usize,
-    #[serde(skip)]
-    pub size: usize,
-    // The utxos used in the transaction
-    #[serde(default)]
-    pub used_utxos: Vec<UnspentOutput>,
-    #[serde(rename = "transaction_version")]
-    pub version: u32,
-    #[serde(rename = "transaction_locktime")]
-    pub lock_time: u32,
-    pub transaction_outputs: Vec<TransactionOutput>,
-}
-
-impl From<BETransaction> for TransactionMeta {
-    fn from(transaction: BETransaction) -> Self {
-        let txid = transaction.txid().to_string();
-        let hex = transaction.serialize().to_hex();
-        let timestamp = now();
-        let rbf_optin = transaction.rbf_optin();
-        let weight = transaction.get_weight();
-
-        TransactionMeta {
-            create_transaction: None,
-            height: None,
-            timestamp,
-            txid,
-            hex,
-            error: "".to_string(),
-            addressees_read_only: false,
-            is_sweep: false,
-            satoshi: HashMap::new(),
-            fee: 0,
-            network: None,
-            type_: "unknown".to_string(),
-            changes_used: None,
-            spv_verified: SPVVerifyTxResult::InProgress,
-            rbf_optin,
-            weight,
-            vsize: weight_to_vsize(weight),
-            size: transaction.get_size(),
-            used_utxos: vec![],
-            version: transaction.version(),
-            lock_time: transaction.lock_time(),
-            transaction_outputs: vec![],
-        }
-    }
-}
-impl From<BETransactionEntry> for TransactionMeta {
-    fn from(txe: BETransactionEntry) -> Self {
-        let mut txm: TransactionMeta = txe.tx.into();
-        // Overwrite with correct (v)size and weight
-        // (i.e. the ones before stripping the witness)
-        txm.weight = txe.weight;
-        txm.vsize = weight_to_vsize(txe.weight);
-        txm.size = txe.size;
-        txm
-    }
-}
-impl TransactionMeta {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        transaction: impl Into<TransactionMeta>,
-        height: Option<u32>,
-        timestamp: Option<u64>,
-        satoshi: Balances,
-        fee: u64,
-        network: Network,
-        type_: String,
-        create_transaction: CreateTransaction,
-        spv_verified: SPVVerifyTxResult,
-    ) -> Self {
-        let mut wgtx: TransactionMeta = transaction.into();
-        let timestamp = timestamp.unwrap_or_else(now);
-
-        wgtx.create_transaction = Some(create_transaction);
-        wgtx.height = height;
-        wgtx.timestamp = timestamp;
-        wgtx.satoshi = satoshi;
-        wgtx.network = Some(network);
-        wgtx.fee = fee;
-        wgtx.type_ = type_;
-        wgtx.spv_verified = spv_verified;
-        wgtx
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransactionOutput {
     pub address: String, // Only used by Trezor
@@ -599,7 +486,6 @@ impl TransactionType {
     }
 }
 
-// TODO remove TxListItem, make TransactionMeta compatible and automatically serialized
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TxListItem {
     pub block_height: u32,
