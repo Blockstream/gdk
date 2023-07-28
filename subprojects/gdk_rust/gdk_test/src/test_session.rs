@@ -5,7 +5,6 @@ use std::time::Duration;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrsd::electrum_client::ElectrumApi;
 use gdk_common::bitcoin::hashes::hex::FromHex;
-use gdk_common::bitcoin::Amount;
 use gdk_common::log::{info, warn};
 use gdk_common::rand::Rng;
 use gdk_common::wally::bip39_mnemonic_from_entropy;
@@ -22,8 +21,6 @@ use gdk_electrum::{ElectrumSession, TransactionNotification};
 
 use crate::RpcNodeExt;
 use crate::{env, utils};
-
-const MAX_FEE_PERCENT_DIFF: f64 = 0.05;
 
 #[allow(unused)]
 pub struct TestSession {
@@ -246,91 +243,6 @@ impl TestSession {
         }
     }
 
-    /// send a tx from the gdk session to the specified address
-    pub fn send_tx(
-        &mut self,
-        address: &str,
-        satoshi: u64,
-        asset: Option<String>,
-        memo: Option<String>,
-        unspent_outputs: Option<GetUnspentOutputs>,
-        confidential_utxos_only: Option<bool>,
-        utxo_strategy: Option<UtxoStrategy>,
-    ) -> String {
-        let init_sat = self.balance_gdk(asset.clone());
-        let init_node_balance = self.balance_node(asset.clone());
-        let mut create_opt = CreateTransaction::default();
-        let fee_rate = match self.network.id() {
-            NetworkId::Elements(_) => 100,
-            NetworkId::Bitcoin(_) => 1000,
-        };
-        create_opt.fee_rate = Some(fee_rate);
-        create_opt.addressees.push(AddressAmount {
-            address: address.to_string(),
-            satoshi,
-            asset_id: asset.clone().or(self.asset_id()),
-        });
-        create_opt.memo = memo;
-        create_opt.utxos = utils::convertutxos(&unspent_outputs.unwrap_or_else(|| self.utxos(0)));
-        create_opt.confidential_utxos_only = confidential_utxos_only.unwrap_or(false);
-        if let Some(strategy) = utxo_strategy {
-            create_opt.utxo_strategy = strategy;
-        }
-        let tx = self.session.create_transaction(&mut create_opt).unwrap();
-        match self.network.id() {
-            NetworkId::Elements(_) => assert!(!tx.rbf_optin),
-            NetworkId::Bitcoin(_) => assert!(tx.rbf_optin),
-        };
-        let num_utxos: usize = create_opt.utxos.iter().map(|(_, au)| au.len()).sum();
-        let num_used_utxos = tx.used_utxos.len();
-        match create_opt.utxo_strategy {
-            UtxoStrategy::Manual => assert_eq!(num_used_utxos, num_utxos),
-            UtxoStrategy::Default => assert!(num_used_utxos > 0 && num_used_utxos <= num_utxos),
-        }
-        let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx(
-            vec![create_opt.subaccount],
-            &txid,
-            Some(satoshi + signed_tx.fee),
-            Some(TransactionType::Outgoing),
-        );
-
-        self.tx_checks(&signed_tx.hex);
-
-        let fee = if asset.is_none() || asset == self.network.policy_asset {
-            tx.fee
-        } else {
-            0
-        };
-        assert_eq!(
-            self.balance_node(asset.clone()),
-            init_node_balance + satoshi,
-            "node balance does not match"
-        );
-
-        let expected = init_sat - satoshi - fee;
-        for _ in 0..5 {
-            if expected != self.balance_gdk(asset.clone()) {
-                // FIXME I should not wait again, but apparently after reconnect it's needed
-                thread::sleep(Duration::from_secs(1));
-            }
-        }
-        assert_eq!(self.balance_gdk(asset.clone()), expected, "gdk balance does not match");
-
-        assert!(
-            !tx.create_transaction.unwrap().send_all,
-            "send_all in tx is true but should be false"
-        );
-        assert!(
-            !signed_tx.create_transaction.unwrap().send_all,
-            "send_all in signed_tx is true but should be false"
-        );
-
-        txid
-    }
-
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
         let mut opt = GetTransactionsOpt::default();
         opt.subaccount = subaccount;
@@ -515,37 +427,6 @@ impl TestSession {
             }
         }
         panic!("electrs_tip always return error")
-    }
-
-    /// balance in satoshi of the node
-    fn balance_node(&self, asset: Option<String>) -> u64 {
-        let balance: Value = self.node.client.call("getbalance", &[]).unwrap();
-        let unconfirmed_balance: Value =
-            self.node.client.call("getunconfirmedbalance", &[]).unwrap();
-        match self.network_id {
-            NetworkId::Bitcoin(_) => {
-                let conf_sat = Amount::from_btc(balance.as_f64().unwrap()).unwrap().to_sat();
-                let unconf_sat =
-                    Amount::from_btc(unconfirmed_balance.as_f64().unwrap()).unwrap().to_sat();
-                conf_sat + unconf_sat
-            }
-            NetworkId::Elements(_) => {
-                let asset_or_policy = asset.or(Some("bitcoin".to_string())).unwrap();
-                let conf_sat = match balance.get(&asset_or_policy) {
-                    Some(Value::Number(s)) => {
-                        Amount::from_btc(s.as_f64().unwrap()).unwrap().to_sat()
-                    }
-                    _ => 0,
-                };
-                let unconf_sat = match unconfirmed_balance.get(&asset_or_policy) {
-                    Some(Value::Number(s)) => {
-                        Amount::from_btc(s.as_f64().unwrap()).unwrap().to_sat()
-                    }
-                    _ => 0,
-                };
-                conf_sat + unconf_sat
-            }
-        }
     }
 
     pub fn asset_id(&self) -> Option<String> {
