@@ -1,10 +1,8 @@
 use std::cmp::Ordering;
-use std::collections::{HashMap, HashSet};
-use std::convert::{TryFrom, TryInto};
+use std::collections::HashSet;
+use std::convert::TryInto;
 use std::str::FromStr;
 
-use gdk_common::bitcoin::script::PushBytesBuf;
-use gdk_common::bitcoin::sighash::SighashCache;
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
@@ -12,18 +10,11 @@ use gdk_common::bitcoin::address::Payload;
 use gdk_common::bitcoin::bip32::{
     ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
 };
-use gdk_common::bitcoin::blockdata::script;
-use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hashes::Hash;
-use gdk_common::bitcoin::secp256k1::{self, Message};
-use gdk_common::bitcoin::{PublicKey, Witness};
-use gdk_common::elements::confidential::Value;
-use gdk_common::{bitcoin, elements, rand};
+use gdk_common::bitcoin::PublicKey;
+use gdk_common::{bitcoin, elements};
 
-use gdk_common::be::{
-    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransaction, BETxid,
-    DUST_VALUE,
-};
+use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETxid, DUST_VALUE};
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressAmount, AddressDataResult, AddressPointer, CreateTransaction,
@@ -31,7 +22,7 @@ use gdk_common::model::{
     SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo, UnspentOutput,
     UpdateAccountOpt, UtxoStrategy,
 };
-use gdk_common::scripts::{p2pkh_script, p2shwpkh_script_sig, ScriptType};
+use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
 use gdk_common::util::{now, weight_to_vsize};
 use gdk_common::wally::{
@@ -53,12 +44,6 @@ pub struct Account {
     account_num: u32,
     script_type: ScriptType,
 
-    /// The account extended private key
-    ///
-    /// This fields will be removed once we have full support for external signers.
-    /// For the time being, if it is None, the xpub cannot be verified and
-    /// `Account::sign` will always fail.
-    xprv: Option<ExtendedPrivKey>,
     xpub: ExtendedPubKey,
     master_xpub_fingerprint: Fingerprint,
     chains: [ExtendedPubKey; 2],
@@ -95,16 +80,16 @@ impl Account {
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
 
-        let (xprv, xpub) = if let Some(master_xprv) = master_xprv {
+        let xpub = if let Some(master_xprv) = master_xprv {
             let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
             let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
             if let Some(account_xpub) = account_xpub {
                 xpubs_equivalent(&xpub, account_xpub)?;
             };
-            (Some(xprv), xpub)
+            xpub
         } else {
             if let Some(xpub) = account_xpub {
-                (None, xpub.clone())
+                xpub.clone()
             } else {
                 return Err(Error::Generic(
                     "Account::new: either master_xprv or account_xpub must be Some".to_string(),
@@ -123,7 +108,6 @@ impl Account {
             network,
             account_num,
             script_type,
-            xprv,
             xpub,
             master_xpub_fingerprint,
             chains,
@@ -761,135 +745,6 @@ impl Account {
             return Err(Error::InvalidSubaccount(request.subaccount));
         }
         create_tx(self, request)
-    }
-
-    // TODO when we can serialize psbt
-    //pub fn sign(&self, psbt: PartiallySignedTransaction) -> Result<PartiallySignedTransaction, Error> { Err(Error::Generic("NotImplemented".to_string())) }
-    pub fn sign(&self, request: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        info!("sign");
-        let xprv = self
-            .xprv
-            .ok_or_else(|| Error::Generic("Internal software signing is not supported".into()))?;
-
-        let be_tx =
-            BETransaction::deserialize(&Vec::<u8>::from_hex(&request.hex)?, self.network.id())?;
-        let store_read = self.store.read()?;
-        let acc_store = store_read.account_cache(self.account_num)?;
-
-        let sighashes = request
-            .used_utxos
-            .iter()
-            .map(|u| u.sighash())
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|_| Error::InvalidSigHash)?;
-        if sighashes.len() != be_tx.input_len() {
-            return Err(Error::Generic("Mismatching used_utxos and transaction".into()));
-        }
-
-        let mut betx: TransactionMeta = match be_tx {
-            BETransaction::Bitcoin(tx) => {
-                let mut out_tx = tx.clone();
-
-                for i in 0..tx.input.len() {
-                    if request.used_utxos[i].skip_signing {
-                        continue;
-                    }
-                    let prev_output = tx.input[i].previous_output;
-                    info!("input#{} prev_output:{:?}", i, prev_output);
-                    let prev_tx = acc_store.get_bitcoin_tx(&prev_output.txid)?;
-                    let out = prev_tx.output[prev_output.vout as usize].clone();
-                    let derivation_path = acc_store.get_path(&out.script_pubkey.into())?;
-                    info!(
-                        "input#{} prev_output:{:?} derivation_path:{:?}",
-                        i, prev_output, derivation_path
-                    );
-
-                    let (script_sig, witness) = internal_sign_bitcoin(
-                        &tx,
-                        i,
-                        &xprv,
-                        &derivation_path,
-                        out.value,
-                        self.script_type,
-                        &sighashes[i],
-                    )?;
-
-                    out_tx.input[i].script_sig = script_sig;
-                    out_tx.input[i].witness = Witness::from_slice(&witness);
-                }
-                let tx = BETransaction::Bitcoin(out_tx);
-                info!(
-                    "transaction final size is {} bytes and {} vbytes",
-                    tx.serialize().len(),
-                    tx.get_weight() / 4
-                );
-                info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
-                tx.into()
-            }
-            BETransaction::Elements(tx) => {
-                let mut tx = blind_tx(self, &tx)?;
-
-                for i in 0..tx.input.len() {
-                    if request.used_utxos[i].skip_signing {
-                        continue;
-                    }
-                    let prev_output = tx.input[i].previous_output;
-                    info!("input#{} prev_output:{:?}", i, prev_output);
-                    let prev_tx = acc_store.get_liquid_tx(&prev_output.txid)?;
-                    let out = prev_tx.output[prev_output.vout as usize].clone();
-                    let derivation_path = acc_store.get_path(&out.script_pubkey.into())?;
-
-                    let (script_sig, witness) = internal_sign_elements(
-                        &tx,
-                        i,
-                        &xprv,
-                        &derivation_path,
-                        out.value,
-                        self.script_type,
-                        &sighashes[i],
-                    )?;
-
-                    tx.input[i].script_sig = script_sig;
-                    tx.input[i].witness.script_witness = witness;
-                }
-
-                let fee: u64 =
-                    tx.output.iter().filter(|o| o.is_fee()).map(|o| o.minimum_value()).sum();
-                let tx = BETransaction::Elements(tx);
-                info!(
-                    "transaction final size is {} bytes and {} vbytes and fee is {}",
-                    tx.serialize().len(),
-                    tx.get_weight() / 4,
-                    fee
-                );
-                info!("FINALTX inputs:{} outputs:{}", tx.input_len(), tx.output_len());
-                tx.into()
-            }
-        };
-
-        betx.fee = request.fee;
-        betx.create_transaction = request.create_transaction.clone();
-        betx.used_utxos = request.used_utxos.clone();
-
-        drop(store_read);
-        let mut store_write = self.store.write()?;
-        let acc_store = store_write.account_cache_mut(self.account_num)?;
-
-        let changes_used = request.changes_used.unwrap_or(0);
-        if changes_used > 0 {
-            info!("tx used {} changes", changes_used);
-            // The next sync would update the internal index but we increment the internal index also
-            // here after sign so that if we immediately create another tx we are not reusing addresses
-            // This implies signing multiple times without broadcasting leads to gaps in the internal chain
-            acc_store.increment_last_used(true, changes_used);
-        }
-
-        if let Some(memo) = request.create_transaction.as_ref().and_then(|c| c.memo.as_ref()) {
-            let txid = BETxid::from_hex(&betx.txid, self.network.id())?;
-            store_write.insert_memo(txid, memo)?;
-        }
-
-        Ok(betx)
     }
 
     pub fn status(&self) -> Result<ScriptStatuses, Error> {
@@ -1530,137 +1385,6 @@ pub fn create_tx(
     Ok(created_tx)
 }
 
-fn internal_sign_bitcoin(
-    tx: &bitcoin::Transaction,
-    input_index: usize,
-    xprv: &ExtendedPrivKey,
-    path: &DerivationPath,
-    value: u64,
-    script_type: ScriptType,
-    sighash: &BESigHashType,
-) -> Result<(bitcoin::ScriptBuf, Vec<Vec<u8>>), Error> {
-    let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
-    let private_key = &xprv.to_priv();
-    let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
-    let script_code = p2pkh_script(public_key);
-
-    let sighash = sighash.into_bitcoin()?;
-    let hash = if script_type.is_segwit() {
-        SighashCache::new(tx)
-            .segwit_signature_hash(input_index, &script_code, value, sighash)?
-            .to_byte_array()
-    } else {
-        SighashCache::new(tx)
-            .legacy_signature_hash(input_index, &script_code, sighash.to_u32())?
-            .to_byte_array()
-    };
-
-    let message = Message::from_slice(&hash[..]).unwrap();
-    let signature = crate::EC.sign_ecdsa(&message, &private_key.inner);
-
-    let mut signature = signature.serialize_der().to_vec();
-    signature.push(sighash as u8);
-
-    Ok(prepare_input(&public_key, signature, script_type))
-}
-
-fn internal_sign_elements(
-    tx: &elements::Transaction,
-    input_index: usize,
-    xprv: &ExtendedPrivKey,
-    path: &DerivationPath,
-    value: Value,
-    script_type: ScriptType,
-    sighash: &BESigHashType,
-) -> Result<(elements::Script, Vec<Vec<u8>>), Error> {
-    let xprv = xprv.derive_priv(&crate::EC, &path).unwrap();
-    let private_key = &xprv.to_priv();
-    let public_key = &PublicKey::from_private_key(&crate::EC, private_key);
-
-    let script_code = p2pkh_script(public_key).into_elements();
-    let sighash = sighash.into_elements()?;
-    let hash = if script_type.is_segwit() {
-        elements::sighash::SigHashCache::new(tx).segwitv0_sighash(
-            input_index,
-            &script_code,
-            value,
-            sighash,
-        )
-    } else {
-        elements::sighash::SigHashCache::new(tx).legacy_sighash(input_index, &script_code, sighash)
-    };
-    let message = secp256k1::Message::from_slice(&hash[..]).unwrap();
-    let signature = crate::EC.sign_ecdsa(&message, &private_key.inner);
-    let mut signature = signature.serialize_der().to_vec();
-    signature.push(sighash as u8);
-
-    let (script_sig, witness) = prepare_input(&public_key, signature, script_type);
-    Ok((script_sig.into_elements(), witness))
-}
-
-// Get the input's script sig and witness data
-fn prepare_input(
-    public_key: &PublicKey,
-    signature: Vec<u8>,
-    script_type: ScriptType,
-) -> (bitcoin::ScriptBuf, Vec<Vec<u8>>) {
-    let pk = public_key.to_bytes();
-
-    match script_type {
-        ScriptType::P2shP2wpkh => (p2shwpkh_script_sig(public_key), vec![signature, pk]),
-        ScriptType::P2wpkh => (bitcoin::ScriptBuf::new(), vec![signature, pk]),
-        ScriptType::P2pkh => (
-            script::Builder::new()
-                .push_slice(PushBytesBuf::try_from(signature).unwrap())
-                .push_slice(PushBytesBuf::try_from(pk).unwrap())
-                .into_script(),
-            vec![],
-        ),
-    }
-}
-
-fn blind_tx(account: &Account, tx: &elements::Transaction) -> Result<elements::Transaction, Error> {
-    info!("blind_tx {}", tx.txid());
-    let is_already_blinded = tx.output.iter().all(|o| {
-        o.is_fee()
-            || (o.asset.is_confidential()
-                && o.value.is_confidential()
-                && o.nonce.is_confidential()
-                && !o.witness.is_empty())
-    });
-    if is_already_blinded {
-        return Ok(tx.clone());
-    }
-
-    let store_read = account.store.read()?;
-    let acc_store = store_read.account_cache(account.num())?;
-
-    let mut pset = elements::pset::PartiallySignedTransaction::from_tx(tx.clone());
-    let mut inp_txout_sec: HashMap<usize, elements::TxOutSecrets> = HashMap::new();
-
-    for (i, input) in pset.inputs_mut().iter_mut().enumerate() {
-        let previous_output =
-            elements::OutPoint::new(input.previous_txid, input.previous_output_index);
-        let unblinded = acc_store
-            .unblinded
-            .get(&previous_output)
-            .ok_or_else(|| Error::Generic("cannot find unblinded values".into()))?;
-
-        inp_txout_sec.insert(i, unblinded.clone());
-
-        let prev_tx = acc_store.get_liquid_tx(&input.previous_txid)?;
-        let txout = prev_tx.output[input.previous_output_index as usize].clone();
-        input.witness_utxo = Some(txout);
-    }
-    for output in pset.outputs_mut().iter_mut() {
-        // We are the owner of all inputs and outputs
-        output.blinder_index = Some(0);
-    }
-
-    pset.blind_last(&mut rand::thread_rng(), &crate::EC, &inp_txout_sec)?;
-    pset.extract_tx().map_err(Into::into)
-}
-
 fn is_blinded_inner(blinder: &str) -> bool {
     blinder.chars().any(|c| c != '0')
 }
@@ -1682,6 +1406,7 @@ fn is_blinded(
 #[cfg(test)]
 mod test {
     use super::*;
+    use gdk_common::bitcoin::hashes::hex::FromHex;
 
     const NETWORK: NetworkId = NetworkId::Bitcoin(bitcoin::Network::Regtest);
 
