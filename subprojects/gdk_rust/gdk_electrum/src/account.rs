@@ -17,7 +17,7 @@ use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
     GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses, SPVVerifyTxResult,
-    TransactionOutput, TxListItem, Txo, UnspentOutput, UpdateAccountOpt,
+    TxListItem, Txo, UnspentOutput, UpdateAccountOpt,
 };
 use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
@@ -595,51 +595,6 @@ impl Account {
         let public_key = self.public_key(path);
         // script code is the same for the currently supported script type
         p2pkh_script(&public_key).into()
-    }
-
-    pub fn tx_outputs(
-        &self,
-        tx: &BETransaction,
-        acc_store: &RawAccountCache,
-    ) -> Result<Vec<TransactionOutput>, Error> {
-        let mut tx_outputs = vec![];
-        for vout in 0..tx.output_len() as u32 {
-            let address = tx.output_address(vout, self.network.id()).unwrap_or_default();
-            let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
-            let script_pubkey = tx.output_script(vout);
-            tx_outputs.push(match acc_store.paths.get(&script_pubkey) {
-                None => TransactionOutput {
-                    address,
-                    satoshi,
-                    address_type: "".into(),
-                    is_relevant: false,
-                    is_change: false,
-                    subaccount: self.account_num,
-                    is_internal: false,
-                    pointer: 0,
-                    pt_idx: vout,
-                    script_pubkey: script_pubkey.to_hex(),
-                    user_path: vec![],
-                },
-                Some(account_path) => {
-                    let (is_internal, pointer) = parse_path(&account_path)?;
-                    TransactionOutput {
-                        address,
-                        satoshi,
-                        address_type: self.script_type.to_string(),
-                        is_relevant: true,
-                        subaccount: self.account_num,
-                        is_internal,
-                        is_change: is_internal,
-                        pointer,
-                        pt_idx: vout,
-                        script_pubkey: script_pubkey.to_hex(),
-                        user_path: self.get_full_path(&account_path).into(),
-                    }
-                }
-            });
-        }
-        Ok(tx_outputs)
     }
 
     pub fn txo(&self, outpoint: &BEOutPoint, acc_store: &RawAccountCache) -> Result<Txo, Error> {
