@@ -19,7 +19,7 @@ use elements::hex::ToHex;
 use elements::TxInWitness;
 use log::trace;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
 pub const DUST_VALUE: u64 = 546;
@@ -277,31 +277,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
-        }
-    }
-
-    pub fn estimated_changes(
-        &self,
-        send_all: bool,
-        all_txs: &BETransactions,
-        unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
-    ) -> u8 {
-        match self {
-            Self::Bitcoin(_) => 1u8 - send_all as u8,
-            Self::Elements(tx) => {
-                let mut different_assets = HashSet::new();
-                for input in tx.input.iter() {
-                    let asset = all_txs
-                        .get_previous_output_asset(input.previous_output, unblinded)
-                        .unwrap();
-                    different_assets.insert(asset);
-                }
-                if different_assets.is_empty() {
-                    0
-                } else {
-                    different_assets.len() as u8 - send_all as u8
-                }
-            }
         }
     }
 
