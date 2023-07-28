@@ -261,9 +261,7 @@ namespace sdk {
 
     std::string sig_only_to_der_hex(const ecdsa_sig_t& signature);
 
-    std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key);
-
-    std::vector<unsigned char> ec_public_key_decompress(byte_span_t public_key);
+    std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key, bool do_decompress = false);
 
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
         const std::string& priv_key, const std::string& passphrase, bool mainnet);

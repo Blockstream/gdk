@@ -1393,10 +1393,7 @@ namespace sdk {
         } catch (const std::exception&) {
             throw user_error(res::id_invalid_private_key);
         }
-        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes));
-        if (!is_compressed) {
-            public_key_bytes = ec_public_key_decompress(public_key_bytes);
-        }
+        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes), !is_compressed);
         m_result = m_session->get_unspent_outputs_for_private_key(private_key_bytes, public_key_bytes, is_compressed);
         return state_type::done;
     }

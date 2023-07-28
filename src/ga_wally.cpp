@@ -619,18 +619,18 @@ namespace sdk {
             == WALLY_OK;
     }
 
-    std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key)
+    std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key, bool do_decompress)
     {
         std::vector<unsigned char> ret(EC_PUBLIC_KEY_LEN);
         GDK_VERIFY(
             wally_ec_public_key_from_private_key(private_key.data(), private_key.size(), ret.data(), ret.size()));
-        return ret;
-    }
 
-    std::vector<unsigned char> ec_public_key_decompress(byte_span_t public_key)
-    {
-        std::vector<unsigned char> ret(EC_PUBLIC_KEY_UNCOMPRESSED_LEN);
-        GDK_VERIFY(wally_ec_public_key_decompress(public_key.data(), public_key.size(), ret.data(), ret.size()));
+        if (do_decompress) {
+            std::vector<unsigned char> ret_uncompressed(EC_PUBLIC_KEY_UNCOMPRESSED_LEN);
+            GDK_VERIFY(wally_ec_public_key_decompress(
+                ret.data(), ret.size(), ret_uncompressed.data(), ret_uncompressed.size()));
+            return ret_uncompressed;
+        }
         return ret;
     }
 
