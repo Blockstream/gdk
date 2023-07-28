@@ -57,7 +57,7 @@ fn test_electrum_disconnect() {
 
     // Attempt to connect with another session but Electrs is still down
     let mut new_session = {
-        let network = test_session.network_parameters().clone();
+        let network = test_session.session.network_parameters().clone();
         ElectrumSession::new(network).unwrap()
     };
     new_session.connect(&Value::Null).unwrap();

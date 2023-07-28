@@ -202,10 +202,6 @@ impl TestSession {
         }
     }
 
-    pub fn network_parameters(&self) -> &NetworkParameters {
-        &self.network
-    }
-
     /// fund the gdk session (account #0) with satoshis from the node, if on liquid issue `assets_to_issue` assets
     pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
         let initial_satoshis = self.balance_gdk(None);
