@@ -97,6 +97,7 @@ namespace sdk {
         nlohmann::json m_signing_details;
         std::unique_ptr<Psbt> m_psbt;
         bool m_is_partial;
+        bool m_is_synced;
     };
 
     class psbt_get_details_call : public auth_handler_impl {

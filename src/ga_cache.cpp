@@ -11,6 +11,7 @@
 #include "session.hpp"
 #include "signer.hpp"
 #include "sqlite3.h"
+#include "transaction_utils.hpp"
 #include "utils.hpp"
 
 namespace ga {
@@ -870,6 +871,7 @@ namespace sdk {
         utxo["pointer"] = get_uint32(m_stmt_scriptpubkey_search, 2);
         utxo["subtype"] = get_uint32(m_stmt_scriptpubkey_search, 3);
         utxo["script_type"] = get_uint32(m_stmt_scriptpubkey_search, 4);
+        utxo["address_type"] = get_utxo_address_type_from_script_type(utxo);
 
         step_final(m_stmt_scriptpubkey_search);
         return utxo;

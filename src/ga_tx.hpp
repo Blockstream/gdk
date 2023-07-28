@@ -58,6 +58,7 @@ namespace sdk {
             byte_span_t surjectionproof, byte_span_t rangeproof);
         void set_output_satoshi(size_t index, const std::string& asset_id, uint64_t satoshi);
 
+        const struct wally_tx* get() const { return m_tx.get(); }
         uint32_t get_version() const { return m_tx->version; }
         uint32_t get_locktime() const { return m_tx->locktime; }
         void set_anti_snipe_locktime(uint32_t current_block_height);

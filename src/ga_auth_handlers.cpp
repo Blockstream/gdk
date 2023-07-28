@@ -813,6 +813,7 @@ namespace sdk {
         : auth_handler_impl(session, "psbt_sign")
         , m_details(std::move(details))
         , m_is_partial(false)
+        , m_is_synced(false)
     {
     }
 
@@ -820,45 +821,23 @@ namespace sdk {
 
     auth_handler::state_type psbt_sign_call::call_impl()
     {
-        GDK_RUNTIME_ASSERT(m_signing_details.empty());
-
-        m_psbt = std::make_unique<Psbt>(m_details.at("psbt"), m_net_params.is_liquid());
-        Tx tx(m_psbt->extract());
-
-        // Get our inputs in order, with UTXO details for signing,
-        // or a "skip_signing" indicator if they aren't ours.
-        std::vector<nlohmann::json> inputs;
-        inputs.reserve(tx.get_num_inputs());
-        size_t num_sigs_required = 0;
-        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-            const auto& txin = tx.get_input(i);
-            const std::string txhash_hex = b2h_rev(txin.txhash);
-            const uint32_t vout = tx.get_input(i).index;
-            // FIXME: script_sig/witness are just to satisfy is_wallet_input().
-            // Along with add_utxo() they should be updated to use the same
-            // data as elsewhere to identify wallet inputs.
-            nlohmann::json input_utxo({ { "skip_signing", true }, { "script_sig", "" }, { "witness", "" } });
-            for (const auto& utxo : m_details.at("utxos")) {
-                if (!utxo.empty() && utxo.at("txhash") == txhash_hex && utxo.at("pt_idx") == vout) {
-                    input_utxo = utxo;
-                    const uint32_t sighash = m_psbt->get_input_sighash(i);
-                    input_utxo["user_sighash"] = sighash ? sighash : WALLY_SIGHASH_ALL;
-                    ++num_sigs_required;
-                    break;
-                }
-            }
-            inputs.emplace_back(input_utxo);
+        if (!m_is_synced) {
+            sync_scriptpubkeys(*m_session);
+            m_is_synced = true;
         }
 
-        if (!num_sigs_required) {
+        m_psbt = std::make_unique<Psbt>(m_details.at("psbt"), m_net_params.is_liquid());
+        m_signing_details = m_psbt->to_json(*m_session, std::move(m_details.at("utxos")));
+
+        if (m_signing_details.empty()) {
             // No signatures required, return the PSBT unchanged
             m_result = std::move(m_details);
             return state_type::done;
         }
-        m_is_partial = num_sigs_required != tx.get_num_inputs();
+        m_is_partial = m_signing_details.at("is_partial");
         if (m_is_partial && !m_net_params.is_electrum()) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
-            for (const auto& utxo : inputs) {
+            for (const auto& utxo : m_signing_details.at("transaction_inputs")) {
                 if (json_get_value(utxo, "address_type") == "p2sh") {
                     throw user_error("Non-segwit utxos cannnot be used with psbt_sign");
                 }
@@ -867,10 +846,7 @@ namespace sdk {
 
         nlohmann::json::array_t sign_with;
         sign_with.push_back("all");
-        m_signing_details = { { "is_partial", m_is_partial }, { "transaction", tx.to_hex() },
-            { "transaction_inputs", std::move(inputs) },
-            { "transaction_outputs", nlohmann::json::array() }, // FIXME: required for HWW
-            { "sign_with", m_details.value("sign_with", sign_with) } };
+        m_signing_details["sign_with"] = m_details.value("sign_with", sign_with);
 
         if (m_details.contains("blinding_nonces")) {
             m_signing_details.emplace("blinding_nonces", m_details["blinding_nonces"]);
@@ -885,15 +861,14 @@ namespace sdk {
     void psbt_sign_call::on_next_handler_complete(auth_handler* next_handler)
     {
         // User/server signing is complete: add the signing data to our psbt
-        auto signed_data = std::move(next_handler->move_result());
-        if (!json_get_value(signed_data, "error").empty()) {
-            m_result = std::move(m_details);
-            m_result["error"] = std::move(signed_data["error"]);
+        m_result = std::move(next_handler->move_result());
+        if (!json_get_value(m_result, "error").empty()) {
+            m_result["psbt"] = std::move(m_details.at("psbt"));
             return;
         }
 
-        const Tx tx(json_get_value(signed_data, "transaction"), m_net_params.is_liquid());
-        const auto& tx_inputs = signed_data.at("transaction_inputs");
+        const Tx tx(json_get_value(m_result, "transaction"), m_net_params.is_liquid());
+        const auto& tx_inputs = m_result.at("transaction_inputs");
         for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
             if (!tx_inputs.at(i).value("skip_signing", false)) {
                 m_psbt->set_input_finalization_data(i, tx);
@@ -905,7 +880,7 @@ namespace sdk {
          * inputs may have been already properly finalized before we sign.
          */
         const bool include_redundant = m_is_partial;
-        m_result = { { "psbt", m_psbt->to_base64(include_redundant) }, { "utxos", std::move(m_details.at("utxos")) } };
+        m_result["psbt"] = m_psbt->to_base64(include_redundant);
     }
 
     //
