@@ -229,15 +229,6 @@ impl TestSession {
         assets_issued
     }
 
-    pub fn btc_key(&self) -> String {
-        match self.network.id() {
-            NetworkId::Elements(_) => {
-                "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".to_string()
-            }
-            NetworkId::Bitcoin(_) => "btc".to_string(),
-        }
-    }
-
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
         let mut opt = GetTransactionsOpt::default();
         opt.subaccount = subaccount;
