@@ -12,7 +12,6 @@ use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
 use bitcoin::sighash::SighashCache;
 use bitcoin::{PublicKey, Sequence};
 use elements::confidential;
-use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
@@ -277,73 +276,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
-        }
-    }
-
-    /// return a Vector with changes of this transaction
-    /// requires inputs are greater than outputs for earch asset
-    pub fn changes(
-        &self,
-        estimated_fee: u64,
-        policy_asset: Option<elements::issuance::AssetId>,
-        all_txs: &BETransactions,
-        unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
-    ) -> Vec<AssetValue> {
-        match self {
-            Self::Bitcoin(tx) => {
-                let sum_inputs = sum_inputs(tx, all_txs);
-                let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
-                let change_value = sum_inputs - sum_outputs - estimated_fee;
-                if change_value > DUST_VALUE {
-                    vec![AssetValue::new_bitcoin(change_value)]
-                } else {
-                    vec![]
-                }
-            }
-            Self::Elements(tx) => {
-                let mut outputs_asset_amounts: HashMap<elements::issuance::AssetId, u64> =
-                    HashMap::new();
-                for output in tx.output.iter() {
-                    match (output.asset, output.value) {
-                        (Asset::Explicit(asset), Value::Explicit(value)) => {
-                            *outputs_asset_amounts.entry(asset).or_insert(0) += value;
-                        }
-                        _ => panic!("asset and value should be explicit here"),
-                    }
-                }
-
-                let mut inputs_asset_amounts: HashMap<elements::issuance::AssetId, u64> =
-                    HashMap::new();
-                for input in tx.input.iter() {
-                    let asset = all_txs
-                        .get_previous_output_asset(input.previous_output, unblinded)
-                        .unwrap();
-                    let value = all_txs
-                        .get_previous_output_value(
-                            &BEOutPoint::Elements(input.previous_output),
-                            unblinded,
-                        )
-                        .unwrap();
-                    *inputs_asset_amounts.entry(asset).or_insert(0) += value;
-                }
-                let mut result = vec![];
-                for (asset, value) in inputs_asset_amounts.iter() {
-                    let mut sum = value - outputs_asset_amounts.remove(asset).unwrap_or(0);
-                    if asset == &policy_asset.unwrap() {
-                        // from a purely privacy perspective could make sense to always create the change output in liquid, so min change = 0
-                        // however elements core use the dust anyway for 2 reasons: rebasing from core and economical considerations
-                        sum -= estimated_fee;
-                        if sum > DUST_VALUE {
-                            // we apply dust rules for liquid bitcoin as elements do
-                            result.push(AssetValue::new(*asset, sum));
-                        }
-                    } else if sum > 0 {
-                        result.push(AssetValue::new(*asset, sum));
-                    }
-                }
-                assert!(outputs_asset_amounts.is_empty());
-                result
-            }
         }
     }
 
@@ -791,28 +723,6 @@ impl From<BETransaction> for BETransactionEntry {
             tx,
             size,
             weight,
-        }
-    }
-}
-
-//TODO remove this, `fn needs` could return BTreeMap<String, u64> instead
-#[derive(Debug)]
-pub struct AssetValue {
-    pub asset: Option<elements::issuance::AssetId>,
-    pub satoshi: u64,
-}
-
-impl AssetValue {
-    fn new_bitcoin(satoshi: u64) -> Self {
-        AssetValue {
-            asset: None,
-            satoshi,
-        }
-    }
-    fn new(asset: elements::issuance::AssetId, satoshi: u64) -> Self {
-        AssetValue {
-            asset: Some(asset),
-            satoshi,
         }
     }
 }
