@@ -135,7 +135,6 @@ impl Session for ElectrumSession {
                 .to_json(),
             "get_balance" => self.get_balance(&serde_json::from_value(input)?).to_json(),
             "set_transaction_memo" => set_transaction_memo(self, &input),
-            "create_transaction" => create_transaction(self, input).map_err(Into::into),
             "get_scriptpubkey_data" => self
                 .get_scriptpubkey_data(input.as_str().ok_or_else(|| {
                     Error::Generic("get_scriptpubkey_data: input is not a string".into())
@@ -246,23 +245,6 @@ pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<S
 
 pub fn txs_result_value(txs: &TxsResult) -> Value {
     json!(txs.0.clone())
-}
-
-pub fn create_transaction(session: &mut ElectrumSession, input: Value) -> Result<Value, Error> {
-    let mut create_tx: CreateTransaction = serde_json::from_value(input.clone())?;
-
-    let res = session.create_transaction(&mut create_tx).map(|v| serde_json::to_value(v).unwrap());
-
-    Ok(match res {
-        Err(ref err) => {
-            log::warn!("err {:?}", err);
-            let mut input = input;
-            input["error"] = err.to_gdk_code().into();
-            input
-        }
-
-        Ok(v) => v,
-    })
 }
 
 pub fn set_transaction_memo(session: &ElectrumSession, input: &Value) -> Result<Value, JsonError> {

@@ -1169,16 +1169,6 @@ impl ElectrumSession {
         Ok(())
     }
 
-    pub fn create_transaction(
-        &mut self,
-        tx_req: &mut CreateTransaction,
-    ) -> Result<TransactionMeta, Error> {
-        info!("electrum create_transaction {:?}", tx_req);
-
-        self.remove_recent_spent_utxos(tx_req)?;
-        self.get_account(tx_req.subaccount)?.create_tx(tx_req)
-    }
-
     fn set_recent_spent_utxos(&self, tx: &BETransaction) -> Result<(), Error> {
         let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
         (*recent_spent_utxos).extend(tx.previous_outputs());
