@@ -4,11 +4,10 @@ use std::time::Duration;
 
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrsd::electrum_client::ElectrumApi;
-use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::log::{info, warn};
 use gdk_common::rand::Rng;
 use gdk_common::wally::bip39_mnemonic_from_entropy;
-use gdk_common::{bitcoin, elements, rand};
+use gdk_common::{bitcoin, rand};
 use serde_json::{json, Value};
 use tempfile::TempDir;
 
@@ -268,58 +267,6 @@ impl TestSession {
         self.session.get_receive_address(&addr_opt).unwrap()
     }
 
-    /// performs checks on transactions, like checking for address reuse in outputs and on liquid confidential commitments inequality
-    pub fn tx_checks(&self, hex: &str) {
-        match self.network_id {
-            NetworkId::Elements(_) => {
-                let tx: elements::Transaction =
-                    elements::encode::deserialize(&Vec::<u8>::from_hex(hex).unwrap()).unwrap();
-                let output_nofee: Vec<&elements::TxOut> =
-                    tx.output.iter().filter(|o| !o.is_fee()).collect();
-                for current in output_nofee.iter() {
-                    assert_eq!(
-                        1,
-                        output_nofee
-                            .iter()
-                            .filter(|o| o.script_pubkey == current.script_pubkey)
-                            .count(),
-                        "address reuse"
-                    ); // for example using the same change address for lbtc and asset change
-                    assert_eq!(
-                        1,
-                        output_nofee.iter().filter(|o| o.asset == current.asset).count(),
-                        "asset commitment equal"
-                    );
-                    assert_eq!(
-                        1,
-                        output_nofee.iter().filter(|o| o.value == current.value).count(),
-                        "value commitment equal"
-                    );
-                    assert_eq!(
-                        1,
-                        output_nofee.iter().filter(|o| o.nonce == current.nonce).count(),
-                        "nonce commitment equal"
-                    );
-                }
-                assert!(tx.output.last().unwrap().is_fee(), "last output is not a fee");
-            }
-            NetworkId::Bitcoin(_) => {
-                let tx: bitcoin::Transaction =
-                    bitcoin::consensus::encode::deserialize(&Vec::<u8>::from_hex(hex).unwrap())
-                        .unwrap();
-                for current in tx.output.iter() {
-                    assert_eq!(
-                        1,
-                        tx.output
-                            .iter()
-                            .filter(|o| o.script_pubkey == current.script_pubkey)
-                            .count(),
-                        "address reuse"
-                    ); // for example using the same change address for lbtc and asset change
-                }
-            }
-        }
-    }
 
     /// test get_subaccount
     pub fn get_subaccount(&mut self) {
