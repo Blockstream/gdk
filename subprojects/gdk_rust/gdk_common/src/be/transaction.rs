@@ -11,7 +11,6 @@ use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
 use bitcoin::sighash::SighashCache;
 use bitcoin::{PublicKey, Sequence};
-use elements::confidential;
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
@@ -277,24 +276,6 @@ impl BETransaction {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
         }
-    }
-
-    pub fn add_fee_if_elements(
-        &mut self,
-        value: u64,
-        policy_asset: &Option<elements::issuance::AssetId>,
-    ) -> Result<(), Error> {
-        if let BETransaction::Elements(tx) = self {
-            let policy_asset =
-                policy_asset.ok_or_else(|| Error::Generic("Missing policy asset".into()))?;
-            let new_out = elements::TxOut {
-                asset: confidential::Asset::Explicit(policy_asset),
-                value: confidential::Value::Explicit(value),
-                ..Default::default()
-            };
-            tx.output.push(new_out);
-        }
-        Ok(())
     }
 
     pub fn add_input(&mut self, outpoint: BEOutPoint) {
