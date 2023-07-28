@@ -380,16 +380,6 @@ impl TestSession {
         utils::spv_verify_tx(network, tip, txid, height, headers_to_download);
     }
 
-    pub fn utxos(&self, subaccount: u32) -> GetUnspentOutputs {
-        let utxo_opt = GetUnspentOpt {
-            subaccount,
-            num_confs: None,
-            confidential_utxos_only: None,
-            all_coins: None,
-        };
-        self.session.get_unspent_outputs(&utxo_opt).unwrap()
-    }
-
     /// stop the bitcoin node in the test session
     pub fn stop(&mut self) {
         self.session.disconnect().unwrap();
