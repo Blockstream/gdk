@@ -2699,7 +2699,11 @@ namespace sdk {
                 GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx cache using cached " << txhash_hex;
             } else {
                 // Not found, ask the server
-                tx_bin = h2b(wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex)));
+                auto server_tx_hex = wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex));
+                if (server_tx_hex.empty()) {
+                    throw user_error("Transaction not found");
+                }
+                tx_bin = h2b(server_tx_hex);
                 // Cache the result
                 m_cache->insert_transaction_data(txhash_hex, tx_bin);
             }
