@@ -254,13 +254,6 @@ impl TestSession {
         self.session.get_receive_address(&addr_opt).unwrap()
     }
 
-
-    /// test get_subaccount
-    pub fn get_subaccount(&mut self) {
-        assert!(self.session.get_subaccount(0).is_ok());
-        assert!(self.session.get_subaccount(1).is_err());
-    }
-
     /// mine a block with the node and check if gdk session see the change
     pub fn mine_block(&mut self) -> String {
         let initial_height_electrs = self.electrs_tip() as u32;
