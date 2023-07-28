@@ -1158,17 +1158,6 @@ impl ElectrumSession {
         Ok(())
     }
 
-    fn remove_recent_spent_utxos(&self, tx_req: &mut CreateTransaction) -> Result<(), Error> {
-        let id = self.network.id();
-        let recent_spent_utxos = self.recent_spent_utxos.read()?;
-        for asset_utxos in tx_req.utxos.values_mut() {
-            asset_utxos.retain(|u| {
-                u.outpoint(id).ok().map(|o| !(*recent_spent_utxos).contains(&o)).unwrap_or(false)
-            });
-        }
-        Ok(())
-    }
-
     fn set_recent_spent_utxos(&self, tx: &BETransaction) -> Result<(), Error> {
         let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
         (*recent_spent_utxos).extend(tx.previous_outputs());

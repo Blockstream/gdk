@@ -1,12 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::convert::TryInto;
-use std::str::FromStr;
 
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
-use gdk_common::bitcoin::address::Payload;
 use gdk_common::bitcoin::bip32::{
     ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
 };
@@ -14,13 +12,12 @@ use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::{bitcoin, elements};
 
-use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETxid, DUST_VALUE};
+use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETxid};
 use gdk_common::error::fn_err;
 use gdk_common::model::{
-    parse_path, AccountInfo, AddressAmount, AddressDataResult, AddressPointer, CreateTransaction,
-    GetPreviousAddressesOpt, GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses,
-    SPVVerifyTxResult, TransactionMeta, TransactionOutput, TxListItem, Txo, UnspentOutput,
-    UpdateAccountOpt, UtxoStrategy,
+    parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
+    GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses, SPVVerifyTxResult,
+    TransactionOutput, TxListItem, Txo, UnspentOutput, UpdateAccountOpt,
 };
 use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
@@ -740,13 +737,6 @@ impl Account {
         Ok(acc_store.bip44_discovered || !acc_store.heights.is_empty())
     }
 
-    pub fn create_tx(&self, request: &mut CreateTransaction) -> Result<TransactionMeta, Error> {
-        if request.subaccount != self.account_num {
-            return Err(Error::InvalidSubaccount(request.subaccount));
-        }
-        create_tx(self, request)
-    }
-
     pub fn status(&self) -> Result<ScriptStatuses, Error> {
         let store = self.store.read()?;
         Ok(store.account_cache(self.account_num)?.script_statuses.clone().unwrap_or_default())
@@ -1012,379 +1002,6 @@ pub fn discover_account(
     Ok(false)
 }
 
-#[allow(clippy::cognitive_complexity)]
-pub fn create_tx(
-    account: &Account,
-    request: &mut CreateTransaction,
-) -> Result<TransactionMeta, Error> {
-    info!("create_tx {:?}", request);
-
-    let network = &account.network;
-
-    let default_min_fee_rate = network.id().default_min_fee_rate();
-    let fee_rate_sat_kb = request.fee_rate.get_or_insert(default_min_fee_rate);
-    if *fee_rate_sat_kb < default_min_fee_rate {
-        return Err(Error::FeeRateBelowMinimum(default_min_fee_rate));
-    }
-
-    // convert from satoshi/kbyte to satoshi/byte
-    let fee_rate = (*fee_rate_sat_kb as f64) / 1000.0;
-    info!("target fee_rate {:?} satoshi/byte", fee_rate);
-
-    // TODO put checks into CreateTransaction::validate
-    // eagerly check for address validity
-    for addressee in request.addressees.iter() {
-        match network.id() {
-            NetworkId::Bitcoin(network) => {
-                if let Ok(address) = bitcoin::Address::from_str(&addressee.address) {
-                    info!("address.network:{} network:{}", address.network, network);
-                    if address.network == network
-                        || (address.network == bitcoin::Network::Testnet
-                            && network == bitcoin::Network::Regtest)
-                    {
-                        // FIXME: use address.is_standard() once rust-bitcoin has P2tr variant
-                        if let Payload::WitnessProgram(witness_program) = &address.payload {
-                            let v = witness_program.version();
-                            let p = witness_program.program();
-                            // Do not support segwit greater than v1 and non-P2TR v1
-                            if v.to_num() > 1 || (v.to_num() == 1 && p.len() != 32) {
-                                return Err(Error::InvalidAddress);
-                            }
-                        }
-                        continue;
-                    }
-                }
-                return Err(Error::InvalidAddress);
-            }
-            NetworkId::Elements(network) => {
-                if let Ok(address) = elements::Address::parse_with_params(
-                    &addressee.address,
-                    network.address_params(),
-                ) {
-                    if !address.is_blinded() {
-                        return Err(Error::NonConfidentialAddress);
-                    }
-                    if let elements::address::Payload::WitnessProgram {
-                        version: v,
-                        program: p,
-                    } = &address.payload
-                    {
-                        // Do not support segwit greater than v1 and non-P2TR v1
-                        if v.to_u8() > 1 || (v.to_u8() == 1 && p.len() != 32) {
-                            return Err(Error::InvalidAddress);
-                        }
-                    }
-                } else {
-                    return Err(Error::InvalidAddress);
-                }
-                if let Some(Ok(_)) = addressee
-                    .asset_id
-                    .as_ref()
-                    .map(|asset_id| elements::issuance::AssetId::from_str(&asset_id))
-                {
-                    // non-empty and valid asset id
-                } else {
-                    return Err(Error::InvalidAssetId);
-                }
-            }
-        }
-    }
-
-    let send_all = request.send_all;
-    if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
-        return Err(Error::InvalidAmount);
-    }
-
-    let mut template_tx = None;
-    let mut change_addresses = vec![];
-
-    let store_read = account.store.read()?;
-    let acc_store = store_read.account_cache(account.num())?;
-
-    // When a previous transaction is replaced, use it as a template for the new transaction
-    if let Some(ref prev_txitem) = request.previous_transaction {
-        if send_all || network.liquid {
-            return Err(Error::InvalidReplacementRequest);
-        }
-
-        let txid = BETxid::from_hex(&prev_txitem.txhash, network.id())?;
-        let prev_tx = &acc_store.all_txs.get(&txid).ok_or_else(|| Error::TxNotFound(txid))?.tx;
-
-        // Strip the mining fee change output from the transaction, keeping the change address for reuse
-        template_tx = Some(prev_tx.filter_outputs(&acc_store.unblinded, |vout, script, asset| {
-            if asset == None && account.get_wallet_chain_type(&script) == Some(1) {
-                let change_address = prev_tx
-                    .output_address(vout, network.id())
-                    .expect("own change addresses to have address representation");
-                change_addresses.push(change_address);
-                false
-            } else {
-                true
-            }
-        }));
-
-        if let (Some(BETransaction::Bitcoin(tx)), NetworkId::Bitcoin(net)) =
-            (&template_tx, network.id())
-        {
-            request.addressees = tx
-                .output
-                .iter()
-                .filter_map(|o| {
-                    Some(AddressAmount {
-                        address: bitcoin::Address::from_script(&o.script_pubkey, net)
-                            .ok()?
-                            .to_string(),
-                        satoshi: o.value,
-                        asset_id: None,
-                    })
-                })
-                .collect();
-        } else {
-            return Err(Error::InvalidReplacementRequest);
-        }
-
-        // Keep the previous transaction memo
-        if request.memo.is_none() && !prev_txitem.memo.is_empty() {
-            request.memo = Some(prev_txitem.memo.clone());
-        }
-    } else {
-        if request.addressees.is_empty() {
-            return Err(Error::EmptyAddressees);
-        }
-
-        if !send_all && request.addressees.iter().any(|a| a.satoshi == 0) {
-            return Err(Error::InvalidAmount);
-        }
-
-        if !send_all {
-            for address_amount in request.addressees.iter() {
-                if address_amount.satoshi <= DUST_VALUE {
-                    match network.id() {
-                        NetworkId::Bitcoin(_) => return Err(Error::InvalidAmount),
-                        NetworkId::Elements(_) => {
-                            if address_amount.asset_id == network.policy_asset {
-                                // we apply dust rules for liquid bitcoin as elements do
-                                return Err(Error::InvalidAmount);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        if let NetworkId::Elements(_) = network.id() {
-            if request.addressees.iter().any(|a| a.asset_id.is_none()) {
-                return Err(Error::AssetEmpty);
-            }
-        }
-    }
-
-    let id = network.id();
-    let mut utxos: Vec<Txo> = vec![];
-    for (_, outpoints) in request.utxos.iter() {
-        for o in outpoints {
-            let outpoint = o.outpoint(id)?;
-            // TODO: check that the outpoint is not confirmed
-            // TODO: check that outpoints are unique
-            let utxo = account.txo(&outpoint, acc_store)?;
-            if request.confidential_utxos_only && !utxo.is_confidential() {
-                continue;
-            }
-            utxos.push(utxo);
-        }
-    }
-    info!("utxos len:{} utxos:{:?}", utxos.len(), utxos);
-
-    if send_all {
-        // send_all works by creating a dummy tx with all utxos, estimate the fee and set the
-        // sending amount to `total_amount_utxos - estimated_fee`
-        info!("send_all calculating total_amount");
-        if request.addressees.len() != 1 {
-            return Err(Error::SendAll);
-        }
-        let asset = request.addressees[0].asset_id();
-        let all_utxos: Vec<&Txo> = utxos.iter().filter(|u| u.asset_id() == asset).collect();
-        let total_amount_utxos: u64 = all_utxos.iter().map(|u| u.satoshi).sum();
-
-        let to_send = if asset == network.policy_asset_id().ok() {
-            let mut dummy_tx = BETransaction::new(network.id());
-            for utxo in all_utxos.iter() {
-                dummy_tx.add_input(utxo.outpoint.clone());
-            }
-            let out = &request.addressees[0]; // safe because we checked we have exactly one recipient
-            dummy_tx
-                .add_output(&out.address, out.satoshi, out.asset_id(), network.id())
-                .map_err(|_| Error::InvalidAddress)?;
-            // estimating 2 satoshi more as estimating less would later result in InsufficientFunds
-            let estimated_fee = dummy_tx.estimated_fee(fee_rate, 0, account.script_type) + 2;
-            total_amount_utxos.checked_sub(estimated_fee).ok_or_else(|| Error::InsufficientFunds)?
-        } else {
-            total_amount_utxos
-        };
-
-        info!("send_all asset: {:?} to_send:{}", asset, to_send);
-
-        request.addressees[0].satoshi = to_send;
-    }
-
-    // transaction is created in 3 steps:
-    // 1) adding requested outputs to tx outputs, or using the replaced transaction template
-    // 2) adding enough utxso to inputs such that tx outputs and estimated fees are covered
-    // 3) adding change(s)
-
-    // STEP 1) add the requested outputs for newly created transactions,
-    //         or start with the replaced transaction (minus change) as a template
-    let mut tx = template_tx.map_or_else(
-        || -> Result<_, Error> {
-            let mut new_tx = BETransaction::new(network.id());
-            for out in request.addressees.iter() {
-                new_tx
-                    .add_output(&out.address, out.satoshi, out.asset_id(), network.id())
-                    .map_err(|_| Error::InvalidAddress)?;
-            }
-            Ok(new_tx)
-        },
-        Ok,
-    )?;
-
-    // STEP 2) add utxos until tx outputs are covered (including fees) or fail
-    match request.utxo_strategy {
-        UtxoStrategy::Default => {
-            let mut used_utxo: HashSet<BEOutPoint> = HashSet::new();
-            loop {
-                let mut needs = tx.needs(
-                    fee_rate,
-                    send_all,
-                    network.policy_asset_id().ok(),
-                    &acc_store.all_txs,
-                    &acc_store.unblinded,
-                    account.script_type,
-                ); // "policy asset" is last, in bitcoin max 1 element
-                info!("needs: {:?}", needs);
-                if needs.is_empty() {
-                    // SUCCESS tx doesn't need other inputs
-                    break;
-                }
-                let current_need = needs.pop().unwrap(); // safe to unwrap just checked it's not empty
-
-                // taking only utxos of current asset considered, filters also utxos used in this loop
-                let mut asset_utxos: Vec<&Txo> = utxos
-                    .iter()
-                    .filter(|u| {
-                        u.asset_id() == current_need.asset && !used_utxo.contains(&u.outpoint)
-                    })
-                    .collect();
-
-                // sort by biggest utxo, random maybe another option, but it should be deterministically random (purely random breaks send_all algorithm)
-                asset_utxos.sort_by(|a, b| a.satoshi.cmp(&b.satoshi));
-                let utxo = asset_utxos.pop().ok_or(Error::InsufficientFunds)?;
-
-                match network.id() {
-                    NetworkId::Bitcoin(_) => {
-                        // UTXO with same script must be spent together
-                        for other_utxo in utxos.iter() {
-                            if other_utxo.script_pubkey == utxo.script_pubkey {
-                                used_utxo.insert(other_utxo.outpoint.clone());
-                                tx.add_input(other_utxo.outpoint.clone());
-                            }
-                        }
-                    }
-                    NetworkId::Elements(_) => {
-                        // Don't spend same script together in liquid. This would allow an attacker
-                        // to cheaply send assets without value to the target, which will have to
-                        // waste fees for the extra tx inputs and (eventually) outputs.
-                        // While blinded address are required and not public knowledge,
-                        // they are still available to whom transacted with us in the past
-                        used_utxo.insert(utxo.outpoint.clone());
-                        tx.add_input(utxo.outpoint.clone());
-                    }
-                }
-            }
-        }
-        UtxoStrategy::Manual => {
-            for utxo in utxos.iter() {
-                tx.add_input(utxo.outpoint.clone());
-            }
-            let needs = tx.needs(
-                fee_rate,
-                send_all,
-                network.policy_asset_id().ok(),
-                &acc_store.all_txs,
-                &acc_store.unblinded,
-                account.script_type,
-            );
-            if !needs.is_empty() {
-                return Err(Error::InsufficientFunds);
-            }
-        }
-    }
-
-    // STEP 3) adding change(s)
-    let estimated_fee = tx.estimated_fee(
-        fee_rate,
-        tx.estimated_changes(send_all, &acc_store.all_txs, &acc_store.unblinded),
-        account.script_type,
-    );
-    let changes = tx.changes(
-        estimated_fee,
-        network.policy_asset_id().ok(),
-        &acc_store.all_txs,
-        &acc_store.unblinded,
-    ); // Vec<Change> asset, value
-    for (i, change) in changes.iter().enumerate() {
-        let change_address = change_addresses.pop().map_or_else(
-            || -> Result<_, Error> {
-                let change_index = acc_store.last_used[true] + i as u32 + 1;
-                Ok(account.derive_address(true, change_index)?.to_string())
-            },
-            Ok,
-        )?;
-        info!(
-            "adding change to {} of {} asset {:?}",
-            &change_address, change.satoshi, change.asset
-        );
-        tx.add_output(&change_address, change.satoshi, change.asset, network.id())?;
-    }
-
-    // randomize inputs and outputs, BIP69 has been rejected because lacks wallets adoption
-    tx.scramble();
-
-    let policy_asset = network.policy_asset_id().ok();
-    // recompute exact fee_val from built tx
-    let fee_val = tx.fee(&acc_store.all_txs, &acc_store.unblinded, &policy_asset)?;
-    tx.add_fee_if_elements(fee_val, &policy_asset)?;
-
-    info!("created tx fee {:?}", fee_val);
-
-    let mut satoshi =
-        tx.my_balance_changes(&acc_store.all_txs, &acc_store.paths, &acc_store.unblinded);
-
-    for (_, v) in satoshi.iter_mut() {
-        *v = v.abs();
-    }
-
-    let used_utxos = account.used_utxos(&tx, acc_store)?;
-    let tx_outputs = account.tx_outputs(&tx, acc_store)?;
-    let mut created_tx = TransactionMeta::new(
-        tx,
-        None,
-        None,
-        satoshi,
-        fee_val,
-        network.id().get_bitcoin_network().unwrap_or(bitcoin::Network::Bitcoin),
-        "outgoing".to_string(),
-        request.clone(),
-        SPVVerifyTxResult::InProgress,
-    );
-    created_tx.used_utxos = used_utxos;
-    created_tx.transaction_outputs = tx_outputs;
-    created_tx.changes_used = Some(changes.len() as u32);
-    created_tx.addressees_read_only = request.previous_transaction.is_some();
-    info!("returning: {:?}", created_tx);
-
-    Ok(created_tx)
-}
-
 fn is_blinded_inner(blinder: &str) -> bool {
     blinder.chars().any(|c| c != '0')
 }
@@ -1407,6 +1024,7 @@ fn is_blinded(
 mod test {
     use super::*;
     use gdk_common::bitcoin::hashes::hex::FromHex;
+    use std::str::FromStr;
 
     const NETWORK: NetworkId = NetworkId::Bitcoin(bitcoin::Network::Regtest);
 
