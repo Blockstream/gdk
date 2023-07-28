@@ -1164,22 +1164,6 @@ impl ElectrumSession {
         Ok(())
     }
 
-    pub fn send_transaction(&mut self, tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        info!("electrum send_transaction {:#?}", tx);
-        let client = self.url.build_client(self.proxy.as_deref(), None)?;
-        let tx_bytes = Vec::<u8>::from_hex(&tx.hex)?;
-        let txid = client.transaction_broadcast_raw(&tx_bytes)?;
-        if let Some(memo) = tx.create_transaction.as_ref().and_then(|o| o.memo.as_ref()) {
-            self.store()?.write()?.insert_memo(txid.into(), memo)?;
-        }
-        let mut tx = tx.clone();
-        // If sign transaction happens externally txid might not have been updated
-        tx.txid = txid.to_string();
-        let betx = BETransaction::deserialize(&tx_bytes[..], self.network.id())?;
-        self.set_recent_spent_utxos(&betx)?;
-        Ok(tx)
-    }
-
     pub fn broadcast_transaction(&mut self, tx_hex: &str) -> Result<String, Error> {
         let transaction = BETransaction::from_hex(&tx_hex, self.network.id())?;
 

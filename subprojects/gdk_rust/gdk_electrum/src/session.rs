@@ -140,7 +140,6 @@ impl Session for ElectrumSession {
                     Error::Generic("get_scriptpubkey_data: input is not a string".into())
                 })?)
                 .to_json(),
-            "send_transaction" => self.send_transaction(&serde_json::from_value(input)?).to_json(),
             "broadcast_transaction" => self
                 .broadcast_transaction(input.as_str().ok_or_else(|| {
                     Error::Generic("broadcast_transaction: input not a string".into())
