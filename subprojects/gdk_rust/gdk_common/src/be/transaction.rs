@@ -16,14 +16,13 @@ use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
-use elements::{TxInWitness, TxOutWitness};
+use elements::TxInWitness;
 use log::{info, trace};
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
-use std::str::FromStr;
 
 pub const DUST_VALUE: u64 = 546;
 
@@ -286,44 +285,6 @@ impl BETransaction {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
         }
-    }
-
-    /// asset is none for bitcoin, in liquid must be Some
-    pub fn add_output(
-        &mut self,
-        address: &str,
-        value: u64,
-        asset: Option<elements::issuance::AssetId>,
-        id: NetworkId,
-    ) -> Result<(), Error> {
-        match (self, id) {
-            (BETransaction::Bitcoin(tx), NetworkId::Bitcoin(_)) => {
-                let address = bitcoin::Address::from_str(&address)?.assume_checked();
-                let script_pubkey = address.script_pubkey();
-                let new_out = bitcoin::TxOut {
-                    script_pubkey,
-                    value,
-                };
-                tx.output.push(new_out);
-            }
-            (BETransaction::Elements(tx), NetworkId::Elements(net)) => {
-                let address = elements::Address::parse_with_params(&address, net.address_params())
-                    .map_err(|_| Error::InvalidAddress)?;
-                let blinding_pubkey = address.blinding_pubkey.ok_or(Error::InvalidAddress)?;
-                let asset_id =
-                    asset.expect("add_output must be called with a non empty asset in liquid");
-                let new_out = elements::TxOut {
-                    asset: confidential::Asset::Explicit(asset_id),
-                    value: confidential::Value::Explicit(value),
-                    nonce: confidential::Nonce::Confidential(blinding_pubkey),
-                    script_pubkey: address.script_pubkey(),
-                    witness: TxOutWitness::default(),
-                };
-                tx.output.push(new_out);
-            }
-            _ => panic!("Invalid BETransaction and NetworkId combination"),
-        }
-        Ok(())
     }
 
     pub fn scramble(&mut self) {
