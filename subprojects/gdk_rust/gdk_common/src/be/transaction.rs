@@ -17,17 +17,12 @@ use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
 use elements::TxInWitness;
-use log::{info, trace};
+use log::trace;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::ops::{Deref, DerefMut};
 
 pub const DUST_VALUE: u64 = 546;
-
-// 52-bit rangeproof size
-const DEFAULT_RANGEPROOF_SIZE: usize = 4174;
-// 3-input ASP size
-const DEFAULT_SURJECTIONPROOF_SIZE: usize = 135;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub enum BETransaction {
@@ -282,77 +277,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.size(),
             Self::Elements(tx) => tx.size(),
-        }
-    }
-
-    /// estimates the fee of the final transaction given the `fee_rate`
-    /// called when the tx is being built and miss things like signatures and changes outputs.
-    pub fn estimated_fee(&self, fee_rate: f64, more_changes: u8, script_type: ScriptType) -> u64 {
-        let dummy_tx = self.clone();
-        match dummy_tx {
-            BETransaction::Bitcoin(mut tx) => {
-                for input in tx.input.iter_mut() {
-                    input.witness = script_type.mock_witness();
-                    input.script_sig = script_type.mock_script_sig().into();
-                }
-                for _ in 0..more_changes {
-                    tx.output.push(bitcoin::TxOut {
-                        value: 0,
-                        script_pubkey: script_type.mock_script_pubkey().into(),
-                    })
-                }
-                let vbytes = tx.weight().to_wu() as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.02) as u64; // increasing estimated fee by 2% to stay over relay fee TODO improve fee estimation and lower this
-                info!(
-                    "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
-                    tx.input.len(),
-                    tx.output.len(),
-                    more_changes,
-                    vbytes,
-                    fee_val
-                );
-                fee_val
-            }
-            BETransaction::Elements(mut tx) => {
-                for input in tx.input.iter_mut() {
-                    let mut tx_wit = TxInWitness::default();
-                    tx_wit.script_witness = script_type.mock_witness().to_vec();
-                    input.witness = tx_wit;
-                    input.script_sig = script_type.mock_script_sig().into();
-                }
-                let mock_asset = confidential::Asset::Confidential(mock_asset());
-                let mock_value = confidential::Value::Confidential(mock_value());
-                let mock_nonce = confidential::Nonce::Confidential(mock_pubkey());
-                for _ in 0..more_changes {
-                    let new_out = elements::TxOut {
-                        asset: mock_asset,
-                        value: mock_value,
-                        nonce: mock_nonce,
-                        script_pubkey: script_type.mock_script_pubkey().into(),
-                        ..Default::default()
-                    };
-                    tx.output.push(new_out);
-                }
-
-                let proofs_size = (DEFAULT_RANGEPROOF_SIZE + DEFAULT_SURJECTIONPROOF_SIZE)
-                    * tx.output.iter().filter(|o| o.witness.is_empty()).count();
-
-                tx.output.push(elements::TxOut::new_fee(
-                    0,
-                    elements::issuance::AssetId::from_slice(&[0u8; 32]).unwrap(),
-                )); // mockup for the explicit fee output
-                let vbytes = (tx.weight() + proofs_size) as f64 / 4.0;
-                let fee_val = (vbytes * fee_rate * 1.03) as u64; // increasing estimated fee by 3% to stay over relay fee, TODO improve fee estimation and lower this
-                info!(
-                    "DUMMYTX inputs:{} outputs:{} num_changes:{} vbytes:{} fee_val:{}",
-                    tx.input.len(),
-                    tx.output.len(),
-                    more_changes,
-                    vbytes,
-                    fee_val
-                );
-                fee_val
-            }
         }
     }
 
@@ -772,22 +696,6 @@ impl BETransaction {
         }
         false
     }
-}
-
-fn mock_pubkey() -> secp256k1::PublicKey {
-    secp256k1::PublicKey::from_slice(&[2u8; 33]).unwrap()
-}
-
-fn mock_asset() -> elements::secp256k1_zkp::Generator {
-    let mut mock_asset = [2u8; 33];
-    mock_asset[0] = 10;
-    elements::secp256k1_zkp::Generator::from_slice(&mock_asset).unwrap()
-}
-
-fn mock_value() -> elements::secp256k1_zkp::PedersenCommitment {
-    let mut mock_value = [2u8; 33];
-    mock_value[0] = 8;
-    elements::secp256k1_zkp::PedersenCommitment::from_slice(&mock_value).unwrap()
 }
 
 fn sum_inputs(tx: &bitcoin::Transaction, all_txs: &BETransactions) -> u64 {
