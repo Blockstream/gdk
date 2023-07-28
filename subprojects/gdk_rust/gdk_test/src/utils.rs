@@ -8,10 +8,6 @@ use gdk_common::{NetworkId, NetworkParameters, State};
 use gdk_electrum::headers;
 use gdk_electrum::{Notification, TransactionNotification};
 
-pub fn convertutxos(utxos: &GetUnspentOutputs) -> CreateTxUtxos {
-    serde_json::to_value(utxos).and_then(serde_json::from_value).unwrap()
-}
-
 /// Json of network notification
 pub fn ntf_network(current: State, desired: State) -> Value {
     serde_json::to_value(&Notification::new_network(current, desired)).unwrap()

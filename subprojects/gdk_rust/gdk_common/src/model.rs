@@ -1,10 +1,9 @@
-use crate::be::{BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransactionEntry, BETxid};
+use crate::be::{BEOutPoint, BEScript, BEScriptConvert, BESigHashType, BETransactionEntry};
 use crate::descriptor::parse_single_sig_descriptor;
 use crate::exchange_rates::Currency;
 use crate::scripts::p2pkh_script;
 use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
 use crate::util::{is_confidential_txoutsecrets, weight_to_vsize};
-use crate::NetworkId;
 use crate::NetworkParameters;
 use bitcoin::sighash::EcdsaSighashType;
 use bitcoin::Network;
@@ -752,28 +751,6 @@ impl Display for SPVVerifyTxResult {
     }
 }
 
-// In create_transaction, the caller passes the utxos in the same format as they are returned by
-// get_unspent_output, but we only care about the outpoint, since we can obtain the remaining data
-// from the db.
-// CreateTxUtxo and CreateTxUtxos allows us to accept the serialized GetUnspentOutputs, ignoring
-// the fields we are not interested in.
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct CreateTxUtxo {
-    #[serde(rename = "txhash")]
-    pub txid: String,
-    #[serde(rename = "pt_idx")]
-    pub vout: u32,
-}
-
-pub type CreateTxUtxos = HashMap<String, Vec<CreateTxUtxo>>;
-
-impl CreateTxUtxo {
-    pub fn outpoint(&self, id: NetworkId) -> Result<BEOutPoint, Error> {
-        let betxid = BETxid::from_hex(&self.txid, id)?;
-        Ok(BEOutPoint::new(betxid, self.vout))
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct Txo {
     pub outpoint: BEOutPoint,
@@ -1089,7 +1066,7 @@ impl SweepOpt {
 
 #[cfg(test)]
 mod test {
-    use crate::model::{parse_path, CreateTxUtxos, GetUnspentOutputs};
+    use crate::model::{parse_path, GetUnspentOutputs};
     use bitcoin::bip32::DerivationPath;
 
     #[test]
@@ -1104,6 +1081,5 @@ mod test {
     fn test_unspent() {
         let json_str = r#"{"btc": [{"address_type": "p2wsh", "block_height": 1806588, "pointer": 3509, "pt_idx": 1, "satoshi": 3650144, "subaccount": 0, "txhash": "08711d45d4867d7834b133a425da065b252eb6a9b206d57e2bbb226a344c5d13", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 1], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835681, "pointer": 3510, "pt_idx": 0, "satoshi": 5589415, "subaccount": 0, "txhash": "fbd00e5b9e8152c04214c72c791a78a65fdbab68b5c6164ff0d8b22a006c5221", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 2], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}, {"address_type": "p2wsh", "block_height": 1835821, "pointer": 3511, "pt_idx": 0, "satoshi": 568158, "subaccount": 0, "txhash": "e5b358fb8366960130b97794062718d7f4fbe721bf274f47493a19326099b811", "is_internal": false, "is_blinded": false, "user_path": [2147483692, 2147483649, 2147483648, 0, 3], "prevout_script": "51", "public_key": "020202020202020202020202020202020202020202020202020202020202020202", "asset_id": ""}]}"#;
         let _json: GetUnspentOutputs = serde_json::from_str(json_str).unwrap();
-        let _json: CreateTxUtxos = serde_json::from_str(json_str).unwrap();
     }
 }
