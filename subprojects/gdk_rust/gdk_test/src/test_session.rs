@@ -331,28 +331,6 @@ impl TestSession {
         txid
     }
 
-    pub fn reconnect(&mut self) {
-        let ntf_len = self.session.filter_events("network").len();
-        self.session.disconnect().unwrap();
-
-        assert_eq!(
-            self.session.filter_events("network").last(),
-            Some(&utils::ntf_network(State::Disconnected, State::Disconnected))
-        );
-        assert_eq!(self.session.filter_events("network").len(), ntf_len + 1);
-
-        self.session.connect(&Value::Null).unwrap();
-
-        assert_eq!(
-            self.session.filter_events("network").last(),
-            Some(&utils::ntf_network(State::Connected, State::Connected))
-        );
-        assert_eq!(self.session.filter_events("network").len(), ntf_len + 2);
-
-        let address = self.node.client.getnewaddress(None, None).unwrap();
-        let _txid = self.send_tx(&address, 1000, None, None, None, None, None);
-    }
-
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
         let mut opt = GetTransactionsOpt::default();
         opt.subaccount = subaccount;
@@ -376,46 +354,6 @@ impl TestSession {
             ignore_gap_limit: None,
         };
         self.session.get_receive_address(&addr_opt).unwrap()
-    }
-
-    /// send a tx, check it spend utxo with the same script_pubkey together
-    /// requires zero balance in session, the node will send two amounts to the same address
-    pub fn send_tx_same_script(&mut self) {
-        // TODO check same script for different assets
-        let init_sat = self.balance_gdk(None);
-        assert_eq!(init_sat, 0);
-
-        let utxo_satoshi = 100_000;
-        let ap = self.get_receive_address(0);
-        let txid = self.node.client.sendtoaddress(&ap.address, utxo_satoshi, None).unwrap();
-        self.wait_tx(vec![0], &txid, Some(utxo_satoshi), Some(TransactionType::Incoming));
-        let txid = self.node.client.sendtoaddress(&ap.address, utxo_satoshi, None).unwrap();
-        self.wait_tx(vec![0], &txid, Some(utxo_satoshi), Some(TransactionType::Incoming));
-        let satoshi = 50_000; // one utxo would be enough
-        let mut create_opt = CreateTransaction::default();
-        let fee_rate = 1000;
-        let address = self.node.client.getnewaddress(None, None).unwrap();
-        create_opt.fee_rate = Some(fee_rate);
-        create_opt.addressees.push(AddressAmount {
-            address: address.to_string(),
-            satoshi,
-            asset_id: self.asset_id(),
-        });
-        create_opt.utxos = utils::convertutxos(&self.utxos(create_opt.subaccount));
-        let tx = self.session.create_transaction(&mut create_opt).unwrap();
-        let signed_tx = self.session.sign_transaction(&tx).unwrap();
-        self.check_fee_rate(fee_rate, &signed_tx, MAX_FEE_PERCENT_DIFF);
-        let txid = self.session.broadcast_transaction(&signed_tx.hex).unwrap();
-        self.wait_tx(
-            vec![create_opt.subaccount],
-            &txid,
-            Some(satoshi + signed_tx.fee),
-            Some(TransactionType::Outgoing),
-        );
-        self.tx_checks(&signed_tx.hex);
-
-        let transaction = BETransaction::from_hex(&signed_tx.hex, self.network_id).unwrap();
-        assert_eq!(2, transaction.input_len());
     }
 
     pub fn create_opt(
