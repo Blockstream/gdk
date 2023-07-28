@@ -268,27 +268,6 @@ impl TestSession {
         self.session.get_receive_address(&addr_opt).unwrap()
     }
 
-    pub fn create_opt(
-        &self,
-        address: &str,
-        satoshi: u64,
-        asset_id: Option<String>,
-        fee_rate: Option<u64>,
-        subaccount: u32,
-        utxos: GetUnspentOutputs,
-    ) -> CreateTransaction {
-        let mut create_opt = CreateTransaction::default();
-        create_opt.subaccount = subaccount;
-        create_opt.fee_rate = fee_rate;
-        create_opt.utxos = utils::convertutxos(&utxos);
-        create_opt.addressees.push(AddressAmount {
-            address: address.to_string(),
-            satoshi,
-            asset_id,
-        });
-        create_opt
-    }
-
     /// performs checks on transactions, like checking for address reuse in outputs and on liquid confidential commitments inequality
     pub fn tx_checks(&self, hex: &str) {
         match self.network_id {
