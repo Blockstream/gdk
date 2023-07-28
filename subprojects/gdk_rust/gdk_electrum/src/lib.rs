@@ -1179,16 +1179,6 @@ impl ElectrumSession {
         self.get_account(tx_req.subaccount)?.create_tx(tx_req)
     }
 
-    pub fn sign_transaction(&self, create_tx: &TransactionMeta) -> Result<TransactionMeta, Error> {
-        info!("electrum sign_transaction {:?}", create_tx);
-        let account_num = create_tx
-            .create_transaction
-            .as_ref()
-            .ok_or_else(|| Error::Generic("Cannot sign without tx data".into()))?
-            .subaccount;
-        self.get_account(account_num)?.sign(create_tx)
-    }
-
     fn set_recent_spent_utxos(&self, tx: &BETransaction) -> Result<(), Error> {
         let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
         (*recent_spent_utxos).extend(tx.previous_outputs());
