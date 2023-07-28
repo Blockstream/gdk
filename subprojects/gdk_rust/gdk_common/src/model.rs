@@ -113,22 +113,6 @@ pub struct LoginData {
     pub xpub_hash_id: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone)]
-#[serde(rename_all = "snake_case")]
-pub enum UtxoStrategy {
-    /// Add utxos until the addressees amounts and fees are covered
-    Default,
-
-    /// Uses all and only the utxos specified by the caller
-    Manual,
-}
-
-impl Default for UtxoStrategy {
-    fn default() -> Self {
-        UtxoStrategy::Default
-    }
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct GetTransactionsOpt {
     pub first: usize,
