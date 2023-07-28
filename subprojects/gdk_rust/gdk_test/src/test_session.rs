@@ -326,21 +326,6 @@ impl TestSession {
         self.node.client.call::<Value>("setban", &["127.0.0.1".into(), "add".into()]).unwrap();
     }
 
-    pub fn check_fee_rate(&self, req_rate: u64, tx_meta: &TransactionMeta, max_perc_diff: f64) {
-        let transaction = BETransaction::from_hex(&tx_meta.hex, self.network_id).unwrap();
-        let real_rate = tx_meta.fee as f64 / (transaction.get_weight() as f64 / 4.0);
-        let req_rate = req_rate as f64 / 1000.0;
-        assert!(
-            ((real_rate - req_rate).abs() / real_rate) < max_perc_diff,
-            "real_rate:{} req_rate:{}",
-            real_rate,
-            req_rate
-        ); // percentage difference between fee rate requested vs real fee
-        let relay_fee =
-            self.node.client.get_network_info().unwrap().relay_fee.to_sat() as f64 / 1000.0;
-        assert!(real_rate > relay_fee, "fee rate:{} is under relay_fee:{}", real_rate, relay_fee);
-    }
-
     /// ask the blockcain tip to electrs
     pub fn electrs_tip(&mut self) -> usize {
         for _ in 0..10 {
