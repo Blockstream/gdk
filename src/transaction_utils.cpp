@@ -38,7 +38,7 @@ static std::vector<unsigned char> output_script_for_address(
     // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
     const bool is_bech32 = boost::istarts_with(address, net_params.bech32_prefix());
     const bool is_blech32 = net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix());
-    const bool is_base58 = !is_bech32 && !is_bech32 && validate_base58check(address);
+    const bool is_base58 = !is_blech32 && !is_bech32 && validate_base58check(address);
 
     if (!is_bech32 && !is_blech32 && !is_base58) {
         error = res::id_invalid_address; // Unknown address type
