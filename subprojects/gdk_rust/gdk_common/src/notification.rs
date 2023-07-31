@@ -196,12 +196,6 @@ impl NativeNotif {
         self.native = Some(native_type);
     }
 
-    pub fn block(&self, height: u32, hash: BEBlockHash) {
-        let data =
-            json!({"block":{"block_height":height,"block_hash": hash.to_hex()},"event":"block"});
-        self.notify(data);
-    }
-
     pub fn block_from_hashes(&self, height: u32, hash: &BEBlockHash, prev_hash: &BEBlockHash) {
         self.notify(Notification::new_block_from_hashes(height, hash, prev_hash));
     }
