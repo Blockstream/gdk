@@ -4,11 +4,11 @@ use crate::{Error, ScriptStatuses};
 use gdk_common::aes::Aes256GcmSiv;
 use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
-    BEBlockHash, BEBlockHeader, BEScript, BETransaction, BETransactionEntry, BETransactions, BETxid,
+    BEBlockHash, BEBlockHeader, BEScript, BETransactionEntry, BETransactions, BETxid,
 };
 use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::hashes::{sha256, Hash};
-use gdk_common::bitcoin::{Transaction, Txid};
+use gdk_common::bitcoin::Txid;
 use gdk_common::elements;
 use gdk_common::elements::TxOutSecrets;
 use gdk_common::log::{info, log, Level};
@@ -517,11 +517,6 @@ impl StoreMeta {
         }
     }
 
-    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
-        self.flush_cache()?;
-        RawCache::try_new(&self.path, &self.cipher)
-    }
-
     pub fn get_tx_entry(&self, txid: &BETxid) -> Result<&BETransactionEntry, Error> {
         for acc_store in self.cache.accounts.values() {
             if let Some(tx_entry) = acc_store.all_txs.get(&txid) {
@@ -553,20 +548,6 @@ impl RawAccountCache {
             bip44_discovered,
         }
     }
-    pub fn get_bitcoin_tx(&self, txid: &Txid) -> Result<Transaction, Error> {
-        match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
-            Some(BETransaction::Bitcoin(tx)) => Ok(tx.clone()),
-            _ => Err(Error::TxNotFound(BETxid::Bitcoin(txid.clone()))),
-        }
-    }
-
-    pub fn get_liquid_tx(&self, txid: &elements::Txid) -> Result<elements::Transaction, Error> {
-        match self.all_txs.get(&txid.into_be()).map(|etx| &etx.tx) {
-            Some(BETransaction::Elements(tx)) => Ok(tx.clone()),
-            _ => Err(Error::TxNotFound(BETxid::Elements(txid.clone()))),
-        }
-    }
-
     pub fn get_path(&self, script_pubkey: &BEScript) -> Result<&DerivationPath, Error> {
         self.paths.get(script_pubkey).ok_or_else(|| Error::ScriptPubkeyNotFound)
     }
@@ -590,11 +571,6 @@ impl RawAccountCache {
             });
         }
         self.last_used = last_used;
-    }
-
-    pub fn increment_last_used(&mut self, is_internal: bool, n: u32) -> u32 {
-        self.last_used[is_internal] += n;
-        self.last_used[is_internal]
     }
 
     // TODO: once we can remove the Option from count_given, below things can be simplified.
