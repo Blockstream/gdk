@@ -115,10 +115,6 @@ impl Currency {
     pub fn is_fiat(&self) -> bool {
         !matches!(self, Self::BTC)
     }
-
-    pub fn iter() -> impl ExactSizeIterator<Item = Self> {
-        vec![Self::BTC, Self::USD, Self::EUR, Self::GBP, Self::JPY].into_iter()
-    }
 }
 
 impl Default for Currency {
@@ -222,10 +218,6 @@ pub struct Pair(Currency, Currency);
 impl Pair {
     pub fn new(c1: Currency, c2: Currency) -> Pair {
         Pair(c1, c2)
-    }
-
-    pub fn new_btc(c: Currency) -> Pair {
-        Pair(Currency::BTC, c)
     }
 
     pub fn first(&self) -> Currency {

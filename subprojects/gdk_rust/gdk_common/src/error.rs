@@ -91,10 +91,6 @@ pub enum Error {
     Generic(String),
 }
 
-pub fn err<R>(str: &str) -> Result<R> {
-    Err(Error::Generic(str.into()))
-}
-
 impl From<aes_gcm_siv::aead::Error> for Error {
     fn from(err: aes_gcm_siv::aead::Error) -> Self {
         Self::Generic(err.to_string())
@@ -103,10 +99,6 @@ impl From<aes_gcm_siv::aead::Error> for Error {
 
 pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {
     move || Error::Generic(str.into())
-}
-
-pub fn _io_err(str: &str) -> std::io::Error {
-    std::io::Error::new(std::io::ErrorKind::InvalidInput, str.to_string())
 }
 
 impl From<String> for Error {

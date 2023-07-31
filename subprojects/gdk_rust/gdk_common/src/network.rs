@@ -78,12 +78,6 @@ impl NetworkId {
             _ => None,
         }
     }
-    pub fn get_elements_network(self: NetworkId) -> Option<ElementsNetwork> {
-        match self {
-            NetworkId::Elements(net) => Some(net),
-            _ => None,
-        }
-    }
 
     pub fn default_min_fee_rate(&self) -> u64 {
         match self {

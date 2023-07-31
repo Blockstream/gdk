@@ -76,19 +76,6 @@ pub enum ExchangeRateErrorType {
 
 pub type ExchangeRateRes = Result<ExchangeRateOk, ExchangeRateError>;
 
-impl ExchangeRateOk {
-    pub fn ok(currency: String, rate: f64) -> ExchangeRateOk {
-        ExchangeRateOk::RateOk(ExchangeRate {
-            currency,
-            rate,
-        })
-    }
-
-    pub fn no_backends() -> ExchangeRateOk {
-        ExchangeRateOk::NoBackends
-    }
-}
-
 // =========== ^ exchange rate stuff ^ ===========
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
@@ -763,10 +750,6 @@ impl Txo {
 
     pub fn is_confidential(&self) -> bool {
         self.confidential().unwrap_or(false)
-    }
-
-    pub fn asset_id(&self) -> Option<elements::issuance::AssetId> {
-        self.txoutsecrets.as_ref().map(|s| s.asset.clone())
     }
 }
 
