@@ -1315,10 +1315,6 @@ impl ElectrumSession {
             .ok_or(Error::ScriptPubkeyNotFound)
     }
 
-    pub fn export_cache(&mut self) -> Result<RawCache, Error> {
-        self.store()?.write()?.export_cache()
-    }
-
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
         let store = self.store()?;
         let store_read = store.read()?;

@@ -9,12 +9,6 @@ use std::str::FromStr;
 #[derive(Clone, Copy)]
 pub struct StringSerialized<T>(pub T);
 
-impl<T> StringSerialized<T> {
-    pub fn into_inner(self) -> T {
-        self.0
-    }
-}
-
 impl<T> From<T> for StringSerialized<T> {
     fn from(t: T) -> Self {
         StringSerialized(t)

@@ -486,10 +486,6 @@ impl StoreMeta {
         self.get_accounts_settings().get(&account_num)
     }
 
-    pub fn get_account_name(&self, account_num: u32) -> Option<&String> {
-        self.get_account_settings(account_num).map(|s| &s.name)
-    }
-
     pub fn set_account_settings(
         &mut self,
         account_num: u32,

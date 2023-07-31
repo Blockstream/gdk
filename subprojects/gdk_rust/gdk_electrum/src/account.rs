@@ -1,13 +1,10 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
-use std::convert::TryInto;
 
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
-use gdk_common::bitcoin::bip32::{
-    ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint,
-};
+use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::{bitcoin, elements};
@@ -17,7 +14,7 @@ use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
     GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses, SPVVerifyTxResult,
-    TxListItem, Txo, UnspentOutput, UpdateAccountOpt,
+    TxListItem, Txo, UpdateAccountOpt,
 };
 use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
@@ -640,24 +637,6 @@ impl Account {
         })
     }
 
-    pub fn used_utxos(
-        &self,
-        tx: &BETransaction,
-        acc_store: &RawAccountCache,
-    ) -> Result<Vec<UnspentOutput>, Error> {
-        tx.previous_sequence_and_outpoints()
-            .into_iter()
-            .map(|(sequence, outpoint)| {
-                self.txo(&outpoint, acc_store)
-                    .and_then(|mut u| {
-                        u.sequence = Some(sequence);
-                        Ok(u.try_into()?)
-                    })
-                    .map_err(|_| Error::Generic("missing inputs not supported yet".into()))
-            })
-            .collect()
-    }
-
     pub fn unspents(&self) -> Result<HashSet<BEOutPoint>, Error> {
         let mut relevant_outputs = HashSet::new();
         let mut inputs = HashSet::new();
@@ -716,22 +695,6 @@ impl Account {
         )?;
 
         Ok((cached, path, script))
-    }
-
-    /// Get the chain number for the given address (0 for receive or 1 for change)
-    pub fn get_wallet_chain_type(&self, script: &BEScript) -> Option<u32> {
-        let store_read = self.store.read().unwrap();
-        let acc_store = store_read.account_cache(self.account_num).unwrap();
-
-        if let Some(path) = acc_store.paths.get(&script) {
-            if let ChildNumber::Normal {
-                index,
-            } = path[0]
-            {
-                return Some(index);
-            }
-        }
-        None
     }
 
     pub fn get_address_data(&self, address: &BEAddress) -> Result<AddressDataResult, Error> {

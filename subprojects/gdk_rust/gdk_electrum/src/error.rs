@@ -212,10 +212,6 @@ pub enum Error {
     Generic(String),
 }
 
-pub fn fn_err(str: &str) -> impl Fn() -> Error + '_ {
-    move || Error::Generic(str.into())
-}
-
 impl Serialize for Error {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
