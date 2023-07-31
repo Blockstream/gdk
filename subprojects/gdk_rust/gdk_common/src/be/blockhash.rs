@@ -8,13 +8,6 @@ pub enum BEBlockHash {
 }
 
 impl BEBlockHash {
-    pub fn to_hex(&self) -> String {
-        match self {
-            Self::Bitcoin(blockhash) => blockhash.to_string(),
-            Self::Elements(blockhash) => blockhash.to_string(),
-        }
-    }
-
     pub fn into_bitcoin(&self) -> bitcoin::BlockHash {
         match self {
             Self::Bitcoin(h) => *h,

@@ -28,23 +28,6 @@ pub enum BETransaction {
 }
 
 impl BETransaction {
-    pub fn new(id: NetworkId) -> Self {
-        match id {
-            NetworkId::Bitcoin(_) => BETransaction::Bitcoin(bitcoin::Transaction {
-                version: 2,
-                lock_time: bitcoin::blockdata::locktime::absolute::LockTime::ZERO,
-                input: vec![],
-                output: vec![],
-            }),
-            NetworkId::Elements(_) => BETransaction::Elements(elements::Transaction {
-                version: 2,
-                lock_time: elements::LockTime::ZERO,
-                input: vec![],
-                output: vec![],
-            }),
-        }
-    }
-
     pub fn is_elements(&self) -> bool {
         match self {
             BETransaction::Bitcoin(_) => false,
@@ -136,13 +119,6 @@ impl BETransaction {
                 .iter()
                 .map(|i| (i.sequence.to_consensus_u32(), BEOutPoint::Elements(i.previous_output)))
                 .collect(),
-        }
-    }
-
-    pub fn input_len(&self) -> usize {
-        match self {
-            Self::Bitcoin(tx) => tx.input.len(),
-            Self::Elements(tx) => tx.input.len(),
         }
     }
 
@@ -267,13 +243,6 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => tx.weight().to_wu() as usize,
             Self::Elements(tx) => tx.weight(),
-        }
-    }
-
-    pub fn get_size(&self) -> usize {
-        match self {
-            Self::Bitcoin(tx) => tx.size(),
-            Self::Elements(tx) => tx.size(),
         }
     }
 
@@ -468,30 +437,6 @@ impl BETransaction {
         } else {
             TransactionType::Outgoing
         }
-    }
-
-    /// Return a copy of the transaction with the outputs matched by `f` only
-    pub fn filter_outputs<F>(
-        &self,
-        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
-        mut f: F,
-    ) -> BETransaction
-    where
-        F: FnMut(u32, BEScript, Option<elements::issuance::AssetId>) -> bool,
-    {
-        let mut vout = 0u32;
-        let mut predicate = || {
-            let matched = f(vout, self.output_script(vout), self.output_asset(vout, all_unblinded));
-            vout += 1;
-            matched
-        };
-
-        let mut stripped_tx = self.clone();
-        match stripped_tx {
-            Self::Bitcoin(ref mut tx) => tx.output.retain(|_| predicate()),
-            Self::Elements(ref mut tx) => tx.output.retain(|_| predicate()),
-        }
-        stripped_tx
     }
 
     /// Verify the given transaction input. Only supports the script types that
