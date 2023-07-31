@@ -1090,7 +1090,13 @@ impl ElectrumSession {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let store = self.store()?;
         let store = store.read()?;
-        store.get_tx_entry(&txid).map(|e| e.tx.serialize().to_lower_hex_string())
+        if let Ok(entry) = store.get_tx_entry(&txid) {
+            Ok(entry.tx.serialize().to_lower_hex_string())
+        } else {
+            let client = self.url.build_client(self.proxy.as_deref(), None)?;
+            Ok(client.transaction_get_raw(&txid.into_bitcoin())?.to_lower_hex_string())
+            // FIXME: cache the fetched transaction
+        }
     }
 
     pub fn get_scriptpubkey_data(&self, script_pubkey: &str) -> Result<ScriptPubKeyData, Error> {
