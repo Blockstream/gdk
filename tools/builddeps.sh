@@ -202,20 +202,26 @@ function prepare_sources {
     source_filename=$2
     source_hash=$3
     rm_downloaded=""
-    if [ -f ${source_filename} ]; then
-        echo "checking ${source_filename}..."
-        echo "${source_hash}  ${source_filename}" | shasum -a 256 -c || rm ${source_filename}
+    downloads_folder="downloads"
+
+    if [ ! -d ${downloads_folder} ]; then
+        mkdir -p ${downloads_folder}
     fi
+
+    cd ${downloads_folder}
     if [ ! -f ${source_filename} ]; then
         echo "downloading from ${source_url} ..."
         curl -sL --retry 3 -o ${source_filename} ${source_url} --output ${source_filename}
-        echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
         rm_downloaded="yes"
     fi
+    echo "checking ${source_filename}..."
+    echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
+
+    cd -
     tmp_folder="tmp"
-    tar -xf ${source_filename} -C ${tmp_folder}
+    tar -xf ${downloads_folder}/${source_filename} -C ${tmp_folder}
     if [ -n "${rm_downloaded}" -a -z "${GDK_KEEP_DOWNLOADS}" ]; then
-        rm ${source_filename}
+        rm ${downloads_folder}/${source_filename}
     fi
 }
 

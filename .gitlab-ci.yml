@@ -6,6 +6,7 @@ stages:
   - test
   - release
   - publish
+  - clean-up
 
 include:
   - gitlab/common.yml
@@ -151,7 +152,7 @@ build_clang_osx:
     - pip install -r ./tools/requirements.txt
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
+    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
     - mkdir -p wheelhouse
     - cp $INSTALL_PATH/share/python/* wheelhouse
@@ -176,5 +177,19 @@ apidocs:
     - deactivate
 
 
-
-
+clean_osx:
+  stage: clean-up
+  parallel:
+    matrix:
+      - RUNNER: [ia, m1]
+  tags:
+    - osx-$RUNNER
+  needs: [ upload-ios-gcloud, upload-python-gcloud ]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - cd $CI_BUILDS_DIR
+    - prebuilts=$(find . -name "prebuilt-*" -type d -maxdepth 1)
+    - for p in ${prebuilts[@]}; do if [ ! -f "$p/last_use" ]; then echo "removing $p";rm -rf $p; fi; done  # old file format // TODO: remove in the future
+    - prebuilts=$(find . -name "prebuilt-*" -type d -maxdepth 1)
+    - for p in ${prebuilts[@]}; do elapsed=$(( `date +%s` - `stat -f "%m" "$p/last_use"` )); if [ "$elapsed" -gt "2592000" ]; then echo "removing $p"; rm -rf $p; fi; done

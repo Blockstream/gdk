@@ -9,7 +9,7 @@ include:
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/${PLATFORM}"
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --${PLATFORM} static --prefix $PREBUILT_DIR; fi
-    - touch $PREBUILT_DIR/last_use # marking last use to help out during sweeping operations
+    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --${PLATFORM} static --buildtype release --no-deps-rebuild --external-deps-dir $PREBUILT_DIR --parallel 16 --install $INSTALL_PATH
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"

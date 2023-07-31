@@ -54,10 +54,12 @@
     # $PREBUILT_SUBDIR is the folder for the DIY caching system we have in place in mac machines
     # BUILD_IDX is your life belt in case you messed the CI up during the prebuild phase and the PREBUILT_DIR folder
     # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
-    # when merged, go through all mac machines to delete old version of cache and reclaim some storage space
 .osx_env:
   variables:
-    BUILD_IDX: "1"
+    BUILD_IDX: "0"
+    GDK_KEEP_DOWNLOADS: "1"
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
     - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
+    - mkdir -p $CI_BUILDS_DIR/downloads # Global shared download directory
+    - ln -s $CI_BUILDS_DIR/downloads downloads
