@@ -4,6 +4,7 @@
 #include "ga_psbt.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
+#include "ga_strings.hpp"
 #include "ga_tor.hpp"
 #include "ga_tx.hpp"
 #include "http_client.hpp"
@@ -497,6 +498,34 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(false);
         return nlohmann::json();
+    }
+
+    nlohmann::json session_impl::get_external_unspent_outputs(const nlohmann::json& details)
+    {
+        auto private_key = json_get_value(details, "private_key");
+        auto password = json_get_value(details, "password");
+
+        std::vector<unsigned char> private_key_bytes;
+        bool is_compressed;
+        try {
+            std::tie(private_key_bytes, is_compressed)
+                = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
+        } catch (const std::exception&) {
+            throw user_error(res::id_invalid_private_key);
+        }
+        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes), !is_compressed);
+
+        constexpr uint32_t timeout_secs = 10;
+        auto opt = get_net_call_params(timeout_secs);
+        opt["public_key"] = b2h(public_key_bytes);
+        opt["address_type"] = "p2pkh";
+
+        nlohmann::json utxos = rust_call("get_unspent_outputs_for_private_key", opt);
+        for (auto& utxo : utxos) {
+            utxo["private_key"] = b2h(private_key_bytes);
+            utxo["is_compressed"] = is_compressed;
+        }
+        return { { "unspent_outputs", { { "btc", std::move(utxos) } } } };
     }
 
 } // namespace sdk

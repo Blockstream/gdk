@@ -102,8 +102,6 @@ namespace sdk {
         nlohmann::json decrypt_with_pin(const nlohmann::json& details);
 
         nlohmann::json get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing);
-        nlohmann::json get_unspent_outputs_for_private_key(
-            byte_span_t private_key_bytes, byte_span_t public_key_bytes, bool is_compressed);
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         Tx get_raw_transaction_details(const std::string& txhash_hex) const;
 

@@ -1437,19 +1437,7 @@ namespace sdk {
         if (m_net_params.is_liquid()) {
             throw user_error("Sweeping is not yet implemented for Liquid wallets");
         }
-        auto private_key = json_get_value(m_details, "private_key");
-        auto password = json_get_value(m_details, "password");
-
-        std::vector<unsigned char> private_key_bytes;
-        bool is_compressed;
-        try {
-            std::tie(private_key_bytes, is_compressed)
-                = to_private_key_bytes(private_key, password, m_net_params.is_main_net());
-        } catch (const std::exception&) {
-            throw user_error(res::id_invalid_private_key);
-        }
-        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes), !is_compressed);
-        m_result = m_session->get_unspent_outputs_for_private_key(private_key_bytes, public_key_bytes, is_compressed);
+        m_result = m_session->get_external_unspent_outputs(m_details);
         return state_type::done;
     }
 
