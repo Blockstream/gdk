@@ -259,6 +259,22 @@ namespace sdk {
         return { { "proxy", m_tor_ctrl ? m_tor_proxy : m_user_proxy }, { "use_tor", m_net_params.use_tor() } };
     }
 
+    nlohmann::json session_impl::get_net_call_params(uint32_t timeout_secs)
+    {
+        locker_t locker(m_mutex);
+        return get_net_call_params(locker, timeout_secs);
+    }
+
+    nlohmann::json session_impl::get_net_call_params(locker_t& locker, uint32_t timeout_secs)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        auto np = m_net_params.get_json();
+        np.update(get_proxy_settings(locker));
+        np.erase("wamp_cert_pins"); // WMP certs are huge & unused, remove them
+        np.erase("wamp_cert_roots");
+        return { { "network", std::move(np) }, { "timeout", timeout_secs } };
+    }
+
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {

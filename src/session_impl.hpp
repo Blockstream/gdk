@@ -71,6 +71,7 @@ namespace sdk {
         virtual void reconnect_hint(const nlohmann::json& hint);
         // Get the tor or user connection proxy address
         nlohmann::json get_proxy_settings();
+        nlohmann::json get_net_call_params(uint32_t timeout_secs);
         nlohmann::json get_registry_config();
 
         virtual void connect() = 0;
@@ -255,6 +256,7 @@ namespace sdk {
         // process (e.g. the user is logged in twice in different apps)
         //
         nlohmann::json get_proxy_settings(locker_t& locker);
+        nlohmann::json get_net_call_params(locker_t& locker, uint32_t timeout_secs);
 
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;
