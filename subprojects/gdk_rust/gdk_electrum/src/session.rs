@@ -164,9 +164,6 @@ impl Session for ElectrumSession {
             "get_unspent_outputs" => {
                 self.get_unspent_outputs(&serde_json::from_value(input)?).to_json()
             }
-            "get_unspent_outputs_for_private_key" => {
-                self.get_unspent_outputs_for_private_key(&serde_json::from_value(input)?).to_json()
-            }
 
             "load_store" => self.load_store(&serde_json::from_value(input)?).to_json(),
             "get_master_blinding_key" => self.get_master_blinding_key().to_json(),

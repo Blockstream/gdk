@@ -21,7 +21,7 @@ use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
 use gdk_common::ureq;
-use gdk_electrum::{headers, ElectrumSession, NativeNotif};
+use gdk_electrum::{headers, sweep, ElectrumSession, NativeNotif};
 use serde::Serialize;
 
 pub const GA_OK: i32 = 0;
@@ -366,6 +366,10 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "get_assets" => {
             let params: gdk_registry::GetAssetsParams = serde_json::from_str(input)?;
             to_string(&gdk_registry::get_assets(params)?)
+        }
+        "get_unspent_outputs_for_private_key" => {
+            let param: sweep::SweepOpt = serde_json::from_str(input)?;
+            to_string(&sweep::get_unspent_outputs_for_private_key(&param)?)
         }
 
         _ => {

@@ -1,7 +1,6 @@
-use crate::be::{BEOutPoint, BEScript, BEScriptConvert};
+use crate::be::{BEOutPoint, BEScript};
 use crate::descriptor::parse_single_sig_descriptor;
 use crate::exchange_rates::Currency;
-use crate::scripts::p2pkh_script;
 use crate::slip132::{decode_from_slip132_string, extract_bip32_account};
 use crate::util::is_confidential_txoutsecrets;
 use crate::NetworkParameters;
@@ -962,28 +961,6 @@ pub struct AddressDataRequest {
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct AddressDataResult {
     pub user_path: Vec<ChildNumber>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SweepOpt {
-    pub public_key: String,
-    pub address_type: String,
-}
-
-impl SweepOpt {
-    /// Compute the script_pubkey and script_code
-    pub fn scripts(&self) -> Result<(BEScript, BEScript), Error> {
-        match self.address_type.as_str() {
-            "p2pkh" => {
-                let public_key = bitcoin::PublicKey::from_str(&self.public_key)?;
-                let script_pubkey = p2pkh_script(&public_key).into_be();
-                let script_code = script_pubkey.clone();
-                // For other address types scripts will be different.
-                Ok((script_pubkey, script_code))
-            }
-            _ => Err(Error::InvalidAddressType),
-        }
-    }
 }
 
 #[cfg(test)]
