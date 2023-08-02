@@ -15,6 +15,7 @@ use gdk_common::model::{
     SPVVerifyTxResult,
 };
 use gdk_common::store::{Decryptable, Encryptable};
+use gdk_common::util::ciborium_to_vec;
 use gdk_common::NetworkId;
 use std::collections::HashSet;
 use std::fs::File;
@@ -242,7 +243,7 @@ impl VerifiedCache {
     ) -> Result<HashSet<(BETxid, u32)>, Error> {
         let mut file = File::open(&filepath)?;
         let plaintext = file.decrypt(cipher)?;
-        Ok(serde_cbor::from_slice(&plaintext)?)
+        Ok(ciborium::from_reader(&plaintext[..])?)
     }
 
     fn contains(&self, txid: &BETxid, height: u32) -> Result<bool, Error> {
@@ -262,7 +263,7 @@ impl VerifiedCache {
 
     fn flush(&mut self) -> Result<(), Error> {
         if let Some(store) = &self.store {
-            let plaintext = serde_cbor::to_vec(&self.set)?;
+            let plaintext = ciborium_to_vec(&self.set)?;
             let (nonce_bytes, ciphertext) = plaintext.encrypt(&store.cipher)?;
             let mut file = File::create(&store.filepath)?;
             file.write_all(&nonce_bytes)?;

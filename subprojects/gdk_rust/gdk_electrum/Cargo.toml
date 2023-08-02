@@ -5,24 +5,24 @@ authors = ["Riccardo Casatta <riccardo@casatta.it>"]
 edition = "2018"
 
 [features]
-testing = [ "gdk-common/testing" ]
+testing = ["gdk-common/testing"]
 
 [dependencies]
 base64 = "0.13"
 bitcoin-private = "0.1.0"
 block-modes = "0.8.0"
+ciborium = "0.2.1"
 gdk-common = { path = "../gdk_common" }
 gdk-registry = { path = "../gdk_registry" }
 gdk-pin-client = { path = "../gdk_pin_client" }
 libc = "0.2"
 serde = { version = "1.0", features = ["derive"] }
-serde_cbor = "0.11.1"
 serde_json = "1.0"
 tempfile = "3.2.0"
 thiserror = "1.0"
 # FIXME: unpin zeroize once we bump MSRV (needs rebuild of docker images)
 zeroize = "<1.4.0"
-bitcoin_29 = { package="bitcoin", version="0.29", features = ["serde"] }
+bitcoin_29 = { package = "bitcoin", version = "0.29", features = ["serde"] }
 
 [dev-dependencies]
 env_logger = "0.10.0"

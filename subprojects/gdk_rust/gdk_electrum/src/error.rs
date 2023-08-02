@@ -164,7 +164,10 @@ pub enum Error {
     SendAll,
 
     #[error(transparent)]
-    SerdeCborError(#[from] serde_cbor::error::Error),
+    DeserializeCBORError(#[from] ciborium::de::Error<std::io::Error>),
+
+    #[error(transparent)]
+    SerializeCBORError(#[from] ciborium::ser::Error<std::io::Error>),
 
     #[error(transparent)]
     SliceConversionError(#[from] std::array::TryFromSliceError),

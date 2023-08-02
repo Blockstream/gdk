@@ -275,6 +275,33 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fff857943da45f546682664a79488be82e69e43c1a7a2307679ab9afb3a66d2e"
 
 [[package]]
+name = "ciborium"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "effd91f6c78e5a4ace8a5d3c0b6bfaec9e2baaef55f3efc00e45fb2e477ee926"
+dependencies = [
+ "ciborium-io",
+ "ciborium-ll",
+ "serde",
+]
+
+[[package]]
+name = "ciborium-io"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cdf919175532b369853f5d5e20b26b43112613fd6fe7aee757e35f7a44642656"
+
+[[package]]
+name = "ciborium-ll"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "defaa24ecc093c77630e6c15e17c51f5e187bf35ee514f4e2d67baaa96dae22b"
+dependencies = [
+ "ciborium-io",
+ "half",
+]
+
+[[package]]
 name = "cipher"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -585,6 +612,7 @@ dependencies = [
  "aes",
  "aes-gcm-siv",
  "bitcoin 0.30.0",
+ "ciborium",
  "electrum-client",
  "elements",
  "libc",
@@ -593,7 +621,6 @@ dependencies = [
  "once_cell",
  "rand",
  "serde",
- "serde_cbor",
  "serde_json",
  "strum",
  "strum_macros",
@@ -611,13 +638,13 @@ dependencies = [
  "bitcoin 0.29.1",
  "bitcoin-private",
  "block-modes",
+ "ciborium",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-pin-client",
  "gdk-registry",
  "libc",
  "serde",
- "serde_cbor",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -645,12 +672,12 @@ dependencies = [
 name = "gdk-registry"
 version = "0.1.0"
 dependencies = [
+ "ciborium",
  "env_logger 0.10.0",
  "gdk-common",
  "httptest",
  "rusty-fork",
  "serde",
- "serde_cbor",
  "serde_json",
  "tempfile",
  "thiserror",
@@ -1377,16 +1404,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "61ea8d54c77f8315140a05f4c7237403bf38b72704d031543aa1d16abbf517d1"
 dependencies = [
  "serde_derive",
-]
-
-[[package]]
-name = "serde_cbor"
-version = "0.11.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2bef2ebfde456fb76bbcf9f59315333decc4fda0b2b44b420243c11e0f5ec1f5"
-dependencies = [
- "half",
- "serde",
 ]
 
 [[package]]

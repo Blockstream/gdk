@@ -20,3 +20,12 @@ pub fn now() -> u64 {
     // Realistic timestamps can be converted to u64
     u64::try_from(since_the_epoch.as_micros()).unwrap_or(u64::MAX)
 }
+
+pub fn ciborium_to_vec<T>(value: &T) -> Result<Vec<u8>, ciborium::ser::Error<std::io::Error>>
+where
+    T: serde::ser::Serialize,
+{
+    let mut v = Vec::new();
+    ciborium::ser::into_writer(value, &mut v)?;
+    Ok(v)
+}

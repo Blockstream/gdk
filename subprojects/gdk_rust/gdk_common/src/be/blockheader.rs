@@ -58,8 +58,8 @@ mod test {
     fn test_cbor_header() {
         let _header = block_header_dynafed();
         // TODO restore after sorting out https://github.com/ElementsProject/rust-elements/pull/61
-        // let vec = serde_cbor::to_vec(&header).unwrap();
-        // let back: BlockHeader = serde_cbor::from_slice(&vec).unwrap();
+        // let vec = ciborium_to_vec(&header).unwrap();
+        // let back: BlockHeader = ciborium::from_reader(&vec[..]).unwrap();
         // assert_eq!(header, back);
     }
 

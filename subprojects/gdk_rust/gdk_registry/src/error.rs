@@ -69,9 +69,13 @@ pub enum Error {
     #[error(transparent)]
     SerdeJson(#[from] serde_json::Error),
 
-    /// Wraps errors happened when serializing or deserializing CBORs.
+    /// Wraps errors happened when serializing CBORs.
     #[error(transparent)]
-    SerdeCbor(#[from] serde_cbor::Error),
+    SerializeCbor(#[from] ciborium::ser::Error<std::io::Error>),
+
+    /// Wraps errors happened when deserializing CBORs.
+    #[error(transparent)]
+    DeserializeCbor(#[from] ciborium::de::Error<std::io::Error>),
 
     /// Wraps http errors.
     #[error(transparent)]
