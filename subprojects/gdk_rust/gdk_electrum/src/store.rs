@@ -650,6 +650,34 @@ mod tests {
     }
 
     #[test]
+    fn test_db_load_static() {
+        let id = NetworkId::Bitcoin(Network::Testnet);
+        // abandon ... M/49'/0'/0'
+        let xpub = ExtendedPubKey::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
+        let txid = BETxid::from_hex(
+            "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
+            id,
+        )
+        .unwrap();
+        let txid_btc = txid.ref_bitcoin().unwrap();
+
+        let temp_dir = TempDir::new().unwrap().into_path();
+        let data_dir: PathBuf = "test_data/store".into();
+        for el in ["store", "cache"] {
+            let mut curr_temp = temp_dir.clone();
+            let mut curr_data = data_dir.clone();
+            curr_temp.push(el);
+            curr_data.push(el);
+            std::fs::copy(curr_data, curr_temp).unwrap();
+        }
+
+        let store = StoreMeta::new(temp_dir, &xpub, id).unwrap();
+
+        assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
+        assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
+    }
+
+    #[test]
     fn test_db_upgrade() {
         #[derive(Serialize, Deserialize)]
         struct RawStoreV0 {
