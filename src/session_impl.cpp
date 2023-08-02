@@ -14,6 +14,7 @@
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
+#include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_context.hpp>
 
 namespace ga {
@@ -505,6 +506,18 @@ namespace sdk {
         auto private_key = json_get_value(details, "private_key");
         auto password = json_get_value(details, "password");
 
+        std::string address_type = "p2pkh";
+        if (boost::algorithm::starts_with(private_key, "p2pkh:")) {
+            private_key = private_key.substr(strlen("p2pkh:"));
+            address_type = "p2pkh";
+        } else if (boost::algorithm::starts_with(private_key, "p2wpkh:")) {
+            private_key = private_key.substr(strlen("p2wpkh:"));
+            address_type = "p2wpkh";
+        } else if (boost::algorithm::starts_with(private_key, "p2wpkh-p2sh:")) {
+            private_key = private_key.substr(strlen("p2wpkh-p2sh:"));
+            address_type = "p2sh-p2wpkh";
+        }
+
         std::vector<unsigned char> private_key_bytes;
         bool is_compressed;
         try {
@@ -518,7 +531,7 @@ namespace sdk {
         constexpr uint32_t timeout_secs = 10;
         auto opt = get_net_call_params(timeout_secs);
         opt["public_key"] = b2h(public_key_bytes);
-        opt["address_type"] = "p2pkh";
+        opt["address_type"] = address_type;
 
         nlohmann::json utxos = rust_call("get_unspent_outputs_for_private_key", opt);
         for (auto& utxo : utxos) {

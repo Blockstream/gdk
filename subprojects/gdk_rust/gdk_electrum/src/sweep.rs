@@ -1,7 +1,7 @@
 use crate::error::Error;
 use crate::session::determine_electrum_url;
 use gdk_common::be::{BEScript, BEScriptConvert};
-use gdk_common::bitcoin;
+use gdk_common::bitcoin::{Address, Network, PublicKey};
 use gdk_common::electrum_client::{Client, ElectrumApi};
 use gdk_common::error::Error::InvalidAddressType;
 use gdk_common::model::UnspentOutput;
@@ -37,16 +37,17 @@ impl SweepOpt {
 
     /// Compute the script_pubkey and script_code
     pub fn scripts(&self) -> Result<(BEScript, BEScript), Error> {
-        match self.address_type.as_str() {
-            "p2pkh" => {
-                let public_key = bitcoin::PublicKey::from_str(&self.public_key)?;
-                let script_pubkey = p2pkh_script(&public_key).into_be();
-                let script_code = script_pubkey.clone();
-                // For other address types scripts will be different.
-                Ok((script_pubkey, script_code))
+        let public_key = PublicKey::from_str(&self.public_key)?;
+        let script_code = p2pkh_script(&public_key).into_be();
+        let script_pubkey = match self.address_type.as_str() {
+            "p2pkh" => script_code.clone(),
+            "p2wpkh" => Address::p2wpkh(&public_key, Network::Regtest)?.script_pubkey().into_be(),
+            "p2sh-p2wpkh" => {
+                Address::p2shwpkh(&public_key, Network::Regtest)?.script_pubkey().into_be()
             }
-            _ => Err(Error::Common(InvalidAddressType)),
-        }
+            _ => return Err(Error::Common(InvalidAddressType)),
+        };
+        Ok((script_pubkey, script_code))
     }
 }
 

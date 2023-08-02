@@ -1039,6 +1039,8 @@ with `GA_get_unspent_outputs_for_private_key`.
   }
 
 :private_key: Mandatory. The private key in WIF or BIP 38 format.
+    If you want to sweep "p2wpkh"/"p2sh-p2wpkh" outputs, prefix
+    the WIF key with ``"p2wpkh:"``/``"p2wpkh-p2sh:"``.
 :password: Optional. The password the key is encrypted with, if any.
 
 

@@ -10,6 +10,8 @@
   sessions.
 - GA_get_unspent_outputs_for_private_key: rename "compressed" to
   "is_compressed".
+- GA_get_unspent_outputs_for_private_key: allow to sweep p2wpkh and
+  p2sh-p2wpkkh outputs.
 
 ### Changed
 
