@@ -92,7 +92,7 @@ def generate_examples(network, session_type, mnemonic):
 
 if __name__ == '__main__':
     # Remove any existing session cache from previous runs
-    shutil.rmtree('/tmp/gdkdocs')
+    shutil.rmtree('/tmp/gdkdocs', ignore_errors=True)
     gdk.init({'datadir': '/tmp/gdkdocs', 'log_level': 'none'})
     networks = [
         ['localtest', 'multisig'],
@@ -105,3 +105,4 @@ if __name__ == '__main__':
         ]
     for network, name in networks:
         generate_examples(network, name, MNEMONIC)
+    shutil.rmtree('/tmp/gdkdocs', ignore_errors=True)
