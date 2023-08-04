@@ -538,7 +538,7 @@ namespace sdk {
             const std::vector<uint32_t> path = required_data.at("path");
             const std::string message = required_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-            if (required_data.value("recoverable", false)) {
+            if (required_data.value("create_recoverable_sig", false)) {
                 result["signature"] = b2h(signer->sign_rec_hash(path, message_hash));
             } else {
                 result["signature"] = sig_only_to_der_hex(signer->sign_hash(path, message_hash));

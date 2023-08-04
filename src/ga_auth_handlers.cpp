@@ -1926,7 +1926,7 @@ namespace sdk {
             m_path = address_data.at("user_path").get<std::vector<uint32_t>>();
             m_twofactor_data["path"] = m_path;
             m_twofactor_data["message"] = m_details.at("message");
-            m_twofactor_data["recoverable"] = true;
+            m_twofactor_data["create_recoverable_sig"] = true;
             add_required_ae_data(signer, m_twofactor_data);
             m_initialized = true;
             return m_state;
