@@ -20,6 +20,7 @@ pub mod aes {
 }
 
 pub use bitcoin;
+pub use ciborium;
 pub use electrum_client;
 pub use elements;
 pub use error::*;

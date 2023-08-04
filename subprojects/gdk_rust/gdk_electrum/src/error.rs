@@ -2,7 +2,7 @@ use crate::BETxid;
 use gdk_common::bitcoin::bip32::ExtendedPubKey;
 use gdk_common::bitcoin::sighash;
 use gdk_common::error::Error as CommonError;
-use gdk_common::{bitcoin, electrum_client, elements, ureq};
+use gdk_common::{bitcoin, ciborium, electrum_client, elements, ureq};
 use serde::ser::Serialize;
 use std::convert::From;
 use std::path::PathBuf;

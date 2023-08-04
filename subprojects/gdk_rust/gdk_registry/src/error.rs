@@ -1,4 +1,4 @@
-use gdk_common::{bitcoin, elements, ureq};
+use gdk_common::{bitcoin, ciborium, elements, ureq};
 use std::sync::{MutexGuard, PoisonError, TryLockError};
 
 /// Result type alias of the `gdk_registry` crate.

@@ -638,7 +638,6 @@ dependencies = [
  "bitcoin 0.29.1",
  "bitcoin-private",
  "block-modes",
- "ciborium",
  "env_logger 0.10.0",
  "gdk-common",
  "gdk-pin-client",
@@ -672,7 +671,6 @@ dependencies = [
 name = "gdk-registry"
 version = "0.1.0"
 dependencies = [
- "ciborium",
  "env_logger 0.10.0",
  "gdk-common",
  "httptest",

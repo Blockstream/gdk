@@ -128,7 +128,7 @@ impl Cache {
         let get_cache = |file: &mut File| -> Result<Self> {
             let cipher = xpub.to_cipher()?;
             let decrypted = file.decrypt(&cipher)?;
-            ciborium::from_reader(&decrypted[..]).map_err(Into::into)
+            gdk_common::ciborium::from_reader(&decrypted[..]).map_err(Into::into)
         };
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {

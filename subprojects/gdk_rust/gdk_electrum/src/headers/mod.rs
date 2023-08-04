@@ -243,7 +243,7 @@ impl VerifiedCache {
     ) -> Result<HashSet<(BETxid, u32)>, Error> {
         let mut file = File::open(&filepath)?;
         let plaintext = file.decrypt(cipher)?;
-        Ok(ciborium::from_reader(&plaintext[..])?)
+        Ok(gdk_common::ciborium::from_reader(&plaintext[..])?)
     }
 
     fn contains(&self, txid: &BETxid, height: u32) -> Result<bool, Error> {

@@ -9,6 +9,7 @@ use gdk_common::be::{
 use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::bitcoin::Txid;
+use gdk_common::ciborium;
 use gdk_common::elements;
 use gdk_common::elements::TxOutSecrets;
 use gdk_common::log::{info, log, Level};
