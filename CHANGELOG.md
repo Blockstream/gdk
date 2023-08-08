@@ -6,6 +6,9 @@
 
 ### Changed
 
+- GA_sign_message: rename "recoverable" to "create_recoverable_sig"
+  in the hardware wallet interface.
+
 ### Fixed
 
 ### Removed
