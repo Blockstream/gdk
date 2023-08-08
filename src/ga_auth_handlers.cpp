@@ -1915,16 +1915,20 @@ namespace sdk {
             m_twofactor_data["path"] = m_path;
             m_twofactor_data["message"] = m_details.at("message");
             m_twofactor_data["create_recoverable_sig"] = true;
-            add_required_ae_data(signer, m_twofactor_data);
+            // FIXME: anti-exfil disabled for GA_sign_message pending secp/wally support
+            // add_required_ae_data(signer, m_twofactor_data);
+            m_twofactor_data["use_ae_protocol"] = false;
             m_initialized = true;
             return m_state;
         }
 
         const auto& hw_reply = get_hw_reply();
+#if 0 // FIXME: anti-exfil disabled for GA_sign_message pending secp/wally support
         if (signer->use_ae_protocol()) {
             const auto bip32_xpub = signer->get_bip32_xpub(m_path);
             verify_ae_message(m_twofactor_data, bip32_xpub, m_path, hw_reply);
         }
+#endif
         const auto sig = base64_from_bytes(h2b(hw_reply.at("signature")));
         m_result["signature"] = sig;
         return state_type::done;
