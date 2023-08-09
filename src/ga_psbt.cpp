@@ -286,7 +286,7 @@ namespace sdk {
                 set_pset_field(txout, jsonout, "asset_tag", out_asset_commitment);
                 set_pset_field(txout, jsonout, "range_proof", out_value_rangeproof);
                 set_pset_field(txout, jsonout, "surj_proof", out_asset_surjection_proof);
-                set_pset_field(txout, jsonout, "blinding_pubkey", out_blinding_pubkey);
+                set_pset_field(txout, jsonout, "blinding_key", out_blinding_pubkey);
                 set_pset_field(txout, jsonout, "nonce_commitment", out_ecdh_pubkey);
                 set_pset_field(txout, jsonout, "value_blind_proof", out_blind_value_proof);
                 // out_blinder_index unused
@@ -311,6 +311,12 @@ namespace sdk {
                 jsonout.update(output_data);
                 jsonout["address"] = get_address_from_utxo(session, jsonout);
                 utxo_add_paths(session, jsonout);
+            }
+            if (m_is_liquid) {
+                // Confidentialize the address
+                nlohmann::json unconf_addr = { { "address", jsonout.at("address") }, { "is_confidential", false } };
+                confidentialize_address(net_params, unconf_addr, jsonout.at("blinding_key"));
+                jsonout["address"] = std::move(unconf_addr.at("address"));
             }
         }
         return outputs;
