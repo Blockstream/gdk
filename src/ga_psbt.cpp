@@ -267,7 +267,6 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(txout.script && txout.script_len);
                 jsonout["satoshi"] = txout.amount;
                 jsonout["scriptpubkey"] = b2h({ txout.script, txout.script_len });
-                jsonout["address"] = get_address_from_scriptpubkey(net_params, { txout.script, txout.script_len });
             } else {
                 // Even if blinded, the PSET must have an explicit value/asset
                 set_pset_field(txout, jsonout, "asset_id", out_asset, true);
@@ -297,7 +296,9 @@ namespace sdk {
                 jsonout["scriptpubkey"] = b2h({ txout.script, txout.script_len });
             }
             auto output_data = session.get_scriptpubkey_data({ txout.script, txout.script_len });
-            if (!output_data.empty()) {
+            if (output_data.empty()) {
+                jsonout["address"] = get_address_from_scriptpubkey(net_params, { txout.script, txout.script_len });
+            } else {
                 if (m_is_liquid) {
                     const auto unblinded = unblind_output(session, tx, i);
                     if (unblinded.contains("error")) {
@@ -308,13 +309,7 @@ namespace sdk {
                     output_data.update(unblinded);
                 }
                 jsonout.update(output_data);
-                const auto script = session.output_script_from_utxo(jsonout);
-                // FIXME: rationalize UXTO/address initialization
-                if (net_params.is_electrum()) {
-                    jsonout["address"] = get_address_from_scriptpubkey(net_params, script);
-                } else {
-                    jsonout["address"] = get_address_from_script(net_params, script, jsonout["address_type"]);
-                }
+                jsonout["address"] = get_address_from_utxo(session, jsonout);
                 utxo_add_paths(session, jsonout);
             }
         }

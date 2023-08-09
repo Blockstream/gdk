@@ -284,6 +284,19 @@ namespace sdk {
         return output_script(net_params, ga_pub_key, user_pub_key, {}, addr_type, subtype);
     }
 
+    std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo)
+    {
+        const auto& net_params = session.get_network_parameters();
+        const auto address_type = utxo.at("address_type");
+        if (address_type == address_type::p2sh_p2wpkh || address_type == address_type::p2wpkh
+            || address_type == address_type::p2pkh) {
+            const auto pubkeys = session.pubkeys_from_utxo(utxo);
+            return get_address_from_public_key(net_params, pubkeys.at(0), address_type);
+        }
+        const auto out_script = session.output_script_from_utxo(utxo);
+        return get_address_from_script(net_params, out_script, address_type);
+    }
+
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
         const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
     {
