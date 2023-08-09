@@ -18,6 +18,9 @@
 #include "network_parameters.hpp"
 #include "signer.hpp"
 #include "utils.hpp"
+#if defined(__ANDROID__) && (__ANDROID_API__ >= __ANDROID_API_P__)
+#include <android/fdsan.h>
+#endif
 
 using namespace std::literals;
 
@@ -45,6 +48,14 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!j_str_is_empty(config, "datadir"));
         GDK_RUNTIME_ASSERT(!init_done);
 
+#if defined(__ANDROID__) && (__ANDROID_API__ >= __ANDROID_API_P__)
+        /* FIXME: workaround for tor related fdsan errors.
+         * remove this once tor is fixed upstream.
+         */
+        if (android_fdsan_set_error_level) {
+            android_fdsan_set_error_level(ANDROID_FDSAN_ERROR_LEVEL_WARN_ONCE);
+        }
+#endif
         global_config = config;
         if (!global_config.contains("tordir")) {
             const std::string datadir = global_config["datadir"];
@@ -84,9 +95,17 @@ namespace sdk {
         GDK_VERIFY(wally_secp_randomize(entropy.data(), entropy.size()));
         wally_bzero(entropy.data(), entropy.size());
 
-#if defined(__ANDROID__) and not defined(NDEBUG)
+#ifdef __ANDROID__
+#ifndef NDEBUG
         start_android_std_outerr_bridge();
 #endif
+#if (__ANDROID_API__ >= __ANDROID_API_P__)
+        /* FIXME: See FIXME above */
+        if (android_fdsan_set_error_level) {
+            GDK_LOG_SEV(log_level::info) << "fdsan disabled";
+        }
+#endif
+#endif /* ANDROID */
 
         init_rust(global_config);
         init_done = true;
