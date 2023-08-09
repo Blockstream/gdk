@@ -1923,22 +1923,62 @@ namespace sdk {
             m_twofactor_data["path"] = m_path;
             m_twofactor_data["message"] = m_details.at("message");
             m_twofactor_data["create_recoverable_sig"] = true;
-            // FIXME: anti-exfil disabled for GA_sign_message pending secp/wally support
-            // add_required_ae_data(signer, m_twofactor_data);
-            m_twofactor_data["use_ae_protocol"] = false;
+            add_required_ae_data(signer, m_twofactor_data);
             m_initialized = true;
             return m_state;
         }
 
-        const auto& hw_reply = get_hw_reply();
-#if 0 // FIXME: anti-exfil disabled for GA_sign_message pending secp/wally support
-        if (signer->use_ae_protocol()) {
-            const auto bip32_xpub = signer->get_bip32_xpub(m_path);
-            verify_ae_message(m_twofactor_data, bip32_xpub, m_path, hw_reply);
+        GDK_RUNTIME_ASSERT(m_path.size() == 5);
+        const std::vector<uint32_t> subaccount_path = { m_path.begin(), m_path.begin() + 3 };
+        const std::vector<uint32_t> address_path = { m_path.begin() + 3, m_path.end() };
+        // The subaccount xpub is cached by the signer
+        std::string subaccount_xpub;
+        try {
+            subaccount_xpub = signer->get_bip32_xpub(subaccount_path);
+        } catch (const std::exception&) {
+            throw user_error("Invalid path");
         }
-#endif
-        const auto sig = base64_from_bytes(h2b(hw_reply.at("signature")));
-        m_result["signature"] = sig;
+
+        wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(subaccount_xpub);
+        pub_key_t pubkey;
+        if (address_path.empty()) {
+            memcpy(pubkey.begin(), parent->pub_key, pubkey.size());
+        } else {
+            ext_key derived = bip32_public_key_from_parent_path(*parent, address_path);
+            memcpy(pubkey.begin(), derived.pub_key, pubkey.size());
+        }
+
+        const auto& hw_reply = get_hw_reply();
+
+        // Get the compact and recoverable signatures from the DER/compact/recoverable signature
+        const auto sig = h2b(hw_reply["signature"]);
+        GDK_RUNTIME_ASSERT_MSG(sig.size(), "Invalid signature");
+        ecdsa_sig_t compact_sig;
+        ecdsa_sig_rec_t recoverable_sig;
+        if ((sig[0] == 48) || (sig.size() == 64)) {
+            if (sig[0] == 48) {
+                // DER format
+                constexpr bool has_sighash_byte = false;
+                compact_sig = ec_sig_from_der(sig, has_sighash_byte);
+            } else if (sig.size() == 64) {
+                // Compact format
+                std::copy(sig.begin(), sig.end(), compact_sig.begin());
+            }
+            const auto message_hash = format_bitcoin_message_hash(ustring_span(m_twofactor_data["message"]));
+            recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, pubkey);
+        } else if (sig.size() == 65) {
+            // Recoverable format
+            std::copy(sig.begin(), sig.end(), recoverable_sig.begin());
+            std::copy(sig.begin() + 1, sig.end(), compact_sig.begin());
+        } else {
+            GDK_RUNTIME_ASSERT_MSG(false, "Invalid signature");
+        }
+
+        if (signer->use_ae_protocol()) {
+            const auto signer_commitment = h2b(hw_reply.at("signer_commitment"));
+            verify_ae_message(m_twofactor_data, pubkey, signer_commitment, compact_sig);
+        }
+        m_result["signature"] = base64_from_bytes(recoverable_sig);
         return state_type::done;
     }
 
