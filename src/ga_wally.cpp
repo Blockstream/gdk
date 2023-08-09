@@ -586,6 +586,27 @@ namespace sdk {
         return ret;
     }
 
+    ecdsa_sig_rec_t ec_sig_rec_from_compact(byte_span_t compact_sig, byte_span_t hash, byte_span_t public_key)
+    {
+        ecdsa_sig_rec_t rec_sig;
+        std::copy(compact_sig.begin(), compact_sig.end(), rec_sig.data() + 1);
+        // Grind the recid over its possible values (0, 1, 2, 3)
+        for (uint32_t recid = 0; recid < 4; ++recid) {
+            rec_sig[0] = static_cast<unsigned char>(27 + recid + 4);
+            std::vector<unsigned char> rec_public_key(EC_PUBLIC_KEY_LEN);
+            if (wally_ec_sig_to_public_key(hash.data(), hash.size(), rec_sig.data(), rec_sig.size(),
+                    rec_public_key.data(), rec_public_key.size())
+                != WALLY_OK) {
+                continue;
+            }
+            if (!memcmp(rec_public_key.data(), public_key.data(), rec_public_key.size())) {
+                return rec_sig;
+            }
+        }
+        GDK_RUNTIME_ASSERT_MSG(false, "Invalid public key for signature and hash");
+        __builtin_unreachable();
+    }
+
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash_flags)
     {
         std::vector<unsigned char> der(EC_SIGNATURE_DER_MAX_LEN + 1);

@@ -253,6 +253,8 @@ namespace sdk {
     ecdsa_sig_rec_t ec_sig_rec_from_bytes(
         byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_RECOVERABLE);
 
+    ecdsa_sig_rec_t ec_sig_rec_from_compact(byte_span_t compact_sig, byte_span_t hash, byte_span_t public_key);
+
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash_flags = WALLY_SIGHASH_ALL);
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte = false);
 
