@@ -61,12 +61,19 @@ namespace sdk {
             return using_ae_protocol;
         }
 
-        static void verify_ae_message(const nlohmann::json& twofactor_data, const std::string& root_bip32_xpub,
-            uint32_span_t path, const nlohmann::json& hw_reply)
+        static void verify_ae_message(const nlohmann::json& twofactor_data, pub_key_t pubkey,
+            byte_span_t signer_commitment, byte_span_t compact_sig)
         {
             const std::string message = twofactor_data.at("message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
 
+            verify_ae_signature(
+                pubkey, message_hash, h2b(twofactor_data.at("ae_host_entropy")), signer_commitment, compact_sig);
+        }
+
+        static void verify_ae_message(const nlohmann::json& twofactor_data, const std::string& root_bip32_xpub,
+            uint32_span_t path, const nlohmann::json& hw_reply)
+        {
             // Note that you must pass a non-hardened path here; root_bip32_xpub should be
             // the root or last hardened key for this public bip32 derivation to work.
             wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
@@ -79,9 +86,8 @@ namespace sdk {
             }
 
             constexpr bool has_sighash_byte = false;
-            const auto sig = ec_sig_from_der(h2b(hw_reply.at("signature")), has_sighash_byte);
-            verify_ae_signature(pubkey, message_hash, h2b(twofactor_data.at("ae_host_entropy")),
-                h2b(hw_reply.at("signer_commitment")), sig);
+            const auto compact_sig = ec_sig_from_der(h2b(hw_reply.at("signature")), has_sighash_byte);
+            return verify_ae_message(twofactor_data, pubkey, h2b(hw_reply.at("signer_commitment")), compact_sig);
         }
 
         static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
