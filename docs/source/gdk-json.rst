@@ -693,7 +693,7 @@ Describes a request for the wallet to sign a given message via `GA_sign_message`
   }
 
 :address: The address to use for the private key.
-    Must be a P2PKH address, and the address must belong to the wallet.
+    Must be a singlesig address, and the address must belong to the wallet.
 :message: The message to sign.
 
 
