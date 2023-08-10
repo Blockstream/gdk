@@ -80,8 +80,9 @@ namespace sdk {
             }
 
             constexpr bool has_sighash_byte = false;
-            verify_ae_signature(pubkey, message_hash, twofactor_data.at("ae_host_entropy"),
-                hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash_byte);
+            const auto sig = ec_sig_from_der(h2b(hw_reply.at("signature")), has_sighash_byte);
+            verify_ae_signature(pubkey, message_hash, h2b(twofactor_data.at("ae_host_entropy")),
+                h2b(hw_reply.at("signer_commitment")), sig);
         }
 
         static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
@@ -773,8 +774,9 @@ namespace sdk {
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
                 const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
-                verify_ae_signature(pubkey, tx_signature_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
-                    signatures[i], has_sighash_byte);
+                const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
+                verify_ae_signature(
+                    pubkey, tx_signature_hash, h2b(utxo.at("ae_host_entropy")), h2b(signer_commitments[i]), sig);
             }
         }
 
