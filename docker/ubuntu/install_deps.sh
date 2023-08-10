@@ -4,7 +4,7 @@ set -e
 apt update -qq
 DEBIAN_FRONTEND=noninteractive TZ=Etc/UTC apt-get -y install tzdata
 
-apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv,-venv} python{,-dev}-is-python3 ninja-build clang git swig  cmake libssl-dev libtool-bin patchelf curl -yqq
+apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv,-venv} python{,-dev}-is-python3 clang git swig cmake libssl-dev libtool-bin patchelf curl -yqq
 pip3 install --require-hashes -r ./tools/requirements.txt
 pip3 install build
 

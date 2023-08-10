@@ -4,7 +4,7 @@ set -e
 apt update -qq
 apt upgrade -yqq
 
-apt install --no-install-recommends autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 ninja-build clang{,-format,-tidy} git swig g++-mingw-w64-x86-64 curl cmake libssl-dev libtool-bin patchelf -yqq
+apt install --no-install-recommends autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 clang{,-format,-tidy} git swig g++-mingw-w64-x86-64 curl cmake libssl-dev libtool-bin patchelf -yqq
 pip3 install --require-hashes -r tools/requirements.txt
 
 

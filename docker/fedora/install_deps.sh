@@ -2,7 +2,7 @@
 set -e
 
 dnf update -yq
-dnf install -yq @development-tools autoconf pkg-config libtool ninja-build clang which python python3-pip libatomic curl perl-core cmake libstdc++-static xz
+dnf install -yq @development-tools autoconf pkg-config libtool clang which python python3-pip libatomic curl perl-core cmake libstdc++-static xz
 
 pip install --require-hashes -r tools/requirements.txt
 
