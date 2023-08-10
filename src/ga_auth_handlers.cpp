@@ -79,8 +79,9 @@ namespace sdk {
             }
 
             constexpr bool has_sighash_byte = false;
-            verify_ae_signature(pubkey, message_hash, twofactor_data.at("ae_host_entropy"),
-                hw_reply.at("signer_commitment"), hw_reply.at("signature"), has_sighash_byte);
+            const auto sig = ec_sig_from_der(h2b(hw_reply.at("signature")), has_sighash_byte);
+            verify_ae_signature(pubkey, message_hash, h2b(twofactor_data.at("ae_host_entropy")),
+                h2b(hw_reply.at("signer_commitment")), sig);
         }
 
         static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
@@ -742,7 +743,6 @@ namespace sdk {
             // at the same time (this cant happen yet but should be allowed
             // in the future).
             auto& user_pubkeys = m_session->get_user_pubkeys();
-            const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
             for (size_t i = 0; i < inputs.size(); ++i) {
                 const auto& utxo = inputs.at(i);
                 if (utxo.value("skip_signing", false)) {
@@ -760,8 +760,10 @@ namespace sdk {
                 }
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
-                verify_ae_signature(pubkey, tx_signature_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
-                    signatures[i], has_sighash_byte);
+                const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
+                const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
+                verify_ae_signature(
+                    pubkey, tx_signature_hash, h2b(utxo.at("ae_host_entropy")), h2b(signer_commitments[i]), sig);
             }
         }
 
