@@ -1416,7 +1416,7 @@ namespace sdk {
         locker_t locker(m_mutex);
 
         const bool is_liquid = m_net_params.is_liquid();
-        const auto& credentials = m_signer->get_credentials();
+        const auto& credentials = m_signer->get_credentials(false);
         const std::string username = credentials.at("username");
         const std::string password = credentials.at("password");
         std::map<std::string, std::string> args;

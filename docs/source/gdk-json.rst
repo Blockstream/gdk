@@ -84,6 +84,12 @@ Contains the proxy settings in use by a session.
 Login credentials JSON
 ----------------------
 
+Contains the authentication details used to create and login to a wallet
+via `GA_register_user` or `GA_login_user`. Also returned from `GA_get_credentials`
+where it contains the credentials used to login, and for Liquid sessions, the
+element ``"master_blinding_key"`` will be present and hold the wallets master blinding
+key if it is available.
+
 To authenticate with a hardware wallet, pass empty JSON and provide :ref:`hw-device`.
 
 To authenticate with a mnemonic and optional password:

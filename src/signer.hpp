@@ -94,8 +94,8 @@ namespace sdk {
         // Get the device description for this signer
         const nlohmann::json& get_device() const;
 
-        // Get the login credentials for this signer (empty for Hhardware signers)
-        const nlohmann::json& get_credentials() const;
+        // Get the login credentials for this signer (empty for hardware signers)
+        nlohmann::json get_credentials(bool with_master_key) const;
 
         // Get the xpub for 'm/<path>'. This should only be used to derive the master
         // xpub for privately derived master keys, since it may involve talking to

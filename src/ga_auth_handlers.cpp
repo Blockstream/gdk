@@ -2100,7 +2100,8 @@ namespace sdk {
     {
         const auto password = json_get_value(m_details, "password");
         const auto signer = get_signer();
-        m_result = signer->get_credentials();
+        constexpr bool with_master_key = true;
+        m_result = signer->get_credentials(with_master_key);
         if (!password.empty()) {
             GDK_RUNTIME_ASSERT(m_result.contains("mnemonic"));
             GDK_RUNTIME_ASSERT_MSG(!m_result.contains("bip39_passphrase"), "cannot use password and bip39_passphrase");

@@ -198,7 +198,7 @@ namespace sdk {
 
     bool signer::is_compatible_with(std::shared_ptr<signer> other) const
     {
-        return get_credentials() == other->get_credentials() && get_device() == other->get_device();
+        return get_credentials(false) == other->get_credentials(false) && get_device() == other->get_device();
     }
 
     std::string signer::get_mnemonic(const std::string& password)
@@ -241,7 +241,19 @@ namespace sdk {
 
     const nlohmann::json& signer::get_device() const { return m_device; }
 
-    const nlohmann::json& signer::get_credentials() const { return m_credentials; }
+    nlohmann::json signer::get_credentials(bool with_blinding_key) const
+    {
+        auto credentials = m_credentials;
+        if (m_is_liquid && with_blinding_key) {
+            // Return the master blinding key if we have one
+            std::unique_lock<std::mutex> locker{ m_mutex };
+            if (m_master_blinding_key.has_value()) {
+                auto key = gsl::make_span(m_master_blinding_key.value());
+                credentials["master_blinding_key"] = b2h(key.last(HMAC_SHA256_LEN));
+            }
+        }
+        return credentials;
+    }
 
     std::string signer::get_bip32_xpub(const std::vector<uint32_t>& path)
     {
