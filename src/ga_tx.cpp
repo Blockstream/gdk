@@ -864,6 +864,13 @@ namespace sdk {
 
     std::string Tx::to_hex() const { return b2h(to_bytes()); }
 
+    std::array<unsigned char, WALLY_TXHASH_LEN> Tx::get_txid() const
+    {
+        std::array<unsigned char, WALLY_TXHASH_LEN> txid;
+        GDK_VERIFY(wally_tx_get_txid(m_tx.get(), txid.data(), txid.size()));
+        return txid;
+    }
+
     struct wally_tx_input& Tx::get_input(size_t index)
     {
         return const_cast<struct wally_tx_input&>(std::as_const(*this).get_input(index));

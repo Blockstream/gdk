@@ -806,6 +806,7 @@ namespace sdk {
         m_result["transaction_outputs"] = std::move(m_twofactor_data["transaction_outputs"]);
         m_result["transaction_inputs"] = std::move(m_twofactor_data["transaction_inputs"]);
         update_tx_size_info(m_net_params, tx, m_result);
+        m_result["txhash"] = b2h_rev(tx.get_txid());
     }
 
     void sign_transaction_call::on_next_handler_complete(auth_handler* next_handler)

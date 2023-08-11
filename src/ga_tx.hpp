@@ -26,6 +26,8 @@ namespace sdk {
         std::vector<unsigned char> to_bytes() const;
         std::string to_hex() const;
 
+        std::array<unsigned char, WALLY_TXHASH_LEN> get_txid() const;
+
         // Inputs
         size_t get_num_inputs() const { return m_tx->num_inputs; }
         struct wally_tx_input& get_input(size_t index);
