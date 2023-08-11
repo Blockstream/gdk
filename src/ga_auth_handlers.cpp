@@ -755,7 +755,6 @@ namespace sdk {
             // at the same time (this cant happen yet but should be allowed
             // in the future).
             auto& user_pubkeys = m_session->get_user_pubkeys();
-            const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
             for (size_t i = 0; i < inputs.size(); ++i) {
                 const auto& utxo = inputs.at(i);
                 if (utxo.value("skip_signing", false)) {
@@ -773,6 +772,7 @@ namespace sdk {
                 }
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
+                const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
                 verify_ae_signature(pubkey, tx_signature_hash, utxo.at("ae_host_entropy"), signer_commitments[i],
                     signatures[i], has_sighash_byte);
             }
