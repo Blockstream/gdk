@@ -111,7 +111,7 @@ a message using the given path.
 :message: The message to be utf-8 encoded and signed.
 :path: The path from the wallet's master key to the key that the message should be signed with.
 :use_ae_protocol: ``true`` if the hardware device advertises Anti-Exfil support and it should
-    be used for signing, ``false`` otherwise.
+    be used for signing, ``false`` otherwise. See :ref:`anti-exfil-request` / :ref:`anti-exfil-reply`.
 :create_recoverable_sig: ``true`` if the signature to produce should be recoverable.
     Default ``false``.
 
@@ -282,7 +282,7 @@ one or more inputs of a transaction.
 :transaction_outputs: The transaction output details for the outputs to be
     signed, in the format returned by `GA_create_transaction`.
 :use_ae_protocol: ``true`` if the hardware device advertises Anti-Exfil support and it should
-    be used for signing, ``false`` otherwise.
+    be used for signing, ``false`` otherwise. See :ref:`anti-exfil-request` / :ref:`anti-exfil-reply`.
 :is_partial: ``true`` if transaction is incomplete, e.g. one half of a swap transaction.
 
 **Expected response**:
@@ -294,3 +294,55 @@ one or more inputs of a transaction.
      }
 
 :signatures: The ECDSA signatures corresponding to each input in the request, hex-encoded from the DER represention plus sighash byte.
+
+
+.. _anti-exfil-request:
+
+Anti-Exfil Request Data
+-----------------------
+
+Signing devices that advertize support for the Anti-Exfil signing protocol will
+be passed ``"use_ae_protocol"`` as ``true`` in signing requests. When this occurs,
+the following additional data will be present in the request:
+
+.. code-block:: json
+
+     {
+       "ae_host_entropy": "b18270b26905d7d76d8abac3fb0382af07239f1aeaec8daf8294a79b58e7877f",
+       "ae_host_commitment": "61aafe4ca62cc8960687849089ae1a4b7698dcfb28842533a4417c870099167b"
+     }
+
+:ae_host_entropy: 32 bytes of host-provided entropy to include in the devices signature nonce, hex encoded.
+:ae_host_commitment: The Anti-Exfil commitment to ``ae_host_entropy``, hex encoded.
+
+For transaction signing, the above elements will be present in each element
+in the ``"transaction_inputs"`` array of inputs to be signed.
+
+
+.. _anti-exfil-reply:
+
+Anti-Exfil Reply Data
+---------------------
+
+When signing messages using the Anti-Exfil protocol, signing devices must return the
+following along with the signature:
+
+.. code-block:: json
+
+     {
+       "signer_commitment": "b18270b26905d7d76d8abac3fb0382af07239f1aeaec8daf8294a79b58e7877f"
+     }
+
+:signer_commitment: The 32 byte signer commitment to the nonce entropy for validation, hex encoded.
+
+For transaction signing, a commitment for each input that was signed must be
+returned in an array as follows:
+
+.. code-block:: json
+
+     {
+       "signer_commitments": [ "b18270b26905d7d76d8abac3fb0382af07239f1aeaec8daf8294a79b58e7877f" ]
+     }
+
+
+Inputs that were not signed should have an empty string as their commitment array element.
