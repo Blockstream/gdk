@@ -785,10 +785,12 @@ When the user has a fiat spending limit set instead of BTC, limits are returned 
 
 .. code-block:: json
 
-  "limits": {
-    "fiat": "0.01",
-    "fiat_currency": "EUR",
-    "is_fiat": true
+  {
+    "limits": {
+      "fiat": "0.01",
+      "fiat_currency": "EUR",
+      "is_fiat": true
+    }
   }
 
 :twofactor_reset/days_remaining: The number of days remaining before the wallets two factor
