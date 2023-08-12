@@ -35,12 +35,14 @@ namespace sdk {
         // Add anti-exfil protocol host-entropy and host-commitment to the passed json
         static void add_ae_host_data(nlohmann::json& data)
         {
-            // TODO: These values should be identical/re-used if the same data
-            // is being signed repeatedly (eg. being re-tried following a failure).
-            const auto host_entropy = get_random_bytes<WALLY_S2C_DATA_LEN>();
-            const auto host_commitment = ae_host_commit_from_bytes(host_entropy);
-            data["ae_host_entropy"] = b2h(host_entropy);
-            data["ae_host_commitment"] = b2h(host_commitment);
+            // Add entropy if missing. Otherwise, use the caller provided
+            // (or previous, in the case of a failed signing) values.
+            if (!data.contains("ae_host_entropy")) {
+                data["ae_host_entropy"] = b2h(get_random_bytes<WALLY_S2C_DATA_LEN>());
+            }
+            // Regenerate the host commitment
+            const auto host_entropy = h2b(data["ae_host_entropy"]);
+            data["ae_host_commitment"] = b2h(ae_host_commit_from_bytes(host_entropy));
         }
 
         // Remove keys added by add_ae_host_data()
