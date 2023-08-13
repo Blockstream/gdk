@@ -27,6 +27,7 @@
 #include "ga_session.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "signer.hpp"
@@ -2893,7 +2894,7 @@ namespace sdk {
         }
 
         nlohmann::json twofactor_config = {
-            { "all_methods", std::vector<std::string>() },
+            { "all_methods", nlohmann::json::array_t() },
             { "twofactor_reset", get_twofactor_reset_status(locker, m_login_data) },
         };
         append_2fa_config("email", "email", "email_confirmed", "email_addr", config, twofactor_config);
@@ -2910,15 +2911,15 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        std::vector<std::string> enabled_methods;
-        const std::vector<std::string> all_methods = m_twofactor_config["all_methods"];
+        const auto& all_methods = j_arrayref(m_twofactor_config, "all_methods");
+        nlohmann::json::array_t enabled_methods;
         enabled_methods.reserve(all_methods.size());
         for (const auto& m : all_methods) {
             if (json_get_value(m_twofactor_config[m], "enabled", false)) {
                 enabled_methods.emplace_back(m);
             }
         }
-        m_twofactor_config["enabled_methods"] = enabled_methods;
+        m_twofactor_config["enabled_methods"] = std::move(enabled_methods);
         m_twofactor_config["any_enabled"] = !enabled_methods.empty();
     }
 

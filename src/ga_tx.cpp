@@ -10,6 +10,7 @@
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
@@ -73,7 +74,7 @@ namespace sdk {
 
             if (utxo.contains("script_sig") && utxo.contains("witness")) {
                 const auto script_sig = h2b(utxo.at("script_sig"));
-                const std::vector<std::string> wit_items = utxo.at("witness");
+                const auto& wit_items = j_arrayref(utxo, "witness");
                 auto witness = make_witness_stack();
                 for (const auto& item : wit_items) {
                     tx_witness_stack_add(witness, h2b(item));

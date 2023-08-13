@@ -10,6 +10,7 @@
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "session.hpp"
@@ -110,11 +111,12 @@ namespace sdk {
         {
             const auto& scripts = twofactor_data.at("scripts");
             const auto& public_keys = twofactor_data.at("public_keys");
-            const auto& nonces = get_sized_array(hw_reply, "nonces", scripts.size());
+            const auto& nonces = j_arrayref(hw_reply, "nonces", scripts.size());
             const auto blinding_pubkeys_p = hw_reply.find("public_keys");
             const bool have_blinding_pubkeys = blinding_pubkeys_p != hw_reply.end();
             if (have_blinding_pubkeys) {
-                get_sized_array(hw_reply, "public_keys", scripts.size()); // Must be a sized array if given
+                // Must be a correctly sized array if given
+                (void)j_arrayref(hw_reply, "public_keys", scripts.size());
             }
             std::string blinding_pubkey_hex;
 
@@ -200,8 +202,7 @@ namespace sdk {
 
             if (!m_are_confidential) {
                 // Liquid: Make our addresses confidential with the signer provided blinding keys
-                const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
-                GDK_RUNTIME_ASSERT(public_keys.size() == m_num_required_addrs);
+                const auto& public_keys = j_arrayref(get_hw_reply(), "public_keys", m_num_required_addrs);
 
                 size_t i = 0;
                 for (auto& subaccount_addresses : m_addresses) {
@@ -268,7 +269,7 @@ namespace sdk {
         }
 
         // We have received our xpubs reply
-        const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+        const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
 
         // Get the master chain code and pubkey
         const auto master_xpub = make_xpub(xpubs.at(0));
@@ -361,7 +362,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(m_challenge.empty());
 
             // We have a result from our first get_xpubs request.
-            const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
+            const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
 
             m_master_bip32_xpub = xpubs.at(0);
             if (!is_electrum) {
@@ -526,8 +527,8 @@ namespace sdk {
 
         if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for the new subaccount
-            const auto& hw_reply = get_hw_reply();
-            m_subaccount_xpub = hw_reply.at("xpubs").at(0);
+            const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
+            m_subaccount_xpub = xpubs.at(0);
             if (m_details.at("type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
                 signal_hw_request(hw_request::sign_message);
@@ -751,7 +752,7 @@ namespace sdk {
         auto signer = get_signer();
         const auto& hw_reply = get_hw_reply();
         auto& inputs = m_twofactor_data["transaction_inputs"];
-        const auto& signatures = get_sized_array(hw_reply, "signatures", inputs.size());
+        const auto& signatures = j_arrayref(hw_reply, "signatures", inputs.size());
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
         Tx tx(json_get_value(m_twofactor_data, "transaction"), is_liquid);
@@ -781,7 +782,7 @@ namespace sdk {
                 }
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
-                const auto& signer_commitments = get_sized_array(hw_reply, "signer_commitments", inputs.size());
+                const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
                 verify_ae_signature(
                     pubkey, tx_signature_hash, h2b(utxo.at("ae_host_entropy")), h2b(signer_commitments[i]), sig);
@@ -987,7 +988,7 @@ namespace sdk {
         }
 
         // Liquid: Make our addresses confidential with the signer provided blinding keys
-        const std::vector<std::string> public_keys = get_hw_reply().at("public_keys");
+        const auto& public_keys = j_arrayref(get_hw_reply(), "public_keys");
         size_t i = 0;
         for (auto& it : m_result.at("list")) {
             confidentialize_address(m_net_params, it, public_keys.at(i));
@@ -1138,7 +1139,8 @@ namespace sdk {
         // Performed only for Electrum sessions and if the client requests it.
         if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpub for the subaccount
-            const std::string xpub = get_hw_reply().at("xpubs").at(0);
+            const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
+            const std::string xpub = xpubs.at(0);
             if (m_session->discover_subaccount(xpub, m_subaccount_type)) {
                 m_session->create_subaccount({ { "name", std::string() }, { "discovered", true } }, m_subaccount, xpub);
             } else {
@@ -1504,7 +1506,7 @@ namespace sdk {
     {
         m_session->ensure_full_session();
 
-        GDK_RUNTIME_ASSERT(m_details.at("list").is_array());
+        (void)j_arrayref(m_details, "list"); // Must be an array
         bool seen_frozen = false;
 
         for (auto& item : m_details["list"]) {

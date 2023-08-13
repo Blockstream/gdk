@@ -2,11 +2,11 @@
 #include "ga_auth_handlers.hpp"
 
 #include "assertion.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
 #include "ga_wally.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
@@ -121,9 +121,9 @@ namespace sdk {
             constexpr bool is_liquid = true;
             GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == LIQUIDEX_VERSION, "unknown version");
             GDK_RUNTIME_ASSERT_MSG(proposal.dump().length() < 20000, "proposal exceeds maximum length");
-            const auto& proposal_input = get_sized_array(proposal, "inputs", 1).at(0);
-            const auto& proposal_output = get_sized_array(proposal, "outputs", 1).at(0);
-            const auto scalar = h2b(get_sized_array(proposal, "scalars", 1).at(0));
+            const auto& proposal_input = j_arrayref(proposal, "inputs", 1).at(0);
+            const auto& proposal_output = j_arrayref(proposal, "outputs", 1).at(0);
+            const auto scalar = h2b(j_arrayref(proposal, "scalars", 1).at(0));
             GDK_RUNTIME_ASSERT_MSG(ec_scalar_verify(scalar), "invalid scalar");
             GDK_RUNTIME_ASSERT_MSG(
                 proposal_input.at("asset") != proposal_output.at("asset"), "cannot swap the same asset");
@@ -178,8 +178,8 @@ namespace sdk {
     auth_handler::state_type create_swap_transaction_call::liquidex_impl()
     {
         const auto& liquidex_details = m_details.at(LIQUIDEX_STR);
-        const auto& send = get_sized_array(liquidex_details, "send", 1).at(0);
-        const auto& receive = get_sized_array(liquidex_details, "receive", 1).at(0);
+        const auto& send = j_arrayref(liquidex_details, "send", 1).at(0);
+        const auto& receive = j_arrayref(liquidex_details, "receive", 1).at(0);
         // TODO: We may wish to allow receiving to a different subaccount.
         //       For now, receive to the same subaccount we are sending from
         const uint32_t subaccount = send.at("subaccount");
@@ -285,7 +285,7 @@ namespace sdk {
     auth_handler::state_type complete_swap_transaction_call::liquidex_impl()
     {
         // TODO: allow to take multiple proposal at once
-        const auto& proposal = get_sized_array(m_details.at(LIQUIDEX_STR), "proposals", 1).at(0);
+        const auto& proposal = j_arrayref(m_details.at(LIQUIDEX_STR), "proposals", 1).at(0);
         if (!m_tx) {
             m_tx = liquidex_validate_proposal(proposal);
         }
