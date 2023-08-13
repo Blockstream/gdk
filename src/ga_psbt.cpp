@@ -1,7 +1,7 @@
 #include "ga_psbt.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "session_impl.hpp"
 #include "transaction_utils.hpp"
@@ -186,16 +186,16 @@ namespace sdk {
         for (const auto& txin : inputs) {
             const auto asset_id = j_asset(net_params, txin);
             if (asset_id == policy_asset) {
-                fee += json_get_amount(txin, "satoshi");
+                fee += j_amountref(txin);
             }
         }
         for (const auto& txout : outputs) {
             const auto asset_id = j_asset(net_params, txout);
             if (asset_id == policy_asset) {
                 if (m_is_liquid && json_get_value(txout, "scriptpubkey").empty()) {
-                    fee_output = json_get_amount(txout, "satoshi");
+                    fee_output = j_amountref(txout);
                 } else {
-                    fee -= json_get_amount(txout, "satoshi");
+                    fee -= j_amountref(txout);
                 }
             }
         }

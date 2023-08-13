@@ -64,9 +64,6 @@ namespace sdk {
         return p->get<T>();
     }
 
-    amount json_get_amount(const nlohmann::json& data, const std::string& key);
-    amount json_get_amount(const nlohmann::json& data, const std::string& key, const amount& default_value);
-
     // Filter items from json based on a predicate function `filter`.
     // Returns the keys of the items removed
     template <typename FN> std::vector<std::string> json_filter(nlohmann::json& data, FN&& filter)

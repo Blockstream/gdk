@@ -108,7 +108,7 @@ namespace sdk {
             if (add_to_tx_inputs) {
                 result["transaction_inputs"].push_back(utxo);
             }
-            return json_get_amount(utxo, "satoshi");
+            return j_amountref(utxo);
         }
 
         static sig_and_sighash_t ec_sig_from_witness(const struct wally_tx_witness_stack* witness, size_t index)
@@ -205,8 +205,8 @@ namespace sdk {
 
             // Store the old fee and fee rate to check if replacement
             // requirements are satisfied
-            const amount old_fee = json_get_amount(prev_tx, "fee");
-            const amount old_fee_rate = json_get_amount(prev_tx, "fee_rate");
+            const auto old_fee = j_amountref(prev_tx, "fee");
+            const auto old_fee_rate = j_amountref(prev_tx, "fee_rate");
             result["old_fee"] = old_fee.value();
             result["old_fee_rate"] = old_fee_rate.value();
 
@@ -217,7 +217,7 @@ namespace sdk {
                 // the network fee to the new transactions fee increases
                 // the overall fee rate of the pair to the desired rate,
                 // so that miners are incentivized to mine both together).
-                const amount new_fee_rate = json_get_amount(result, "fee_rate");
+                const auto new_fee_rate = j_amountref(result, "fee_rate");
                 const auto fee_rate = std::max(min_fee_rate.value(), new_fee_rate.value());
                 const auto new_fee = tx.get_fee(net_params, fee_rate);
                 result["network_fee"] = new_fee <= old_fee ? 0 : new_fee;
@@ -474,7 +474,7 @@ namespace sdk {
             // Perform asset UTXO selection
             std::vector<std::pair<size_t, amount>> indexed_values;
             for (size_t i = 0; i < utxos.size(); ++i) {
-                const auto satoshi = json_get_amount(utxos[i], "satoshi");
+                const auto satoshi = j_amountref(utxos[i]);
                 indexed_values.emplace_back(std::make_pair(i, satoshi));
                 total += satoshi.value();
             }
@@ -513,10 +513,10 @@ namespace sdk {
             const auto& net_params = session.get_network_parameters();
             const auto policy_asset = net_params.get_policy_asset();
             const amount dust_threshold = session.get_dust_threshold(policy_asset);
-            const amount user_fee_rate = json_get_amount(result, "fee_rate");
+            const auto user_fee_rate = j_amountref(result, "fee_rate");
             const amount min_fee_rate = session.get_min_fee_rate();
             const auto fee_rate = std::max(min_fee_rate.value(), user_fee_rate.value());
-            const amount network_fee = json_get_amount(result, "network_fee", amount(0));
+            const auto network_fee = j_amount_or_zero(result, "network_fee");
             const ssize_t num_utxos = manual_selection ? 0 : utxos.size();
             const bool is_greedy = addressee.greedy_index.has_value();
             bool added_change = false;
@@ -613,7 +613,7 @@ namespace sdk {
 
             if (result.find("fee_rate") == result.end()) {
                 result["fee_rate"] = session.get_default_fee_rate().value();
-            } else if (json_get_amount(result, "fee_rate") < session.get_min_fee_rate()) {
+            } else if (j_amountref(result, "fee_rate") < session.get_min_fee_rate()) {
                 set_tx_error(result, res::id_fee_rate_is_below_minimum);
                 return;
             }
@@ -701,7 +701,7 @@ namespace sdk {
                 }
                 a.addressee_indices.push_back(i);
                 // Add the value of this output to the required total
-                a.required_total += json_get_amount(addressee, "satoshi");
+                a.required_total += j_amountref(addressee);
             }
 
             // Add all addressees to our transaction, in order
@@ -789,10 +789,10 @@ namespace sdk {
                 // and the transaction construction policies. As a result it may occur that rbf
                 // requirements are not met, but, in general, it is not possible to check it
                 // before the transaction is actually constructed.
-                const amount old_fee = json_get_amount(result, "old_fee", amount(0));
-                const amount old_fee_rate = json_get_amount(result, "old_fee_rate", amount(0));
-                const amount calculated_fee_rate = json_get_amount(result, "calculated_fee_rate");
-                const amount::value_type vsize = json_get_amount(result, "transaction_vsize").value();
+                const auto old_fee = j_amount_or_zero(result, "old_fee");
+                const auto old_fee_rate = j_amount_or_zero(result, "old_fee_rate");
+                const auto calculated_fee_rate = j_amountref(result, "calculated_fee_rate");
+                const auto vsize = j_amountref(result, "transaction_vsize").value();
                 const amount::value_type bandwidth_fee = vsize * session.get_min_fee_rate().value() / 1000;
                 if (btc_details.fee.value() < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
@@ -1159,7 +1159,7 @@ namespace sdk {
         const nlohmann::json& utxo, size_t index, uint32_t sighash_flags) const
     {
         std::array<unsigned char, SHA256_LEN> ret;
-        const auto satoshi = json_get_amount(utxo, "satoshi").value();
+        const auto satoshi = j_amountref(utxo).value();
         const auto script = h2b(utxo.at("prevout_script"));
         const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
 

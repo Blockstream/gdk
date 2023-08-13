@@ -1274,10 +1274,10 @@ namespace sdk {
                 return compare_blockheight(rhs, lhs);
                 break;
             case sort_by_t::LARGEST:
-                return rhs.at("satoshi") < lhs.at("satoshi");
+                return j_amountref(rhs) < j_amountref(lhs);
                 break;
             case sort_by_t::SMALLEST:
-                return lhs.at("satoshi") < rhs.at("satoshi");
+                return j_amountref(lhs) < j_amountref(rhs);
                 break;
             }
             return false; // Unreachable
@@ -1404,10 +1404,10 @@ namespace sdk {
             filter_utxos(outputs, [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; });
         }
 
-        const amount::value_type dust_limit = m_details.value("dust_limit", 0);
-        if (dust_limit != 0) {
+        const auto dust_limit = j_amount_or_zero(m_details, "dust_limit");
+        if (dust_limit.value()) {
             // The user passed a dust limit, filter UTXOs that are below it
-            filter_utxos(outputs, [dust_limit](const auto& u) { return u.at("satoshi") <= dust_limit; });
+            filter_utxos(outputs, [dust_limit](const auto& u) { return j_amountref(u) <= dust_limit; });
         }
 
         // Remove any keys that have become empty
@@ -1485,7 +1485,7 @@ namespace sdk {
             amount::value_type satoshi = 0;
             for (const auto& utxo : asset.value()) {
                 GDK_RUNTIME_ASSERT(!utxo.contains("error"));
-                satoshi += amount::value_type(utxo.at("satoshi"));
+                satoshi += j_amountref(utxo).value();
             }
             balance[asset.key()] = satoshi;
         }
@@ -1772,7 +1772,8 @@ namespace sdk {
             if (is_fiat) {
                 m_limit_details["total"] = amount::get_fiat_cents(details["fiat"]);
             } else {
-                m_limit_details["total"] = m_session->convert_amount(details)["satoshi"];
+                const auto converted = m_session->convert_amount(details);
+                m_limit_details["total"] = j_amountref(converted).value();
             }
 
             if (!m_session->is_spending_limits_decrease(details)) {
@@ -1843,7 +1844,6 @@ namespace sdk {
 
         if (!m_net_params.is_liquid() && !m_net_params.is_electrum()) {
             auto user_limits = m_twofactor_required ? m_session->get_spending_limits() : nlohmann::json({});
-            amount::value_type limit = 0;
             if (user_limits.value("is_fiat", false)) {
                 try {
                     user_limits = m_session->convert_amount(user_limits);
@@ -1853,16 +1853,14 @@ namespace sdk {
                     user_limits.clear();
                 }
             }
-            if (user_limits.contains("satoshi")) {
-                limit = user_limits["satoshi"].get<amount::value_type>();
-            }
+            const auto limit = j_amount_or_zero(user_limits);
             amount::value_type satoshi = 0;
             for (const auto& o : m_details.at("transaction_outputs")) {
                 if (!o.value("is_change", false)) {
-                    satoshi += json_get_amount(o, "satoshi").value();
+                    satoshi += j_amountref(o).value();
                 }
             }
-            const auto fee = json_get_amount(m_details, "fee").value();
+            const auto fee = j_amountref(m_details, "fee").value();
 
             m_limit_details = { { "asset", "BTC" }, { "amount", satoshi + fee }, { "fee", fee },
                 { "change_idx", get_tx_change_index(m_details, "btc").value_or(-1) } };
@@ -1872,9 +1870,9 @@ namespace sdk {
             // compared to the original
             const auto previous_transaction = m_details.find("previous_transaction");
             if (previous_transaction != m_details.end()) {
-                const auto previous_fee = previous_transaction->at("fee").get<uint64_t>();
+                const auto previous_fee = j_amountref(*previous_transaction, "fee");
                 GDK_RUNTIME_ASSERT(previous_fee < fee);
-                m_bump_amount = fee - previous_fee;
+                m_bump_amount = fee - previous_fee.value();
             }
 
             // limit_delta is the amount to deduct from the current spending limit for this tx
@@ -1882,7 +1880,7 @@ namespace sdk {
             // previous fee and tx amount has already been deducted from the limits
             const uint64_t limit_delta = m_bump_amount != 0u ? m_bump_amount : satoshi + fee;
 
-            if (limit != 0 && limit_delta <= limit) {
+            if (limit.value() && limit_delta <= limit.value()) {
                 // 2fa is enabled and we have a spending limit, but this tx is under it.
                 m_under_limit = true;
                 m_state = state_type::make_call;

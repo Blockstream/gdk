@@ -5,6 +5,7 @@
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "memory.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
@@ -451,7 +452,7 @@ namespace sdk {
             // corresponding prices available).
             if (!override_network) {
                 try {
-                    const auto satoshi = json_get_amount(session.convert_amount(addressee), "satoshi");
+                    const auto satoshi = j_amountref(session.convert_amount(addressee));
                     addressee["satoshi"] = satoshi.value();
                     amount::strip_non_satoshi_keys(addressee);
                 } catch (const user_error& ex) {
@@ -481,7 +482,7 @@ namespace sdk {
         const network_parameters& net_params, nlohmann::json& result, Tx& tx, const nlohmann::json& output)
     {
         std::string old_error = json_get_value(result, "error");
-        const amount satoshi = json_get_amount(output, "satoshi");
+        const auto satoshi = j_amountref(output);
         std::string script_hex = output.at("scriptpubkey");
         std::vector<unsigned char> script;
         if (!script_hex.empty()) {
@@ -515,7 +516,7 @@ namespace sdk {
             // The case of an existing blinded output
             auto scriptpubkey = h2b(addressee.at("scriptpubkey"));
             const auto asset_id = h2b_rev(asset_id_hex);
-            const amount satoshi = json_get_amount(addressee, "satoshi");
+            const auto satoshi = j_amountref(addressee);
             const auto abf = h2b_rev(addressee.at("assetblinder"));
             if (std::all_of(abf.begin(), abf.end(), [](auto b) { return b == 0; })) {
                 throw user_error("pre-blinded input asset is not blinded");
@@ -551,7 +552,7 @@ namespace sdk {
         }
 
         if (!addressee.value("is_greedy", false)) {
-            const amount satoshi = json_get_amount(addressee, "satoshi");
+            const auto satoshi = j_amountref(addressee);
             if (satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
                 throw user_error(res::id_invalid_amount);
@@ -674,7 +675,7 @@ namespace sdk {
         const char* key, amount::signed_value_type multiplier = 1)
     {
         auto total = summary.value(asset_id, amount::signed_value_type(0));
-        total += json_get_amount(src, key).signed_value() * multiplier;
+        total += j_amountref(src, key).signed_value() * multiplier;
         summary[asset_id] = total;
     }
 
@@ -729,11 +730,11 @@ namespace sdk {
                         satoshi = tx_confidential_value_to_satoshi({ o.value, o.value_len });
                     } else {
                         GDK_RUNTIME_ASSERT(is_blinded);
-                        satoshi = src.at("satoshi");
+                        satoshi = j_amountref(src).value();
                     }
                 }
                 // FIXME: Change addresses do not have their satoshi values set
-                GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || src.at("satoshi") == satoshi);
+                GDK_RUNTIME_ASSERT(is_fee || src.value("is_change", false) || j_amountref(src) == satoshi);
 
                 auto spk = is_fee ? std::string() : b2h({ o.script, o.script_len });
                 if (!is_fee) {

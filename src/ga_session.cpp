@@ -726,11 +726,11 @@ namespace sdk {
             return false;
         }
 
-        const amount::value_type current_total = m_limits_data["total"];
+        const auto current_total = j_amountref(m_limits_data, "total").value();
         if (new_is_fiat) {
             return amount::get_fiat_cents(details["fiat"]) <= current_total;
         }
-        return convert_amount(locker, details)["satoshi"] <= current_total;
+        return j_amountref(convert_amount(locker, details)) <= current_total;
     }
 
     std::unique_ptr<session_impl::locker_t> ga_session::get_multi_call_locker(
@@ -2114,7 +2114,7 @@ namespace sdk {
                 if (is_external) {
                     json_rename_key(utxo, "tx_hash", "txhash");
                     json_rename_key(utxo, "tx_pos", "pt_idx");
-                    utxo["satoshi"] = json_get_value<amount::value_type>(utxo, "value");
+                    utxo["satoshi"] = j_amount_or_zero(utxo, "value").value();
                 } else {
                     if (is_liquid) {
                         if (json_get_value(utxo, "is_relevant", true)) {
@@ -2124,9 +2124,10 @@ namespace sdk {
                             remove_utxo_proofs(utxo, mark_unconfidential);
                         }
                     } else {
+                        // Use lexical conversion as the server returns value as a string
                         amount::value_type value;
-                        GDK_RUNTIME_ASSERT(
-                            boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value));
+                        using boost::conversion::try_lexical_convert;
+                        GDK_RUNTIME_ASSERT(try_lexical_convert(j_str_or_empty(utxo, "value"), value));
                         utxo["satoshi"] = value;
                     }
                 }
@@ -2184,7 +2185,7 @@ namespace sdk {
             const uint32_t tx_vsize = tx.at("transaction_vsize");
             tx["transaction_weight"] = tx_vsize * 4;
             // fee_rate is in satoshi/kb, with the best integer accuracy we have
-            tx["fee_rate"] = tx.at("fee").get<amount::value_type>() * 1000 / tx_vsize;
+            tx["fee_rate"] = j_amountref(tx, "fee").value() * 1000 / tx_vsize;
 
             // Clean up and categorize the endpoints. For liquid, this populates
             // 'missing' if any UTXOs require blinding nonces from the signer to unblind.
@@ -2250,7 +2251,7 @@ namespace sdk {
 
                     // Compute the effect of the input/output on the wallets balance
                     // TODO: Figure out what redeemable value for social payments is about
-                    const amount satoshi = ep.at("satoshi");
+                    const auto satoshi = j_amountref(ep);
                     if (is_tx_output) {
                         totals[asset_id] += satoshi.signed_value();
                         if (json_get_value(ep, "address").empty()) {

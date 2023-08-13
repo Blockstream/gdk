@@ -52,10 +52,10 @@ namespace sdk {
             res.resize(in_out.size());
             for (size_t i = 0; i < in_out.size(); ++i) {
                 res[i]["asset"] = std::move(in_out[i]["asset_id"]);
-                res[i]["asset_blinder"] = std::move(in_out[i]["assetblinder"]);
-                res[i]["satoshi"] = std::move(in_out[i]["satoshi"]);
                 const auto asset = h2b_rev(res[i]["asset"]);
-                const uint64_t satoshi = res[i]["satoshi"];
+                res[i]["satoshi"] = std::move(in_out[i]["satoshi"]);
+                const auto satoshi = j_amountref(res[i]).value();
+                res[i]["asset_blinder"] = std::move(in_out[i]["assetblinder"]);
                 const auto abf = h2b_rev(res[i]["asset_blinder"]);
                 const auto vbf = h2b_rev(in_out[i]["amountblinder"]);
                 const auto generator = asset_generator_from_bytes(asset, abf);
@@ -89,7 +89,7 @@ namespace sdk {
             auto maker_input = get_tx_input_fields(tx, 0);
             maker_input["asset_id"] = proposal_input.at("asset");
             maker_input["assetblinder"] = proposal_input.at("asset_blinder");
-            maker_input["satoshi"] = proposal_input.at("satoshi");
+            maker_input["satoshi"] = j_amountref(proposal_input).value();
             maker_input["skip_signing"] = true;
             return maker_input;
         }
@@ -109,7 +109,7 @@ namespace sdk {
                 { "is_blinded", true }, { "index", 0 }, { "nonce_commitment", b2h(nonce) },
                 { "commitment", b2h(commitment) }, { "range_proof", b2h(rangeproof) },
                 { "asset_id", proposal_output.at("asset") }, { "assetblinder", proposal_output.at("asset_blinder") },
-                { "satoshi", proposal_output.at("satoshi") } };
+                { "satoshi", j_amountref(proposal_output).value() } };
             if (proposal_output.contains("blinding_nonce")) {
                 ret["blinding_nonce"] = proposal_output["blinding_nonce"];
             }
@@ -135,7 +135,7 @@ namespace sdk {
             // TODO: obtain the previous output and verify the input commitments
             const auto output_asset = h2b_rev(proposal_output.at("asset"));
             const auto output_abf = h2b_rev(proposal_output.at("asset_blinder"));
-            const auto output_value = proposal_output.at("satoshi");
+            const auto output_value = j_amountref(proposal_output).value();
             const auto value_blind_proof = h2b(proposal_output.at("value_blind_proof"));
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
             const auto& tx_output = tx->get_output(0);
@@ -315,7 +315,7 @@ namespace sdk {
             nlohmann::json taker_addressee = std::move(m_receive_address);
             m_receive_address["used"] = true; // Make sure m_receive_address.empty() isn't true
             taker_addressee["asset_id"] = maker_asset_id; // Taker is receiving the makers asset
-            taker_addressee["satoshi"] = proposal_input.at("satoshi");
+            taker_addressee["satoshi"] = j_amountref(proposal_input).value();
             nlohmann::json::array_t addressees = { std::move(maker_addressee), std::move(taker_addressee) };
 
             nlohmann::json create_details

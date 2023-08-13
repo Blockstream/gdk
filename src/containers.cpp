@@ -17,15 +17,5 @@ namespace sdk {
         return true;
     }
 
-    amount json_get_amount(const nlohmann::json& data, const std::string& key)
-    {
-        return amount(data.at(key).get<amount::value_type>());
-    }
-
-    amount json_get_amount(const nlohmann::json& data, const std::string& key, const amount& default_value)
-    {
-        return amount(json_get_value(data, key, default_value.value()));
-    }
-
 } // namespace sdk
 } // namespace ga
