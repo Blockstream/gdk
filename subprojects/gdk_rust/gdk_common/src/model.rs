@@ -160,16 +160,6 @@ pub struct DiscoverAccountOpt {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GetAccountPathOpt {
-    pub subaccount: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct GetAccountPathResult {
-    pub path: Vec<ChildNumber>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GetNextAccountOpt {
     #[serde(rename = "type")]
     pub script_type: ScriptType,

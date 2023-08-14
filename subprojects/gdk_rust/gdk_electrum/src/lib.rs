@@ -21,8 +21,7 @@ pub mod spv;
 pub mod sweep;
 
 use crate::account::{
-    discover_account, get_account_derivation, get_account_script_purpose,
-    get_last_next_account_nums, Account,
+    discover_account, get_account_script_purpose, get_last_next_account_nums, Account,
 };
 use crate::error::Error;
 use crate::interface::ElectrumUrl;
@@ -881,16 +880,6 @@ impl ElectrumSession {
 
     pub fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
         self.get_account(account_num)?.info()
-    }
-
-    pub fn get_subaccount_root_path(
-        &mut self,
-        opt: GetAccountPathOpt,
-    ) -> Result<GetAccountPathResult, Error> {
-        let (_, path) = get_account_derivation(opt.subaccount, self.network.id())?;
-        Ok(GetAccountPathResult {
-            path: path.into(),
-        })
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
