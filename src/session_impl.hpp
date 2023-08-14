@@ -91,7 +91,6 @@ namespace sdk {
         virtual void register_subaccount_xpubs(
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
             = 0;
-        virtual nlohmann::json login(std::shared_ptr<signer> signer);
         virtual nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_wo(std::shared_ptr<signer> signer) = 0;
         virtual bool set_wo_credentials(const std::string& username, const std::string& password) = 0;

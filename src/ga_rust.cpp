@@ -121,13 +121,6 @@ namespace sdk {
             }
         }
     }
-
-    nlohmann::json ga_rust::login(std::shared_ptr<signer> signer)
-    {
-        set_signer(signer);
-        rust_call("login", signer->get_credentials(false), m_session);
-        return get_post_login_data();
-    }
     nlohmann::json ga_rust::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
         return rust_call("credentials_from_pin_data", pin_data, m_session);
