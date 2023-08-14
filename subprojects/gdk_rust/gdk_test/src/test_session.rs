@@ -4,9 +4,10 @@ use std::time::Duration;
 
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrsd::electrum_client::ElectrumApi;
+use gdk_common::bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
 use gdk_common::log::{info, warn};
 use gdk_common::rand::Rng;
-use gdk_common::wally::bip39_mnemonic_from_entropy;
+use gdk_common::wally;
 use gdk_common::{bitcoin, rand};
 use serde_json::{json, Value};
 use tempfile::TempDir;
@@ -142,7 +143,7 @@ impl TestSession {
 
         let mut entropy = [0u8; 32];
         rand::thread_rng().fill(&mut entropy);
-        let mnemonic_str = bip39_mnemonic_from_entropy(&entropy);
+        let mnemonic_str = wally::bip39_mnemonic_from_entropy(&entropy);
 
         let credentials = Credentials {
             mnemonic: mnemonic_str.clone(),
@@ -150,7 +151,7 @@ impl TestSession {
         };
         info!("logging in gdk session");
         let (master_xprv, master_xpub, master_blinding_key) =
-            gdk_electrum::keys_from_credentials(&credentials, network.bip32_network()).unwrap();
+            keys_from_credentials(&credentials, network.bip32_network());
 
         let opt = LoadStoreOpt {
             master_xpub: master_xpub.clone(),
@@ -169,10 +170,10 @@ impl TestSession {
         assert_eq!(account_nums, vec![0]);
 
         // Create subaccount 0
-        let path: bitcoin::bip32::DerivationPath = "m/84'/1'/0'".parse().unwrap();
-        let path: Vec<bitcoin::bip32::ChildNumber> = path.into();
+        let path: DerivationPath = "m/84'/1'/0'".parse().unwrap();
+        let path: Vec<ChildNumber> = path.into();
         let xprv = master_xprv.derive_priv(&gdk_common::EC, &path).unwrap();
-        let xpub = bitcoin::bip32::ExtendedPubKey::from_priv(&gdk_common::EC, &xprv);
+        let xpub = ExtendedPubKey::from_priv(&gdk_common::EC, &xprv);
         let opt = CreateAccountOpt {
             subaccount: 0,
             name: "".to_string(),
@@ -502,4 +503,16 @@ impl TestSession {
             thread::sleep(Duration::from_secs(1));
         }
     }
+}
+
+fn keys_from_credentials(
+    credentials: &Credentials,
+    network: bitcoin::Network,
+) -> (ExtendedPrivKey, ExtendedPubKey, wally::MasterBlindingKey) {
+    let seed = wally::bip39_mnemonic_to_seed(&credentials.mnemonic, &credentials.bip39_passphrase)
+        .unwrap();
+    let master_xprv = ExtendedPrivKey::new_master(network, &seed).unwrap();
+    let master_xpub = ExtendedPubKey::from_priv(&gdk_common::EC, &master_xprv);
+    let master_blinding = wally::asset_blinding_key_from_seed(&seed);
+    (master_xprv, master_xpub, master_blinding)
 }
