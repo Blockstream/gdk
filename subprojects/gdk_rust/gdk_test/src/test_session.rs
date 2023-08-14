@@ -15,7 +15,7 @@ use tempfile::TempDir;
 use gdk_common::be::*;
 use gdk_common::model::*;
 use gdk_common::session::Session;
-use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters, State};
+use gdk_common::{NetworkId, NetworkParameters, State};
 use gdk_electrum::spv;
 use gdk_electrum::{ElectrumSession, TransactionNotification};
 
@@ -37,32 +37,19 @@ pub struct TestSession {
 }
 
 impl TestSession {
-    pub fn new<F>(is_liquid: bool, network_conf: F) -> Self
+    pub fn new<F>(network_conf: F) -> Self
     where
         F: FnOnce(&mut NetworkParameters),
     {
-        let (node, electrs) = if !is_liquid {
-            (env::BITCOIND_EXEC, env::ELECTRS_EXEC)
-        } else {
-            (env::ELEMENTSD_EXEC, env::ELECTRS_LIQUID_EXEC)
-        };
+        let node = env::BITCOIND_EXEC;
+        let electrs = env::ELECTRS_EXEC;
 
         let is_debug = std::env::var("DEBUG").is_ok();
 
         let _ = env_logger::try_init();
 
-        let mut args = vec!["-fallbackfee=0.0001", "-dustrelayfee=0.00000001"];
-        let network = if is_liquid {
-            args.extend_from_slice(&[
-                "-chain=liquidregtest",
-                "-initialfreecoins=2100000000",
-                "-validatepegin=0",
-            ]);
-            "liquidregtest"
-        } else {
-            args.extend_from_slice(&["-regtest"]);
-            "regtest"
-        };
+        let args = vec!["-fallbackfee=0.0001", "-dustrelayfee=0.00000001", "-regtest"];
+        let network = "regtest";
         let mut conf = electrsd::bitcoind::Conf::default();
         conf.args = args;
         conf.view_stdout = is_debug;
@@ -73,11 +60,6 @@ impl TestSession {
         info!("node spawned");
 
         RpcNodeExt::generate(&node.client, 1, None).unwrap();
-
-        if is_liquid {
-            // the rescan is needed to see the initialfreecoins
-            node.client.rescan_blockchain(None, None).unwrap();
-        }
 
         let p2p_port = node.params.p2p_socket.unwrap().port();
 
@@ -118,11 +100,6 @@ impl TestSession {
         network.development = true;
         network.spv_enabled = Some(true);
         network.set_asset_registry_url("https://assets.blockstream.info".to_string());
-        if is_liquid {
-            network.liquid = true;
-            network.policy_asset =
-                Some("5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225".into());
-        }
 
         network_conf(&mut network);
 
@@ -150,7 +127,7 @@ impl TestSession {
             bip39_passphrase: "".to_string(),
         };
         info!("logging in gdk session");
-        let (master_xprv, master_xpub, master_blinding_key) =
+        let (master_xprv, master_xpub, _master_blinding_key) =
             keys_from_credentials(&credentials, network.bip32_network());
 
         let opt = LoadStoreOpt {
@@ -158,13 +135,6 @@ impl TestSession {
             master_xpub_fingerprint: None,
         };
         session.load_store(&opt).unwrap();
-
-        if is_liquid {
-            let opt = SetMasterBlindingKeyOpt {
-                master_blinding_key,
-            };
-            session.set_master_blinding_key(&opt).unwrap();
-        }
 
         let account_nums = session.get_subaccount_nums().unwrap();
         assert_eq!(account_nums, vec![0]);
@@ -216,11 +186,7 @@ impl TestSession {
             }
         }
 
-        let network_id = if is_liquid {
-            NetworkId::Elements(ElementsNetwork::ElementsRegtest)
-        } else {
-            NetworkId::Bitcoin(bitcoin::Network::Regtest)
-        };
+        let network_id = NetworkId::Bitcoin(bitcoin::Network::Regtest);
 
         info!("returning TestSession");
 
@@ -424,12 +390,6 @@ impl TestSession {
         satoshi: Option<u64>,
         type_: Option<TransactionType>,
     ) {
-        let is_liquid = self.network.liquid;
-        let (satoshi, type_) = if is_liquid {
-            (None, None)
-        } else {
-            (satoshi, type_)
-        };
         let ntf = utils::ntf_transaction(&TransactionNotification {
             subaccounts: subaccounts.clone(),
             txid: bitcoin::Txid::from_str(&txid).unwrap(),

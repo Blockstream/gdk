@@ -19,7 +19,7 @@ use gdk_test::TestSession;
 
 #[test]
 fn test_electrum_disconnect() {
-    let mut test_session = TestSession::new(false, |_| ());
+    let mut test_session = TestSession::new(|_| ());
     assert!(test_session.electrs.client.ping().is_ok());
 
     assert_eq!(test_session.session.filter_events("network").len(), 1);
@@ -265,7 +265,7 @@ fn test_spv_timeout() {
 #[test]
 fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
-    let mut test_session = TestSession::new(false, |_| ());
+    let mut test_session = TestSession::new(|_| ());
 
     test_session.fund(100_000_000, None);
 
@@ -299,7 +299,7 @@ fn test_spv_external_concurrent_spv_disabled() {
 }
 
 fn test_spv_external_concurrent(spv_enabled: bool) {
-    let mut test_session = TestSession::new(false, |n| n.spv_enabled = Some(spv_enabled));
+    let mut test_session = TestSession::new(|n| n.spv_enabled = Some(spv_enabled));
     // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
     test_session.fund(100_000_000, None);
@@ -334,9 +334,9 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
 }
 
 fn setup_forking_sessions(enable_session_cross: bool) -> (TestSession, TestSession) {
-    let test_session2 = TestSession::new(false, |_| ());
+    let test_session2 = TestSession::new(|_| ());
 
-    let test_session1 = TestSession::new(false, |network| {
+    let test_session1 = TestSession::new(|network| {
         if enable_session_cross {
             network.spv_multi = Some(true);
             network.spv_servers = Some(vec![test_session2.electrs.electrum_url.clone()]);
