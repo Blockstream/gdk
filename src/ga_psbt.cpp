@@ -205,6 +205,7 @@ namespace sdk {
         result["fee"] = fee.value();
         result["network_fee"] = 0;
         update_tx_info(session, tx, result);
+        result["txhash"] = b2h_rev(tx.get_txid());
         return result;
     }
 
