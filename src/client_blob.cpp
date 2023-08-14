@@ -3,6 +3,7 @@
 #include "client_blob.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "utils.hpp"
@@ -101,7 +102,7 @@ namespace sdk {
 
     bool client_blob::get_subaccount_hidden(uint32_t subaccount) const
     {
-        return json_get_value(m_data[SA_HIDDEN], std::to_string(subaccount), false);
+        return j_bool_or_false(m_data[SA_HIDDEN], std::to_string(subaccount));
     }
 
     bool client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)
@@ -138,7 +139,7 @@ namespace sdk {
 
     bool client_blob::is_master_blinding_key_denied() const
     {
-        return json_get_value(m_data[SLIP77KEY], "denied", false); // False if not explicitly denied
+        return j_bool_or_false(m_data[SLIP77KEY], "denied"); // False if not explicitly denied
     }
 
     bool client_blob::set_wo_data(const std::string& username, const nlohmann::json& xpubs)

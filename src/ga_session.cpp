@@ -1009,7 +1009,7 @@ namespace sdk {
             reset_cached_session_data(locker);
         }
 
-        const bool reset_2fa_active = json_get_value(login_data, "reset_2fa_active", false);
+        const bool reset_2fa_active = j_bool_or_false(login_data, "reset_2fa_active");
         const std::string server_hmac = login_data["client_blob_hmac"];
         bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
 
@@ -1744,7 +1744,7 @@ namespace sdk {
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        const bool old_hidden = json_get_value(p->second, "hidden", false);
+        const bool old_hidden = j_bool_or_false(p->second, "hidden");
         if (old_hidden != is_hidden) {
             update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, &m_blob, subaccount, is_hidden));
             // Look up our subaccount again as iterators may have been invalidated
@@ -2117,7 +2117,7 @@ namespace sdk {
                     utxo["satoshi"] = j_amount_or_zero(utxo, "value").value();
                 } else {
                     if (is_liquid) {
-                        if (json_get_value(utxo, "is_relevant", true)) {
+                        if (j_bool(utxo, "is_relevant").value_or(true)) {
                             updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
                         } else {
                             constexpr bool mark_unconfidential = false;
@@ -2313,7 +2313,7 @@ namespace sdk {
             } else if (seen_positive) {
                 tx_type = "incoming";
                 for (auto& ep : tx_details["inputs"]) {
-                    if (!json_get_value(ep, "is_relevant", false)) {
+                    if (!j_bool_or_false(ep, "is_relevant")) {
                         std::string addressee = json_get_value(ep, "social_source");
                         if (!addressee.empty()) {
                             ep["addressee"] = std::move(addressee);
@@ -2328,7 +2328,7 @@ namespace sdk {
                     if (is_liquid && json_get_value(ep, "script").empty()) {
                         continue; // Ignore Liquid fee output
                     }
-                    if (!json_get_value(ep, "is_relevant", false)) {
+                    if (!j_bool_or_false(ep, "is_relevant")) {
                         const auto social_destination_p = ep.find("social_destination");
                         if (social_destination_p != ep.end()) {
                             std::string addressee;
@@ -2345,7 +2345,7 @@ namespace sdk {
                         tx_type = "outgoing"; // We have at least one non-wallet output
                     }
                 }
-                can_rbf = !is_confirmed && json_get_value(tx_details, "rbf_optin", false);
+                can_rbf = !is_confirmed && j_bool_or_false(tx_details, "rbf_optin");
             }
             tx_details["type"] = std::move(tx_type);
             tx_details["can_rbf"] = can_rbf;
@@ -2542,7 +2542,7 @@ namespace sdk {
     {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t num_confs = details.at("num_confs");
-        const bool all_coins = json_get_value(details, "all_coins", false);
+        const bool all_coins = j_bool_or_false(details, "all_coins");
         bool old_watch_only = false;
 
         auto utxos
@@ -2792,21 +2792,13 @@ namespace sdk {
         return wamp_cast_json(m_wamp->call("login.available_currencies"));
     }
 
-#if 1
     // Note: Current design is to always enable RBF if the server supports
     // it, perhaps allowing disabling for individual txs or only for BIP 70
     bool ga_session::is_rbf_enabled() const
     {
         locker_t locker(m_mutex);
-        return !m_net_params.is_liquid() && json_get_value(m_login_data, "rbf", true);
+        return !m_net_params.is_liquid() && j_bool(m_login_data, "rbf").value_or(true);
     }
-#else
-    bool ga_session::is_rbf_enabled() const
-    {
-        locker_t locker(m_mutex);
-        return m_login_data["rbf"] && json_get_value(m_login_data["appearance"], "replace_by_fee", false);
-    }
-#endif
 
     bool ga_session::is_watch_only() const
     {
@@ -2831,10 +2823,10 @@ namespace sdk {
     const std::string& ga_session::get_default_address_type(uint32_t subaccount) const
     {
         const auto appearance = get_appearance();
-        if (json_get_value(appearance, "use_csv", false) && subaccount_allows_csv(subaccount)) {
+        if (j_bool_or_false(appearance, "use_csv") && subaccount_allows_csv(subaccount)) {
             return address_type::csv;
         }
-        if (json_get_value(appearance, "use_segwit", false)) {
+        if (j_bool_or_false(appearance, "use_segwit")) {
             return address_type::p2wsh;
         }
         return address_type::p2sh;
@@ -2843,7 +2835,7 @@ namespace sdk {
     bool ga_session::is_twofactor_reset_active(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        return json_get_value(m_login_data, "reset_2fa_active", false);
+        return j_bool_or_false(m_login_data, "reset_2fa_active");
     }
 
     nlohmann::json ga_session::get_twofactor_config(bool reset_cached)
@@ -2916,7 +2908,7 @@ namespace sdk {
         nlohmann::json::array_t enabled_methods;
         enabled_methods.reserve(all_methods.size());
         for (const auto& m : all_methods) {
-            if (json_get_value(m_twofactor_config[m], "enabled", false)) {
+            if (j_bool_or_false(m_twofactor_config[m], "enabled")) {
                 enabled_methods.emplace_back(m);
             }
         }

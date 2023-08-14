@@ -1070,8 +1070,7 @@ namespace sdk {
         }
         const bool is_liquid = m_net_params.is_liquid();
 
-        if (!is_liquid || !json_get_value(m_details, "error").empty()
-            || json_get_value(m_details, "is_blinded", false)) {
+        if (!is_liquid || !json_get_value(m_details, "error").empty() || j_bool_or_false(m_details, "is_blinded")) {
             // Already blinded, or non-Liquid network: return the details as-is
             m_result = std::move(m_details);
             return state_type::done;
@@ -1098,7 +1097,7 @@ namespace sdk {
             utxos.emplace_back(std::move(prevout));
         }
         m_twofactor_data["transaction_inputs"] = std::move(utxos);
-        const bool is_partial = json_get_value(m_details, "is_partial", false);
+        const bool is_partial = j_bool_or_false(m_details, "is_partial");
         m_twofactor_data["is_partial"] = is_partial;
         GDK_RUNTIME_ASSERT(is_partial || m_details["transaction_outputs"].size() >= 2);
         auto& outputs = m_twofactor_data["transaction_outputs"];

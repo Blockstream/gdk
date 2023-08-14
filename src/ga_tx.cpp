@@ -178,9 +178,9 @@ namespace sdk {
             // returned from the get_transactions call
             const auto& prev_tx = result["previous_transaction"];
             bool is_rbf = false, is_cpfp = false;
-            if (json_get_value(prev_tx, "can_rbf", false)) {
+            if (j_bool_or_false(prev_tx, "can_rbf")) {
                 is_rbf = true;
-            } else if (json_get_value(prev_tx, "can_cpfp", false)) {
+            } else if (j_bool_or_false(prev_tx, "can_cpfp")) {
                 is_cpfp = true;
             } else {
                 // Transaction is confirmed or marked non-RBF
@@ -237,8 +237,8 @@ namespace sdk {
                     // single sig: determine if we have explicit change; if not
                     // we use any found wallet output as change below.
                     for (const auto& output : outputs) {
-                        const bool is_relevant = json_get_value(output, "is_relevant", false);
-                        const bool is_internal = json_get_value(output, "is_internal", false);
+                        const bool is_relevant = j_bool_or_false(output, "is_relevant");
+                        const bool is_internal = j_bool_or_false(output, "is_internal");
                         if (is_relevant && is_internal) {
                             have_explicit_change = true;
                             break;
@@ -255,7 +255,7 @@ namespace sdk {
                         GDK_RUNTIME_ASSERT(tx.get_output(out_index).script_len == spk.size());
                         GDK_RUNTIME_ASSERT(!memcmp(tx.get_output(out_index).script, &spk[0], spk.size()));
                     }
-                    const bool is_relevant = json_get_value(output, "is_relevant", false);
+                    const bool is_relevant = j_bool_or_false(output, "is_relevant");
                     if (is_relevant) {
                         // Validate address is owned by the wallet
                         GDK_RUNTIME_ASSERT(out_addr == get_address_from_utxo(session, output));
@@ -268,7 +268,7 @@ namespace sdk {
                             // Multisig: Treat the first wallet output as change, as we
                             // don't have internal addresses to mark change explicitly
                             is_change = true;
-                        } else if (!have_explicit_change || json_get_value(output, "is_internal", false)) {
+                        } else if (!have_explicit_change || j_bool_or_false(output, "is_internal")) {
                             // Singlesig: Either we don't have explicit change, and
                             // this is the first wallet output, or we do have explicit
                             // change and this is the first explicit change output
@@ -314,7 +314,7 @@ namespace sdk {
 
                 if (!change_index.has_value() && !is_redeposit) {
                     for (const auto& in : prev_tx["inputs"]) {
-                        if (json_get_value(in, "is_relevant", false)) {
+                        if (j_bool_or_false(in, "is_relevant")) {
                             // Use the first inputs subaccount as our change subaccount
                             // FIXME: When the server supports multiple subaccount sends,
                             // this will need to change to something smarter
@@ -329,7 +329,7 @@ namespace sdk {
                 // Add the existing inputs as UTXOs
                 std::map<uint32_t, nlohmann::json> tx_inputs_map;
                 for (const auto& input : prev_tx.at("inputs")) {
-                    GDK_RUNTIME_ASSERT(json_get_value(input, "is_relevant", false));
+                    GDK_RUNTIME_ASSERT(j_bool_or_false(input, "is_relevant"));
                     nlohmann::json utxo(input);
                     // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                     const uint32_t i = input.at("pt_idx");
@@ -377,7 +377,7 @@ namespace sdk {
                     // Add a single output from the old tx as our new tx input
                     std::vector<nlohmann::json> utxos;
                     for (const auto& output : prev_tx.at("outputs")) {
-                        if (json_get_value(output, "is_relevant", false)) {
+                        if (j_bool_or_false(output, "is_relevant")) {
                             // First output paying to us, use it as the new tx input
                             nlohmann::json utxo(output);
                             utxo["txhash"] = prev_tx.at("txhash");
@@ -604,7 +604,7 @@ namespace sdk {
             const auto policy_asset = net_params.get_policy_asset();
 
             const auto subaccounts = get_tx_subaccounts(result);
-            const bool is_partial = json_get_value(result, "is_partial", false);
+            const bool is_partial = j_bool_or_false(result, "is_partial");
 
             result["transaction_outputs"] = nlohmann::json::array();
             result["fee"] = 0u;
@@ -688,7 +688,7 @@ namespace sdk {
                 auto asset_id = j_asset(net_params, addressee);
                 auto& a = asset_addressees[asset_id];
                 a.asset_id = asset_id;
-                if (json_get_value(addressee, "is_greedy", false)) {
+                if (j_bool_or_false(addressee, "is_greedy")) {
                     if (a.greedy_index.has_value()) {
                         set_tx_error(result, "only one output per asset type can be greedy");
                         return;
@@ -778,7 +778,7 @@ namespace sdk {
                 add_tx_fee_output(session, result, tx, btc_details.fee.value());
             }
             auto& tx_inputs = result.at("transaction_inputs");
-            if (tx_inputs.size() > 1u && json_get_value(result, "randomize_inputs", true)) {
+            if (tx_inputs.size() > 1u && j_bool(result, "randomize_inputs").value_or(true)) {
                 tx.randomize_inputs(tx_inputs);
             }
             update_tx_info(session, tx, result);
@@ -1260,7 +1260,7 @@ namespace sdk {
 
             const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
             const uint32_t pointer = json_get_value(utxo, "pointer", 0u);
-            const bool is_internal = json_get_value(utxo, "is_internal", false);
+            const bool is_internal = j_bool_or_false(utxo, "is_internal");
             const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
             const auto sig = session.get_nonnull_signer()->sign_hash(path, tx_signature_hash);
             sigs[i] = b2h(ec_sig_to_der(sig, sighash_flags));
@@ -1333,7 +1333,7 @@ namespace sdk {
         auto& transaction_outputs = details.at("transaction_outputs");
 
         Tx tx(json_get_value(details, "transaction"), is_liquid);
-        const bool is_partial = json_get_value(details, "is_partial", false);
+        const bool is_partial = j_bool_or_false(details, "is_partial");
         const bool blinding_nonces_required = details.at("blinding_nonces_required");
 
         // We must have at least a regular output and a fee output, unless partial
