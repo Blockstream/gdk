@@ -471,59 +471,6 @@ impl ElectrumSession {
         self.get_wallet_hash_id()
     }
 
-    pub fn login(&mut self, credentials: Credentials) -> Result<LoginData, Error> {
-        info!(
-            "login {:?} last network call succeeded {:?}",
-            self.network, self.last_network_call_succeeded
-        );
-
-        // This check must be done before everything else to allow re-login
-        if self.master_xpub.is_some() {
-            // we consider login already done if wallet is some
-            return self.get_wallet_hash_id();
-        }
-
-        let (master_xprv, master_xpub, master_blinding_key) =
-            keys_from_credentials(&credentials, self.network.bip32_network())?;
-
-        self.load_store(&LoadStoreOpt {
-            master_xpub: master_xpub.clone(),
-            master_xpub_fingerprint: None,
-        })?;
-
-        if self.network.liquid {
-            if self.get_master_blinding_key()?.master_blinding_key.is_none() {
-                self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
-                    master_blinding_key,
-                })?;
-            }
-        }
-
-        // Set the master xprv
-        self.master_xprv = Some(master_xprv);
-
-        // Get xpubs from signer and (re)create subaccounts
-        for account_num in self.get_subaccount_nums()? {
-            let path = self.get_subaccount_root_path(GetAccountPathOpt {
-                subaccount: account_num,
-            })?;
-            let xprv = master_xprv.derive_priv(&crate::EC, &path.path).unwrap();
-            let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
-
-            self.create_subaccount(CreateAccountOpt {
-                subaccount: account_num,
-                name: "".to_string(),
-                xpub: Some(xpub),
-                discovered: false,
-                is_already_created: true,
-                allow_gaps: false,
-            })?;
-        }
-
-        self.start_threads()?;
-        self.get_wallet_hash_id()
-    }
-
     pub fn join_threads(&mut self) {
         while let Some(handle) = self.handles.pop() {
             handle.join().expect("Couldn't join on the associated thread");

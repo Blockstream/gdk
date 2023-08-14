@@ -75,7 +75,6 @@ impl Session for ElectrumSession {
 
             "disconnect" => self.disconnect().to_json(),
 
-            "login" => self.login(serde_json::from_value(input)?).to_json(),
             "login_wo" => self.login_wo(serde_json::from_value(input)?).to_json(),
             "credentials_from_pin_data" => {
                 self.credentials_from_pin_data(&serde_json::from_value(input)?).to_json()

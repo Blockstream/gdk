@@ -149,7 +149,42 @@ impl TestSession {
             bip39_passphrase: "".to_string(),
         };
         info!("logging in gdk session");
-        let _login_data = session.login(credentials.clone()).unwrap();
+        let (master_xprv, master_xpub, master_blinding_key) =
+            gdk_electrum::keys_from_credentials(&credentials, network.bip32_network()).unwrap();
+
+        let opt = LoadStoreOpt {
+            master_xpub: master_xpub.clone(),
+            master_xpub_fingerprint: None,
+        };
+        session.load_store(&opt).unwrap();
+
+        if is_liquid {
+            let opt = SetMasterBlindingKeyOpt {
+                master_blinding_key,
+            };
+            session.set_master_blinding_key(&opt).unwrap();
+        }
+
+        let account_nums = session.get_subaccount_nums().unwrap();
+        assert_eq!(account_nums, vec![0]);
+
+        // Create subaccount 0
+        let path: bitcoin::bip32::DerivationPath = "m/84'/1'/0'".parse().unwrap();
+        let path: Vec<bitcoin::bip32::ChildNumber> = path.into();
+        let xprv = master_xprv.derive_priv(&gdk_common::EC, &path).unwrap();
+        let xpub = bitcoin::bip32::ExtendedPubKey::from_priv(&gdk_common::EC, &xprv);
+        let opt = CreateAccountOpt {
+            subaccount: 0,
+            name: "".to_string(),
+            xpub: Some(xpub),
+            discovered: false,
+            is_already_created: true,
+            allow_gaps: false,
+        };
+        session.create_subaccount(opt).unwrap();
+
+        session.start_threads().unwrap();
+
         assert!(session.filter_events("settings").last().is_some());
 
         assert_eq!(network.name, ""); // network name contributes to wallet hash id
