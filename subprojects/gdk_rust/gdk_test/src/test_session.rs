@@ -314,7 +314,7 @@ impl TestSession {
         panic!("electrs_tip always return error")
     }
 
-    /// balance in satoshi (or liquid satoshi) of the gdk session for account 0
+    /// balance in satoshi of the gdk session for account 0
     fn balance_gdk(&self, asset: Option<String>) -> u64 {
         self.balance_account(0, asset, None)
     }
