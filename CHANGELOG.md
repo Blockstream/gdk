@@ -1,17 +1,46 @@
 # Changelog
 
-## Release 0.0.66
+## Release 0.68.0
 
 ### Added
+
 - Add new subaccount notifications. These signal the creation of a
-  subaccount or if it completed the first sync.
-  Please see the notification documentation for details.
+  subaccount or if it completed the first sync. Please see the notification
+  documentation for details.
 - GA_get_unspent_outputs_for_private_key: add support for Electrum
   sessions.
 - GA_get_unspent_outputs_for_private_key: rename "compressed" to
   "is_compressed".
 - GA_get_unspent_outputs_for_private_key: allow to sweep p2wpkh and
   p2sh-p2wpkkh outputs.
+- GA_psbt_sign: Support signing BTC PSBTv0 and PSBTv2 in addition to Liquid PSETs.
+- GA_psbt_sign: Support signing PSBT/PSET with hardware wallets.
+- GA_psbt_sign: Support two-factor authentication for PSBT/PSET.
+- GA_psbt_sign: Support spending limits for PSBTs.
+- GA_create_transaction (singlesig): Support creating sweep transactions
+  and transactions with mixed sweep and wallet inputs.
+- GA_get_transaction_details (singlesig): Support fetching non-wallet
+  transactions to match the multisig behaviour.
+- GA_sign_transaction: Allow the caller to provide their own Anti-Exfil
+  host entropy.
+
+### Changed
+
+- GA_psbt_get_details: The returned data now matches the existing format
+  from GA_create_transaction/GA_sign_transaction.
+- GA_get_credentials (Liquid): Now also returns the SLIP77 master blinding
+  key when available.
+- Documentation: Document the Anti-exfil protocol fields in HWW requests.
+
+### Fixed
+
+- GA_sign_transaction: Always return the transaction txid in the "txhash" element.
+
+### Removed
+
+## Release 0.67.0 - 2023-08-08
+
+### Added
 
 ### Changed
 
