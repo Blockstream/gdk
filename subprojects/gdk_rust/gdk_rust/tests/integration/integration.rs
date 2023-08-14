@@ -267,7 +267,7 @@ fn test_spv_over_period() {
     // regtest doesn't retarget after a period (2016 blocks)
     let mut test_session = TestSession::new(|_| ());
 
-    test_session.fund(100_000_000, None);
+    test_session.fund(100_000_000);
 
     let initial_block = 101;
     let block_to_mine = 200;
@@ -302,7 +302,7 @@ fn test_spv_external_concurrent(spv_enabled: bool) {
     let mut test_session = TestSession::new(|n| n.spv_enabled = Some(spv_enabled));
     // network.state_dir = "."; // launching twice with the same dir would break the test, because the regtest blockchain is different
 
-    test_session.fund(100_000_000, None);
+    test_session.fund(100_000_000);
 
     let initial_block = 101u32;
 

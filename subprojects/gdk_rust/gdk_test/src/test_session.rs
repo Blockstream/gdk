@@ -204,20 +204,12 @@ impl TestSession {
         }
     }
 
-    /// fund the gdk session (account #0) with satoshis from the node, if on liquid issue `assets_to_issue` assets
-    pub fn fund(&mut self, satoshi: u64, assets_to_issue: Option<u8>) -> Vec<String> {
+    /// fund the gdk session (account #0) with satoshis from the node
+    pub fn fund(&mut self, satoshi: u64) -> String {
         let initial_satoshis = self.balance_gdk(None);
         let ap = self.get_receive_address(0);
         let funding_tx = self.node.client.sendtoaddress(&ap.address, satoshi, None).unwrap();
         self.wait_tx(vec![0], &funding_tx, Some(satoshi), Some(TransactionType::Incoming));
-        let mut assets_issued = vec![];
-
-        for _ in 0..assets_to_issue.unwrap_or(0) {
-            let asset = self.node.client.issueasset(satoshi).unwrap();
-            let txid = self.node.client.sendtoaddress(&ap.address, satoshi, Some(&*asset)).unwrap();
-            self.wait_tx(vec![0], &txid, None, None);
-            assets_issued.push(asset);
-        }
 
         // node is allowed to make tx below dust with dustrelayfee, but gdk session should not see
         // this as spendable, thus the balance should not change
@@ -228,7 +220,7 @@ impl TestSession {
         };
 
         assert_eq!(self.balance_gdk(None), initial_satoshis + satoshi);
-        assets_issued
+        funding_tx
     }
 
     pub fn get_tx_list(&self, subaccount: u32) -> Vec<TxListItem> {
