@@ -16,12 +16,6 @@ namespace sdk {
             return bip32_key_from_parent_path_alloc(hdkey, path, flags | BIP32_FLAG_SKIP_HASH);
         }
 
-        static std::string derive_login_bip32_xpub(const wally_ext_key_ptr& master_key)
-        {
-            auto login_hdkey = derive(master_key, signer::LOGIN_PATH, BIP32_FLAG_KEY_PUBLIC);
-            return base58check_from_bytes(bip32_key_serialize(*login_hdkey, BIP32_FLAG_KEY_PUBLIC));
-        }
-
         static nlohmann::json get_credentials_json(const nlohmann::json& credentials)
         {
             if (credentials.empty()) {
@@ -267,26 +261,16 @@ namespace sdk {
         ext_key* hdkey = m_master_key.get();
         GDK_RUNTIME_ASSERT(hdkey);
         wally_ext_key_ptr derived;
-        std::string login_bip32_xpub;
         if (!path.empty()) {
-            derived = derive(m_master_key, path);
+            derived = derive(m_master_key, path, BIP32_FLAG_KEY_PUBLIC);
             hdkey = derived.get();
-        } else {
-            // We are encaching the master pubkey. Encache the login pubkey
-            // at the same time to save callers having to re-derive it multiple times
-            // for message signing/verification.
-            login_bip32_xpub = derive_login_bip32_xpub(m_master_key);
         }
-        auto ret = base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
-        std::unique_lock<std::mutex> locker{ m_mutex };
-        m_cached_bip32_xpubs.emplace(path, ret);
-        if (!login_bip32_xpub.empty()) {
-            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), login_bip32_xpub);
-        }
-        return ret;
+        auto bip32_xpub = base58check_from_bytes(bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC));
+        cache_bip32_xpub(path, bip32_xpub);
+        return bip32_xpub;
     }
 
-    std::string signer::get_master_bip32_xpub() { return get_bip32_xpub(std::vector<uint32_t>()); }
+    std::string signer::get_master_bip32_xpub() { return get_bip32_xpub({}); }
 
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
@@ -304,9 +288,13 @@ namespace sdk {
             return false; // Not updated
         }
         if (path.empty()) {
-            // Encaching master pubkey, encache the login pubkey as above
-            auto master_pubkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
-            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), derive_login_bip32_xpub(master_pubkey));
+            // We are encaching the master pubkey. Encache the login pubkey
+            // at the same time to save callers having to re-derive it multiple
+            // times for message signing/verification.
+            auto master_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
+            auto login_hdkey = derive(master_hdkey, signer::LOGIN_PATH, BIP32_FLAG_KEY_PUBLIC);
+            auto login_xpub = base58check_from_bytes(bip32_key_serialize(*login_hdkey, BIP32_FLAG_KEY_PUBLIC));
+            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), login_xpub);
         }
         return true; // Updated
     }
