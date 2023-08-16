@@ -130,6 +130,9 @@ namespace sdk {
         void set_master_blinding_key(const std::string& blinding_key_hex);
 
     private:
+        // Compute the xpub from an hdkey and encache it
+        std::string cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey);
+
         // Immutable
         const bool m_is_main_net;
         const bool m_is_liquid;

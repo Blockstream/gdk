@@ -116,6 +116,7 @@ namespace sdk {
 
     constexpr uint32_t harden(uint32_t pointer) { return pointer | 0x80000000; }
     constexpr uint32_t unharden(uint32_t pointer) { return pointer & 0x7fffffff; }
+    inline bool is_hardened(uint32_t pointer) { return pointer & 0x80000000; }
 
     // BIP 38
     std::vector<unsigned char> bip38_raw_to_private_key(byte_span_t priv_key, byte_span_t passphrase, uint32_t flags);
