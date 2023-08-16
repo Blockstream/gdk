@@ -304,8 +304,23 @@ namespace sdk {
 
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
+        if (m_master_key.get()) {
+            return true; // We can derive any xpub we need
+        }
+        std::vector<uint32_t> parent_path{ path };
         std::unique_lock<std::mutex> locker{ m_mutex };
-        return m_cached_bip32_xpubs.find(path) != m_cached_bip32_xpubs.end();
+        for (;;) {
+            auto cached = m_cached_bip32_xpubs.find(parent_path);
+            if (cached != m_cached_bip32_xpubs.end()) {
+                return true; // Found
+            }
+            if (parent_path.empty() || is_hardened(parent_path.back())) {
+                // Root key or hardened parent we don't have
+                return false;
+            }
+            // Try the next highest possible parent
+            parent_path.pop_back();
+        }
     }
 
     std::string signer::cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey)
