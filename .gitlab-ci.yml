@@ -10,9 +10,9 @@ stages:
 
 include:
   - gitlab/common.yml
+  - gitlab/python.yml
   - gitlab/android.yml
   - gitlab/ios.yml
-  - gitlab/python.yml
   - gitlab/docker.yml
 
 ## disables MR-triggered pipelines and allows only branch-triggered pipelines
