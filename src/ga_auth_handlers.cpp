@@ -350,6 +350,7 @@ namespace sdk {
                 signal_hw_request(hw_request::get_xpubs);
                 auto& paths = m_twofactor_data["paths"];
                 paths.emplace_back(signer::EMPTY_PATH);
+                paths.emplace_back(signer::LOGIN_PATH);
                 paths.emplace_back(signer::CLIENT_SECRET_PATH);
             } catch (const std::exception&) {
                 m_signer.reset(); // Allow this code path to re-run if the above throws
@@ -373,7 +374,7 @@ namespace sdk {
 
             // Set the cache keys for the wallet, loading/creating the
             // local cache as needed.
-            const auto local_xpub = make_xpub(xpubs.at(1));
+            const auto local_xpub = make_xpub(xpubs.at(2));
             m_session->set_local_encryption_keys(local_xpub.second, m_signer);
 
             if (is_electrum) {

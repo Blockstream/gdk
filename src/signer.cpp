@@ -337,21 +337,9 @@ namespace sdk {
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
         auto ret = m_cached_bip32_xpubs.emplace(path, bip32_xpub);
-        if (!ret.second) {
-            // Already present, verify that the value matches
-            GDK_RUNTIME_ASSERT(ret.first->second == bip32_xpub);
-            return false; // Not updated
-        }
-        if (path.empty()) {
-            // We are encaching the master pubkey. Encache the login pubkey
-            // at the same time to save callers having to re-derive it multiple
-            // times for message signing/verification.
-            auto master_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
-            auto login_hdkey = derive(master_hdkey, signer::LOGIN_PATH, BIP32_FLAG_KEY_PUBLIC);
-            auto login_xpub = base58check_from_bytes(bip32_key_serialize(*login_hdkey, BIP32_FLAG_KEY_PUBLIC));
-            m_cached_bip32_xpubs.emplace(make_vector(LOGIN_PATH), login_xpub);
-        }
-        return true; // Updated
+        // If already present, verify that the value matches
+        GDK_RUNTIME_ASSERT(ret.second || ret.first->second == bip32_xpub);
+        return ret.second; // Return whether or not the xpub was already present
     }
 
     signer::cache_t signer::get_cached_bip32_xpubs()
