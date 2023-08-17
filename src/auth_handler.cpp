@@ -28,7 +28,11 @@ namespace sdk {
 
     auth_handler::~auth_handler() {}
 
-    void auth_handler::signal_hw_request(hw_request /*request*/) { GDK_RUNTIME_ASSERT(false); }
+    nlohmann::json& auth_handler::signal_hw_request(hw_request /*request*/)
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
 
     auth_handler* auth_handler::get_next_handler() const { return m_next_handler.get(); }
 
@@ -76,7 +80,7 @@ namespace sdk {
         __builtin_unreachable();
     }
 
-    void auth_handler_impl::signal_hw_request(hw_request request)
+    nlohmann::json& auth_handler_impl::signal_hw_request(hw_request request)
     {
         m_hw_request = request;
         const char* action = nullptr;
@@ -109,6 +113,7 @@ namespace sdk {
         auto hw_device = m_signer ? m_signer->get_device() : nlohmann::json();
         m_twofactor_data = { { "action", action }, { "device", hw_device } };
         m_state = state_type::resolve_code;
+        return m_twofactor_data;
     }
 
     void auth_handler_impl::signal_2fa_request(const std::string& action)

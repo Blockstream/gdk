@@ -66,7 +66,7 @@ namespace sdk {
         virtual void on_next_handler_complete(auth_handler* next_handler);
 
     protected:
-        virtual void signal_hw_request(hw_request request);
+        virtual nlohmann::json& signal_hw_request(hw_request request);
         virtual void signal_2fa_request(const std::string& action);
         virtual void signal_data_request();
         virtual void set_error(const std::string& error_message);
@@ -100,7 +100,7 @@ namespace sdk {
         std::shared_ptr<signer> get_signer() const final;
 
     protected:
-        void signal_hw_request(hw_request request) final;
+        nlohmann::json& signal_hw_request(hw_request request) final;
         void signal_2fa_request(const std::string& action) final;
         void signal_data_request() final;
         void set_error(const std::string& error_message) final;

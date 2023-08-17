@@ -192,8 +192,8 @@ namespace sdk {
                         scripts.push_back(addr.at("scriptpubkey"));
                     }
                 }
-                signal_hw_request(hw_request::get_blinding_public_keys);
-                m_twofactor_data["scripts"] = std::move(scripts);
+                auto& request = signal_hw_request(hw_request::get_blinding_public_keys);
+                request["scripts"] = std::move(scripts);
                 return m_state;
             }
 
@@ -257,8 +257,7 @@ namespace sdk {
             // Create our signer
             m_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
 
-            signal_hw_request(hw_request::get_xpubs);
-            auto& paths = m_twofactor_data["paths"];
+            auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
             // We need the master xpub to identify the wallet
             paths.emplace_back(signer::EMPTY_PATH);
             if (!m_net_params.is_electrum()) {
@@ -347,8 +346,7 @@ namespace sdk {
 
             // We need master pubkey for the challenge, client secret pubkey for login
             try {
-                signal_hw_request(hw_request::get_xpubs);
-                auto& paths = m_twofactor_data["paths"];
+                auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
                 paths.emplace_back(signer::EMPTY_PATH);
                 paths.emplace_back(signer::LOGIN_PATH);
                 paths.emplace_back(signer::CLIENT_SECRET_PATH);
@@ -384,10 +382,10 @@ namespace sdk {
             }
 
             // Ask the caller to sign the challenge
-            signal_hw_request(hw_request::sign_message);
-            m_twofactor_data["message"] = CHALLENGE_PREFIX + m_challenge;
-            m_twofactor_data["path"] = signer::LOGIN_PATH;
-            add_required_ae_data(m_signer, m_twofactor_data);
+            auto& request = signal_hw_request(hw_request::sign_message);
+            request["message"] = CHALLENGE_PREFIX + m_challenge;
+            request["path"] = signer::LOGIN_PATH;
+            add_required_ae_data(m_signer, request);
             return m_state;
         } else if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
@@ -469,13 +467,13 @@ namespace sdk {
         // Ask the caller for the xpubs for each subaccount
         m_subaccount_pointers = m_session->get_subaccount_pointers();
 
-        std::vector<nlohmann::json> paths;
+        nlohmann::json::array_t paths;
         paths.reserve(m_subaccount_pointers.size());
         for (const auto& pointer : m_subaccount_pointers) {
             paths.emplace_back(m_session->get_subaccount_root_path(pointer));
         }
-        signal_hw_request(hw_request::get_xpubs);
-        m_twofactor_data["paths"] = paths;
+        auto& request = signal_hw_request(hw_request::get_xpubs);
+        request["paths"] = std::move(paths);
         return m_state;
     }
 
@@ -513,8 +511,7 @@ namespace sdk {
             }
         }
 
-        signal_hw_request(hw_request::get_xpubs);
-        auto& paths = m_twofactor_data["paths"];
+        auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
         paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
     }
 
@@ -532,10 +529,10 @@ namespace sdk {
             m_subaccount_xpub = xpubs.at(0);
             if (m_details.at("type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
-                signal_hw_request(hw_request::sign_message);
-                m_twofactor_data["message"] = format_recovery_key_message(m_details["recovery_xpub"], m_subaccount);
-                m_twofactor_data["path"] = signer::LOGIN_PATH;
-                add_required_ae_data(get_signer(), m_twofactor_data);
+                auto& request = signal_hw_request(hw_request::sign_message);
+                request["message"] = format_recovery_key_message(m_details["recovery_xpub"], m_subaccount);
+                request["path"] = signer::LOGIN_PATH;
+                add_required_ae_data(get_signer(), request);
                 return m_state;
             }
             // Fall through to create the subaccount
@@ -580,10 +577,10 @@ namespace sdk {
 
         m_message_info = m_session->get_system_message_info(m_msg);
 
-        signal_hw_request(hw_request::sign_message);
-        m_twofactor_data["message"] = m_message_info.first;
-        m_twofactor_data["path"] = m_message_info.second;
-        add_required_ae_data(get_signer(), m_twofactor_data);
+        auto& request = signal_hw_request(hw_request::sign_message);
+        request["message"] = m_message_info.first;
+        request["path"] = m_message_info.second;
+        add_required_ae_data(get_signer(), request);
     }
 
     auth_handler::state_type ack_system_message_call::call_impl()
@@ -637,13 +634,13 @@ namespace sdk {
         bool have_inputs_to_sign = false;
 
         // Compute the data we need for the hardware to sign the transaction
-        signal_hw_request(hw_request::sign_tx);
-        m_twofactor_data["transaction"] = std::move(m_details["transaction"]);
-        auto& inputs = m_twofactor_data["transaction_inputs"];
+        auto& request = signal_hw_request(hw_request::sign_tx);
+        request["transaction"] = std::move(m_details["transaction"]);
+        auto& inputs = request["transaction_inputs"];
         inputs = std::move(m_details["transaction_inputs"]);
-        m_twofactor_data["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
-        m_twofactor_data["use_ae_protocol"] = use_ae_protocol;
-        m_twofactor_data["is_partial"] = m_details.value("is_partial", false);
+        request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
+        request["use_ae_protocol"] = use_ae_protocol;
+        request["is_partial"] = m_details.value("is_partial", false);
 
         // We need the inputs, augmented with types, scripts and paths
         std::unique_ptr<Tx> tx;
@@ -934,8 +931,8 @@ namespace sdk {
 
         if (m_net_params.is_liquid() && !m_net_params.is_electrum()) {
             // Ask the caller to provide the blinding key
-            signal_hw_request(hw_request::get_blinding_public_keys);
-            m_twofactor_data["scripts"].push_back(m_result.at("scriptpubkey"));
+            auto& request = signal_hw_request(hw_request::get_blinding_public_keys);
+            request["scripts"].push_back(m_result.at("scriptpubkey"));
         } else {
             // We are done
             m_state = state_type::done;
@@ -973,8 +970,8 @@ namespace sdk {
             return; // Nothing further to do
         }
         // Otherwise, request the the blinding keys for each address
-        signal_hw_request(hw_request::get_blinding_public_keys);
-        auto& scripts = m_twofactor_data["scripts"];
+        auto& request = signal_hw_request(hw_request::get_blinding_public_keys);
+        auto& scripts = request["scripts"];
         for (const auto& it : m_result.at("list")) {
             scripts.push_back(it.at("scriptpubkey"));
         }
@@ -1050,8 +1047,8 @@ namespace sdk {
             return state_type::done;
         }
         // We have unblinded change outputs, request the blinding keys
-        signal_hw_request(hw_request::get_blinding_public_keys);
-        m_twofactor_data.emplace("scripts", std::move(scripts));
+        auto& request = signal_hw_request(hw_request::get_blinding_public_keys);
+        request.emplace("scripts", std::move(scripts));
         return m_state;
     }
 
@@ -1089,7 +1086,7 @@ namespace sdk {
         }
 
         // Ask the HWW for the blinding factors to blind the tx
-        signal_hw_request(hw_request::get_blinding_factors);
+        auto& request = signal_hw_request(hw_request::get_blinding_factors);
         nlohmann::json::array_t utxos;
         const auto& tx_inputs = m_details["transaction_inputs"];
         utxos.reserve(tx_inputs.size());
@@ -1097,11 +1094,11 @@ namespace sdk {
             nlohmann::json prevout = { { "txhash", u.at("txhash") }, { "pt_idx", u.at("pt_idx") } };
             utxos.emplace_back(std::move(prevout));
         }
-        m_twofactor_data["transaction_inputs"] = std::move(utxos);
+        request["transaction_inputs"] = std::move(utxos);
         const bool is_partial = j_bool_or_false(m_details, "is_partial");
-        m_twofactor_data["is_partial"] = is_partial;
+        request["is_partial"] = is_partial;
         GDK_RUNTIME_ASSERT(is_partial || m_details["transaction_outputs"].size() >= 2);
-        auto& outputs = m_twofactor_data["transaction_outputs"];
+        auto& outputs = request["transaction_outputs"];
         outputs = m_details["transaction_outputs"];
         if (!is_partial) {
             // Remove the fee output for non-partial txs
@@ -1160,8 +1157,7 @@ namespace sdk {
 
         // Ask for the xpub for the next subaccount of the current type
         m_subaccount = m_session->get_last_empty_subaccount(m_subaccount_type);
-        signal_hw_request(hw_request::get_xpubs);
-        auto& paths = m_twofactor_data["paths"];
+        auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
         paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
         return m_state;
     }
@@ -1228,8 +1224,8 @@ namespace sdk {
         m_result = m_session->sync_transactions(m_subaccount, missing);
         if (!missing.empty()) {
             // We have missing nonces we need to fetch, request them
-            signal_hw_request(hw_request::get_blinding_nonces);
-            set_blinding_nonce_request_data(get_signer(), missing, m_twofactor_data);
+            auto& request = signal_hw_request(hw_request::get_blinding_nonces);
+            set_blinding_nonce_request_data(get_signer(), missing, request);
             return m_state;
         }
         // No missing nonces, cleanup and store the fetched txs directly
@@ -1328,8 +1324,8 @@ namespace sdk {
         }
         // Some utxos need unblinding; ask the caller to resolve them
         m_result.swap(utxos);
-        signal_hw_request(hw_request::get_blinding_nonces);
-        set_blinding_nonce_request_data(get_signer(), missing, m_twofactor_data);
+        auto& request = signal_hw_request(hw_request::get_blinding_nonces);
+        set_blinding_nonce_request_data(get_signer(), missing, request);
     }
 
     auth_handler::state_type get_unspent_outputs_call::call_impl()
@@ -1976,11 +1972,11 @@ namespace sdk {
         if (!m_initialized) {
             // Create the data needed for user signing
             const auto address_data = m_session->get_address_data(m_details);
-            signal_hw_request(hw_request::sign_message);
+            auto& request = signal_hw_request(hw_request::sign_message);
             m_path = address_data.at("user_path").get<std::vector<uint32_t>>();
-            m_twofactor_data["path"] = m_path;
-            m_twofactor_data["message"] = m_details.at("message");
-            add_required_ae_data(signer, m_twofactor_data);
+            request["path"] = m_path;
+            request["message"] = m_details.at("message");
+            add_required_ae_data(signer, request);
             m_initialized = true;
             return m_state;
         }
