@@ -610,17 +610,6 @@ namespace sdk {
             + std::to_string(subaccount);
     }
 
-    // Verify an Anti-Exfil signature wrt the passed host-entropy and signer commitment
-    // TODO: any failures here should be tracked/counted by the wallet (eg. in the client-blob)
-    // to ensure the hww is abiding by the Anti-Exfil protocol.
-    void verify_ae_signature(const pub_key_t& pubkey, byte_span_t data_hash, byte_span_t host_entropy,
-        byte_span_t signer_commitment, byte_span_t sig)
-    {
-        if (!ae_verify(pubkey, data_hash, host_entropy, signer_commitment, sig)) {
-            throw user_error(res::id_signature_validation_failed_if);
-        }
-    }
-
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes)
     {
         const size_t prefix_len = prefix.size();

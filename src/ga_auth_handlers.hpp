@@ -327,8 +327,7 @@ namespace sdk {
         state_type call_impl() override;
 
         nlohmann::json m_details;
-        std::vector<uint32_t> m_path;
-        bool m_initialized;
+        nlohmann::json m_address_data;
     };
 
     class twofactor_reset_call : public auth_handler_impl {

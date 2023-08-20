@@ -721,15 +721,6 @@ namespace sdk {
         return ret;
     }
 
-    bool ae_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t host_entropy,
-        byte_span_t signer_commitment, byte_span_t sig, uint32_t flags)
-    {
-        return wally_ae_verify(public_key.data(), public_key.size(), message_hash.data(), message_hash.size(),
-                   host_entropy.data(), host_entropy.size(), signer_commitment.data(), signer_commitment.size(), flags,
-                   sig.data(), sig.size())
-            == WALLY_OK;
-    }
-
     bool ec_scalar_verify(byte_span_t scalar)
     {
         return wally_ec_scalar_verify(scalar.data(), scalar.size()) == WALLY_OK;

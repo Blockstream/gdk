@@ -277,9 +277,6 @@ namespace sdk {
     std::array<unsigned char, WALLY_HOST_COMMITMENT_LEN> ae_host_commit_from_bytes(
         byte_span_t entropy, uint32_t flags = EC_FLAG_ECDSA);
 
-    bool ae_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t host_entropy,
-        byte_span_t signer_commitment, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
-
     bool ec_scalar_verify(byte_span_t scalar);
 
     std::array<unsigned char, EC_SCALAR_LEN> ec_scalar_add(byte_span_t a, byte_span_t b);

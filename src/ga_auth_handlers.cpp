@@ -65,7 +65,22 @@ namespace sdk {
             return using_ae_protocol;
         }
 
-        static void verify_ae_message(const nlohmann::json& twofactor_data, pub_key_t pubkey,
+        // Verify an Anti-Exfil signature wrt the passed host-entropy and signer commitment
+        // TODO: any failures here should be tracked/counted by the wallet (eg. in the client-blob)
+        // to ensure the hww is abiding by the Anti-Exfil protocol.
+        void verify_ae_signature(byte_span_t pubkey, byte_span_t message_hash, byte_span_t host_entropy,
+            byte_span_t signer_commitment, byte_span_t sig)
+        {
+            const uint32_t flags = EC_FLAG_ECDSA;
+            auto ret = wally_ae_verify(pubkey.data(), pubkey.size(), message_hash.data(), message_hash.size(),
+                host_entropy.data(), host_entropy.size(), signer_commitment.data(), signer_commitment.size(), flags,
+                sig.data(), sig.size());
+            if (ret != WALLY_OK) {
+                throw user_error(res::id_signature_validation_failed_if);
+            }
+        }
+
+        static void verify_ae_message(const nlohmann::json& twofactor_data, byte_span_t pubkey,
             byte_span_t signer_commitment, byte_span_t compact_sig)
         {
             const std::string message = twofactor_data.at("message");
@@ -1960,7 +1975,6 @@ namespace sdk {
     sign_message_call::sign_message_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "sign_message")
         , m_details(std::move(details))
-        , m_initialized(false)
     {
     }
 
@@ -1969,39 +1983,29 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(m_net_params.is_electrum() && !m_net_params.is_liquid(), "Invalid network");
         auto signer = get_signer();
 
-        if (!m_initialized) {
-            // Create the data needed for user signing
-            const auto address_data = m_session->get_address_data(m_details);
-            auto& request = signal_hw_request(hw_request::sign_message);
-            m_path = address_data.at("user_path").get<std::vector<uint32_t>>();
-            request["path"] = m_path;
-            request["message"] = m_details.at("message");
-            add_required_ae_data(signer, request);
-            m_initialized = true;
+        if (m_address_data.empty()) {
+            // Get address data and request the xpub for signing
+            m_address_data = m_session->get_address_data(m_details);
+            auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
+            paths.emplace_back(m_address_data.at("user_path"));
             return m_state;
         }
+        if (m_hw_request == hw_request::get_xpubs) {
+            // Caller has provided the xpub for the address to sign.
+            // Store it and ask the signer to sign the message
+            m_address_data["xpub"] = j_arrayref(get_hw_reply(), "xpubs").at(0);
 
-        GDK_RUNTIME_ASSERT(m_path.size() == 5);
-        const std::vector<uint32_t> subaccount_path = { m_path.begin(), m_path.begin() + 3 };
-        const std::vector<uint32_t> address_path = { m_path.begin() + 3, m_path.end() };
-        // The subaccount xpub is cached by the signer
-        std::string subaccount_xpub;
-        try {
-            subaccount_xpub = signer->get_bip32_xpub(subaccount_path);
-        } catch (const std::exception&) {
-            throw user_error("Invalid path");
+            auto& request = signal_hw_request(hw_request::sign_message);
+            request["path"] = m_address_data.at("user_path");
+            request["message"] = m_details.at("message");
+            add_required_ae_data(signer, request);
+            return m_state;
         }
-
-        wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(subaccount_xpub);
-        pub_key_t pubkey;
-        if (address_path.empty()) {
-            memcpy(pubkey.begin(), parent->pub_key, pubkey.size());
-        } else {
-            ext_key derived = bip32_public_key_from_parent_path(*parent, address_path);
-            memcpy(pubkey.begin(), derived.pub_key, pubkey.size());
-        }
-
+        // Caller has provided the signed message.
+        GDK_RUNTIME_ASSERT(m_hw_request == hw_request::sign_message);
         const auto& hw_reply = get_hw_reply();
+        auto bip32_xpub = signer->get_bip32_xpub(m_address_data.at("user_path"));
+        auto xpub_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
 
         // Get the compact and recoverable signatures from the DER/compact/recoverable signature
         const auto sig = h2b(hw_reply["signature"]);
@@ -2018,7 +2022,7 @@ namespace sdk {
                 std::copy(sig.begin(), sig.end(), compact_sig.begin());
             }
             const auto message_hash = format_bitcoin_message_hash(ustring_span(m_twofactor_data["message"]));
-            recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, pubkey);
+            recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, xpub_hdkey->pub_key);
         } else if (sig.size() == 65) {
             // Recoverable format
             std::copy(sig.begin(), sig.end(), recoverable_sig.begin());
@@ -2029,8 +2033,9 @@ namespace sdk {
 
         if (signer->use_ae_protocol()) {
             const auto signer_commitment = h2b(hw_reply.at("signer_commitment"));
-            verify_ae_message(m_twofactor_data, pubkey, signer_commitment, compact_sig);
+            verify_ae_message(m_twofactor_data, xpub_hdkey->pub_key, signer_commitment, compact_sig);
         }
+
         m_result["signature"] = base64_from_bytes(recoverable_sig);
         return state_type::done;
     }
