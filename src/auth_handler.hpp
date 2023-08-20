@@ -51,9 +51,9 @@ namespace sdk {
         virtual state_type get_state() const = 0;
         virtual hw_request get_hw_request() const = 0;
         virtual bool is_data_request() const = 0;
-        virtual const nlohmann::json& get_twofactor_data() const = 0;
+        virtual nlohmann::json& get_twofactor_data() = 0;
         virtual const std::string& get_code() const = 0;
-        virtual const nlohmann::json& get_hw_reply() const = 0;
+        virtual nlohmann::json& get_hw_reply() = 0;
         virtual nlohmann::json&& move_result() = 0;
 
         virtual void operator()() = 0;
@@ -65,8 +65,9 @@ namespace sdk {
         std::unique_ptr<auth_handler> remove_next_handler();
         virtual void on_next_handler_complete(auth_handler* next_handler);
 
-    protected:
         virtual nlohmann::json& signal_hw_request(hw_request request);
+
+    protected:
         virtual void signal_2fa_request(const std::string& action);
         virtual void signal_data_request();
         virtual void set_error(const std::string& error_message);
@@ -90,9 +91,9 @@ namespace sdk {
         state_type get_state() const final;
         hw_request get_hw_request() const final;
         bool is_data_request() const final;
-        const nlohmann::json& get_twofactor_data() const final;
+        nlohmann::json& get_twofactor_data() final;
         const std::string& get_code() const final;
-        const nlohmann::json& get_hw_reply() const final;
+        nlohmann::json& get_hw_reply() final;
         nlohmann::json&& move_result() final;
 
         void operator()() final;
@@ -142,9 +143,9 @@ namespace sdk {
         state_type get_state() const final;
         hw_request get_hw_request() const final;
         bool is_data_request() const final;
-        const nlohmann::json& get_twofactor_data() const final;
+        nlohmann::json& get_twofactor_data() final;
         const std::string& get_code() const final;
-        const nlohmann::json& get_hw_reply() const final;
+        nlohmann::json& get_hw_reply() final;
         nlohmann::json&& move_result() final;
 
         void operator()() final;
@@ -158,10 +159,10 @@ namespace sdk {
         std::unique_ptr<auth_handler> pop_handler();
 
         bool step();
-        bool are_all_paths_cached(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
-        nlohmann::json get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const;
+        nlohmann::json get_xpubs(const std::shared_ptr<signer>& signer, const nlohmann::json::array_t& paths) const;
 
         auth_handler* m_handler;
+        nlohmann::json m_xpubs_request;
     };
 
 } // namespace sdk

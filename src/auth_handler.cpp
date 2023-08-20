@@ -3,6 +3,7 @@
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "session.hpp"
@@ -255,9 +256,9 @@ namespace sdk {
     {
         return m_methods && m_methods->size() == 1u && m_methods->front() == "data";
     }
-    const nlohmann::json& auth_handler_impl::get_twofactor_data() const { return m_twofactor_data; }
+    nlohmann::json& auth_handler_impl::get_twofactor_data() { return m_twofactor_data; }
     const std::string& auth_handler_impl::get_code() const { return m_code; }
-    const nlohmann::json& auth_handler_impl::get_hw_reply() const { return m_hw_reply; }
+    nlohmann::json& auth_handler_impl::get_hw_reply() { return m_hw_reply; }
 
     session_impl& auth_handler_impl::get_session() const { return *m_session; }
     nlohmann::json&& auth_handler_impl::move_result() { return std::move(m_result); }
@@ -385,13 +386,10 @@ namespace sdk {
         return get_current_handler()->get_hw_request();
     }
     bool auto_auth_handler::is_data_request() const { return get_current_handler()->is_data_request(); }
-    const nlohmann::json& auto_auth_handler::get_twofactor_data() const
-    {
-        return get_current_handler()->get_twofactor_data();
-    }
+    nlohmann::json& auto_auth_handler::get_twofactor_data() { return get_current_handler()->get_twofactor_data(); }
 
     const std::string& auto_auth_handler::get_code() const { return get_current_handler()->get_code(); }
-    const nlohmann::json& auto_auth_handler::get_hw_reply() const { return get_current_handler()->get_hw_reply(); }
+    nlohmann::json& auto_auth_handler::get_hw_reply() { return get_current_handler()->get_hw_reply(); }
     nlohmann::json&& auto_auth_handler::move_result() { return get_current_handler()->move_result(); }
 
     session_impl& auto_auth_handler::get_session() const { return get_current_handler()->get_session(); }
@@ -443,14 +441,12 @@ namespace sdk {
         const auto request = handler->get_hw_request();
 
         if (state == state_type::make_call) {
-            if (is_hardware && request == hw_request::get_xpubs) {
-                // Caller has resolved a get_xpubs request, cache the results
-                const auto& paths = get_twofactor_data().at("paths");
-                const auto& reply = get_hw_reply();
-                const auto& xpubs = reply.at("xpubs");
+            if (is_hardware && request == hw_request::get_xpubs && !m_xpubs_request.empty()) {
+                // HW has resolved a get_xpubs request, cache the results
+                const auto& paths = j_arrayref(get_twofactor_data(), "paths");
+                const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs", paths.size());
                 bool updated = false;
                 size_t i = 0;
-                GDK_RUNTIME_ASSERT(paths.size() == xpubs.size());
                 for (const auto& path : paths) {
                     updated |= signer->cache_bip32_xpub(path.get<std::vector<uint32_t>>(), xpubs.at(i));
                     ++i;
@@ -459,6 +455,10 @@ namespace sdk {
                     GDK_LOG_SEV(log_level::debug) << "signer xpub cache updated";
                     get_session().encache_signer_xpubs(signer);
                 }
+                // Replace the request/reply with the actually requested xpubs
+                auto& actual_paths = j_arrayref(m_xpubs_request, "paths");
+                get_hw_reply() = get_xpubs(signer, actual_paths);
+                get_twofactor_data()["paths"] = std::move(actual_paths);
             }
 
             (*handler)(); // Make the call
@@ -469,8 +469,8 @@ namespace sdk {
             return false; // Not a HW request, let the caller resolve
         }
 
-        const auto status = get_status();
-        const auto& required_data = status.at("required_data");
+        auto status = get_status();
+        auto& required_data = status.at("required_data");
         const bool have_master_blinding_key = signer->has_master_blinding_key();
         // The internal software wallet must have a master blinding key
         GDK_RUNTIME_ASSERT(!signer->is_liquid() || have_master_blinding_key || is_hardware);
@@ -514,14 +514,32 @@ namespace sdk {
             handler->resolve_hw_reply(get_blinding_factors(signer->get_master_blinding_key(), required_data));
             return true;
         } else if (request == hw_request::get_xpubs) {
-            const auto& paths = required_data.at("paths");
-            if (!is_hardware || are_all_paths_cached(signer, paths)) {
-                // A HWW request to compute xpubs which we have cached, or
-                // A SWW request to compute xpubs which we can compute if not cached
-                result.emplace("xpubs", get_xpubs(signer, paths));
-                handler->resolve_hw_reply(std::move(result));
+            m_xpubs_request = {};
+            std::set<std::vector<uint32_t>> parents;
+            const auto& paths = j_arrayref(required_data, "paths");
+            for (const auto& p : paths) {
+                auto path = p.get<std::vector<uint32_t>>();
+                if (!signer->has_bip32_xpub(path)) {
+                    while (!path.empty() && !is_hardened(path.back())) {
+                        path.pop_back(); // Strip path to its parent
+                    }
+                    parents.emplace(std::move(path));
+                }
+            }
+            if (parents.empty()) {
+                // All requested xpubs can be generated by the internal signer
+                handler->resolve_hw_reply(get_xpubs(signer, paths));
                 return true;
             }
+            // Save the handlers get_xpubs request
+            m_xpubs_request = std::move(required_data);
+            // Overwite the request with one with our optimal paths
+            auto& new_request = handler->signal_hw_request(hw_request::get_xpubs);
+            nlohmann::json::array_t parent_paths;
+            parent_paths.reserve(parents.size());
+            std::copy(parents.begin(), parents.end(), std::back_inserter(parent_paths));
+            new_request["paths"] = std::move(parent_paths);
+            return false;
         } else if (request == hw_request::sign_tx) {
             // Check if there are any inputs that actually require signing
             auto&& must_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
@@ -557,24 +575,16 @@ namespace sdk {
         return true;
     } // namespace sdk
 
-    bool auto_auth_handler::are_all_paths_cached(std::shared_ptr<signer> signer, const nlohmann::json& paths) const
-    {
-        for (const auto& p : paths) {
-            if (!signer->has_bip32_xpub(p.get<std::vector<uint32_t>>())) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    nlohmann::json auto_auth_handler::get_xpubs(std::shared_ptr<signer> signer, const nlohmann::json& paths) const
+    nlohmann::json auto_auth_handler::get_xpubs(
+        const std::shared_ptr<signer>& signer, const nlohmann::json::array_t& paths) const
     {
         nlohmann::json::array_t xpubs;
         xpubs.reserve(paths.size());
         for (const auto& p : paths) {
-            xpubs.emplace_back(signer->get_bip32_xpub(p.get<std::vector<uint32_t>>()));
+            auto path = p.get<std::vector<uint32_t>>();
+            xpubs.emplace_back(signer->get_bip32_xpub(path));
         }
-        return nlohmann::json(std::move(xpubs));
+        return nlohmann::json({ { "xpubs", std::move(xpubs) } });
     }
 
 } // namespace sdk
