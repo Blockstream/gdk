@@ -1545,7 +1545,7 @@ To validate addressees, for example prior to calling `GA_create_transaction`:
 
   {
     "addressees": {},
-    "network": "bitcoin"
+    "network": "mainnet"
   }
 
 :addressees: Mandatory. An array of :ref:`addressee` elements.
