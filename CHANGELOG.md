@@ -1,5 +1,13 @@
 # Changelog
 
+## Release 0.67.1
+
+### Removed
+
+- GA_sign_message: removed "create_recoverable_sig" flag in the
+  hardware wallet interface. Please see the gdk HWW interface
+  documentation for details
+
 ## Release 0.67.0 - 2023-08-08
 
 ### Added
