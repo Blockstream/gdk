@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.67.1
+## Release 0.67.1 - 2023-08-25
 
 ### Removed
 
