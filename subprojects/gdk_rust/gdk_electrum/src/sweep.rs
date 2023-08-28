@@ -26,6 +26,11 @@ pub struct SweepOpt {
 
     /// The address type to sweep
     pub address_type: String,
+
+    /// The private blinding key to unblind with
+    ///
+    /// None if not Liquid
+    pub blinding_private_key: Option<String>,
 }
 
 impl SweepOpt {
@@ -55,6 +60,8 @@ pub fn get_unspent_outputs_for_private_key(opt: &SweepOpt) -> Result<Vec<Unspent
     let client = opt.build_client()?;
     let (script_pubkey, script_code) = opt.scripts()?;
     let listunspent = client.script_list_unspent(&script_pubkey.clone().into_bitcoin())?;
+    // FIXME: (leo) listunpent does not work with Liquid
+    // TODO: (leo) if Liquid unblind here
     let utxos: Vec<UnspentOutput> = listunspent
         .iter()
         .map(|unspent| UnspentOutput {
