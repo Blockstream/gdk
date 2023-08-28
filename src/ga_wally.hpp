@@ -267,6 +267,8 @@ namespace sdk {
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
         const std::string& priv_key, const std::string& passphrase, bool mainnet);
 
+    std::string wif_from_bytes(byte_span_t bytes, bool mainnet, bool is_compressed = true);
+
     bool ec_private_key_verify(byte_span_t bytes);
 
     std::pair<priv_key_t, std::vector<unsigned char>> get_ephemeral_keypair();

@@ -690,6 +690,15 @@ namespace sdk {
             is_compressed };
     }
 
+    std::string wif_from_bytes(byte_span_t bytes, bool mainnet, bool is_compressed)
+    {
+        char* s;
+        uint32_t prefix = mainnet ? WALLY_ADDRESS_VERSION_WIF_MAINNET : WALLY_ADDRESS_VERSION_WIF_TESTNET;
+        uint32_t flags = is_compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED;
+        GDK_VERIFY(wally_wif_from_bytes(bytes.data(), bytes.size(), prefix, flags, &s));
+        return make_string(s);
+    }
+
     bool ec_private_key_verify(byte_span_t bytes)
     {
         return wally_ec_private_key_verify(bytes.data(), bytes.size()) == WALLY_OK;
