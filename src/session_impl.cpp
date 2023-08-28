@@ -10,6 +10,7 @@
 #include "http_client.hpp"
 #include "io_runner.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
@@ -497,6 +498,24 @@ namespace sdk {
     nlohmann::json session_impl::get_external_unspent_outputs(const nlohmann::json& details)
     {
         auto private_key = json_get_value(details, "private_key");
+        std::string blinding_private_key;
+        if (m_net_params.is_liquid()) {
+            // Minikey checks
+            GDK_RUNTIME_ASSERT_MSG(private_key.size() == 30, "Invalid minikey length");
+            GDK_RUNTIME_ASSERT_MSG(private_key.at(0) == 'S', "Invalid minikey prefix");
+            GDK_RUNTIME_ASSERT_MSG(sha256(ustring_span(private_key + '?'))[0] == 0, "Invalid minikey checksum");
+
+            // Convert to WIF
+            const auto bytes = sha256(ustring_span(private_key));
+            private_key = wif_from_bytes(bytes, m_net_params.is_main_net());
+
+            const unsigned char BLINDING_KEY_SUFFIX[11] = { 'b', 'l', 'i', 'n', 'd', 'i', 'n', 'g', 'k', 'e', 'y' };
+            std::array<unsigned char, SHA256_LEN + 11> preimage;
+            std::copy(bytes.begin(), bytes.end(), preimage.data());
+            std::copy(
+                BLINDING_KEY_SUFFIX, BLINDING_KEY_SUFFIX + sizeof(BLINDING_KEY_SUFFIX), preimage.data() + bytes.size());
+            blinding_private_key = b2h(sha256(preimage));
+        }
         auto password = json_get_value(details, "password");
 
         std::string address_type = "p2pkh";
@@ -525,6 +544,7 @@ namespace sdk {
         auto opt = get_net_call_params(timeout_secs);
         opt["public_key"] = b2h(public_key_bytes);
         opt["address_type"] = address_type;
+        opt["blinding_private_key"] = blinding_private_key;
 
         nlohmann::json utxos = rust_call("get_unspent_outputs_for_private_key", opt);
         for (auto& utxo : utxos) {

@@ -1447,9 +1447,6 @@ namespace sdk {
 
     auth_handler::state_type get_unspent_outputs_for_private_key_call::call_impl()
     {
-        if (m_net_params.is_liquid()) {
-            throw user_error("Sweeping is not yet implemented for Liquid wallets");
-        }
         m_result = m_session->get_external_unspent_outputs(m_details);
         return state_type::done;
     }
