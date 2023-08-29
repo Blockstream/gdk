@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
@@ -9,7 +9,7 @@ use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::{bitcoin, elements};
 
-use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETxid};
+use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETransactions, BETxid};
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
@@ -244,6 +244,28 @@ impl Account {
         })
     }
 
+    /// Get the number of transactions where at least one input or output has a certain script
+    /// pubkey.
+    fn tx_count(
+        &self,
+        script_pubkey: &BEScript,
+        heights: &HashMap<BETxid, Option<u32>>,
+        txs: &BETransactions,
+    ) -> u32 {
+        let mut tot = 0;
+        // Use heights to filter out conflicting transactions
+        for txid in heights.keys() {
+            if let Some(txe) = txs.get(&txid) {
+                if txe.tx.creates_script_pubkey(&script_pubkey)
+                    || txe.tx.spends_script_pubkey(&script_pubkey, txs)
+                {
+                    tot += 1;
+                }
+            }
+        }
+        tot
+    }
+
     pub fn get_previous_addresses(
         &self,
         opt: &GetPreviousAddressesOpt,
@@ -271,7 +293,7 @@ impl Account {
                 }
                 _ => (None, None, None),
             };
-            let tx_count = acc_store.all_txs.tx_count(&script_pubkey);
+            let tx_count = self.tx_count(&script_pubkey, &acc_store.heights, &acc_store.all_txs);
             previous_addresses.push(PreviousAddress {
                 address: address.to_string(),
                 address_type: self.script_type.to_string(),

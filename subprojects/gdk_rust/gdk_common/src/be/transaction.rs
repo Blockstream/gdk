@@ -598,20 +598,6 @@ impl BETransactions {
             Some(txe) => txe.tx.output_amountblinder_hex(outpoint.vout, &all_unblinded),
         }
     }
-
-    /// Get the number of transactions where at least one input or output has a certain script
-    /// pubkey.
-    pub fn tx_count(&self, script_pubkey: &BEScript) -> u32 {
-        let mut tot = 0;
-        for txe in self.values() {
-            if txe.tx.creates_script_pubkey(&script_pubkey)
-                || txe.tx.spends_script_pubkey(&script_pubkey, &self)
-            {
-                tot += 1;
-            }
-        }
-        tot
-    }
 }
 
 impl From<BETransaction> for BETransactionEntry {
