@@ -282,21 +282,21 @@ namespace sdk {
             // Master xpub requested. encache and return it
             return cache_ext_key({}, m_master_key);
         }
-        if (!parent_path.empty()) {
-            if (!parent_key.get()) {
-                // Derive the parent key from the master key
-                GDK_RUNTIME_ASSERT(m_master_key.get());
-                parent_key = derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC);
-            }
-            // Encache the parent
-            auto xpub_bip32 = cache_ext_key(parent_path, parent_key);
-            if (child_path.empty()) {
-                return xpub_bip32; // Parent is the desired key
-            }
+        if (!parent_path.empty() && !parent_key.get()) {
+            // Derive and encache the parent key from the master key
+            GDK_RUNTIME_ASSERT(m_master_key.get());
+            parent_key = derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC);
+            cache_ext_key(parent_path, parent_key);
         }
-        GDK_RUNTIME_ASSERT(!child_path.empty());
-        // Derive, encache and return the child key from the parent
-        auto child_key = derive(parent_key, child_path, BIP32_FLAG_KEY_PUBLIC);
+        auto& root_key = parent_key.get() ? parent_key : m_master_key;
+        GDK_RUNTIME_ASSERT(root_key.get());
+        if (child_path.empty()) {
+            // Return our root key, which is already cached
+            const auto key_data = bip32_key_serialize(*root_key, BIP32_FLAG_KEY_PUBLIC);
+            return base58check_from_bytes(key_data);
+        }
+        // Derive, encache and return the child key from the root key
+        auto child_key = derive(root_key, child_path, BIP32_FLAG_KEY_PUBLIC);
         return cache_ext_key(path, child_key); // Cache with the full path
     }
 
