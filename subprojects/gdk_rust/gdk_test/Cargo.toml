@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-electrsd = { version = "0.24.0", features = [ "legacy" ] }
+electrsd = { version = "0.25.0", features = ["legacy"] }
 env_logger = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 gdk-electrum = { path = "../gdk_electrum", features = ["testing"] }

@@ -169,9 +169,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoind"
-version = "0.30.0"
+version = "0.33.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e4a98e66bb7c1f81abf4f8d992e1839fc0f9cbc627effbff122aae7d5e493a0"
+checksum = "d749b52e156c684d79b5bfbbd354b4975cb47e86f96257518c299fb0a0c16ee4"
 dependencies = [
  "anyhow",
  "core-rpc",
@@ -391,9 +391,9 @@ checksum = "3f107b87b6afc2a64fd13cac55fe06d6c8859f12d4b14cbcdd2c67d0976781be"
 
 [[package]]
 name = "electrsd"
-version = "0.24.0"
+version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43cedd3e5efd7fa44f15d34a7a6004223b8203f54ccfab3a575498bf3abade1d"
+checksum = "bc62235dfe2106193945330b1fe38569e59cee83a8792a0bd98c3913b51b297c"
 dependencies = [
  "bitcoin_hashes 0.12.0",
  "bitcoind",
@@ -1031,15 +1031,15 @@ dependencies = [
 
 [[package]]
 name = "minreq"
-version = "2.6.0"
+version = "2.9.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4c785bc6027fd359756e538541c8624012ba3776d3d3fe123885643092ed4132"
+checksum = "9e9011dfd733a35686fee44b5749ecb981e9020f683433fcf8f8a9bc43a5ad41"
 dependencies = [
- "lazy_static",
  "log",
- "rustls 0.20.6",
- "webpki",
- "webpki-roots 0.22.3",
+ "once_cell",
+ "rustls",
+ "rustls-webpki 0.101.4",
+ "webpki-roots 0.25.2",
 ]
 
 [[package]]
@@ -1080,9 +1080,9 @@ dependencies = [
 
 [[package]]
 name = "once_cell"
-version = "1.12.0"
+version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7709cef83f0c1f58f666e746a08b21e0085f7440fa6a29cc194d68aac97a4225"
+checksum = "dd8b5dd2ae5ed71462c540258bedcb51965123ad7e7ccf4b9a8cafaa4a63576d"
 
 [[package]]
 name = "opaque-debug"
@@ -1283,18 +1283,6 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys",
-]
-
-[[package]]
-name = "rustls"
-version = "0.20.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aab8ee6c7097ed6057f43c187a62418d0c05a4bd5f18b3571db50ee0f9ce033"
-dependencies = [
- "log",
- "ring",
- "sct",
- "webpki",
 ]
 
 [[package]]
@@ -1733,7 +1721,7 @@ dependencies = [
  "flate2",
  "log",
  "once_cell",
- "rustls 0.21.6",
+ "rustls",
  "rustls-webpki 0.100.2",
  "serde",
  "serde_json",
@@ -1856,25 +1844,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "webpki"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f095d78192e208183081cc07bc5515ef55216397af48b873e5edcd72637fa1bd"
-dependencies = [
- "ring",
- "untrusted",
-]
-
-[[package]]
-name = "webpki-roots"
-version = "0.22.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44d8de8415c823c8abd270ad483c6feeac771fad964890779f9a8cb24fbbc1bf"
-dependencies = [
- "webpki",
-]
-
-[[package]]
 name = "webpki-roots"
 version = "0.23.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1882,6 +1851,12 @@ checksum = "b03058f88386e5ff5310d9111d53f48b17d732b401aeb83a8d5190f2ac459338"
 dependencies = [
  "rustls-webpki 0.100.2",
 ]
+
+[[package]]
+name = "webpki-roots"
+version = "0.25.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "14247bb57be4f377dfb94c72830b8ce8fc6beac03cf4bf7b9732eadd414123fc"
 
 [[package]]
 name = "which"
