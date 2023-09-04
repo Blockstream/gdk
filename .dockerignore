@@ -5,6 +5,8 @@
 !./tools/buildlibwally-core.sh
 !./tools/buildsqlite3.sh
 !./tools/buildopenssl.sh
+!./tools/buildtinycbor.sh
+!./tools/tinycbor.patch
 !./tools/buildtor.sh
 !./docker/debian/install_deps.sh
 !./docker/debian/install_rust_tools.sh

@@ -211,7 +211,7 @@ function prepare_sources {
     cd ${downloads_folder}
     if [ ! -f ${source_filename} ]; then
         echo "downloading from ${source_url} ..."
-        curl -sL --retry 3 -o ${source_filename} ${source_url} --output ${source_filename}
+        curl -sL --retry 3 ${source_url} --output ${source_filename}
         rm_downloaded="yes"
     fi
     echo "checking ${source_filename}..."
@@ -451,5 +451,34 @@ source_hash="2b9455766ce84ae9f7013c9a72d749034dddefb3f515145d585c732f17e7fa94"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BCUR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${BCUR_SRCDIR}
+
+# build tinyCBOR
+name="tinycbor"
+source_url="https://github.com/intel/tinycbor/archive/refs/tags/v0.6.0.tar.gz"
+source_name="tinycbor-0.6.0"
+source_filename="tinycbor-0.6.0.tar.gz"
+source_hash="512e2c9fce74f60ef9ed3af59161e905f9e19f30a52e433fc55f39f4c70d27e4"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+export BCUR_SRCDIR=`pwd`/tmp/${source_name}
+build ${name} ${BCUR_SRCDIR}
+
+# build ur-c
+name="ur-c"
+source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/0.0.2-rc2.tar.gz"
+source_name="ur-c-0.0.2-rc2"
+source_filename="ur-c-0.0.2-rc2.tar.gz"
+source_hash="767704f8534bec66ab4c1d1ca07dc12f927d75083fe212b4aa2c33d4ed603436"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
+    -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+    -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
+    -DFETCH_DEPS:BOOL=OFF \
+    -DENABLE_TESTS:BOOL=OFF \
+    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/tinycbor/build" \
+    -DBUILD_SHARED_LIBS:BOOL=OFF
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
+cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
 
 rm -rf tmp

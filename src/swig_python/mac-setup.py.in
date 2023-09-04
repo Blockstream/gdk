@@ -18,6 +18,8 @@ extra_objects = [
     "@Boost_LIBRARY_DIRS@/libboost_system.a",
     "@Boost_LIBRARY_DIRS@/libboost_thread.a",
     "@BCUR_LINK_LIBRARIES@",
+    "@TINYCBOR_LINK_LIBRARIES@",
+    "@urc_LINK_LIBRARIES@",
     "@OPENSSL_SSL_LIBRARY@",
     "@OPENSSL_CRYPTO_LIBRARY@",
     "@ZLIB_LIBRARIES@",

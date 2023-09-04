@@ -5,10 +5,10 @@ from setuptools import Extension, setup
 
 extra_objects = [
     "${CMAKE_BINARY_DIR}/libgreenaddress-static.a",
-    "@SQLITE3_LINK_LIBRARIES@",
     "@_gdk_rust_LINK_LIBRARIES@",
     "@wallycore_LINK_LIBRARIES@",
     "@libsecp256k1_LINK_LIBRARIES@",
+    "@SQLITE3_LINK_LIBRARIES@",
     "@TOR_LINK_LIBRARIES@",
     "@_libevent_LINK_LIBRARIES@",
     "@_libevent_pthreads_LINK_LIBRARIES@",
@@ -18,6 +18,8 @@ extra_objects = [
     "@Boost_LIBRARY_DIRS@/libboost_system.a",
     "@Boost_LIBRARY_DIRS@/libboost_thread.a",
     "@BCUR_LINK_LIBRARIES@",
+    "@TINYCBOR_LINK_LIBRARIES@",
+    "@urc_LINK_LIBRARIES@",
     "@OPENSSL_SSL_LIBRARY@",
     "@OPENSSL_CRYPTO_LIBRARY@",
     "@ZLIB_LIBRARIES@",
