@@ -17,9 +17,11 @@ openssl_crypto=$<TARGET_FILE:OpenSSL::Crypto>
 zlib=$<TARGET_FILE:ZLIB::ZLIB>
 tor=$<TARGET_FILE:extern::tor>
 bc_ur=$<TARGET_FILE:extern::bc-ur>
+tinycbor=$<TARGET_PROPERTY:PkgConfig::TinyCBOR,INTERFACE_LINK_LIBRARIES>
+urc=$<TARGET_FILE:urc::urc>
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
 
 
 if [ "$(uname)" = "Darwin" ]; then

@@ -72,9 +72,19 @@ find_package(websocketpp REQUIRED CONFIG)
 # msgpack
 join_path(msgpack_ROOT ${EXTERNAL-DEPS-DIR} "msgpack")
 find_package(msgpack REQUIRED CONFIG)
-
+#libevent
 join_path(Libevent_ROOT ${EXTERNAL-DEPS-DIR} "libevent" "build")
 find_package(Libevent REQUIRED CONFIG)
+# ur-c
+set(URC_INCLUDE_DIRS "")
+set(URC_LINK_LIBRARIES "")
+if (ENABLE_BCUR)
+    join_path(urc_ROOT ${EXTERNAL-DEPS-DIR} "ur-c")
+    find_package(urc REQUIRED)
+    get_target_property(URC_INCLUDE_DIRS urc::urc INTERFACE_INCLUDE_DIRECTORIES)
+    string(TOUPPER ${CMAKE_BUILD_TYPE} _upcase_build_type)
+    get_target_property(URC_LINK_LIBRARIES urc::urc IMPORTED_LOCATION_${_upcase_build_type})
+endif()
 
 #### dependencies relying on pkg-config
 find_package(PkgConfig REQUIRED)
@@ -84,6 +94,14 @@ join_path(_wallycorePkgDir ${EXTERNAL-DEPS-DIR} "libwally-core" "build")
 list(APPEND CMAKE_PREFIX_PATH ${_wallycorePkgDir})
 pkg_check_modules(wallycore REQUIRED IMPORTED_TARGET wallycore)
 pkg_check_modules(libsecp256k1 REQUIRED IMPORTED_TARGET libsecp256k1)
+set(TINYCBOR_INCLUDE_DIRS "")
+if (ENABLE_BCUR)
+    join_path(_tinycborPkgDir ${EXTERNAL-DEPS-DIR} "tinycbor" "build")
+    list(APPEND CMAKE_PREFIX_PATH ${_tinycborPkgDir})
+    pkg_check_modules(TinyCBOR REQUIRED IMPORTED_TARGET tinycbor)
+    get_target_property(TINYCBOR_INCLUDE_DIRS PkgConfig::TinyCBOR INTERFACE_INCLUDE_DIRECTORIES)
+    message(STATUS "TINYCBOR_INCLUDE_DIRS: ${TINYCBOR_INCLUDE_DIRS}")
+endif()
 
 #### weird beasts
 # autobahnn-cpp - cmake-based, yet really messed-up

@@ -1,7 +1,4 @@
 include(GNUInstallDirs)
-include(CMakePrintHelpers)
-
-
 
 macro(create_greenaddress_target)
     add_library(greenaddress $<TARGET_OBJECTS:greenaddress-objects>)
@@ -31,10 +28,9 @@ macro(create_greenaddress_target)
         $<$<PLATFORM_ID:Android>:log>
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
+        $<TARGET_NAME_IF_EXISTS:extern::bc-ur>
+        $<TARGET_NAME_IF_EXISTS:urc::urc>
     )
-    if(TARGET extern::bc-ur)
-        target_link_libraries(greenaddress PRIVATE extern::bc-ur)
-    endif()
     get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
     #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
     set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
@@ -116,10 +112,9 @@ macro(create_greenaddressstatic_target)
         $<$<PLATFORM_ID:Android>:log>
         ZLIB::ZLIB
         $<$<NOT:$<PLATFORM_ID:Android>>:pthread>
+        $<TARGET_NAME_IF_EXISTS:extern::bc-ur>
+        $<TARGET_NAME_IF_EXISTS:urc::urc>
     )
-    if(TARGET extern::bc-ur)
-        target_link_libraries(greenaddress-static PRIVATE extern::bc-ur)
-    endif()
     target_link_options(greenaddress-static INTERFACE "${GDK_LINK_OPTIONS}")
 endmacro()
 

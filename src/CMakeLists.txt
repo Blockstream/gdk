@@ -90,6 +90,8 @@ target_include_directories(greenaddress-objects SYSTEM PRIVATE
     $<TARGET_PROPERTY:OpenSSL::SSL,INTERFACE_INCLUDE_DIRECTORIES>
     $<TARGET_PROPERTY:ZLIB::ZLIB,INTERFACE_INCLUDE_DIRECTORIES>
     ${BCUR_INCLUDE_DIRS}
+    ${URC_INCLUDE_DIRS}
+    ${TINYCBOR_INCLUDE_DIRS}
 )
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
     ${CMAKE_SOURCE_DIR}/include/module.modulemap
