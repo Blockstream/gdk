@@ -7,6 +7,7 @@
 #include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_wally.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "session.hpp"
@@ -783,7 +784,7 @@ namespace sdk {
         std::shared_ptr<tor_controller> shared = s_inst.lock();
 
         if (!shared) {
-            GDK_RUNTIME_ASSERT(!json_get_value(gdk_config(), "tordir").empty());
+            GDK_RUNTIME_ASSERT(!j_str_is_empty(gdk_config(), "tordir"));
             s_inst = shared = std::make_shared<tor_controller>();
         }
 

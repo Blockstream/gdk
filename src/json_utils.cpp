@@ -51,6 +51,12 @@ namespace sdk {
         return get_or_default<std::string>(src, key);
     }
 
+    bool j_str_is_empty(const nlohmann::json& src, std::string_view key)
+    {
+        const auto it = find(src, key);
+        return it == src.end() ? true : it->get_ref<const std::string&>().empty();
+    }
+
     const json_array_t& j_arrayref(const nlohmann::json& src, std::string_view key)
     {
         static_assert(

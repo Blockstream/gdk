@@ -363,7 +363,7 @@ namespace sdk {
             const std::string final_target = (target_str % asset_id).str();
             const std::string url = domain_name + final_target;
             result = http_request({ { "method", "GET" }, { "urls", { url } } });
-            if (!json_get_value(result, "error").empty()) {
+            if (!j_str_is_empty(result, "error")) {
                 return result;
             }
             const std::string body_r = result.at("body");
@@ -1987,7 +1987,7 @@ namespace sdk {
         }
 
         const auto script = h2b(utxo.at("script"));
-        const bool has_address = !json_get_value(utxo, "address").empty();
+        const bool has_address = !j_str_is_empty(utxo, "address");
 
         if (!txhash.empty()) {
             const auto cached = m_cache->get_liquid_output(h2b(txhash), pt_idx);
@@ -2110,7 +2110,7 @@ namespace sdk {
                 // Address type is non-blank for spendable UTXOs
                 std::string addr_type = get_utxo_address_type_from_script_type(utxo);
 
-                const bool is_external = !json_get_value(utxo, "private_key").empty();
+                const bool is_external = !j_str_is_empty(utxo, "private_key");
                 if (is_external) {
                     json_rename_key(utxo, "tx_hash", "txhash");
                     json_rename_key(utxo, "tx_pos", "pt_idx");
@@ -2254,7 +2254,7 @@ namespace sdk {
                     const auto satoshi = j_amountref(ep);
                     if (is_tx_output) {
                         totals[asset_id] += satoshi.signed_value();
-                        if (json_get_value(ep, "address").empty()) {
+                        if (j_str_is_empty(ep, "address")) {
                             // Add the wallet address for relevant outputs
                             const auto script = output_script_from_utxo(locker, ep);
                             ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
@@ -2325,7 +2325,7 @@ namespace sdk {
             } else {
                 tx_type = "redeposit";
                 for (auto& ep : tx_details["outputs"]) {
-                    if (is_liquid && json_get_value(ep, "script").empty()) {
+                    if (is_liquid && j_str_is_empty(ep, "script")) {
                         continue; // Ignore Liquid fee output
                     }
                     if (!j_bool_or_false(ep, "is_relevant")) {
@@ -3221,7 +3221,7 @@ namespace sdk {
     nlohmann::json ga_session::sign_or_send_tx(
         const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send)
     {
-        GDK_RUNTIME_ASSERT(json_get_value(details, "error").empty());
+        GDK_RUNTIME_ASSERT(j_str_is_empty(details, "error"));
         // We must have a tx, the server will ensure it has been signed by the user
         GDK_RUNTIME_ASSERT(details.find("transaction") != details.end());
 

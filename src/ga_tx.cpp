@@ -66,7 +66,7 @@ namespace sdk {
             const auto txid = h2b_rev(txhash);
             const uint32_t index = utxo.at("pt_idx");
             const bool low_r = session.get_nonnull_signer()->supports_low_r();
-            const bool is_external = !json_get_value(utxo, "private_key").empty();
+            const bool is_external = !j_str_is_empty(utxo, "private_key");
             const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
             const uint32_t sequence = utxo.value("sequence", seq_default);
 
@@ -146,7 +146,7 @@ namespace sdk {
             for (const auto& key : { "is_output", "is_relevant", "is_spent", "script_type", "pt_idx" }) {
                 addressee.erase(key);
             }
-            if (json_get_value(addressee, "address_type").empty()) {
+            if (j_str_is_empty(addressee, "address_type")) {
                 addressee.erase("address_type");
             } else {
                 utxo_add_paths(session, addressee);
@@ -363,7 +363,7 @@ namespace sdk {
                 }
                 result["transaction_inputs"] = std::move(tx_inputs);
 
-                if (json_get_value(result, "memo").empty()) {
+                if (j_str_is_empty(result, "memo")) {
                     result["memo"] = prev_tx["memo"];
                 }
             } else {
@@ -783,7 +783,7 @@ namespace sdk {
             }
             update_tx_info(session, tx, result);
 
-            if (is_rbf && json_get_value(result, "error").empty()) {
+            if (is_rbf && j_str_is_empty(result, "error")) {
                 // Check if rbf requirements are met. When the user input a fee rate for the
                 // replacement, the transaction will be created according to the fee rate itself
                 // and the transaction construction policies. As a result it may occur that rbf
@@ -1173,7 +1173,7 @@ namespace sdk {
 
         // Liquid case - has a value-commitment in place of a satoshi value
         std::vector<unsigned char> ct_value;
-        if (!utxo.value("commitment", std::string{}).empty()) {
+        if (!j_str_is_empty(utxo, "commitment")) {
             ct_value = h2b(utxo.at("commitment"));
         } else {
             const auto value = tx_confidential_value_from_satoshi(satoshi);
@@ -1249,7 +1249,7 @@ namespace sdk {
 
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& utxo = inputs.at(i);
-            GDK_RUNTIME_ASSERT(json_get_value(utxo, "private_key").empty());
+            GDK_RUNTIME_ASSERT(j_str_is_empty(utxo, "private_key"));
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
@@ -1339,13 +1339,13 @@ namespace sdk {
         // We must have at least a regular output and a fee output, unless partial
         GDK_RUNTIME_ASSERT(transaction_outputs.size() >= (is_partial ? 1 : 2));
         const auto num_fees = std::count_if(transaction_outputs.begin(), transaction_outputs.end(),
-            [](const auto& o) { return json_get_value(o, "scriptpubkey").empty(); });
+            [](const auto& o) { return j_str_is_empty(o, "scriptpubkey"); });
         if (is_partial) {
             // We must not have a fee output as the transaction is incomplete
             GDK_RUNTIME_ASSERT(num_fees == 0);
         } else {
             // We must have a fee output, and it must be the last one
-            GDK_RUNTIME_ASSERT(num_fees == 1 && json_get_value(transaction_outputs.back(), "scriptpubkey").empty());
+            GDK_RUNTIME_ASSERT(num_fees == 1 && j_str_is_empty(transaction_outputs.back(), "scriptpubkey"));
         }
         std::vector<unsigned char> assets, generators, abfs, all_abfs, vbfs;
         std::vector<uint64_t> values;
@@ -1388,7 +1388,7 @@ namespace sdk {
 
         for (size_t i = 0; i < transaction_outputs.size(); ++i) {
             auto& output = transaction_outputs[i];
-            if (json_get_value(output, "scriptpubkey").empty()) {
+            if (j_str_is_empty(output, "scriptpubkey")) {
                 continue; // Fee
             }
             const auto asset_id = h2b_rev(output.at("asset_id"));

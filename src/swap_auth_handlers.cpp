@@ -204,7 +204,7 @@ namespace sdk {
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
         }
-        if (!json_get_value(m_create_details, "error").empty()) {
+        if (!j_str_is_empty(m_create_details, "error")) {
             m_result = std::move(m_create_details);
             return state_type::done; // Create/blind tx returned an error, do not attempt to sign
         }
@@ -325,8 +325,7 @@ namespace sdk {
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
-        } else if (json_get_value(m_create_details, "error").empty()
-            && !j_bool_or_false(m_create_details, "is_blinded")) {
+        } else if (j_str_is_empty(m_create_details, "error") && !j_bool_or_false(m_create_details, "is_blinded")) {
             // Call blind_transaction to blind the callers side
             add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
             return state_type::make_call;

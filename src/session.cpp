@@ -13,6 +13,7 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "signer.hpp"
@@ -41,7 +42,7 @@ namespace sdk {
     int init(const nlohmann::json& config)
     {
         GDK_RUNTIME_ASSERT(config.is_object());
-        GDK_RUNTIME_ASSERT(!json_get_value(config, "datadir").empty());
+        GDK_RUNTIME_ASSERT(!j_str_is_empty(config, "datadir"));
         GDK_RUNTIME_ASSERT(!init_done);
 
         global_config = config;

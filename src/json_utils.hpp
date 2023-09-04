@@ -22,6 +22,8 @@ namespace sdk {
     const std::string& j_strref(const nlohmann::json& src, std::string_view key);
     std::optional<std::string> j_str(const nlohmann::json& src, std::string_view key);
     std::string j_str_or_empty(const nlohmann::json& src, std::string_view key);
+    // Returns true if key is missing, or present and an empty string
+    bool j_str_is_empty(const nlohmann::json& src, std::string_view key);
 
     // array
     const json_array_t& j_arrayref(const nlohmann::json& src, std::string_view key);

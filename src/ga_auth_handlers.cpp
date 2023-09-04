@@ -635,7 +635,7 @@ namespace sdk {
         if (!m_details.empty()) {
             m_details.erase("utxos"); // Not needed anymore
         }
-        if (!json_get_value(m_details, "error").empty()) {
+        if (!j_str_is_empty(m_details, "error")) {
             // Can't sign a tx with an error, return it as-is
             m_result = std::move(m_details);
             m_state = state_type::done;
@@ -887,7 +887,7 @@ namespace sdk {
     {
         // User/server signing is complete: add the signing data to our psbt
         m_result = std::move(next_handler->move_result());
-        if (!json_get_value(m_result, "error").empty()) {
+        if (!j_str_is_empty(m_details, "error")) {
             m_result["psbt"] = std::move(m_details.at("psbt"));
             return;
         }
@@ -1083,7 +1083,7 @@ namespace sdk {
         }
         const bool is_liquid = m_net_params.is_liquid();
 
-        if (!is_liquid || !json_get_value(m_details, "error").empty() || j_bool_or_false(m_details, "is_blinded")) {
+        if (!is_liquid || !j_str_is_empty(m_details, "error") || j_bool_or_false(m_details, "is_blinded")) {
             // Already blinded, or non-Liquid network: return the details as-is
             m_result = std::move(m_details);
             return state_type::done;
@@ -1118,7 +1118,7 @@ namespace sdk {
         if (!is_partial) {
             // Remove the fee output for non-partial txs
             GDK_RUNTIME_ASSERT(!outputs.empty());
-            GDK_RUNTIME_ASSERT(json_get_value(outputs.back(), "scriptpubkey").empty());
+            GDK_RUNTIME_ASSERT(j_str_is_empty(outputs.back(), "scriptpubkey"));
             outputs.erase(outputs.size() - 1);
         }
         return m_state;
@@ -1843,7 +1843,7 @@ namespace sdk {
         if (!m_details.empty()) {
             m_details.erase("utxos"); // Not needed anymore
         }
-        if (!json_get_value(m_details, "error").empty()) {
+        if (!j_str_is_empty(m_details, "error")) {
             // Can't send a tx with an error, return it as-is
             m_result = std::move(m_details);
             m_state = state_type::done;

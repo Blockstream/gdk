@@ -192,7 +192,7 @@ namespace sdk {
         for (const auto& txout : outputs) {
             const auto asset_id = j_asset(net_params, txout);
             if (asset_id == policy_asset) {
-                if (m_is_liquid && json_get_value(txout, "scriptpubkey").empty()) {
+                if (m_is_liquid && j_str_is_empty(txout, "scriptpubkey")) {
                     fee_output = j_amountref(txout);
                 } else {
                     fee -= j_amountref(txout);
@@ -326,7 +326,7 @@ namespace sdk {
     // FIXME: duplicated from transaction_utils.cpp
     static bool is_wallet_input(const nlohmann::json& utxo)
     {
-        return json_get_value(utxo, "private_key").empty() && !json_get_value(utxo, "address_type").empty();
+        return j_str_is_empty(utxo, "private_key") && !j_str_is_empty(utxo, "address_type");
     }
 
     nlohmann::json Psbt::to_json(session_impl& session, nlohmann::json utxos) const
