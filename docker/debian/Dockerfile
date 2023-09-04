@@ -23,9 +23,9 @@ RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
 FROM rust:1.68-bullseye as builderrust
-RUN rustup component add rustfmt clippy llvm-tools-preview
-RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu
-RUN cargo install cargo-audit grcov cargo-nextest
+WORKDIR /root
+COPY ./docker/debian/install_rust_tools.sh ./docker/debian/install_rust_tools.sh
+RUN ./docker/debian/install_rust_tools.sh
 
 FROM blockstream/esplora@sha256:dabc2501137dea9db6107e6c5c4d6d575616b2274dc278647f91ab9a4f75a848 AS esplora-base-image
 
