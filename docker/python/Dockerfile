@@ -4,9 +4,9 @@
 FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:9b66019db1656866ed7353b4f6ade7260bb4e74e8205bce63dac3d6fc076c7e6 as base
 WORKDIR /root
 COPY ./tools ./tools
-COPY ./cmake/profiles/ ./cmake/profiles/
+COPY ./cmake/profiles ./cmake/profiles
 # Optionally copy dependency sources from the build directory if present
-COPY ./tools/requirements.txt ./*.tar.gz /root/
+COPY ./downloads ./downloads
 COPY ./docker/python/install_deps.sh ./docker/python/install_deps.sh
 RUN ./docker/python/install_deps.sh
 
@@ -25,7 +25,7 @@ COPY --from=builderlinux /prebuild/clang /prebuild/clang
 COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 
-RUN rm -f /root/requirements.txt /root/*.tar.gz
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup

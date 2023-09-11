@@ -4,9 +4,9 @@
 FROM ubuntu:20.04@sha256:3626dff0d616e8ee7065a9ac8c7117e904a4178725385910eeecd7f1872fc12d as base
 WORKDIR /root
 COPY ./tools ./tools
-COPY ./cmake/profiles/ ./cmake/profiles/
+COPY ./cmake/profiles ./cmake/profiles
 # Optionally copy dependency sources from the build directory if present
-COPY ./tools/requirements.txt ./*.tar.gz /root/
+COPY ./downloads ./downloads
 COPY ./docker/ubuntu/install_deps.sh ./docker/ubuntu/install_deps.sh
 RUN ./docker/ubuntu/install_deps.sh
 
@@ -24,7 +24,7 @@ FROM base
 COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
 COPY --from=builderclang /prebuild/clang /prebuild/clang
 # Remove copied/downloaded dependency sources
-RUN rm -f /root/requirements.txt /root/*.tar.gz
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 RUN chmod +xr /root
 WORKDIR /root/gdk

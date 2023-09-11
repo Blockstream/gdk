@@ -17,7 +17,7 @@
 !./tools/env.sh
 !./tools/requirements.txt
 !./cmake/profiles/
-!./*.tar.gz
+!./downloads/*.tar.gz
 !./subprojects/gdk_rust/Cargo.*
 !./subprojects/gdk_rust/gdk_common/Cargo.*
 !./subprojects/gdk_rust/gdk_common/Cargo.*

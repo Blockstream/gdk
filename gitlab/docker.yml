@@ -20,6 +20,7 @@
         paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE, cmake/profiles/*]
         compare_to: master
   script:
+    - mkdir downloads
     - docker pull ${IMAGE}:latest || true
     - >
       docker build

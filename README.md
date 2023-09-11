@@ -21,7 +21,7 @@ or you can add it to your bash profile `~/.bash_profile`
 ### platform-specific dependencies
 For Debian Bullseye:
 ```
-sudo ./tools/bullseye_deps.sh
+sudo ./docker/debian/install_deps.sh
 ```
 
 

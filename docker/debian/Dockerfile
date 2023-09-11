@@ -4,9 +4,9 @@
 FROM debian:bullseye@sha256:d0bf7d85ad1e61ab3520b1d22d1e2a136799defd4e0d1e3f998d3b9045f38551 as base
 WORKDIR /root
 COPY ./tools ./tools
-COPY ./cmake/profiles/ ./cmake/profiles/
+COPY ./cmake/profiles ./cmake/profiles
 # Optionally copy dependency sources from the build directory if present
-COPY ./tools/requirements.txt ./*.tar.gz /root/
+COPY ./downloads ./downloads
 COPY ./docker/debian/install_deps.sh ./docker/debian/install_deps.sh
 RUN ./docker/debian/install_deps.sh
 
@@ -46,7 +46,7 @@ COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 
 # Remove copied/downloaded dependency sources
-RUN rm -f /root/requirements.txt /root/*.tar.gz
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 ENV OPENSSL_DIR=/prebuild/gcc/openssl/build
 ENV OPENSSL_STATIC=True
