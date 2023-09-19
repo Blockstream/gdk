@@ -474,7 +474,15 @@ namespace sdk {
 
     nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
     {
-        auto pricing = get_settings().value("pricing", nlohmann::json({ { "currency", "" }, { "exchange", "" } }));
+        nlohmann::json pricing;
+
+        auto param_pricing = amount_json.value("pricing", nlohmann::json::object());
+        if (param_pricing.empty()) {
+            pricing = get_settings().value("pricing", nlohmann::json({ { "currency", "" }, { "exchange", "" } }));
+        } else {
+            pricing = param_pricing;
+        }
+
         std::string currency = amount_json.value("fiat_currency", pricing["currency"]);
         std::string exchange = pricing["exchange"];
 
