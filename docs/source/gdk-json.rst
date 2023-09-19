@@ -1357,7 +1357,18 @@ conversion fallback:
     "fiat_rate": "42161.22"
   }
 
+It is possible to call this method in non logged Electrum sessions by providing
+pricing details. For example:
 
+.. code-block:: json
+
+  {
+    "satoshi": 1000,
+    "pricing": {
+      "currency": "USD",
+      "exchange": "BITFINEX"
+    }
+  }
 
 .. _amount-data:
 
