@@ -865,16 +865,35 @@ BCUR Decoded data JSON
 ----------------------
 
 Contains CBOR data decoded from UR format using `GA_bcur_decode`.
+The returned JSON depends on the type of the input as returned in
+the ``ur-type`` element. If the type is not one of those listed below,
+it is returned as if it were ``"bytes"``.
 
-.. code-block:: json
+.. include:: examples/bcur_decode_crypto_psbt.json
 
- {
-    "ur_type": "crypto-seed",
-    "data": "A20150C7098580125E2AB0981253468B2DBC5202D8641947DA"
- }
+:ur-type: "crypto-psbt".
+:psbt: The psbt in base-64 format.
 
-:ur-type: The type of the decoded data as specified when it was encoded.
-:data: The resulting CBOR-encoded data in hexadecimal format.
+.. include:: examples/bcur_decode_crypto_output.json
+
+:ur-type: "crypto-output".
+:descriptor: The bitcoin output descriptor.
+
+.. include:: examples/bcur_decode_crypto_account.json
+
+:ur-type: "crypto-account".
+:descriptors: The list of all available descriptors for the account.
+:master_fingerprint: The BIP32 key fingerprint of the master key of the account.
+
+.. include:: examples/bcur_decode_bytes.json
+
+:ur-type: "bytes".
+:data: The decoded bytes in hexadecimal format.
+
+.. include:: examples/bcur_decode_custom.json
+
+:ur-type: "custom".
+:data: The decoded data in hexadecimal format.
 
 
 .. _settings:

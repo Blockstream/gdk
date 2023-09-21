@@ -5,6 +5,14 @@ import json, shutil, subprocess, sys
 # Random mnemonic for keeping the generated addresses the same
 MNEMONIC = 'symbol rocket quality brush wagon feed scan afford dose girl replace faith'
 
+UR_DOCS = [
+    'ur:crypto-output/taadmutaadeyoyaxhdclaoswaalbmwfpwekijndyfefzjtmdrtketphhktmngrlkwsfnospypsasrhhhjonnvwtsqzwljy',
+    'ur:bytes/hdchjojkidjyzmadaenyaoaeaeaeaohdvsknclrejnpebncnrnmhjnfhrp',
+    'ur:crypto-psbt/hdchjojkidjyzmadaenyaoaeaeaeaohdvsknclrejnpebncnrnmhjnfhrp',
+    'ur:custom/hdchjojkidjyzmadaenyaoaeaeaeaohdvsknclrejnpebncnrnmhjnfhrp',
+    'ur:crypto-account/oeadcyemrewytyaolftaadeetaadmutaaddloxaxhdclaxwmfmdeiamecsdsemgtvsjzcncygrkowtrontzschgezokstswkkscfmklrtauteyaahdcxiehfonurdppfyntapejpproypegrdawkgmaewejlsfdtsrfybdehcaflmtrlbdhpamtaaddyoeadlncsdwykaeykaeykaocyemrewytyaycynlytsnyltaadeetaadmhtaadmwtaaddloxaxhdclaostvelfemdyynwydwyaievosrgmambklovabdgypdglldvespsthysadamhpmjeinaahdcxntdllnaaeykoytdacygegwhgjsiyonpywmcmrpwphsvodsrerozsbyaxluzcoxdpamtaaddyoeadlncsehykaeykaeykaocyemrewytyaycypdbskeuyjeaxtsec',
+]
+
 
 def run(command):
     PIPE=subprocess.PIPE
@@ -53,6 +61,12 @@ def generate_examples(network, session_type, mnemonic):
         write_json(networks, '', 'get_networks')
         network = gdk.get_networks()['mainnet']
         write_json(network, '', 'network')
+        # bcur_decode
+        for ur in UR_DOCS:
+            j = user.bcur_decode({'part': ur}).resolve()
+            ur_type = ur.split('/')[0].split(':')[1].replace('-', '_')
+            write_json(j, '', f'bcur_decode_{ur_type}')
+
     # get_settings
     settings = user.get_settings()
     write_json(settings, session_type, 'get_settings')
@@ -79,7 +93,6 @@ def generate_examples(network, session_type, mnemonic):
     outputs = txs['transactions'][0]['outputs']
     output = [o for o in outputs if o['is_relevant']][0]
     write_json(output, session_type, 'get_transactions_output')
-
     # get_transaction_details
     tx_details = user.get_transaction_details(incoming_txhash)
     if 'liquid' in session_type:

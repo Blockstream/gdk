@@ -1,0 +1,16 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Example</a></summary>
+
+.. code-block:: json
+
+  {
+    "data": "581770736274ff01009a020000000258e87a21b56daf0c23be",
+    "ur_type": "bytes"
+  }
+
+.. raw:: html
+
+  </details>
+

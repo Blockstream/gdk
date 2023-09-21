@@ -1,0 +1,20 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Example</a></summary>
+
+.. code-block:: json
+
+  {
+    "descriptors": [
+      "pkh([37b5eed4/44'/0'/0']xpub6CnQkivUEH9bSbWVWfDLCtigKKgnSWGaVSRyCbN2QNBJzuvHT1vUQpgSpY1NiVvoeNEuVwk748Cn9G3NtbQB1aGGsEL7aYEnjVWgjj9tefu)",
+      "sh(wpkh([37b5eed4/49'/0'/0']xpub6CtR1iF4dZPkEyXDwVf3HE74tSwXNMcHtBzX4gwz2UnPhJ54Jz5unHx2syYCCDkvVUmsmoYTmcaHXe1wJppvct4GMMaN5XAbRk7yGScRSte))"
+    ],
+    "master_fingerprint": 934670036,
+    "ur_type": "crypto-account"
+  }
+
+.. raw:: html
+
+  </details>
+

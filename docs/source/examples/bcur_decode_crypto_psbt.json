@@ -1,0 +1,16 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Example</a></summary>
+
+.. code-block:: json
+
+  {
+    "psbt": "cHNidP8BAJoCAAAAAljoeiG1ba8MI74=",
+    "ur_type": "crypto-psbt"
+  }
+
+.. raw:: html
+
+  </details>
+
