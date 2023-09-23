@@ -183,10 +183,22 @@ namespace sdk {
         auto inputs = inputs_to_json(session, std::move(details.at("utxos")));
         auto outputs = outputs_to_json(session, tx);
         amount fee, fee_output;
+        bool use_error = false;
+        std::string error;
         for (const auto& txin : inputs) {
-            const auto asset_id = j_asset(net_params, txin);
-            if (asset_id == policy_asset) {
-                fee += j_amountref(txin);
+            auto txin_error = j_str_or_empty(txin, "error");
+            if (txin_error.empty()) {
+                const auto asset_id = j_asset(net_params, txin);
+                if (asset_id == policy_asset) {
+                    fee += j_amountref(txin);
+                }
+            } else {
+                error = std::move(txin_error);
+                if (!j_bool_or_false(txin, "skip_signing")) {
+                    /* We aren't skipping this input while signing, so mark
+                     * the overall tx as in error (results can't be trusted) */
+                    use_error = true;
+                }
             }
         }
         for (const auto& txout : outputs) {
@@ -199,13 +211,16 @@ namespace sdk {
                 }
             }
         }
-        GDK_RUNTIME_ASSERT(!m_is_liquid || fee == fee_output);
+        // Calculated fee must match fee output for Liquid unless an error occurred
+        GDK_RUNTIME_ASSERT(!m_is_liquid || fee == fee_output || !error.empty());
         nlohmann::json result = { { "transaction", tx.to_hex() }, { "transaction_inputs", std::move(inputs) },
             { "transaction_outputs", std::move(outputs) } };
-        result["fee"] = fee.value();
+        result["fee"] = m_is_liquid ? fee_output.value() : fee.value();
         result["network_fee"] = 0;
         update_tx_info(session, tx, result);
         result["txhash"] = b2h_rev(tx.get_txid());
+        if (use_error)
+            result.emplace("error", std::move(error));
         return result;
     }
 
@@ -241,12 +256,15 @@ namespace sdk {
                 if (!m_is_liquid) {
                     input_utxo["satoshi"] = txin_utxo->satoshi;
                 } else {
-                    // FIXME: Check value/asset proof
-                    GDK_RUNTIME_ASSERT(txin.has_amount); // Must have an explicit value
-                    input_utxo["satoshi"] = txin.amount;
-                    set_pset_field(txin, input_utxo, "asset_id", in_explicit_asset, true);
-                    set_pset_field(txin, input_utxo, "value_blind_proof", in_value_proof);
-                    set_pset_field(txin, input_utxo, "asset_blind_proof", in_asset_proof);
+                    if (txin.has_amount) {
+                        // An explicit value/asset, along with its proofs
+                        input_utxo["satoshi"] = txin.amount;
+                        set_pset_field(txin, input_utxo, "asset_id", in_explicit_asset, true);
+                        set_pset_field(txin, input_utxo, "value_blind_proof", in_value_proof);
+                        set_pset_field(txin, input_utxo, "asset_blind_proof", in_asset_proof);
+                    } else {
+                        input_utxo["error"] = "failed to unblind utxo";
+                    }
                 }
             }
         }
