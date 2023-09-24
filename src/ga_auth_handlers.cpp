@@ -655,7 +655,16 @@ namespace sdk {
         inputs = std::move(m_details["transaction_inputs"]);
         request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         request["use_ae_protocol"] = use_ae_protocol;
-        request["is_partial"] = m_details.value("is_partial", false);
+        const bool is_partial = m_details.value("is_partial", false);
+        if (is_partial && !m_net_params.is_electrum()) {
+            // Multisig partial signing. Ensure all inputs to be signed are segwit
+            for (const auto& utxo : inputs) {
+                if (j_str_or_empty(utxo, "address_type") == "p2sh") {
+                    throw user_error("Non-segwit utxos cannnot be used with partial signing");
+                }
+            }
+        }
+        request["is_partial"] = is_partial;
 
         // We need the inputs, augmented with types, scripts and paths
         std::unique_ptr<Tx> tx;
@@ -858,15 +867,6 @@ namespace sdk {
             // No signatures required, return the PSBT unchanged
             m_result = std::move(m_details);
             return state_type::done;
-        }
-        m_is_partial = m_signing_details.at("is_partial");
-        if (m_is_partial && !m_net_params.is_electrum()) {
-            // Multisig partial signing. Ensure all inputs to be signed are segwit
-            for (const auto& utxo : m_signing_details.at("transaction_inputs")) {
-                if (json_get_value(utxo, "address_type") == "p2sh") {
-                    throw user_error("Non-segwit utxos cannnot be used with psbt_sign");
-                }
-            }
         }
 
         nlohmann::json::array_t sign_with;
