@@ -111,7 +111,8 @@ namespace sdk {
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         Tx get_raw_transaction_details(const std::string& txhash_hex) const;
 
-        nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
+        nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data,
+            std::vector<std::vector<unsigned char>>& old_scripts);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);
 
@@ -184,8 +185,8 @@ namespace sdk {
 
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 
-        nlohmann::json sign_or_send_tx(
-            const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send);
+        nlohmann::json sign_or_send_tx(const nlohmann::json& details, const nlohmann::json& twofactor_data,
+            bool is_send, std::vector<std::vector<unsigned char>>& old_scripts);
         nlohmann::json get_appearance() const;
         bool subaccount_allows_csv(uint32_t subaccount) const;
         const std::string& get_default_address_type(uint32_t) const;

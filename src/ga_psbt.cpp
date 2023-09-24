@@ -16,6 +16,10 @@
 namespace ga {
 namespace sdk {
     namespace {
+        // PSBT input/output field constants from
+        // https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki
+        constexpr uint32_t in_redeem_script = 0x04;
+
         // PSET input/output field constants from
         // https://github.com/ElementsProject/elements/blob/master/doc/pset.mediawiki
 
@@ -266,6 +270,10 @@ namespace sdk {
                         input_utxo["error"] = "failed to unblind utxo";
                     }
                 }
+            }
+            auto redeem_script = psbt_field(txin, in_redeem_script);
+            if (redeem_script.has_value()) {
+                input_utxo["redeem_script"] = b2h(redeem_script.value());
             }
         }
         return inputs;

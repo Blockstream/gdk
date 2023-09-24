@@ -3205,21 +3205,22 @@ namespace sdk {
             { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
     }
 
-    nlohmann::json ga_session::service_sign_transaction(
-        const nlohmann::json& details, const nlohmann::json& twofactor_data)
+    nlohmann::json ga_session::service_sign_transaction(const nlohmann::json& details,
+        const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts)
     {
         constexpr bool is_send = false;
-        return sign_or_send_tx(details, twofactor_data, is_send);
+        return sign_or_send_tx(details, twofactor_data, is_send, old_scripts);
     }
 
     nlohmann::json ga_session::send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
         constexpr bool is_send = true;
-        return sign_or_send_tx(details, twofactor_data, is_send);
+        std::vector<std::vector<unsigned char>> old_scripts;
+        return sign_or_send_tx(details, twofactor_data, is_send, old_scripts);
     }
 
-    nlohmann::json ga_session::sign_or_send_tx(
-        const nlohmann::json& details, const nlohmann::json& twofactor_data, bool is_send)
+    nlohmann::json ga_session::sign_or_send_tx(const nlohmann::json& details, const nlohmann::json& twofactor_data,
+        bool is_send, std::vector<std::vector<unsigned char>>& old_scripts)
     {
         GDK_RUNTIME_ASSERT(j_str_is_empty(details, "error"));
         // We must have a tx, the server will ensure it has been signed by the user
@@ -3264,7 +3265,17 @@ namespace sdk {
 
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
-        const Tx tx(json_get_value(tx_details, "tx"), m_net_params.is_liquid());
+        Tx tx(json_get_value(tx_details, "tx"), m_net_params.is_liquid());
+        if (!old_scripts.empty()) {
+            // Partial signing (signing of only some inputs):
+            // Restore the original input scriptSigs, which were swapped out
+            // for redeem scripts to allow the backend to check segwit-ness
+            for (size_t i = 0; i < old_scripts.size(); ++i) {
+                if (!old_scripts.at(i).empty()) {
+                    tx.set_input_script(i, old_scripts.at(i));
+                }
+            }
+        }
         update_tx_size_info(m_net_params, tx, result);
 
         // TODO: get outputs/change subaccounts also, for multi-account spends

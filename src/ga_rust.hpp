@@ -104,7 +104,6 @@ namespace sdk {
         nlohmann::json set_unspent_outputs_status(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         Tx get_raw_transaction_details(const std::string& txhash_hex) const;
 
-        nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
         std::string broadcast_transaction(const std::string& tx_hex);

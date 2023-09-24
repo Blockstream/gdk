@@ -534,5 +534,11 @@ namespace sdk {
         return { { "unspent_outputs", { { "btc", std::move(utxos) } } } };
     }
 
+    nlohmann::json session_impl::service_sign_transaction(const nlohmann::json& /*details*/,
+        const nlohmann::json& /*twofactor_data*/, std::vector<std::vector<unsigned char>>& /*old_scripts*/)
+    {
+        // Only implemented for multisig
+        throw std::runtime_error("service_sign_transaction not implemented");
+    }
 } // namespace sdk
 } // namespace ga

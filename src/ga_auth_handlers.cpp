@@ -656,10 +656,12 @@ namespace sdk {
         request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         request["use_ae_protocol"] = use_ae_protocol;
         const bool is_partial = m_details.value("is_partial", false);
-        if (is_partial && !m_net_params.is_electrum()) {
+        const bool is_partial_multisig = is_partial && !m_net_params.is_electrum();
+        if (is_partial_multisig) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
-                if (j_str_or_empty(utxo, "address_type") == "p2sh") {
+                auto addr_type = j_str_or_empty(utxo, "address_type");
+                if (!addr_type.empty() && !is_segwit_address_type(utxo)) {
                     throw user_error("Non-segwit utxos cannnot be used with partial signing");
                 }
             }
@@ -1960,10 +1962,44 @@ namespace sdk {
         }
 
         // TODO: Add the recipient to twofactor_data for more server verification
+        const bool is_partial = m_details.value("is_partial", false);
         if (m_type == "send") {
             m_result = m_session->send_transaction(m_details, m_twofactor_data);
         } else {
-            m_result = m_session->service_sign_transaction(m_details, m_twofactor_data);
+            std::vector<std::vector<unsigned char>> old_scripts;
+            const bool is_partial_multisig = is_partial && !m_net_params.is_electrum();
+            if (is_partial_multisig) {
+                // Multisig partial signing. Ensure all inputs to be signed are segwit
+                auto& inputs = m_details.at("transaction_inputs");
+                for (const auto& utxo : inputs) {
+                    auto addr_type = j_str_or_empty(utxo, "address_type");
+                    if (!addr_type.empty() && !is_segwit_address_type(utxo)) {
+                        throw user_error("Non-segwit utxos cannnot be used with partial signing");
+                    }
+                }
+                // Replace tx input scriptSigs with redeem scripts so the Green
+                // backend can ensure they are segwit for partial signing
+                Tx tx(j_strref(m_details, "transaction"), m_net_params.is_liquid());
+                size_t i = 0;
+                bool have_redeem_scripts = false;
+                for (auto& utxo : inputs) {
+                    const auto& txin = tx.get()->inputs[i];
+                    if (utxo.contains("redeem_script")) {
+                        old_scripts.push_back({ txin.script, txin.script + txin.script_len });
+                        auto redeem_script = h2b(j_strref(utxo, "redeem_script"));
+                        tx.set_input_script(i, script_push_from_bytes(redeem_script));
+                        have_redeem_scripts = true;
+                    } else {
+                        old_scripts.push_back({});
+                    }
+                    ++i;
+                }
+                if (!have_redeem_scripts) {
+                    old_scripts.clear();
+                }
+                m_details["transaction"] = tx.to_hex();
+            }
+            m_result = m_session->service_sign_transaction(m_details, m_twofactor_data, old_scripts);
         }
         return state_type::done;
     }

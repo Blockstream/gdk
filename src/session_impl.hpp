@@ -181,9 +181,8 @@ namespace sdk {
         virtual Tx get_raw_transaction_details(const std::string& txhash_hex) const = 0;
         nlohmann::json get_transaction_details(const std::string& txhash_hex) const;
 
-        virtual nlohmann::json service_sign_transaction(
-            const nlohmann::json& details, const nlohmann::json& twofactor_data)
-            = 0;
+        virtual nlohmann::json service_sign_transaction(const nlohmann::json& details,
+            const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts);
         virtual nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;
         virtual std::string broadcast_transaction(const std::string& tx_hex) = 0;

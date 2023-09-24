@@ -399,12 +399,6 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_rust::service_sign_transaction(
-        const nlohmann::json& details, const nlohmann::json& twofactor_data)
-    {
-        throw std::runtime_error("service_sign_transaction not implemented");
-    }
-
     nlohmann::json ga_rust::get_scriptpubkey_data(byte_span_t scriptpubkey)
     {
         try {
