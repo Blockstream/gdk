@@ -96,7 +96,6 @@ namespace sdk {
         nlohmann::json m_details;
         nlohmann::json m_signing_details;
         std::unique_ptr<Psbt> m_psbt;
-        bool m_is_partial;
         bool m_is_synced;
     };
 

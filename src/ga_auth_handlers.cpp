@@ -846,7 +846,6 @@ namespace sdk {
     psbt_sign_call::psbt_sign_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "psbt_sign")
         , m_details(std::move(details))
-        , m_is_partial(false)
         , m_is_synced(false)
     {
     }
@@ -904,7 +903,7 @@ namespace sdk {
          * behaviour. FIXME: Use an extension field for this, since some
          * inputs may have been already properly finalized before we sign.
          */
-        const bool include_redundant = m_is_partial;
+        const bool include_redundant = j_bool_or_false(m_result, "is_partial");
         m_result["psbt"] = m_psbt->to_base64(include_redundant);
     }
 
