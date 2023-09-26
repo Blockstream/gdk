@@ -442,17 +442,19 @@ impl ElectrumSession {
     }
 
     pub fn login_wo(&mut self, credentials: WatchOnlyCredentials) -> Result<LoginData, Error> {
-        if self.network.liquid {
-            return Err(Error::Generic("Watch-only login not implemented for Liquid".into()));
-        }
-
         // Create a fake master xpub deriving it from the WatchOnlyCredentials
         let master_xpub = credentials.store_master_xpub(&self.network)?;
-        let (accounts, master_xpub_fingerprint) = credentials.accounts(self.network.mainnet)?;
+        let (accounts, master_xpub_fingerprint, master_blinding_key) =
+            credentials.accounts(self.network.mainnet, self.network.liquid)?;
         self.load_store(&LoadStoreOpt {
             master_xpub,
             master_xpub_fingerprint: Some(master_xpub_fingerprint),
         })?;
+        if let Some(master_blinding_key) = master_blinding_key {
+            self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
+                master_blinding_key,
+            })?;
+        }
 
         for account in accounts {
             self.create_subaccount(CreateAccountOpt {

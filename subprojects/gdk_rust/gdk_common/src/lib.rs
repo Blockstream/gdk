@@ -22,6 +22,7 @@ pub mod aes {
 pub use bitcoin;
 pub use electrum_client;
 pub use elements;
+pub use elements_miniscript;
 pub use error::*;
 pub use log;
 pub use miniscript;

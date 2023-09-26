@@ -4,6 +4,8 @@
 
 ### Added
 - GA_get_subaccount: add core_descriptors for Liquid Electrum sessions.
+- GA_login_user: add support for Liquid Electrum watch only. It is now
+  possible to login with a list of CT descriptors.
 
 ### Changed
 

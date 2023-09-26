@@ -469,9 +469,17 @@ pub struct AccountData {
     pub account_num: u32,
     pub xpub: Xpub,
     pub master_xpub_fingerprint: Option<Fingerprint>,
+    pub master_blinding_key: Option<MasterBlindingKey>,
 }
 
-fn from_slip132_extended_pubkey(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Error> {
+fn from_slip132_extended_pubkey(
+    s: &str,
+    expected_is_mainnet: bool,
+    is_liquid: bool,
+) -> Result<AccountData, Error> {
+    if is_liquid {
+        return Err(Error::UnsupportedDescriptor);
+    }
     let (is_mainnet, script_type, xpub) = decode_from_slip132_string(s)?;
     if is_mainnet != expected_is_mainnet {
         return Err(Error::MismatchingNetwork);
@@ -484,17 +492,22 @@ fn from_slip132_extended_pubkey(s: &str, expected_is_mainnet: bool) -> Result<Ac
         account_num,
         xpub,
         master_xpub_fingerprint: None,
+        master_blinding_key: None,
     })
 }
 
-fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Error> {
-    let coin_type = if expected_is_mainnet {
-        0
-    } else {
-        1
+fn from_descriptor(
+    s: &str,
+    expected_is_mainnet: bool,
+    is_liquid: bool,
+) -> Result<AccountData, Error> {
+    let coin_type = match (expected_is_mainnet, is_liquid) {
+        (true, true) => 1776,
+        (true, false) => 0,
+        (false, _) => 1,
     };
-    let (script_type, xpub, bip32_account, master_xpub_fingerprint) =
-        parse_single_sig_descriptor(s, coin_type)?;
+    let (script_type, xpub, bip32_account, master_xpub_fingerprint, master_blinding_key) =
+        parse_single_sig_descriptor(s, coin_type, is_liquid)?;
     let is_mainnet = match xpub.network {
         Network::Bitcoin => true,
         _ => false,
@@ -509,6 +522,7 @@ fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Er
         account_num,
         xpub,
         master_xpub_fingerprint: Some(master_xpub_fingerprint),
+        master_blinding_key: master_blinding_key,
     })
 }
 
@@ -527,18 +541,24 @@ impl WatchOnlyCredentials {
         Ok(xpub)
     }
 
-    pub fn accounts(self, is_mainnet: bool) -> Result<(Vec<AccountData>, Fingerprint), Error> {
+    pub fn accounts(
+        self,
+        is_mainnet: bool,
+        is_liquid: bool,
+    ) -> Result<(Vec<AccountData>, Fingerprint, Option<MasterBlindingKey>), Error> {
         let r: Result<Vec<_>, _> = match self {
-            WatchOnlyCredentials::Slip132ExtendedPubkeys(keys) => {
-                keys.iter().map(|k| from_slip132_extended_pubkey(&k, is_mainnet)).collect()
-            }
+            WatchOnlyCredentials::Slip132ExtendedPubkeys(keys) => keys
+                .iter()
+                .map(|k| from_slip132_extended_pubkey(&k, is_mainnet, is_liquid))
+                .collect(),
             WatchOnlyCredentials::CoreDescriptors(descriptors) => {
-                descriptors.iter().map(|d| from_descriptor(&d, is_mainnet)).collect()
+                descriptors.iter().map(|d| from_descriptor(&d, is_mainnet, is_liquid)).collect()
             }
         };
         // Handle duplicates
         let mut m = HashMap::<u32, Xpub>::new();
         let mut master_xpub_fingerprint = None;
+        let mut master_blinding_key = None;
         for a in r? {
             if let Some(old) = m.insert(a.account_num, a.xpub.clone()) {
                 if old != a.xpub {
@@ -556,6 +576,17 @@ impl WatchOnlyCredentials {
                     }
                 }
             }
+            // Check all master blinding keys are equal
+            match master_blinding_key.as_ref() {
+                None => {
+                    master_blinding_key = a.master_blinding_key;
+                }
+                Some(f) => {
+                    if Some(f) != a.master_blinding_key.as_ref() {
+                        return Err(Error::MismatchingDescriptor);
+                    }
+                }
+            }
         }
         let v = m
             .iter()
@@ -563,10 +594,11 @@ impl WatchOnlyCredentials {
                 account_num: *k,
                 xpub: *v,
                 master_xpub_fingerprint: master_xpub_fingerprint.clone(),
+                master_blinding_key: master_blinding_key.clone(),
             })
             .collect();
         let master_xpub_fingerprint = master_xpub_fingerprint.unwrap_or_default();
-        Ok((v, master_xpub_fingerprint))
+        Ok((v, master_xpub_fingerprint, master_blinding_key))
     }
 }
 
