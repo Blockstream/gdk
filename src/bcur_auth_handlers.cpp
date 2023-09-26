@@ -8,7 +8,6 @@
 #include "logging.hpp"
 #include <bc-ur/bc-ur.hpp>
 #include <boost/algorithm/string.hpp>
-#include <boost/endian/conversion.hpp>
 #include <boost/format.hpp>
 #include <gsl/span>
 extern "C" {
@@ -262,8 +261,7 @@ namespace sdk {
             m_result["descriptor"] = parseoutput(ur.cbor());
         } else if (urtype == "crypto-account") {
             crypto_account account = parseaccount(ur.cbor());
-            uint32_t b2_master_fpr = boost::endian::native_to_big(account.master_fingerprint);
-            m_result["master_fingerprint"] = (boost::format("%x") % b2_master_fpr).str();
+            m_result["master_fingerprint"] = (boost::format("%08x") % account.master_fingerprint).str();
             for (size_t idx = 0; idx < account.descriptors_count; idx++) {
                 m_result["descriptors"].push_back(format(account.descriptors[idx]));
             }
