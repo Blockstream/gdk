@@ -58,6 +58,9 @@ pub enum Error {
     ElementsEncode(#[from] elements::encode::Error),
 
     #[error(transparent)]
+    ElementsMiniscriptError(#[from] gdk_common::elements_miniscript::Error),
+
+    #[error(transparent)]
     ElementsPset(#[from] elements::pset::Error),
 
     #[error("addressees cannot be empty")]

@@ -7,6 +7,7 @@ use gdk_common::log::{info, warn};
 use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
+use gdk_common::elements::hex::ToHex;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETransactions, BETxid};
@@ -135,9 +136,24 @@ impl Account {
         let parent_fingerprint = self.master_xpub_fingerprint.to_string();
         let key_origin = format!("[{}/{}]", parent_fingerprint, path);
         let desc = format!("{}({}{}/{}/*){}", prefix, key_origin, self.xpub, internal_idx, suffix);
-        let (desc, _) =
-            gdk_common::miniscript::descriptor::Descriptor::parse_descriptor(&crate::EC, &desc)?;
-        Ok(desc.to_string())
+        if self.network.liquid {
+            let slip77_key = self
+                .master_blinding
+                .as_ref()
+                .expect("master blinding key always available in liquid")
+                .0[32..]
+                .to_hex();
+            let desc = format!("ct(slip77({}),el{})", slip77_key, desc);
+            let checksum =
+                gdk_common::elements_miniscript::descriptor::checksum::desc_checksum(&desc)?;
+            Ok(format!("{}#{}", &desc, checksum))
+        } else {
+            let (desc, _) = gdk_common::miniscript::descriptor::Descriptor::parse_descriptor(
+                &crate::EC,
+                &desc,
+            )?;
+            Ok(desc.to_string())
+        }
     }
 
     fn slip132_extended_pubkey(&self) -> Option<String> {

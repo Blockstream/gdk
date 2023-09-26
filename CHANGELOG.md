@@ -3,6 +3,7 @@
 ## Release 0.70.1
 
 ### Added
+- GA_get_subaccount: add core_descriptors for Liquid Electrum sessions.
 
 ### Changed
 
