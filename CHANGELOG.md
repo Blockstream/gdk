@@ -23,6 +23,7 @@
   transactions to match the multisig behaviour.
 - GA_sign_transaction: Allow the caller to provide their own Anti-Exfil
   host entropy.
+- GA_bcur_decode: Support parsing crypto-psbt, crypto-output and crypto-account.
 
 ### Changed
 
