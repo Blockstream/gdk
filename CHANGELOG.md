@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.68.0
+## Release 0.69.0
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.68.0 - 23-09-27
 
 ### Added
 
