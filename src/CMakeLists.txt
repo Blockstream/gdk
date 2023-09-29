@@ -43,11 +43,15 @@ generate_export_header(greenaddress-objects
     BASE_NAME gdk 
     EXPORT_MACRO_NAME GDK_API
 )
-target_compile_definitions(greenaddress-objects 
-    PRIVATE 
+# TODO: rework the whole gdk CMakeFile to remove the intermediate
+# greenaddress-objects target, making this hacky stuff unnecessary
+target_compile_definitions(greenaddress-objects
+    PRIVATE
         greenaddress_objects_EXPORTS
         _FORTIFY_SOURCE=2
 )
+
+
 target_compile_options(greenaddress-objects 
     PRIVATE
         ${COMPILE_OPTIONS}
