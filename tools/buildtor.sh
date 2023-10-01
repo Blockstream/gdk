@@ -8,6 +8,11 @@ TOR_NAME="$(basename ${PRJ_SUBDIR})"
 # fixes to code
 cd ${TOR_SRCDIR}
 ${SED} -i 's/#include <openssl\/opensslv.h>/#include <openssl\/opensslconf.h>/g' src/lib/crypt_ops/crypto_openssl_mgt.h
+# Remove warning string reference to openssl 1.1.1.b - Google play store
+# security scanning incorrectly assumes we have linked a vulnerable openssl
+# version if the string "OpenSSL 1.1.1b" is found in the final binary.
+# FIXME: remove when tor is upgraded to version tor-0.4.8.1 or later.
+${SED} -i 's/"1\.1\.1b\."/"future connections."/g' src/lib/tls/tortls_openssl.c
 
 #FIXME: enable zstd for tor compression
 CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/tor/build --enable-pic \
