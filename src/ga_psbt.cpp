@@ -184,12 +184,12 @@ namespace sdk {
         const auto policy_asset = net_params.get_policy_asset();
         const Tx tx(extract());
 
-        auto inputs = inputs_to_json(session, std::move(details.at("utxos")));
-        auto outputs = outputs_to_json(session, tx);
+        auto inputs_and_assets = inputs_to_json(session, std::move(details.at("utxos")));
+        auto outputs = outputs_to_json(session, tx, inputs_and_assets.second);
         amount fee, fee_output;
         bool use_error = false;
         std::string error;
-        for (const auto& txin : inputs) {
+        for (const auto& txin : inputs_and_assets.first) {
             auto txin_error = j_str_or_empty(txin, "error");
             if (txin_error.empty()) {
                 const auto asset_id = j_asset(net_params, txin);
@@ -217,8 +217,9 @@ namespace sdk {
         }
         // Calculated fee must match fee output for Liquid unless an error occurred
         GDK_RUNTIME_ASSERT(!m_is_liquid || fee == fee_output || !error.empty());
-        nlohmann::json result = { { "transaction", tx.to_hex() }, { "transaction_inputs", std::move(inputs) },
-            { "transaction_outputs", std::move(outputs) } };
+        nlohmann::json result
+            = { { "transaction", tx.to_hex() }, { "transaction_inputs", std::move(inputs_and_assets.first) },
+                  { "transaction_outputs", std::move(outputs) } };
         result["fee"] = m_is_liquid ? fee_output.value() : fee.value();
         result["network_fee"] = 0;
         update_tx_info(session, tx, result);
@@ -228,8 +229,11 @@ namespace sdk {
         return result;
     }
 
-    nlohmann::json Psbt::inputs_to_json(session_impl& session, nlohmann::json utxos) const
+    std::pair<nlohmann::json, std::set<std::string>> Psbt::inputs_to_json(
+        session_impl& session, nlohmann::json utxos) const
     {
+        const auto& net_params = session.get_network_parameters();
+        std::set<std::string> wallet_assets;
         nlohmann::json::array_t inputs;
         inputs.resize(get_num_inputs());
         for (size_t i = 0; i < inputs.size(); ++i) {
@@ -243,6 +247,7 @@ namespace sdk {
                     utxo.erase("user_status");
                     utxo_add_paths(session, utxo);
                     input_utxo = std::move(utxo);
+                    wallet_assets.insert(j_asset(net_params, input_utxo));
                     break;
                 }
             }
@@ -276,17 +281,20 @@ namespace sdk {
                 input_utxo["redeem_script"] = b2h(redeem_script.value());
             }
         }
-        return inputs;
+        return std::make_pair(std::move(inputs), std::move(wallet_assets));
     }
 
-    nlohmann::json Psbt::outputs_to_json(session_impl& session, const Tx& tx) const
+    nlohmann::json Psbt::outputs_to_json(
+        session_impl& session, const Tx& tx, const std::set<std::string>& wallet_assets) const
     {
         const auto& net_params = session.get_network_parameters();
+        const bool is_electrum = net_params.is_electrum();
+        std::set<std::string> spent_assets;
+        std::map<std::string, std::vector<size_t>> asset_outputs;
 
         nlohmann::json::array_t outputs;
         outputs.resize(get_num_outputs());
         for (size_t i = 0; i < outputs.size(); ++i) {
-            // TODO: change identification
             const auto& txout = get_output(i);
             auto& jsonout = outputs[i];
             if (!m_is_liquid) {
@@ -323,7 +331,8 @@ namespace sdk {
                 jsonout["scriptpubkey"] = b2h({ txout.script, txout.script_len });
             }
             auto output_data = session.get_scriptpubkey_data({ txout.script, txout.script_len });
-            if (output_data.empty()) {
+            const bool is_wallet_output = !output_data.empty();
+            if (!is_wallet_output) {
                 jsonout["address"] = get_address_from_scriptpubkey(net_params, { txout.script, txout.script_len });
             } else {
                 if (m_is_liquid) {
@@ -344,6 +353,37 @@ namespace sdk {
                 nlohmann::json unconf_addr = { { "address", jsonout.at("address") }, { "is_confidential", false } };
                 confidentialize_address(net_params, unconf_addr, jsonout.at("blinding_key"));
                 jsonout["address"] = std::move(unconf_addr.at("address"));
+            }
+            // Change detection
+            auto asset_id = j_asset(net_params, jsonout);
+            if (wallet_assets.count(asset_id)) {
+                if (!is_electrum) {
+                    // Multisig: Collect info to compute change below
+                    if (is_wallet_output) {
+                        asset_outputs[asset_id].push_back(i);
+                    } else {
+                        spent_assets.emplace(std::move(asset_id));
+                    }
+                } else if (is_wallet_output) {
+                    // Singlesig: Outputs on the internal chain are change
+                    jsonout["is_change"] = j_bool_or_false(jsonout, "is_internal");
+                }
+            }
+        }
+        if (!is_electrum) {
+            // Multisig change detection (heuristic)
+            for (const auto& o : asset_outputs) {
+                if (wallet_assets.count(o.first)) {
+                    // This is an asset that we contributed an input to
+                    const bool is_spent_externally = spent_assets.count(o.first) != 0;
+                    const auto num_wallet_outputs = o.second.size();
+                    if (is_spent_externally || num_wallet_outputs > 1) {
+                        // We sent this asset elsewhere and also to the wallet, or
+                        // we have multiple wallet outputs for the same asset.
+                        // Mark the first (possibly only) wallet output as change.
+                        outputs[o.second.front()]["is_change"] = true;
+                    }
+                }
             }
         }
         return outputs;
