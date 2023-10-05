@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <set>
 #include <string>
 
 #include <nlohmann/json_fwd.hpp>
@@ -49,8 +50,10 @@ namespace sdk {
         const struct wally_psbt_output& get_output(size_t index) const;
 
     private:
-        nlohmann::json inputs_to_json(session_impl& session, nlohmann::json utxos) const;
-        nlohmann::json outputs_to_json(session_impl& session, const Tx& tx) const;
+        std::pair<nlohmann::json, std::set<std::string>> inputs_to_json(
+            session_impl& session, nlohmann::json utxos) const;
+        nlohmann::json outputs_to_json(
+            session_impl& session, const Tx& tx, const std::set<std::string>& wallet_assets) const;
 
         struct psbt_deleter {
             void operator()(struct wally_psbt* p);
