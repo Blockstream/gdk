@@ -270,11 +270,11 @@ namespace sdk {
         , m_multi_call_category(0)
         , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
+        , m_wamp(new wamp_transport(m_net_params,
+              std::bind(&ga_session::emit_notification, this, std::placeholders::_1, std::placeholders::_2)))
         , m_spv_thread_done(false)
         , m_spv_thread_stop(false)
     {
-        m_wamp = std::make_unique<wamp_transport>(m_net_params, *session_impl::m_io, *session_impl::m_strand,
-            std::bind(&ga_session::emit_notification, this, std::placeholders::_1, std::placeholders::_2));
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
     }
 
@@ -287,12 +287,6 @@ namespace sdk {
             constexpr bool do_start = false;
             download_headers_ctl(locker, do_start);
         });
-        no_std_exception_escape(
-            [this] {
-                m_wamp->disconnect();
-                m_wamp.reset();
-            },
-            "ga_session wamp_transport");
     }
 
     void ga_session::connect()

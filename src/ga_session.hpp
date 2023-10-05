@@ -18,7 +18,6 @@ namespace ga {
 namespace sdk {
     struct cache;
     class ga_user_pubkeys;
-    class io_runner;
     class wamp_transport;
 
     class ga_session final : public session_impl {

@@ -1,9 +1,8 @@
 #ifndef GDK_SESSION_IMPL_HPP
 #define GDK_SESSION_IMPL_HPP
-#pragma once
 
+#pragma once
 #include <atomic>
-#include <boost/asio/io_context.hpp>
 #include <mutex>
 #include <set>
 #include <thread>
@@ -18,11 +17,11 @@ namespace sdk {
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
     class ga_pubkeys;
-    class io_runner;
     class user_pubkeys;
     class signer;
     class Tx;
     struct tor_controller;
+    struct io_context_and_guard;
 
     class session_impl {
     public:
@@ -259,9 +258,9 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
-        std::unique_ptr<io_runner> m_io;
-        std::unique_ptr<boost::asio::io_context::strand> m_strand;
+        std::unique_ptr<io_context_and_guard> m_io;
 
+        std::thread m_run_thread; // Runs the asio context
         const std::string m_user_proxy;
         std::shared_ptr<tor_controller> m_tor_ctrl;
 
