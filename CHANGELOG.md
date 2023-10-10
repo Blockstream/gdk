@@ -10,6 +10,20 @@
 
 ### Removed
 
+## Release 0.68.1 - 23-10-10
+
+### Added
+
+### Changed
+
+### Fixed
+
+- tor: patch error message to prevent play store flagging a security issue incorrectly.
+- Multisig: psbt: detect and mark change outputs when signing PSBT/PSET.
+- Fix the mingw compilation/login crash issues.
+
+### Removed
+
 ## Release 0.68.0 - 23-09-27
 
 ### Added
