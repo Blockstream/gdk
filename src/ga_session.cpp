@@ -1831,8 +1831,12 @@ namespace sdk {
         }
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
         update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, name, signer_xpubs));
-        nlohmann::json ntf = { { "pointer", subaccount }, { "event_type", "new" } };
-        emit_notification({ { "event", "subaccount" }, { "subaccount", std::move(ntf) } }, false);
+        nlohmann::json ntf
+            = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };
+        for (const auto event_type : { "new", "synced" }) {
+            ntf["subaccount"]["event_type"] = event_type;
+            emit_notification(ntf, false);
+        }
         return subaccount_details;
     }
 
