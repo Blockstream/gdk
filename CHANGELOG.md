@@ -6,11 +6,15 @@
 
 ### Changed
 
-- GA_create_subaccount: Multisig: emit subaccount "synced" notification.
-
 ### Fixed
 
 ### Removed
+
+## Release 0.68.2 - 23-10-16
+
+### Changed
+
+- GA_create_subaccount: Multisig: emit subaccount "synced" notification.
 
 ## Release 0.68.1 - 23-10-10
 
