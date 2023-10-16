@@ -38,8 +38,6 @@ namespace sdk {
         nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
             const std::string& gait_path_hex, bool supports_csv);
 
-        nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
-
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer);

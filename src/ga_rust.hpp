@@ -15,7 +15,6 @@ namespace sdk {
         void connect();
         void disconnect();
 
-        nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
             const std::string& root_bip32_xpub, std::shared_ptr<signer> signer);

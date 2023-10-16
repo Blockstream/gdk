@@ -9,6 +9,7 @@
 #include "ga_tx.hpp"
 #include "http_client.hpp"
 #include "io_runner.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -16,6 +17,7 @@
 #include "xpub_hdkey.hpp"
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_context.hpp>
+#include <boost/format.hpp>
 
 namespace ga {
 namespace sdk {
@@ -199,6 +201,30 @@ namespace sdk {
             return { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() },
                 { "error", ex.what() } };
         }
+    }
+
+    nlohmann::json session_impl::validate_asset_domain_name(const nlohmann::json& params)
+    {
+        boost::format format_str{ "Authorize linking the domain name %1% to the Liquid asset %2%\n" };
+        boost::format target_str{ "/.well-known/liquid-asset-proof-%1%" };
+
+        nlohmann::json result;
+        try {
+            const std::string domain_name = params.at("domain");
+            const std::string asset_id = params.at("asset_id");
+            const std::string final_target = (target_str % asset_id).str();
+            const std::string url = domain_name + final_target;
+            result = http_request({ { "method", "GET" }, { "urls", { url } } });
+            if (!j_str_is_empty(result, "error")) {
+                return result;
+            }
+            const std::string body_r = result.at("body");
+            GDK_RUNTIME_ASSERT_MSG(
+                body_r == (format_str % domain_name % asset_id).str(), "found domain name with proof mismatch");
+        } catch (const std::exception& ex) {
+            result["error"] = ex.what();
+        }
+        return result;
     }
 
     std::string session_impl::connect_tor()

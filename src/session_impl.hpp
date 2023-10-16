@@ -79,7 +79,7 @@ namespace sdk {
         virtual nlohmann::json http_request(nlohmann::json params);
         virtual void refresh_assets(nlohmann::json params);
         nlohmann::json get_assets(nlohmann::json params);
-        virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params) = 0;
+        virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
         virtual void load_store(std::shared_ptr<signer> signer);
         virtual void start_sync_threads();

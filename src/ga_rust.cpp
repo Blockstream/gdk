@@ -75,8 +75,6 @@ namespace sdk {
         rust_call("disconnect", {}, m_session);
     }
 
-    nlohmann::json ga_rust::validate_asset_domain_name(const nlohmann::json& params) { return nlohmann::json(); }
-
     void ga_rust::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> signer)
     {
         auto master_xpub = signer->get_master_bip32_xpub();
