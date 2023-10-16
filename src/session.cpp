@@ -68,13 +68,6 @@ namespace sdk {
             const std::string datadir = global_config["datadir"];
             global_config.emplace("registrydir", datadir + "/registry");
         }
-        if (!global_config.contains("enable_ss_liquid_hww")) {
-            // "enable_ss_liquid_hww" is a development setting, to enable
-            // hardware wallet support for single sig sessions.
-            // TODO: Remove this setting and all references to it
-            //       once HWW support is fully tested.
-            global_config.emplace("enable_ss_liquid_hww", false);
-        }
 
         // Set up logging. Default to fatal logging, effectively 'none',
         // since we don't use fatal severity for logging.

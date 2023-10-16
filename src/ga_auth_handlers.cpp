@@ -317,7 +317,6 @@ namespace sdk {
     auth_handler::state_type login_user_call::call_impl()
     {
         const bool is_electrum = m_net_params.is_electrum();
-        const bool is_liquid = m_net_params.is_liquid();
 
         if (!m_signer) {
             if (m_credential_data.contains("pin")) {
@@ -354,10 +353,6 @@ namespace sdk {
             }
 
             m_signer = new_signer;
-            if (is_electrum && is_liquid && new_signer->is_hardware()
-                && !gdk_config()["enable_ss_liquid_hww"].get<bool>()) {
-                throw user_error("Hardware wallet support for Liquid is not yet enabled");
-            }
 
             // We need master pubkey for the challenge, client secret pubkey for login
             try {

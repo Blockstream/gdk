@@ -6,7 +6,11 @@
 
 ### Changed
 
-- GA_create_subaccount: Multisig: emit subaccount "synced" notification.
+- GA_create_subaccount: Multisig: emit subaccount "synced" notification when
+  a new subaccount is created.
+- Transaction signing with hardware wallets is now available without setting
+  the "enable_ss_liquid_hww" gdk config setting. This setting can be removed
+  from the calling application when updating; it is no longer required.
 
 ### Fixed
 
