@@ -209,7 +209,7 @@ namespace sdk {
             const auto& domain = j_strref(params, "domain");
             const auto& asset_id = j_strref(params, "asset_id");
 
-            auto url = domain + "/.well-known/liquid-asset-proof-" + asset_id;
+            auto url = "https://" + domain + "/.well-known/liquid-asset-proof-" + asset_id;
             result = http_request({ { "method", "GET" }, { "urls", { std::move(url) } } });
 
             if (j_str_is_empty(result, "error")) {
