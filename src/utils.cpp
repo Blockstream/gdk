@@ -524,29 +524,26 @@ namespace sdk {
     // onion urls are ignored if use_tor is false
     nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor)
     {
-        GDK_RUNTIME_ASSERT(!urls.empty());
-
-        std::vector<nlohmann::json> onion_urls, https_urls, insecure_urls;
+        std::vector<nlohmann::json> https_urls, insecure_urls;
         for (const auto& url_json : urls) {
-            const auto url = parse_url(url_json);
-            if (url["is_onion"]) {
+            auto url = parse_url(url_json);
+            if (j_boolref(url, "is_onion")) {
                 if (use_tor) {
-                    onion_urls.push_back(url);
+                    return url;
                 }
-            } else if (url["is_secure"]) {
-                https_urls.push_back(url);
+            } else if (j_boolref(url, "is_secure")) {
+                https_urls.emplace_back(std::move(url));
             } else {
-                insecure_urls.push_back(url);
+                insecure_urls.emplace_back(std::move(url));
             }
         }
 
-        if (!onion_urls.empty()) {
-            return onion_urls[0];
-        } else if (!https_urls.empty()) {
-            return https_urls[0];
-        } else {
-            return insecure_urls[0];
+        if (!https_urls.empty()) {
+            return std::move(https_urls.front());
+        } else if (insecure_urls.empty()) {
+            throw user_error("No URL provided");
         }
+        return std::move(insecure_urls.front());
     }
 
     static const std::string SOCKS5("socks5://");
