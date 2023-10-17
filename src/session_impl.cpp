@@ -213,15 +213,20 @@ namespace sdk {
             result = http_request({ { "method", "GET" }, { "urls", { std::move(url) } } });
 
             if (j_str_is_empty(result, "error")) {
-                const std::string proof
-                    = "Authorize linking the domain name " + domain + " to the Liquid asset " + asset_id + '\n';
-                if (j_strref(result, "body") != proof) {
-                    result["error"] = "domain name proof mismatch";
+                if (!result.contains("body")) {
+                    result["error"] = "error fetching domain proof";
+                } else {
+                    const std::string proof
+                        = "Authorize linking the domain name " + domain + " to the Liquid asset " + asset_id + '\n';
+                    if (j_strref(result, "body") != proof) {
+                        result["error"] = "domain name proof mismatch";
+                    }
                 }
             }
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
         }
+        result.erase("body");
         return result;
     }
 
