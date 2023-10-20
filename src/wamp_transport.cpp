@@ -395,20 +395,22 @@ namespace sdk {
         locker.unlock();
         m_condition.notify_all();
 
-        if (!is_noop && wait) {
-            // Busy wait for up to 30s while the reconnection thread changes state
-            for (size_t i = 0; i < 600u; ++i) {
-                std::this_thread::sleep_for(50ms);
-                locker.lock();
-                const auto current_state = m_state.load();
-                locker.unlock();
-                if (current_state == new_state || current_state == state_t::exited) {
-                    GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(current_state);
-                    return;
-                }
-            }
-            throw timeout_error();
+        if (is_noop || !wait) {
+            return;
         }
+
+        // Busy wait for up to 30s while the reconnection thread changes state
+        for (size_t i = 0; i < 600u; ++i) {
+            std::this_thread::sleep_for(50ms);
+            locker.lock();
+            const auto current_state = m_state.load();
+            locker.unlock();
+            if (current_state == new_state || current_state == state_t::exited) {
+                GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(current_state);
+                return;
+            }
+        }
+        throw timeout_error();
     }
 
     void wamp_transport::emit_state(wamp_transport::state_t current, wamp_transport::state_t desired, uint64_t wait_ms)
@@ -557,9 +559,10 @@ namespace sdk {
                 last_handled_failure_count = m_failure_count.load();
 
                 m_state = desired_state;
+                const state_t notify_state = desired_state;
                 desired_state = m_desired_state.load();
                 locker.unlock();
-                emit_state(m_state, desired_state, 0);
+                emit_state(notify_state, desired_state, 0);
                 if (desired_state == state_t::exited) {
                     // Exit this thread so the caller can join() it
                     return;
