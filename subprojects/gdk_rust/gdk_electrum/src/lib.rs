@@ -1566,6 +1566,8 @@ impl Syncer {
                     }
                 }
 
+                let mut txid_removed = vec![];
+
                 // We are going to keep the txids that have no conflicts with other new txs, in case
                 // there are conflicts with another tx, we keep the one with greater fee.
                 txid_height.retain(|txid, _| {
@@ -1579,7 +1581,12 @@ impl Syncer {
                             // if the tx is not found in the new ones, it means it doesn't conflict with the new ones.
                             if let Some((_, other_fee)) = new_txs_fee.get(other_txid) {
                                 // return false (remove the txid) only if the fee is lower than the other_fee
-                                return fee > other_fee;
+                                if fee > other_fee {
+                                    return true;
+                                } else {
+                                    txid_removed.push(tx.txid());
+                                    return false;
+                                }
                             }
                         }
                     }
@@ -1594,6 +1601,21 @@ impl Syncer {
                     let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
                     if tx.tx.previous_outputs().iter().any(|p| outpoints_to_tx.contains_key(p)) {
                         acc_store.heights.remove(&txid);
+                        txid_removed.push(*txid);
+                    }
+                }
+
+                // We also remove transactions with inputs that doesn't exist anymore because made
+                // from tx that are removed in the 2 previous steps
+                for txid in txid_removed {
+                    let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
+                    for i in 0..tx.tx.output_len() {
+                        let outpoint = tx.tx.outpoint(i as u32);
+                        if let Some(txs) = outpoints_to_tx.get(&outpoint) {
+                            for tx in txs {
+                                acc_store.heights.remove(&tx);
+                            }
+                        }
                     }
                 }
 
