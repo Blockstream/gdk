@@ -1412,11 +1412,38 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
+            let script_txid = {
+                let mut script_txid = HashMap::new();
+                let store_read = self.store.read()?;
+                let acc_store = store_read.account_cache(account.num())?;
+                for txid in acc_store.heights.keys() {
+                    let tx = acc_store.all_txs.get(&txid).unwrap();
+                    for previous_outpoint in tx.tx.previous_outputs() {
+                        if let Some(previous_tx) = acc_store.all_txs.get(&previous_outpoint.txid())
+                        {
+                            script_txid
+                                .entry(previous_tx.tx.output_script(previous_outpoint.vout()))
+                                .or_insert(HashSet::new())
+                                .insert(*txid);
+                        }
+                    }
+
+                    for i in 0..tx.tx.output_len() {
+                        script_txid
+                            .entry(tx.tx.output_script(i as u32))
+                            .or_insert(HashSet::new())
+                            .insert(*txid);
+                    }
+                }
+                script_txid
+            };
+
             let mut new_statuses = ScriptStatuses::new();
             let cache_statuses = account.status()?;
             let mut history_txs_id = HashSet::<BETxid>::new();
             let mut heights_set = HashSet::new();
             let mut txid_height = HashMap::<BETxid, _>::new();
+            let mut txid_to_remove = vec![];
             let mut scripts = HashMap::new();
 
             let mut last_used = Indexes::default();
@@ -1433,6 +1460,9 @@ impl Syncer {
                     if !cached {
                         scripts.insert(script.clone(), path);
                     }
+                    let existing_txid_for_this_script =
+                        script_txid.get(&script).cloned().unwrap_or_default();
+
                     let b_script = script.into_bitcoin();
 
                     match client.script_subscribe(&b_script) {
@@ -1487,6 +1517,8 @@ impl Syncer {
                     let status = account::compute_script_status(txid_height_pairs);
                     new_statuses.insert(b_script.clone(), status);
 
+                    let mut returned_txid_for_this_script = HashSet::new();
+
                     let net = self.network.id();
                     for el in history {
                         // el.height = -1 means unconfirmed with unconfirmed parents
@@ -1501,6 +1533,14 @@ impl Syncer {
                         }
 
                         history_txs_id.insert(el.tx_hash.into_net(net));
+
+                        returned_txid_for_this_script.insert(el.tx_hash.into_net(net));
+                    }
+
+                    for txid in
+                        existing_txid_for_this_script.difference(&returned_txid_for_this_script)
+                    {
+                        txid_to_remove.push(*txid);
                     }
                 }
             }
@@ -1541,6 +1581,7 @@ impl Syncer {
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
                 || !unc_txs_to_remove.is_empty()
+                || !txid_to_remove.is_empty()
             {
                 info!(
                     "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
@@ -1621,6 +1662,10 @@ impl Syncer {
 
                 // Remove unconfirmed transaction not returned anymore
                 for txid in unc_txs_to_remove {
+                    acc_store.heights.remove(&txid);
+                }
+
+                for txid in txid_to_remove {
                     acc_store.heights.remove(&txid);
                 }
 
