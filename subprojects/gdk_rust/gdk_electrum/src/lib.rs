@@ -1508,11 +1508,11 @@ impl Syncer {
             let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
             let headers = self.download_headers(account.num(), &heights_set, &client)?;
 
-            let store_read = self.store.read()?;
-            let acc_store = store_read.account_cache(account.num())?;
-            let store_last_used = acc_store.get_both_last_used();
-
-            drop(store_read);
+            let store_last_used = {
+                let store_read = self.store.read()?;
+                let acc_store = store_read.account_cache(account.num())?;
+                acc_store.get_both_last_used()
+            };
 
             let changed = if !new_txs.txs.is_empty()
                 || !headers.is_empty()
