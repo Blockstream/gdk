@@ -10,6 +10,12 @@
 
 ### Removed
 
+## Release 0.68.3 - 23-10-25
+
+### Fixed
+
+- Singlesig: Fix incorrectly reported unconfirmed transactions.
+
 ## Release 0.68.2 - 23-10-16
 
 ### Changed
