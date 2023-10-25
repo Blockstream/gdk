@@ -277,8 +277,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "ciborium"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "effd91f6c78e5a4ace8a5d3c0b6bfaec9e2baaef55f3efc00e45fb2e477ee926"
+source = "git+https://github.com/RCasatta/ciborium?rev=187988c80a04b0da47579c2683f42b16795e6f14#187988c80a04b0da47579c2683f42b16795e6f14"
 dependencies = [
  "ciborium-io",
  "ciborium-ll",
@@ -288,14 +287,12 @@ dependencies = [
 [[package]]
 name = "ciborium-io"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cdf919175532b369853f5d5e20b26b43112613fd6fe7aee757e35f7a44642656"
+source = "git+https://github.com/RCasatta/ciborium?rev=187988c80a04b0da47579c2683f42b16795e6f14#187988c80a04b0da47579c2683f42b16795e6f14"
 
 [[package]]
 name = "ciborium-ll"
 version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "defaa24ecc093c77630e6c15e17c51f5e187bf35ee514f4e2d67baaa96dae22b"
+source = "git+https://github.com/RCasatta/ciborium?rev=187988c80a04b0da47579c2683f42b16795e6f14#187988c80a04b0da47579c2683f42b16795e6f14"
 dependencies = [
  "ciborium-io",
  "half",
@@ -373,6 +370,12 @@ dependencies = [
  "cfg-if",
  "lazy_static",
 ]
+
+[[package]]
+name = "crunchy"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7a81dae078cea95a014a339291cec439d2f232ebe854a9d672b796c6afafa9b7"
 
 [[package]]
 name = "ctr"
@@ -758,9 +761,12 @@ dependencies = [
 
 [[package]]
 name = "half"
-version = "1.8.2"
+version = "2.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eabb4a44450da02c90444cf74558da904edde8fb4e9035a9a6a4e15445af0bd7"
+checksum = "02b4af3693f1b705df946e9fe5631932443781d0aabb423b62fcd4d73f6d2fd0"
+dependencies = [
+ "crunchy",
+]
 
 [[package]]
 name = "hashbrown"

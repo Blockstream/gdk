@@ -28,3 +28,6 @@ debug = true
 debug-assertions = true
 panic = 'abort'
 lto = true
+
+[patch.crates-io]
+ciborium = { git = "https://github.com/RCasatta/ciborium", rev="187988c80a04b0da47579c2683f42b16795e6f14" }
