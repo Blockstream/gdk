@@ -1508,17 +1508,39 @@ impl Syncer {
             let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
             let headers = self.download_headers(account.num(), &heights_set, &client)?;
 
-            let store_last_used = {
+            let (store_last_used, unc_txs_cache) = {
                 let store_read = self.store.read()?;
                 let acc_store = store_read.account_cache(account.num())?;
-                acc_store.get_both_last_used()
+                let unc_txs_cache: Vec<bitcoin::Txid> = acc_store
+                    .heights
+                    .iter()
+                    .filter(|(_, h)| h.is_none())
+                    .map(|(t, _)| t.into_bitcoin())
+                    .collect();
+                (acc_store.get_both_last_used(), unc_txs_cache)
             };
+
+            // Sometimes when an unconfirmed transaction is removed from the mempool, the script status
+            // of the scripts involving such transaction is not updated. So we don't have a way to
+            // realize that we should update our cache.
+            // To handle these scenarios, we explicitly try to get such transactions from the server, to
+            // understand whether we should remove them or not.
+            // Unfortunately this seems to be necessary.
+            let unc_txs_to_remove: Vec<BETxid> = unc_txs_cache
+                .iter()
+                .filter(|txid| {
+                    // We can't do a batch request here since one error would make the whole call fail
+                    client.transaction_get_raw(&txid).is_err()
+                })
+                .map(BETxidConvert::into_be)
+                .collect();
 
             let changed = if !new_txs.txs.is_empty()
                 || !headers.is_empty()
                 || store_last_used != last_used
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
+                || !unc_txs_to_remove.is_empty()
             {
                 info!(
                     "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
@@ -1595,6 +1617,11 @@ impl Syncer {
                     if tx.tx.previous_outputs().iter().any(|p| outpoints_to_tx.contains_key(p)) {
                         acc_store.heights.remove(&txid);
                     }
+                }
+
+                // Remove unconfirmed transaction not returned anymore
+                for txid in unc_txs_to_remove {
+                    acc_store.heights.remove(&txid);
                 }
 
                 acc_store.heights.extend(txid_height.into_iter());
