@@ -7,7 +7,6 @@ use gdk_common::aes::aead::NewAead;
 use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::be::{BETxid, BETxidConvert};
 use gdk_common::bitcoin::hashes::{sha256, sha256d, Hash};
-use gdk_common::electrum_client;
 use gdk_common::elements;
 use gdk_common::log::{debug, info, warn};
 use gdk_common::model::{
@@ -15,8 +14,8 @@ use gdk_common::model::{
     SPVVerifyTxResult,
 };
 use gdk_common::store::{Decryptable, Encryptable};
-use gdk_common::util::ciborium_to_vec;
 use gdk_common::NetworkId;
+use gdk_common::{electrum_client, serde_cbor};
 use std::collections::HashSet;
 use std::fs::File;
 use std::io::Write;
@@ -243,7 +242,7 @@ impl VerifiedCache {
     ) -> Result<HashSet<(BETxid, u32)>, Error> {
         let mut file = File::open(&filepath)?;
         let plaintext = file.decrypt(cipher)?;
-        Ok(gdk_common::ciborium::from_reader(&plaintext[..])?)
+        Ok(gdk_common::serde_cbor::from_reader(&plaintext[..])?)
     }
 
     fn contains(&self, txid: &BETxid, height: u32) -> Result<bool, Error> {
@@ -263,7 +262,7 @@ impl VerifiedCache {
 
     fn flush(&mut self) -> Result<(), Error> {
         if let Some(store) = &self.store {
-            let plaintext = ciborium_to_vec(&self.set)?;
+            let plaintext = serde_cbor::to_vec(&self.set)?;
             let (nonce_bytes, ciphertext) = plaintext.encrypt(&store.cipher)?;
             let mut file = File::create(&store.filepath)?;
             file.write_all(&nonce_bytes)?;

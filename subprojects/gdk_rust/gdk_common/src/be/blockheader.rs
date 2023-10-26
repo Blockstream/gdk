@@ -57,8 +57,8 @@ mod test {
     #[test]
     fn test_cbor_header() {
         let header = block_header_dynafed();
-        let vec = crate::util::ciborium_to_vec(&header).unwrap();
-        let back: BlockHeader = ciborium::from_reader(&vec[..]).unwrap();
+        let vec = serde_cbor::to_vec(&header).unwrap();
+        let back: BlockHeader = serde_cbor::from_slice(&vec).unwrap();
         assert_eq!(header, back);
     }
 

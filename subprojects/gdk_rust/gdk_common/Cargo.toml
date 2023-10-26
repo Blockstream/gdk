@@ -11,7 +11,7 @@ testing = []
 aes = "0.7.0"
 aes-gcm-siv = "0.10"
 bitcoin = { version = "0.30", features = ["serde"] }
-ciborium = "0.2.1"
+serde_cbor = "0.11.1"
 elements = { version = "0.22", features = ["serde"] }
 libc = "0.2"
 log = "0.4.8"

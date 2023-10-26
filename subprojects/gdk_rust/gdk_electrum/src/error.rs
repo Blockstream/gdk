@@ -2,7 +2,7 @@ use crate::BETxid;
 use gdk_common::bitcoin::bip32::ExtendedPubKey;
 use gdk_common::bitcoin::sighash;
 use gdk_common::error::Error as CommonError;
-use gdk_common::{bitcoin, ciborium, electrum_client, elements, ureq};
+use gdk_common::{bitcoin, electrum_client, elements, serde_cbor, ureq};
 use serde::ser::Serialize;
 use std::convert::From;
 use std::path::PathBuf;
@@ -74,6 +74,9 @@ pub enum Error {
 
     #[error(transparent)]
     JSON(#[from] serde_json::error::Error),
+
+    #[error(transparent)]
+    SerdeCbor(#[from] serde_cbor::Error),
 
     #[error("insufficient funds")]
     InsufficientFunds,
@@ -162,12 +165,6 @@ pub enum Error {
 
     #[error("sendall error")]
     SendAll,
-
-    #[error(transparent)]
-    DeserializeCBORError(#[from] ciborium::de::Error<std::io::Error>),
-
-    #[error(transparent)]
-    SerializeCBORError(#[from] ciborium::ser::Error<std::io::Error>),
 
     #[error(transparent)]
     SliceConversionError(#[from] std::array::TryFromSliceError),

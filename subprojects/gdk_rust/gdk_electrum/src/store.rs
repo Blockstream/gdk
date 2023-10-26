@@ -9,13 +9,12 @@ use gdk_common::be::{
 use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPubKey};
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::bitcoin::Txid;
-use gdk_common::ciborium;
 use gdk_common::elements;
 use gdk_common::elements::TxOutSecrets;
 use gdk_common::log::{info, log, Level};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
+use gdk_common::serde_cbor;
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
-use gdk_common::util::ciborium_to_vec;
 use gdk_common::wally::MasterBlindingKey;
 use gdk_common::NetworkId;
 use serde::{Deserialize, Serialize};
@@ -211,7 +210,7 @@ impl RawCache {
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
         let decrypted = load_decrypt(Kind::Cache, path, cipher)?;
-        let store = ciborium::from_reader(&decrypted[..])?;
+        let store = serde_cbor::from_reader(&decrypted[..])?;
         Ok(store)
     }
 
@@ -253,7 +252,7 @@ impl RawStore {
 
     fn try_new<P: AsRef<Path>>(path: P, cipher: &Aes256GcmSiv) -> Result<Self, Error> {
         let decrypted = load_decrypt(Kind::Store, path, cipher)?;
-        let store = ciborium::from_reader(&decrypted[..])?;
+        let store = serde_cbor::from_reader(&decrypted[..])?;
         Ok(store)
     }
 }
@@ -334,8 +333,8 @@ impl StoreMeta {
         let now = Instant::now();
 
         let plaintext = match kind {
-            Kind::Store => ciborium_to_vec(&self.store),
-            Kind::Cache => ciborium_to_vec(&self.cache),
+            Kind::Store => serde_cbor::to_vec(&self.store),
+            Kind::Cache => serde_cbor::to_vec(&self.cache),
         }?;
 
         let hash = sha256::Hash::hash(&plaintext);
@@ -698,14 +697,14 @@ mod tests {
             },
         };
 
-        let blob = ciborium_to_vec(&store_v0).unwrap();
-        let store_v1: RawStoreV1 = ciborium::from_reader(&blob[..]).unwrap();
+        let blob = serde_cbor::to_vec(&store_v0).unwrap();
+        let store_v1: RawStoreV1 = serde_cbor::from_reader(&blob[..]).unwrap();
 
         assert_eq!(store_v0.settings, store_v1.settings);
         assert_eq!(store_v0.memos, store_v1.memos);
 
-        let blob = ciborium_to_vec(&store_v1).unwrap();
-        let store_v0: RawStoreV0 = ciborium::from_reader(&blob[..]).unwrap();
+        let blob = serde_cbor::to_vec(&store_v1).unwrap();
+        let store_v0: RawStoreV0 = serde_cbor::from_reader(&blob[..]).unwrap();
         assert_eq!(store_v0.settings, store_v1.settings);
         assert_eq!(store_v0.memos, store_v1.memos);
     }
@@ -736,8 +735,8 @@ mod tests {
             bip44_discovered: Default::default(),
         };
 
-        let blob = ciborium_to_vec(&cache_v0).unwrap();
-        let cache_v1: RawAccountCacheV1 = ciborium::from_reader(&blob[..])
+        let blob = serde_cbor::to_vec(&cache_v0).unwrap();
+        let cache_v1: RawAccountCacheV1 = serde_cbor::from_reader(&blob[..])
             .expect("cache compatibility broke, not critical but think twice");
 
         assert_eq!(cache_v0.xpub, cache_v1.xpub);
