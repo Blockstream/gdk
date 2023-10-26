@@ -11,8 +11,8 @@ use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::elements::AssetId;
 use gdk_common::log::{debug, warn};
 use gdk_common::once_cell::sync::{Lazy, OnceCell};
+use gdk_common::serde_cbor;
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
-use gdk_common::util::ciborium_to_vec;
 use serde::{Deserialize, Serialize};
 
 use crate::registry_infos::{RegistryAssets, RegistryIcons};
@@ -128,7 +128,7 @@ impl Cache {
         let get_cache = |file: &mut File| -> Result<Self> {
             let cipher = xpub.to_cipher()?;
             let decrypted = file.decrypt(&cipher)?;
-            gdk_common::ciborium::from_reader(&decrypted[..]).map_err(Into::into)
+            gdk_common::serde_cbor::from_reader(&decrypted[..]).map_err(Into::into)
         };
 
         let mut cache = match cache_files.get_mut(&hash_xpub(xpub)) {
@@ -178,7 +178,7 @@ impl Cache {
     pub(crate) fn update(&self, cache_files: &mut CacheFiles) -> Result<()> {
         let xpub = self.xpub.unwrap();
 
-        let plain_text = ciborium_to_vec(self)?;
+        let plain_text = serde_cbor::to_vec(self)?;
         let cipher = xpub.to_cipher()?;
         let (nonce, rest) = plain_text.encrypt(&cipher)?;
 

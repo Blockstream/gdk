@@ -12,7 +12,7 @@ pub(crate) fn read<V: DeserializeOwned>(file: &mut File) -> Result<V> {
         info!("file {:?} size {}", &file, file.metadata()?.len());
     }
     let buffered = BufReader::new(file);
-    Ok(gdk_common::ciborium::from_reader(buffered)?)
+    Ok(gdk_common::serde_cbor::from_reader(buffered)?)
 }
 
 pub(crate) fn write<V: Serialize>(value: &V, file: &mut File) -> Result<()> {
@@ -24,7 +24,7 @@ pub(crate) fn write<V: Serialize>(value: &V, file: &mut File) -> Result<()> {
 
     file.seek(std::io::SeekFrom::Start(0))?;
     let buffered = BufWriter::new(file);
-    Ok(gdk_common::ciborium::ser::into_writer(value, buffered)?)
+    Ok(gdk_common::serde_cbor::to_writer(buffered, value)?)
 }
 
 #[cfg(test)]

@@ -20,7 +20,6 @@ pub mod aes {
 }
 
 pub use bitcoin;
-pub use ciborium;
 pub use electrum_client;
 pub use elements;
 pub use error::*;
@@ -29,6 +28,7 @@ pub use miniscript;
 pub use network::*;
 pub use once_cell;
 pub use rand;
+pub use serde_cbor;
 pub use state::State;
 pub use ureq;
 
