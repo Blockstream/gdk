@@ -10,6 +10,12 @@
 
 ### Removed
 
+## Release 0.68.4 - 23-10-26
+
+### Fixed
+
+- Liquid: Singlesig: Fix cache re-load.
+
 ## Release 0.68.3 - 23-10-25
 
 ### Fixed
