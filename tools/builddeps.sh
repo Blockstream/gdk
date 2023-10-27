@@ -464,10 +464,10 @@ build ${name} ${BCUR_SRCDIR}
 
 # build ur-c
 name="ur-c"
-source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/0.0.2-rc2.tar.gz"
-source_name="ur-c-0.0.2-rc2"
-source_filename="ur-c-0.0.2-rc2.tar.gz"
-source_hash="767704f8534bec66ab4c1d1ca07dc12f927d75083fe212b4aa2c33d4ed603436"
+source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.2.0-rc1.tar.gz"
+source_name="ur-c-0.2.0-rc1"
+source_filename="ur-c-0.2.0-rc1.tar.gz"
+source_hash="ae751ff0fcb57c79e264635043b6c9570a6f7d270d0fd452b399af432317c52a"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
