@@ -1,7 +1,7 @@
 
 ####### DOCKER IMAGES
 .debian-image:
-  image: blockstream/gdk-debian-ci@sha256:2ea140779eb82625beffaeb8e09f10c8a40a80e9549dde39a672d0c5d6305f6e
+  image: blockstream/gdk-debian-ci@sha256:baacda1c8e0137dfba9b0cd93cbcaccaf9bebec9b53eec5fa05e3d4b08540cb1
   tags: [ ga ]
 
 .android-image:

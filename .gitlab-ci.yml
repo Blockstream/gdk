@@ -39,6 +39,14 @@ build_gcc_bullseye:
   needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
+    - cmake --build build-gcc --target greenaddress-java --parallel 16
+    - cmake --install build-gcc --prefix install-java
+    - cmake --install build-gcc --prefix install-java --component gdk-java
+  artifacts:
+    expire_in: 2 hrs
+    paths:
+      - install-java
+
 
 
 build_clang_bullseye:

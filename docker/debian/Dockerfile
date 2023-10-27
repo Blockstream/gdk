@@ -10,6 +10,7 @@ COPY ./downloads ./downloads
 COPY ./docker/debian/install_deps.sh ./docker/debian/install_deps.sh
 RUN ./docker/debian/install_deps.sh
 
+ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
 ENV GDK_KEEP_DOWNLOADS=1
 
 
