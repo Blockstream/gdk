@@ -538,23 +538,26 @@ namespace sdk {
 
     std::vector<unsigned char> session_impl::output_script_from_utxo(const nlohmann::json& utxo)
     {
-        GDK_RUNTIME_ASSERT(m_net_params.is_electrum()); // Default impl is single sig
-        const std::string addr_type = utxo.at("address_type");
-        const auto pubkeys = pubkeys_from_utxo(utxo);
-
-        GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh
-            || addr_type == address_type::p2pkh);
-        return scriptpubkey_p2pkh_from_public_key(pubkeys.at(0));
+        return scriptpubkey_p2pkh_from_public_key(pubkeys_from_utxo(utxo).at(0));
     }
 
     std::vector<pub_key_t> session_impl::pubkeys_from_utxo(const nlohmann::json& utxo)
     {
+        using namespace address_type;
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == p2pkh) {
+            if (!utxo.contains("subaccount")) {
+                return { h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key")) };
+            }
+        } else {
+            GDK_RUNTIME_ASSERT(addr_type == p2sh_p2wpkh || addr_type == p2wpkh);
+        }
         GDK_RUNTIME_ASSERT(m_net_params.is_electrum()); // Default impl is single sig
-        const uint32_t subaccount = utxo.at("subaccount");
-        const uint32_t pointer = utxo.at("pointer");
-        const bool is_internal = utxo.at("is_internal");
+        const auto subaccount = j_uint32ref(utxo, "subaccount");
+        const auto pointer = j_uint32ref(utxo, "pointer");
+        const auto is_internal = j_boolref(utxo, "is_internal");
         locker_t locker(m_mutex);
-        return std::vector<pub_key_t>({ get_user_pubkeys().derive(subaccount, pointer, is_internal) });
+        return { get_user_pubkeys().derive(subaccount, pointer, is_internal) };
     }
 
     nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)

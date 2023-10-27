@@ -3141,13 +3141,24 @@ namespace sdk {
 
     std::vector<unsigned char> ga_session::output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo)
     {
+        using namespace address_type;
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == p2pkh) {
+            return scriptpubkey_p2pkh_from_public_key(pubkeys_from_utxo(utxo).at(0));
+        }
+        GDK_RUNTIME_ASSERT(addr_type == csv || addr_type == p2wsh || addr_type == p2sh);
+
         return ::ga::sdk::output_script_from_utxo(
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
     std::vector<pub_key_t> ga_session::pubkeys_from_utxo(const nlohmann::json& utxo)
     {
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == address_type::p2pkh) {
+            return { h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key")) };
+        }
         const uint32_t subaccount = utxo.at("subaccount");
         const uint32_t pointer = utxo.at("pointer");
         locker_t locker(m_mutex);
