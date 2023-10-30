@@ -45,9 +45,6 @@ pub fn parse_single_sig_descriptor(
 ) -> Result<(ScriptType, ExtendedPubKey, u32, Fingerprint), Error> {
     let (desc, _) =
         Descriptor::parse_descriptor(&crate::EC, s).map_err(|_| Error::UnsupportedDescriptor)?;
-    if !desc.has_wildcard() {
-        return Err(Error::UnsupportedDescriptor);
-    }
 
     if let Descriptor::Sh(sh) = desc {
         if let ShInner::Wpkh(wpkh) = sh.as_inner() {
@@ -113,6 +110,11 @@ mod test {
         assert_eq!(t, ScriptType::P2shP2wpkh);
         assert_eq!(bip32_account, 0);
         assert_eq!(f, Fingerprint::default());
+        let (t, shp2wkh_xpub_no_wildcard, bip32_account, f) =
+            parse_single_sig_descriptor(&shp2wkh_no_wildcard, coin_type).unwrap();
+        assert_eq!(t, ScriptType::P2shP2wpkh);
+        assert_eq!(bip32_account, 0);
+        assert_eq!(f, Fingerprint::default());
         let (t, p2wpkh_xpub, bip32_account, f) =
             parse_single_sig_descriptor(&p2wpkh, coin_type).unwrap();
         assert_eq!(t, ScriptType::P2wpkh);
@@ -135,7 +137,6 @@ mod test {
         assert_eq!(f((tpub, coin_type)), err_str);
         assert_eq!(f((tpub, 0)), err_str);
         assert_eq!(f((&shmulti, coin_type)), err_str);
-        assert_eq!(f((&shp2wkh_no_wildcard, coin_type)), err_str);
         assert_eq!(f((&shp2wkh_no_key_origin, coin_type)), err_str);
         assert_eq!(f((&p2wpkh_inc, coin_type)), err_str);
         assert_eq!(f((&p2wpkh_incorrect_key_origin1, coin_type)), err_str);
@@ -144,6 +145,8 @@ mod test {
         // Note that external and internal descriptors yield to the same xpub
         assert_eq!(shp2wpkh_xpub_external.to_string(), tpub);
         assert_eq!(shp2wpkh_xpub_internal.to_string(), tpub);
+        // and also descriptors without wildcards
+        assert_eq!(shp2wkh_xpub_no_wildcard.to_string(), tpub);
         assert_eq!(p2wpkh_xpub.to_string(), tpub);
         assert_eq!(p2wpkh_xpub_1.to_string(), tpub_1);
         assert_eq!(p2pkh_xpub.to_string(), tpub);
