@@ -94,8 +94,8 @@ mod test {
         let p2wpkh_inc = format!("wpkh([00000000/84'/1'/0']{}/0/*)", tpub_1);
         let p2pkh = format!("pkh([00000000/44'/1'/0']{}/0/*)", tpub);
         let shmulti = format!("sh(multi(2,{}/0/*,{}/1/*))", tpub, tpub);
-        let shp2wkh_no_wildcard = format!("sh(wpkh([00000000/49'/1'/0']{}/0))", tpub);
-        let shp2wkh_no_key_origin = format!("sh(wpkh({}/0/*))", tpub);
+        let shp2wpkh_no_wildcard = format!("sh(wpkh([00000000/49'/1'/0']{}/0))", tpub);
+        let shp2wpkh_no_key_origin = format!("sh(wpkh({}/0/*))", tpub);
         let p2wpkh_incorrect_key_origin1 = format!("sh(wpkh([00000000/44'/1'/0']{}/0/*))", tpub);
         let p2wpkh_incorrect_key_origin2 = format!("sh(wpkh([00000000/84'/1'/0'/0']{}/0/*))", tpub);
 
@@ -110,8 +110,8 @@ mod test {
         assert_eq!(t, ScriptType::P2shP2wpkh);
         assert_eq!(bip32_account, 0);
         assert_eq!(f, Fingerprint::default());
-        let (t, shp2wkh_xpub_no_wildcard, bip32_account, f) =
-            parse_single_sig_descriptor(&shp2wkh_no_wildcard, coin_type).unwrap();
+        let (t, shp2wpkh_xpub_no_wildcard, bip32_account, f) =
+            parse_single_sig_descriptor(&shp2wpkh_no_wildcard, coin_type).unwrap();
         assert_eq!(t, ScriptType::P2shP2wpkh);
         assert_eq!(bip32_account, 0);
         assert_eq!(f, Fingerprint::default());
@@ -137,7 +137,7 @@ mod test {
         assert_eq!(f((tpub, coin_type)), err_str);
         assert_eq!(f((tpub, 0)), err_str);
         assert_eq!(f((&shmulti, coin_type)), err_str);
-        assert_eq!(f((&shp2wkh_no_key_origin, coin_type)), err_str);
+        assert_eq!(f((&shp2wpkh_no_key_origin, coin_type)), err_str);
         assert_eq!(f((&p2wpkh_inc, coin_type)), err_str);
         assert_eq!(f((&p2wpkh_incorrect_key_origin1, coin_type)), err_str);
         assert_eq!(f((&p2wpkh_incorrect_key_origin2, coin_type)), err_str);
@@ -146,7 +146,7 @@ mod test {
         assert_eq!(shp2wpkh_xpub_external.to_string(), tpub);
         assert_eq!(shp2wpkh_xpub_internal.to_string(), tpub);
         // and also descriptors without wildcards
-        assert_eq!(shp2wkh_xpub_no_wildcard.to_string(), tpub);
+        assert_eq!(shp2wpkh_xpub_no_wildcard.to_string(), tpub);
         assert_eq!(p2wpkh_xpub.to_string(), tpub);
         assert_eq!(p2wpkh_xpub_1.to_string(), tpub_1);
         assert_eq!(p2pkh_xpub.to_string(), tpub);
