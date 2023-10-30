@@ -1548,39 +1548,17 @@ impl Syncer {
             let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
             let headers = self.download_headers(account.num(), &heights_set, &client)?;
 
-            let (store_last_used, unc_txs_cache) = {
+            let store_last_used = {
                 let store_read = self.store.read()?;
                 let acc_store = store_read.account_cache(account.num())?;
-                let unc_txs_cache: Vec<bitcoin::Txid> = acc_store
-                    .heights
-                    .iter()
-                    .filter(|(_, h)| h.is_none())
-                    .map(|(t, _)| t.into_bitcoin())
-                    .collect();
-                (acc_store.get_both_last_used(), unc_txs_cache)
+                acc_store.get_both_last_used()
             };
-
-            // Sometimes when an unconfirmed transaction is removed from the mempool, the script status
-            // of the scripts involving such transaction is not updated. So we don't have a way to
-            // realize that we should update our cache.
-            // To handle these scenarios, we explicitly try to get such transactions from the server, to
-            // understand whether we should remove them or not.
-            // Unfortunately this seems to be necessary.
-            let unc_txs_to_remove: Vec<BETxid> = unc_txs_cache
-                .iter()
-                .filter(|txid| {
-                    // We can't do a batch request here since one error would make the whole call fail
-                    client.transaction_get_raw(&txid).is_err()
-                })
-                .map(BETxidConvert::into_be)
-                .collect();
 
             let changed = if !new_txs.txs.is_empty()
                 || !headers.is_empty()
                 || store_last_used != last_used
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
-                || !unc_txs_to_remove.is_empty()
                 || !txid_to_remove.is_empty()
             {
                 info!(
@@ -1600,70 +1578,6 @@ impl Syncer {
                     .all_txs
                     .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
                 acc_store.unblinded.extend(new_txs.unblinds);
-
-                // # Removing conflicting transactions
-                // We have new transactions, but some of them could conflict (spend same outpoint)
-                // with each other or with the ones in the cache. We can't rely on the server to
-                // detect unconfirmed conflicting transactions.
-
-                // ## Remove new transactions conflicting with each other
-                // keeping the one having the greater fee.
-
-                // fetch full transactions and their fee from txids
-                let new_txs_fee: HashMap<BETxid, (BETransaction, u64)> = txid_height
-                    .keys()
-                    .map(|txid| {
-                        let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
-                        let fee = tx.tx.fee(&acc_store.all_txs, &acc_store.unblinded, &self.network.policy_asset_id().ok()).expect("all txs to compute the fee must be in the cache");
-                        (*txid,(tx.tx, fee))
-                    }
-                ).collect();
-
-                // build a reverse map so that I know which outpoint is spent by more than 1 tx,
-                // meaning the transactions are conflicting
-                let mut outpoints_to_tx: HashMap<BEOutPoint, Vec<BETxid>> = HashMap::new();
-                for (txid, (tx, _)) in new_txs_fee.iter() {
-                    for outpoint in tx.previous_outputs() {
-                        let entry = outpoints_to_tx.entry(outpoint).or_insert(vec![]);
-                        entry.push(*txid);
-                    }
-                }
-
-                // We are going to keep the txids that have no conflicts with other new txs, in case
-                // there are conflicts with another tx, we keep the one with greater fee.
-                txid_height.retain(|txid, _| {
-                    let (tx, fee) =
-                        new_txs_fee.get(txid).expect("new_txs_fee built over txid_height");
-                    for outpoint in tx.previous_outputs() {
-                        let txs_spending_this_outpoint = outpoints_to_tx
-                            .get(&outpoint)
-                            .expect("for sure there is at least current txid");
-                        for other_txid in txs_spending_this_outpoint.iter().filter(|t| *t != txid) {
-                            // if the tx is not found in the new ones, it means it doesn't conflict with the new ones.
-                            if let Some((_, other_fee)) = new_txs_fee.get(other_txid) {
-                                // return false (remove the txid) only if the fee is lower than the other_fee
-                                return fee > other_fee;
-                            }
-                        }
-                    }
-                    true
-                });
-
-                // ## search in existing transactions the ones that use a respent outpoint and
-                // remove them. Here we don't have to bother to check the fee, because we are sure
-                // they happened before.
-                let existing_txids_height: Vec<_> = acc_store.heights.keys().cloned().collect();
-                for txid in existing_txids_height.iter() {
-                    let tx = acc_store.all_txs.get(&txid).expect("all txs must be in cache, the new ones in this loop are already inserted in previous extend").clone();
-                    if tx.tx.previous_outputs().iter().any(|p| outpoints_to_tx.contains_key(p)) {
-                        acc_store.heights.remove(&txid);
-                    }
-                }
-
-                // Remove unconfirmed transaction not returned anymore
-                for txid in unc_txs_to_remove {
-                    acc_store.heights.remove(&txid);
-                }
 
                 for txid in txid_to_remove {
                     acc_store.heights.remove(&txid);
