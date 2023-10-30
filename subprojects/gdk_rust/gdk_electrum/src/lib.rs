@@ -1452,7 +1452,7 @@ impl Syncer {
             let mut history_txs_id = HashSet::<BETxid>::new();
             let mut heights_set = HashSet::new();
             let mut txid_height = HashMap::<BETxid, _>::new();
-            let mut txid_to_remove = vec![];
+            let mut txids_to_remove = vec![];
             let mut scripts = HashMap::new();
 
             let mut last_used = Indexes::default();
@@ -1549,7 +1549,7 @@ impl Syncer {
                     for txid in
                         existing_txid_for_this_script.difference(&returned_txid_for_this_script)
                     {
-                        txid_to_remove.push(*txid);
+                        txids_to_remove.push(*txid);
                     }
                 }
             }
@@ -1568,7 +1568,7 @@ impl Syncer {
                 || store_last_used != last_used
                 || !scripts.is_empty()
                 || !txid_height.is_empty()
-                || !txid_to_remove.is_empty()
+                || !txids_to_remove.is_empty()
             {
                 info!(
                     "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
@@ -1588,7 +1588,7 @@ impl Syncer {
                     .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
                 acc_store.unblinded.extend(new_txs.unblinds);
 
-                for txid in txid_to_remove {
+                for txid in txids_to_remove {
                     acc_store.heights.remove(&txid);
                 }
 
