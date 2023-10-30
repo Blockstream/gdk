@@ -1412,7 +1412,7 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
-            let script_txid = {
+            let map_script_txids = {
                 let mut script_txid = HashMap::new();
                 let store_read = self.store.read()?;
                 let acc_store = store_read.account_cache(account.num())?;
@@ -1470,7 +1470,7 @@ impl Syncer {
                         scripts.insert(script.clone(), path);
                     }
                     let existing_txid_for_this_script =
-                        script_txid.get(&script).cloned().unwrap_or_default();
+                        map_script_txids.get(&script).cloned().unwrap_or_default();
 
                     let b_script = script.into_bitcoin();
 
