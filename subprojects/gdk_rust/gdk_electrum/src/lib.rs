@@ -1421,18 +1421,27 @@ impl Syncer {
                     for previous_outpoint in tx.tx.previous_outputs() {
                         if let Some(previous_tx) = acc_store.all_txs.get(&previous_outpoint.txid())
                         {
-                            script_txid
-                                .entry(previous_tx.tx.output_script(previous_outpoint.vout()))
-                                .or_insert(HashSet::new())
-                                .insert(*txid);
+                            let previous_script_pubkey =
+                                previous_tx.tx.output_script(previous_outpoint.vout());
+                            if acc_store.paths.contains_key(&previous_script_pubkey) {
+                                script_txid
+                                    .entry(previous_script_pubkey)
+                                    .or_insert(HashSet::new())
+                                    .insert(*txid);
+                            }
                         }
                     }
 
                     for i in 0..tx.tx.output_len() {
-                        script_txid
-                            .entry(tx.tx.output_script(i as u32))
-                            .or_insert(HashSet::new())
-                            .insert(*txid);
+                        let script_pubkey = tx.tx.output_script(i as u32);
+
+                        if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey)
+                        {
+                            script_txid
+                                .entry(script_pubkey)
+                                .or_insert(HashSet::new())
+                                .insert(*txid);
+                        }
                     }
                 }
                 script_txid
