@@ -1412,181 +1412,7 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
-            let map_script_txids = self.create_map_script_txids(account)?;
-
-            let mut new_statuses = ScriptStatuses::new();
-            let cache_statuses = account.status()?;
-            let mut history_txs_id = HashSet::<BETxid>::new();
-            let mut heights_set = HashSet::new();
-            let mut txid_height = HashMap::<BETxid, _>::new();
-            let mut txids_to_remove = vec![];
-            let mut scripts = HashMap::new();
-
-            let mut last_used = Indexes::default();
-            let mut wallet_chains = vec![0, 1];
-            wallet_chains.shuffle(&mut thread_rng());
-            for i in wallet_chains {
-                let is_internal = i == 1;
-                let mut count_consecutive_empty = 0;
-                for j in 0.. {
-                    if !self.user_wants_to_sync.load(Ordering::Relaxed) {
-                        return Err(Error::UserDoesntWantToSync);
-                    }
-                    let (cached, path, script) = account.get_script(is_internal, j)?;
-                    if !cached {
-                        scripts.insert(script.clone(), path);
-                    }
-                    let cache_txids_for_this_script =
-                        map_script_txids.get(&script).cloned().unwrap_or_default();
-
-                    let b_script = script.into_bitcoin();
-
-                    match client.script_subscribe(&b_script) {
-                        Ok(Some(status)) => {
-                            // First time: script is subscribed, script contains at least 1 tx
-                            last_statuses.insert(b_script.clone(), status);
-                        }
-                        Ok(None) => {
-                            // First time: script is subscribed, script doesn't contain a tx yet
-                            ()
-                        }
-                        Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
-                            // Second or following iteration
-                            if let Some(status) = client.script_pop(&b_script)? {
-                                // There is an update, new tx for this script
-                                last_statuses.insert(b_script.clone(), status);
-                            } else {
-                                // There are no new transactions since last iteration
-                            }
-                        }
-                        Err(e) => return Err(Error::ClientError(e)),
-                    };
-                    match last_statuses.get(&b_script) {
-                        Some(last_status) => {
-                            // Script has a tx
-                            count_consecutive_empty = 0;
-                            if is_internal {
-                                last_used.internal = j;
-                            } else {
-                                last_used.external = j;
-                            }
-                            let cache_status = cache_statuses.get(&b_script);
-                            if Some(last_status) == cache_status {
-                                // No need to check this script since nothing has changed
-                                continue;
-                            }
-                        }
-                        None => {
-                            // Script never had a tx, initially and neither via updates
-                            count_consecutive_empty += 1;
-                            if count_consecutive_empty >= self.gap_limit {
-                                break;
-                            } else {
-                                continue;
-                            }
-                        }
-                    }
-                    let history = client.script_get_history(&b_script)?;
-
-                    let txid_height_pairs =
-                        history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
-                    let status = account::compute_script_status(txid_height_pairs);
-                    new_statuses.insert(b_script.clone(), status);
-
-                    let mut server_txids_for_this_script = HashSet::new();
-
-                    let net = self.network.id();
-                    for el in history {
-                        // el.height = -1 means unconfirmed with unconfirmed parents
-                        // el.height =  0 means unconfirmed with confirmed parents
-                        // but we threat those tx the same
-                        let height = el.height.max(0);
-                        heights_set.insert(height as u32);
-                        if height == 0 {
-                            txid_height.insert(el.tx_hash.into_net(net), None);
-                        } else {
-                            txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
-                        }
-
-                        history_txs_id.insert(el.tx_hash.into_net(net));
-
-                        server_txids_for_this_script.insert(el.tx_hash.into_net(net));
-                    }
-
-                    for txid in
-                        cache_txids_for_this_script.difference(&server_txids_for_this_script)
-                    {
-                        txids_to_remove.push(*txid);
-                    }
-                }
-            }
-
-            let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
-            let headers = self.download_headers(account.num(), &heights_set, &client)?;
-
-            let store_last_used = {
-                let store_read = self.store.read()?;
-                let acc_store = store_read.account_cache(account.num())?;
-                acc_store.get_both_last_used()
-            };
-
-            if !new_txs.txs.is_empty()
-                || !headers.is_empty()
-                || store_last_used != last_used
-                || !scripts.is_empty()
-                || !txid_height.is_empty()
-                || !txids_to_remove.is_empty()
-            {
-                info!(
-                    "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
-                    new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
-                    headers,
-                    txid_height,
-                    scripts,
-                    store_last_used != last_used
-                );
-                let mut store_write = self.store.write()?;
-                store_write.cache.headers.extend(headers.into_iter().map(Into::into));
-
-                let acc_store = store_write.account_cache_mut(account.num())?;
-                acc_store.set_both_last_used(last_used);
-                acc_store
-                    .all_txs
-                    .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
-                acc_store.unblinded.extend(new_txs.unblinds);
-
-                for txid in txids_to_remove {
-                    acc_store.heights.remove(&txid);
-                }
-
-                acc_store.heights.extend(txid_height.into_iter());
-                acc_store.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
-                acc_store.paths.extend(scripts.into_iter());
-
-                if acc_store.script_statuses.is_none() {
-                    acc_store.script_statuses = Some(HashMap::new());
-                }
-                acc_store
-                    .script_statuses
-                    .as_mut()
-                    .expect("always some because created if None in previous line")
-                    .extend(new_statuses);
-
-                for tx in new_txs.txs.iter() {
-                    // Do not emit notifications for previous transactions that we fetched to
-                    // compute the fee.
-                    if !new_txs.is_previous.contains(&tx.0) {
-                        updated_txs.insert(tx.0, tx.1.clone());
-                    }
-                }
-
-                store_write.flush()?;
-                drop(store_write);
-
-                // the transactions are first indexed into the db and then verified so that all the prevouts
-                // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
-                account.verify_own_txs(&new_txs.txs)?;
-            }
+            self.sync_account(account, client, last_statuses, &mut updated_txs)?;
         }
 
         self.empty_recent_spent_utxos()?;
@@ -1652,6 +1478,185 @@ impl Syncer {
             tx_ntfs,
             accounts: account_nums,
         })
+    }
+
+    fn sync_account(
+        &self,
+        account: &Account,
+        client: &Client,
+        last_statuses: &mut ScriptStatuses,
+        updated_txs: &mut HashMap<BETxid, BETransaction>,
+    ) -> Result<(), Error> {
+        let map_script_txids = self.create_map_script_txids(account)?;
+        let mut new_statuses = ScriptStatuses::new();
+        let cache_statuses = account.status()?;
+        let mut history_txs_id = HashSet::<BETxid>::new();
+        let mut heights_set = HashSet::new();
+        let mut txid_height = HashMap::<BETxid, _>::new();
+        let mut txids_to_remove = vec![];
+        let mut scripts = HashMap::new();
+        let mut last_used = Indexes::default();
+        let mut wallet_chains = vec![0, 1];
+        wallet_chains.shuffle(&mut thread_rng());
+        for i in wallet_chains {
+            let is_internal = i == 1;
+            let mut count_consecutive_empty = 0;
+            for j in 0.. {
+                if !self.user_wants_to_sync.load(Ordering::Relaxed) {
+                    return Err(Error::UserDoesntWantToSync);
+                }
+                let (cached, path, script) = account.get_script(is_internal, j)?;
+                if !cached {
+                    scripts.insert(script.clone(), path);
+                }
+                let cache_txids_for_this_script =
+                    map_script_txids.get(&script).cloned().unwrap_or_default();
+
+                let b_script = script.into_bitcoin();
+
+                match client.script_subscribe(&b_script) {
+                    Ok(Some(status)) => {
+                        // First time: script is subscribed, script contains at least 1 tx
+                        last_statuses.insert(b_script.clone(), status);
+                    }
+                    Ok(None) => {
+                        // First time: script is subscribed, script doesn't contain a tx yet
+                        ()
+                    }
+                    Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
+                        // Second or following iteration
+                        if let Some(status) = client.script_pop(&b_script)? {
+                            // There is an update, new tx for this script
+                            last_statuses.insert(b_script.clone(), status);
+                        } else {
+                            // There are no new transactions since last iteration
+                        }
+                    }
+                    Err(e) => return Err(Error::ClientError(e)),
+                };
+                match last_statuses.get(&b_script) {
+                    Some(last_status) => {
+                        // Script has a tx
+                        count_consecutive_empty = 0;
+                        if is_internal {
+                            last_used.internal = j;
+                        } else {
+                            last_used.external = j;
+                        }
+                        let cache_status = cache_statuses.get(&b_script);
+                        if Some(last_status) == cache_status {
+                            // No need to check this script since nothing has changed
+                            continue;
+                        }
+                    }
+                    None => {
+                        // Script never had a tx, initially and neither via updates
+                        count_consecutive_empty += 1;
+                        if count_consecutive_empty >= self.gap_limit {
+                            break;
+                        } else {
+                            continue;
+                        }
+                    }
+                }
+                let history = client.script_get_history(&b_script)?;
+
+                let txid_height_pairs =
+                    history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
+                let status = account::compute_script_status(txid_height_pairs);
+                new_statuses.insert(b_script.clone(), status);
+
+                let mut server_txids_for_this_script = HashSet::new();
+
+                let net = self.network.id();
+                for el in history {
+                    // el.height = -1 means unconfirmed with unconfirmed parents
+                    // el.height =  0 means unconfirmed with confirmed parents
+                    // but we threat those tx the same
+                    let height = el.height.max(0);
+                    heights_set.insert(height as u32);
+                    if height == 0 {
+                        txid_height.insert(el.tx_hash.into_net(net), None);
+                    } else {
+                        txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
+                    }
+
+                    history_txs_id.insert(el.tx_hash.into_net(net));
+
+                    server_txids_for_this_script.insert(el.tx_hash.into_net(net));
+                }
+
+                for txid in cache_txids_for_this_script.difference(&server_txids_for_this_script) {
+                    txids_to_remove.push(*txid);
+                }
+            }
+        }
+        let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
+        let headers = self.download_headers(account.num(), &heights_set, &client)?;
+        let store_last_used = {
+            let store_read = self.store.read()?;
+            let acc_store = store_read.account_cache(account.num())?;
+            acc_store.get_both_last_used()
+        };
+        Ok(
+            if !new_txs.txs.is_empty()
+                || !headers.is_empty()
+                || store_last_used != last_used
+                || !scripts.is_empty()
+                || !txid_height.is_empty()
+                || !txids_to_remove.is_empty()
+            {
+                info!(
+                "There are changes in the store new_txs:{:?} headers:{:?} txid_height:{:?} scripts:{:?} store_last_used_changed:{}",
+                new_txs.txs.iter().map(|tx| tx.0).collect::<Vec<_>>(),
+                headers,
+                txid_height,
+                scripts,
+                store_last_used != last_used
+            );
+                let mut store_write = self.store.write()?;
+                store_write.cache.headers.extend(headers.into_iter().map(Into::into));
+
+                let acc_store = store_write.account_cache_mut(account.num())?;
+                acc_store.set_both_last_used(last_used);
+                acc_store
+                    .all_txs
+                    .extend(new_txs.txs.iter().cloned().map(|(txid, tx)| (txid, tx.into())));
+                acc_store.unblinded.extend(new_txs.unblinds);
+
+                for txid in txids_to_remove {
+                    acc_store.heights.remove(&txid);
+                }
+
+                acc_store.heights.extend(txid_height.into_iter());
+                acc_store.scripts.extend(scripts.clone().into_iter().map(|(a, b)| (b, a)));
+                acc_store.paths.extend(scripts.into_iter());
+
+                if acc_store.script_statuses.is_none() {
+                    acc_store.script_statuses = Some(HashMap::new());
+                }
+                acc_store
+                    .script_statuses
+                    .as_mut()
+                    .expect("always some because created if None in previous line")
+                    .extend(new_statuses);
+
+                for tx in new_txs.txs.iter() {
+                    // Do not emit notifications for previous transactions that we fetched to
+                    // compute the fee.
+                    if !new_txs.is_previous.contains(&tx.0) {
+                        updated_txs.insert(tx.0, tx.1.clone());
+                    }
+                }
+
+                store_write.flush()?;
+                drop(store_write);
+
+                // the transactions are first indexed into the db and then verified so that all the prevouts
+                // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
+                account.verify_own_txs(&new_txs.txs)?;
+            },
+        )
     }
 
     /// Create a map `script -> [txid]` of account owned script_pubkeys
