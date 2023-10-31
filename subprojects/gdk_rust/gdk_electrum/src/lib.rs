@@ -1412,40 +1412,7 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
-            let map_script_txids = {
-                let mut script_txid = HashMap::new();
-                let store_read = self.store.read()?;
-                let acc_store = store_read.account_cache(account.num())?;
-                for txid in acc_store.heights.keys() {
-                    let tx = acc_store.all_txs.get(&txid).unwrap();
-                    for previous_outpoint in tx.tx.previous_outputs() {
-                        if let Some(previous_tx) = acc_store.all_txs.get(&previous_outpoint.txid())
-                        {
-                            let previous_script_pubkey =
-                                previous_tx.tx.output_script(previous_outpoint.vout());
-                            if acc_store.paths.contains_key(&previous_script_pubkey) {
-                                script_txid
-                                    .entry(previous_script_pubkey)
-                                    .or_insert(HashSet::new())
-                                    .insert(*txid);
-                            }
-                        }
-                    }
-
-                    for i in 0..tx.tx.output_len() {
-                        let script_pubkey = tx.tx.output_script(i as u32);
-
-                        if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey)
-                        {
-                            script_txid
-                                .entry(script_pubkey)
-                                .or_insert(HashSet::new())
-                                .insert(*txid);
-                        }
-                    }
-                }
-                script_txid
-            };
+            let map_script_txids = self.create_map_script_txids(account)?;
 
             let mut new_statuses = ScriptStatuses::new();
             let cache_statuses = account.status()?;
@@ -1691,6 +1658,40 @@ impl Syncer {
             tx_ntfs,
             accounts: account_nums,
         })
+    }
+
+    /// Create a map `script -> [txid]` of account owned script_pubkeys
+    fn create_map_script_txids(
+        &self,
+        account: &Account,
+    ) -> Result<HashMap<BEScript, HashSet<BETxid>>, Error> {
+        let mut script_txid = HashMap::new();
+        let store_read = self.store.read()?;
+        let acc_store = store_read.account_cache(account.num())?;
+        for txid in acc_store.heights.keys() {
+            let tx = acc_store.all_txs.get(&txid).unwrap();
+            for previous_outpoint in tx.tx.previous_outputs() {
+                if let Some(previous_tx) = acc_store.all_txs.get(&previous_outpoint.txid()) {
+                    let previous_script_pubkey =
+                        previous_tx.tx.output_script(previous_outpoint.vout());
+                    if acc_store.paths.contains_key(&previous_script_pubkey) {
+                        script_txid
+                            .entry(previous_script_pubkey)
+                            .or_insert(HashSet::new())
+                            .insert(*txid);
+                    }
+                }
+            }
+
+            for i in 0..tx.tx.output_len() {
+                let script_pubkey = tx.tx.output_script(i as u32);
+
+                if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey) {
+                    script_txid.entry(script_pubkey).or_insert(HashSet::new()).insert(*txid);
+                }
+            }
+        }
+        Ok(script_txid)
     }
 
     fn empty_recent_spent_utxos(&self) -> Result<(), Error> {
