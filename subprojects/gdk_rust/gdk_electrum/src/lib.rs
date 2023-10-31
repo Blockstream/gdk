@@ -1436,7 +1436,7 @@ impl Syncer {
                     if !cached {
                         scripts.insert(script.clone(), path);
                     }
-                    let cache_txid_for_this_script =
+                    let cache_txids_for_this_script =
                         map_script_txids.get(&script).cloned().unwrap_or_default();
 
                     let b_script = script.into_bitcoin();
@@ -1493,7 +1493,7 @@ impl Syncer {
                     let status = account::compute_script_status(txid_height_pairs);
                     new_statuses.insert(b_script.clone(), status);
 
-                    let mut server_txid_for_this_script = HashSet::new();
+                    let mut server_txids_for_this_script = HashSet::new();
 
                     let net = self.network.id();
                     for el in history {
@@ -1510,10 +1510,11 @@ impl Syncer {
 
                         history_txs_id.insert(el.tx_hash.into_net(net));
 
-                        server_txid_for_this_script.insert(el.tx_hash.into_net(net));
+                        server_txids_for_this_script.insert(el.tx_hash.into_net(net));
                     }
 
-                    for txid in cache_txid_for_this_script.difference(&server_txid_for_this_script)
+                    for txid in
+                        cache_txids_for_this_script.difference(&server_txids_for_this_script)
                     {
                         txids_to_remove.push(*txid);
                     }
