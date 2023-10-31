@@ -1419,21 +1419,35 @@ impl Syncer {
         let mut account_nums: Vec<u32> = accounts.keys().copied().collect();
         account_nums.sort();
 
-        // Create the transaction notifications.
-        // In theory we could create the notifications in the above loop,
-        // however, in the case where we have a transaction involving more than one (sub)account,
-        // it can happen that when we sync one (sub)account the transaction is returned,
-        // but when we sync another the transaction is not;
-        // in this case, our notification would miss one of the (sub)accounts.
-        // Thus we compute the transaction notifications here even though this comes with a
-        // performance penalty.
         // TODO: skip this computation if it's the first sync (no transaction notifications)
+        let tx_ntfs = self.create_tx_notifications(updated_txs, &account_nums)?;
+
+        trace!("end sync");
+
+        Ok(SyncResult {
+            tx_ntfs,
+            accounts: account_nums,
+        })
+    }
+
+    /// Create the transaction notifications.
+    /// In theory we could create the notifications in the above loop,
+    /// however, in the case where we have a transaction involving more than one (sub)account,
+    /// it can happen that when we sync one (sub)account the transaction is returned,
+    /// but when we sync another the transaction is not;
+    /// in this case, our notification would miss one of the (sub)accounts.
+    /// Thus we compute the transaction notifications here even though this comes with a
+    /// performance penalty.
+    fn create_tx_notifications(
+        &self,
+        updated_txs: HashMap<BETxid, BETransaction>,
+        account_nums: &Vec<u32>,
+    ) -> Result<Vec<TransactionNotification>, Error> {
         let mut tx_ntfs = Vec::<TransactionNotification>::new();
         let store_read = self.store.read()?;
-
         for tx in updated_txs.values() {
             let mut tx_accounts = vec![];
-            'account_loop: for account_num in &account_nums {
+            'account_loop: for account_num in account_nums {
                 let acc_store = store_read.account_cache(*account_num)?;
                 // Iterate first on outputs since its cheaper to check them
                 for vout in 0..(tx.output_len() as u32) {
@@ -1471,13 +1485,7 @@ impl Syncer {
                 tx_ntfs.push(ntf);
             }
         }
-
-        trace!("end sync");
-
-        Ok(SyncResult {
-            tx_ntfs,
-            accounts: account_nums,
-        })
+        Ok(tx_ntfs)
     }
 
     fn sync_account(
