@@ -48,7 +48,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 use std::str::FromStr;
-use std::time::{Duration, Instant, SystemTime};
+use std::time::{Duration, SystemTime};
 use std::{iter, thread};
 
 use crate::headers::bitcoin::HeadersChain;
@@ -1406,7 +1406,6 @@ impl Syncer {
         user_wants_to_sync: &Arc<AtomicBool>,
     ) -> Result<SyncResult, Error> {
         trace!("start sync");
-        let start = Instant::now();
 
         let accounts = self.accounts.read().unwrap();
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
@@ -1530,7 +1529,7 @@ impl Syncer {
                 acc_store.get_both_last_used()
             };
 
-            let changed = if !new_txs.txs.is_empty()
+            if !new_txs.txs.is_empty()
                 || !headers.is_empty()
                 || store_last_used != last_used
                 || !scripts.is_empty()
@@ -1586,16 +1585,7 @@ impl Syncer {
                 // the transactions are first indexed into the db and then verified so that all the prevouts
                 // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
                 account.verify_own_txs(&new_txs.txs)?;
-                true
-            } else {
-                false
-            };
-            trace!(
-                "changes for {}: {} elapsed {}",
-                account.num(),
-                changed,
-                start.elapsed().as_millis()
-            );
+            }
         }
 
         self.empty_recent_spent_utxos()?;
@@ -1654,6 +1644,8 @@ impl Syncer {
                 tx_ntfs.push(ntf);
             }
         }
+
+        trace!("end sync");
 
         Ok(SyncResult {
             tx_ntfs,
