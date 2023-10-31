@@ -116,6 +116,7 @@ struct Syncer {
     recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
     gap_limit: u32,
     synced_accounts: HashSet<u32>,
+    user_wants_to_sync: Arc<AtomicBool>,
 }
 
 struct SyncResult {
@@ -662,6 +663,7 @@ impl ElectrumSession {
             recent_spent_utxos: self.recent_spent_utxos.clone(),
             gap_limit: self.gap_limit,
             synced_accounts: HashSet::new(),
+            user_wants_to_sync: self.user_wants_to_sync.clone(),
         };
 
         let tipper = Tipper {
@@ -756,7 +758,7 @@ impl ElectrumSession {
                     }
                 };
 
-                match syncer.sync(&client, &mut last_statuses, &user_wants_to_sync) {
+                match syncer.sync(&client, &mut last_statuses) {
                     Ok(sync_result) => {
                         state_updater.update_if_needed(true);
                         // Skip sending transaction notifications if it's the
@@ -1403,7 +1405,6 @@ impl Syncer {
         &self,
         client: &Client,
         last_statuses: &mut ScriptStatuses,
-        user_wants_to_sync: &Arc<AtomicBool>,
     ) -> Result<SyncResult, Error> {
         trace!("start sync");
 
@@ -1428,7 +1429,7 @@ impl Syncer {
                 let is_internal = i == 1;
                 let mut count_consecutive_empty = 0;
                 for j in 0.. {
-                    if !user_wants_to_sync.load(Ordering::Relaxed) {
+                    if !self.user_wants_to_sync.load(Ordering::Relaxed) {
                         return Err(Error::UserDoesntWantToSync);
                     }
                     let (cached, path, script) = account.get_script(is_internal, j)?;
