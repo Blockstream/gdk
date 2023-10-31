@@ -73,6 +73,7 @@ macro(create_greenaddress_target)
             ${wallycore_INCLUDE_DIRS}/wally_script.h
             ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
+            ${wallycore_INCLUDE_DIRS}/wally_transaction_members.h
         COMPONENT gdk-dev
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
         EXCLUDE_FROM_ALL
@@ -180,6 +181,7 @@ macro(create_greenaddressfull_target)
             ${wallycore_INCLUDE_DIRS}/wally_script.h
             ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
             ${wallycore_INCLUDE_DIRS}/wally_transaction.h
+            ${wallycore_INCLUDE_DIRS}/wally_transaction_members.h
         COMPONENT gdk-dev
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
         EXCLUDE_FROM_ALL

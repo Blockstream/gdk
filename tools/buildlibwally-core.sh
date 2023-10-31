@@ -20,7 +20,7 @@ touch .${SECP_COMMIT}
 
 ${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
 
-CONFIGURE_ARGS="--enable-static --disable-shared --enable-elements --disable-tests --disable-swig-python"
+CONFIGURE_ARGS="--enable-static --disable-shared --disable-tests --disable-swig-python"
 CONFIGURE_ARGS="${CONFIGURE_ARGS} --prefix=${WALLYCORE_INSTALLDIR}"
 
 if [ "${BUILDTYPE}" = "debug" ]; then

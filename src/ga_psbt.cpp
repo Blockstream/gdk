@@ -9,7 +9,6 @@
 
 #include <nlohmann/json.hpp>
 
-#define BUILD_ELEMENTS
 #include <wally_psbt.h>
 #include <wally_psbt_members.h>
 

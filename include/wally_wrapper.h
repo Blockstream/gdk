@@ -2,8 +2,6 @@
 #define GDK_WALLY_WRAPPER_H
 #pragma once
 
-#define BUILD_ELEMENTS
-
 #include <wally_address.h>
 #include <wally_anti_exfil.h>
 #include <wally_bip32.h>
@@ -21,5 +19,6 @@
 #include <wally_script.h>
 #include <wally_symmetric.h>
 #include <wally_transaction.h>
+#include <wally_transaction_members.h>
 
 #endif

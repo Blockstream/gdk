@@ -18,7 +18,6 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
-#define BUILD_ELEMENTS
 #include <wally_coinselection.h>
 
 namespace ga {
