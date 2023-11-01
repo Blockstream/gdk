@@ -63,7 +63,7 @@ eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
         -b | --buildtype ) BUILDTYPE=$2; shift 2 ;;
-        -v ) verbose=true; shift 2 ;;
+        -v ) verbose=true; shift 1 ;;
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
         --disable-bcur ) bcur=FALSE; shift ;;
