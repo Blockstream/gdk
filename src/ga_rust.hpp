@@ -67,8 +67,6 @@ namespace sdk {
         nlohmann::json get_available_currencies() const;
 
         bool is_rbf_enabled() const;
-        bool is_watch_only() const;
-        void ensure_full_session();
         nlohmann::json get_settings() const;
         nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);

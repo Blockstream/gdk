@@ -101,6 +101,10 @@ namespace sdk {
         const std::string& /*root_bip32_xpub*/, std::shared_ptr<signer> signer)
     {
         set_signer(signer);
+        {
+            locker_t locker(m_mutex);
+            m_watch_only = false;
+        }
         return get_post_login_data();
     }
 
@@ -126,6 +130,10 @@ namespace sdk {
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
         set_signer(signer);
+        {
+            locker_t locker(m_mutex);
+            m_watch_only = true;
+        }
         return rust_call("login_wo", signer->get_credentials(false), m_session);
     }
     bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
@@ -301,11 +309,6 @@ namespace sdk {
     bool ga_rust::is_rbf_enabled() const
     {
         return !m_net_params.is_liquid(); // Not supported on liquid
-    }
-
-    bool ga_rust::is_watch_only() const { return false; }
-    void ga_rust::ensure_full_session()
-    { /* TODO: Implement when watch only is implemented */
     }
 
     nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", nlohmann::json({}), m_session); }

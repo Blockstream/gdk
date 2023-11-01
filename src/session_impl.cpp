@@ -50,6 +50,7 @@ namespace sdk {
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
+        , m_watch_only(true)
         , m_notify(true)
     {
         if (m_net_params.use_tor() && m_user_proxy.empty()) {
@@ -448,6 +449,20 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         return m_signer;
+    }
+
+    bool session_impl::is_watch_only() const
+    {
+        locker_t locker(m_mutex);
+        return m_watch_only;
+    }
+
+    void session_impl::ensure_full_session()
+    {
+        if (is_watch_only()) {
+            // TODO: have a better error, and map this error when returned from the server
+            throw user_error("Authentication required");
+        }
     }
 
     void session_impl::encache_signer_xpubs(std::shared_ptr<signer> /*signer*/)

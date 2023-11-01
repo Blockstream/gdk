@@ -129,8 +129,8 @@ namespace sdk {
         virtual nlohmann::json get_available_currencies() const = 0;
 
         virtual bool is_rbf_enabled() const = 0;
-        virtual bool is_watch_only() const = 0;
-        virtual void ensure_full_session() = 0;
+        bool is_watch_only() const;
+        void ensure_full_session();
         virtual nlohmann::json get_settings() const = 0;
         virtual nlohmann::json get_post_login_data() = 0;
         virtual void change_settings(const nlohmann::json& settings) = 0;
@@ -272,6 +272,7 @@ namespace sdk {
         // Immutable post-login
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
+        bool m_watch_only;
 
         // Mutable
         std::string m_tor_proxy; // Updated on connect(), protected by m_mutex

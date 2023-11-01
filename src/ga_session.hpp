@@ -69,8 +69,6 @@ namespace sdk {
         void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
         nlohmann::json get_available_currencies() const;
         bool is_rbf_enabled() const;
-        bool is_watch_only() const;
-        void ensure_full_session();
 
         nlohmann::json get_twofactor_config(bool reset_cached);
         nlohmann::json get_twofactor_config(locker_t& locker, bool reset_cached = false);
@@ -279,7 +277,6 @@ namespace sdk {
         uint32_t m_system_message_id; // Next system message
         uint32_t m_system_message_ack_id; // Currently returned message id to ack
         std::string m_system_message_ack; // Currently returned message to ack
-        bool m_watch_only;
         std::vector<std::string> m_tx_notifications;
         std::chrono::system_clock::time_point m_tx_last_notification;
         nlohmann::json m_last_block_notification;

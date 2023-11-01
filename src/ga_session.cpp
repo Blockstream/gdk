@@ -263,7 +263,6 @@ namespace sdk {
         , m_fee_estimates_ts(std::chrono::system_clock::now())
         , m_system_message_id(0)
         , m_system_message_ack_id(0)
-        , m_watch_only(true)
         , m_tx_last_notification(std::chrono::system_clock::now())
         , m_last_block_notification()
         , m_multi_call_category(0)
@@ -1586,14 +1585,6 @@ namespace sdk {
         return amount::convert_fiat_cents(fiat_cents, m_fiat_currency);
     }
 
-    void ga_session::ensure_full_session()
-    {
-        if (is_watch_only()) {
-            // TODO: have a better error, and map this error when returned from the server
-            throw user_error("Authentication required");
-        }
-    }
-
     bool ga_session::set_wo_credentials(const std::string& username, const std::string& password)
     {
         ensure_full_session();
@@ -2776,12 +2767,6 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         return !m_net_params.is_liquid() && j_bool(m_login_data, "rbf").value_or(true);
-    }
-
-    bool ga_session::is_watch_only() const
-    {
-        locker_t locker(m_mutex);
-        return m_watch_only;
     }
 
     nlohmann::json ga_session::get_appearance() const
