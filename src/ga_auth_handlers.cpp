@@ -627,6 +627,7 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
+        m_session->ensure_full_session();
         if (!m_details.empty()) {
             m_details.erase("utxos"); // Not needed anymore
         }
@@ -851,6 +852,7 @@ namespace sdk {
 
     auth_handler::state_type psbt_sign_call::call_impl()
     {
+        m_session->ensure_full_session();
         if (!m_is_synced) {
             sync_scriptpubkeys(*m_session);
             m_is_synced = true;
@@ -1137,6 +1139,9 @@ namespace sdk {
             m_result = { { "subaccounts", m_session->get_subaccounts() } };
             return state_type::done;
         }
+
+        // Singlesig watch only sessions cannot derive xpubs for finding accounts
+        m_session->ensure_full_session();
 
         // TODO: consider batching requests for xpubs.
         // The current implementation asks for one xpub at the time.
