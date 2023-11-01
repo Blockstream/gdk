@@ -8,8 +8,7 @@ namespace ga {
 namespace sdk {
 
     io_runner::io_runner()
-        : m_io()
-        , m_work_guard(boost::asio::make_work_guard(m_io))
+        : m_work_guard(boost::asio::make_work_guard(m_io.get_executor()))
         , m_pool(1)
     {
         boost::asio::post(m_pool, [io = std::ref(m_io)]() { io.get().run(); });
