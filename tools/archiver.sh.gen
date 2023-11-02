@@ -5,8 +5,9 @@ sqlite3=$<TARGET_FILE:extern::sqlite3>
 gdk_rust=$<TARGET_FILE:gdk-rust>
 wally=$<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_LINK_LIBRARIES>
 secp256k1=$<TARGET_PROPERTY:PkgConfig::libsecp256k1,INTERFACE_LINK_LIBRARIES>
-libevent=$<TARGET_FILE:event_static>
-libeventpthreads=$<$<TARGET_EXISTS:event_pthreads_static>:$<TARGET_FILE:event_pthreads_static>>
+libevent_core=$<TARGET_FILE:libevent::core>
+libevent_extra=$<TARGET_FILE:libevent::extra>
+libeventpthreads=$<$<TARGET_EXISTS:libevent::pthreads>:$<TARGET_FILE:libevent::pthreads>>
 boost_log=$<TARGET_FILE:Boost::log>
 boost_chrono=$<TARGET_FILE:Boost::chrono>
 boost_date_time=$<TARGET_FILE:Boost::date_time>
@@ -21,7 +22,7 @@ tinycbor=$<TARGET_PROPERTY:PkgConfig::TinyCBOR,INTERFACE_LINK_LIBRARIES>
 urc=$<TARGET_FILE:urc::urc>
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
+libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent_core $libevent_extra $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
 
 
 if [ "$(uname)" = "Darwin" ]; then

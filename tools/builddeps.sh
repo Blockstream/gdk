@@ -283,10 +283,10 @@ fi
 
 # building libevent
 name="libevent"
-source_url="https://github.com/libevent/libevent/archive/release-2.1.11-stable.tar.gz"
-source_name="libevent-release-2.1.11-stable"
+source_url="https://github.com/libevent/libevent/archive/release-2.1.12-stable.tar.gz"
+source_name="libevent-release-2.1.12-stable"
 source_filename="${source_name}.tar.gz"
-source_hash="229393ab2bf0dc94694f21836846b424f3532585bac3468738b7bf752c03901e"
+source_hash="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \

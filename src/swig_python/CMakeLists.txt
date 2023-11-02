@@ -25,10 +25,11 @@ configure_file(README.md ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/README.md COPY
 configure_file(pyproject.toml.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/pyproject.toml)
 
 get_target_property(_gdk_rust_LINK_LIBRARIES gdk-rust IMPORTED_LOCATION)
-get_target_property(_libevent_LINK_LIBRARIES event_static IMPORTED_LOCATION_${_upper_build_type})
+get_target_property(_libevent_core_LINK_LIBRARIES libevent::core IMPORTED_LOCATION_${_upper_build_type})
+get_target_property(_libevent_extra_LINK_LIBRARIES libevent::extra IMPORTED_LOCATION_${_upper_build_type})
 set(_libevent_pthreads_LINK_LIBRARIES "")
-if(TARGET event_pthreads_static)
-    get_target_property(_libevent_pthreads_LINK_LIBRARIES event_pthreads_static IMPORTED_LOCATION_${_upper_build_type})
+if(TARGET libevent::pthreads)
+    get_target_property(_libevent_pthreads_LINK_LIBRARIES libevent::pthreads IMPORTED_LOCATION_${_upper_build_type})
 endif()
 
 set(_gdk_library "")

@@ -74,7 +74,7 @@ join_path(msgpack_ROOT ${EXTERNAL-DEPS-DIR} "msgpack")
 find_package(msgpack REQUIRED CONFIG)
 #libevent
 join_path(Libevent_ROOT ${EXTERNAL-DEPS-DIR} "libevent" "build")
-find_package(Libevent REQUIRED CONFIG)
+find_package(Libevent REQUIRED CONFIG COMPONENTS core extra OPTIONAL_COMPONENTS pthreads)
 # ur-c
 set(URC_INCLUDE_DIRS "")
 set(URC_LINK_LIBRARIES "")

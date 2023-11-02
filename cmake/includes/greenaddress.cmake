@@ -18,9 +18,9 @@ macro(create_greenaddress_target)
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
         extern::tor
-        event_static
+        libevent::core
         PkgConfig::libsecp256k1
-        $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
+        $<TARGET_NAME_IF_EXISTS:libevent::pthreads>
         Boost::boost
         Boost::log
         Boost::thread
@@ -104,8 +104,8 @@ macro(create_greenaddressstatic_target)
         websocketpp::websocketpp
         nlohmann_json::nlohmann_json
         extern::tor
-        event_static
-        $<$<NOT:$<PLATFORM_ID:Windows>>:event_pthreads_static>
+        libevent::core
+        $<$<NOT:$<PLATFORM_ID:Windows>>:libevent::pthreads>
         Boost::boost
         Boost::log
         Boost::thread

@@ -1,23 +1,23 @@
 
 ####### DOCKER IMAGES
 .debian-image:
-  image: blockstream/gdk-debian-ci@sha256:fa748cfb3e9708e39ae9b6f6403e504fd6bf801511cee05f84c5ec34a6accf65
+  image: blockstream/gdk-debian-ci@sha256:5e67ccc218a939869fa4209804c85511ea8b717aebe7d7cceadf70e537d5b92c
   tags: [ ga ]
 
 .android-image:
-  image: blockstream/gdk-android-builder@sha256:60fd8e8f6569b7ca0417eff5aa88019ba5ab82177374f71e00d787384cfa9a28
+  image: blockstream/gdk-android-builder@sha256:fe72ff0fcde9895a0c7286e02b2596bd2847847abaf6bf16b439afd239a4d154
   tags: [ ga ]
 
 .python-image:
-  image: blockstream/gdk-python-builder@sha256:94034b2f12c7c972b91db584efec00d4f4f3ab1067ee8762907401e225dc181c
+  image: blockstream/gdk-python-builder@sha256:d2b39513819dec159912a8d5d345ef8b56c6d4e1f3f1f02abf3ca97f9683129e
   tags: [ ga ]
 
 .ubuntu-image:
-  image: blockstream/gdk-ubuntu-builder@sha256:f75606b4fd1c681ea6bba452dcf2a1e119b36b027f131b63c0fb83ceab45015f
+  image: blockstream/gdk-ubuntu-builder@sha256:350f68cab1eae32e177cb13c897e049aa2f35ec8dafe31f04701dbd671e6af3b
   tags: [ ga ]
 
 .fedora-image:
-  image: blockstream/gdk-fedora-builder@sha256:bb1613df9e51c22c1c21169ad14dcdab2886968be3d5d45efc1631f42f22a93d
+  image: blockstream/gdk-fedora-builder@sha256:2ba6c3c00cee47b9847bc22763bce1d7fe00e3f830973a34c24a65d674b5a18f
   tags: [ ga ]
 
 
@@ -56,7 +56,7 @@
     # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
 .osx_env:
   variables:
-    BUILD_IDX: "2"
+    BUILD_IDX: "0"
     GDK_KEEP_DOWNLOADS: "1"
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
