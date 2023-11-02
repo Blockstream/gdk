@@ -257,6 +257,7 @@ namespace sdk {
         state_type call_impl() override;
 
         void initialize();
+        bool is_sms_backup() const;
         state_type on_init_done(const std::string& new_action);
 
         nlohmann::json m_current_config;

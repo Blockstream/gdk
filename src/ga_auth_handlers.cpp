@@ -1610,6 +1610,11 @@ namespace sdk {
     {
     }
 
+    bool change_settings_twofactor_call::is_sms_backup() const
+    {
+        return m_method_to_update == "phone" && j_bool_or_false(m_details, "is_sms_backup");
+    }
+
     void change_settings_twofactor_call::initialize()
     {
         m_session->ensure_full_session();
@@ -1640,6 +1645,13 @@ namespace sdk {
                     set_error(res::id_inconsistent_data_provided_for);
                     return;
                 }
+            }
+            if (is_sms_backup()) {
+                // For sms backup disable all 2fa checks and go straight to the call
+                // The backend will waive the 2fa checks provided that sms and only sms
+                // is already enabled and the phone number requested matches
+                m_methods->clear();
+                m_state = state_type::make_call;
             }
             m_twofactor_data = { { "method", m_method_to_update } };
         } else {
@@ -1704,10 +1716,16 @@ namespace sdk {
         }
         if (m_action == "enable_2fa") {
             if (m_method_to_update != "gauth") {
-                // gauth doesn't have an init_enable step
+                if (is_sms_backup()) {
+                    // Request to enable phone as backup of existing sms
+                    // The backend will not require 2fa data as long as the conditions
+                    // for sms backup are met
+                    m_twofactor_data = { { "is_sms_backup", true } };
+                }
                 const std::string data = json_get_value(m_details, "data");
                 m_auth_data = m_session->init_enable_twofactor(m_method_to_update, data, m_twofactor_data);
             } else {
+                // gauth doesn't have an init_enable step
                 const std::string proxy_code = m_session->auth_handler_request_proxy_code("gauth", m_twofactor_data);
                 m_twofactor_data = { { "method", "proxy" }, { "code", proxy_code } };
             }
