@@ -1774,6 +1774,9 @@ namespace sdk {
     auth_handler::state_type change_limits_call::call_impl()
     {
         if (!m_initialized) {
+            if (m_net_params.is_electrum()) {
+                throw user_error("Spending limits cannot be set for singlesig wallets");
+            }
             // Transform the details json that is passed in into the json that the api expects
             // The api expects {is_fiat: bool, total: in satoshis, per_tx: not really used}
             // This function takes a full amount json, e.g. {'btc': 1234}
