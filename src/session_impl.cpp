@@ -465,6 +465,26 @@ namespace sdk {
         }
     }
 
+    nlohmann::json session_impl::get_twofactor_config(bool /*reset_cached*/)
+    {
+        ensure_full_session();
+        // Singlesig does not support 2fa. Overridden for multisig.
+        nlohmann::json reset_2fa = { { "days_remaining", -1 }, { "is_active", false }, { "is_disputed", false } };
+        auto empty_list = nlohmann::json::array();
+        return { { "all_methods", empty_list }, { "any_enabled", false }, { "enabled_methods", empty_list },
+            { "twofactor_reset", std::move(reset_2fa) }, { "limits", get_spending_limits() }
+
+        };
+    }
+
+    nlohmann::json session_impl::get_spending_limits() const
+    {
+        // Singlesig does not support spending limits. Overridden for multisig.
+        auto limits = convert_amount({ { "satoshi", 0 } });
+        limits["is_fiat"] = false;
+        return limits;
+    }
+
     void session_impl::encache_signer_xpubs(std::shared_ptr<signer> /*signer*/)
     {
         // Overriden for multisig

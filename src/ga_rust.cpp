@@ -322,8 +322,6 @@ namespace sdk {
 
     void ga_rust::change_settings(const nlohmann::json& settings) { rust_call("change_settings", settings, m_session); }
 
-    nlohmann::json ga_rust::get_twofactor_config(bool reset_cached) { return nlohmann::json({}); }
-
     std::vector<std::string> ga_rust::get_enabled_twofactor_methods() { return {}; }
 
     void ga_rust::set_email(const std::string& email, const nlohmann::json& twofactor_data) {}
@@ -508,10 +506,6 @@ namespace sdk {
     }
     uint32_t ga_rust::get_block_height() const { return rust_call("get_block_height", {}, m_session); }
 
-    nlohmann::json ga_rust::get_spending_limits() const
-    {
-        throw std::runtime_error("get_spending_limits not implemented");
-    }
     bool ga_rust::is_spending_limits_decrease(const nlohmann::json& limit_details)
     {
         throw std::runtime_error("is_spending_limits_decrease not implemented");

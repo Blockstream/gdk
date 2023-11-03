@@ -71,7 +71,6 @@ namespace sdk {
         nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);
 
-        nlohmann::json get_twofactor_config(bool reset_cached = false);
         std::vector<std::string> get_enabled_twofactor_methods();
 
         void set_email(const std::string& email, const nlohmann::json& twofactor_data);
@@ -124,7 +123,6 @@ namespace sdk {
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
         uint32_t get_block_height() const;
-        nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
         void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
 

@@ -135,7 +135,7 @@ namespace sdk {
         virtual nlohmann::json get_post_login_data() = 0;
         virtual void change_settings(const nlohmann::json& settings) = 0;
 
-        virtual nlohmann::json get_twofactor_config(bool reset_cached = false) = 0;
+        virtual nlohmann::json get_twofactor_config(bool reset_cached = false);
         virtual std::vector<std::string> get_enabled_twofactor_methods() = 0;
 
         virtual void set_email(const std::string& email, const nlohmann::json& twofactor_data) = 0;
@@ -206,7 +206,7 @@ namespace sdk {
         virtual amount get_default_fee_rate() const = 0;
         virtual uint32_t get_block_height() const = 0;
         amount get_dust_threshold(const std::string& asset_id) const;
-        virtual nlohmann::json get_spending_limits() const = 0;
+        virtual nlohmann::json get_spending_limits() const;
         virtual bool is_spending_limits_decrease(const nlohmann::json& limit_details) = 0;
 
         virtual void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer) = 0;
