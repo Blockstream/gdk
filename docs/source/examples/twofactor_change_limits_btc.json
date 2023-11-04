@@ -1,0 +1,17 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Set BTC limit example</a></summary>
+
+.. code-block:: json
+
+  {
+    "is_fiat": false,
+    "satoshi": 50000
+  }
+
+.. raw:: html
+
+  </details>
+
+

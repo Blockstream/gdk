@@ -1,0 +1,18 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Set fiat limit example</a></summary>
+
+.. code-block:: json
+
+  {
+    "fiat": "1.50",
+    "fiat_currency": "USD",
+    "is_fiat": true
+  }
+
+.. raw:: html
+
+  </details>
+
+

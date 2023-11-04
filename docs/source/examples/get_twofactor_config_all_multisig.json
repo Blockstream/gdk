@@ -1,0 +1,65 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example (all two-factor methods enabled)</a></summary>
+
+.. code-block:: json
+
+  {
+    "all_methods": [
+      "email",
+      "sms",
+      "phone",
+      "gauth"
+    ],
+    "any_enabled": false,
+    "email": {
+      "confirmed": true,
+      "data": "sa***@my***",
+      "enabled": true
+    },
+    "enabled_methods": [
+      "email",
+      "sms",
+      "phone",
+      "gauth"
+    ],
+    "gauth": {
+      "confirmed": true,
+      "data": "***",
+      "enabled": true
+    },
+    "limits": {
+      "bits": "0.00",
+      "btc": "0.00000000",
+      "fiat": "0.00",
+      "fiat_currency": "USD",
+      "fiat_rate": "1.10000000",
+      "is_current": true,
+      "is_fiat": false,
+      "mbtc": "0.00000",
+      "satoshi": 0,
+      "sats": "0",
+      "ubtc": "0.00"
+    },
+    "phone": {
+      "confirmed": true,
+      "data": "*** *** *89",
+      "enabled": true
+    },
+    "sms": {
+      "confirmed": true,
+      "data": "*** *** *89",
+      "enabled": true
+    },
+    "twofactor_reset": {
+      "days_remaining": -1,
+      "is_active": false,
+      "is_disputed": false
+    }
+  }
+
+.. raw:: html
+
+  </details>
+

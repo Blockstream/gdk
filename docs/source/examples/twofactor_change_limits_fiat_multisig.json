@@ -1,0 +1,17 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example (returned fiat limit)</a></summary>
+
+.. code-block:: json
+
+  {
+    "fiat": "1.50",
+    "fiat_currency": "USD",
+    "is_fiat": true
+  }
+
+.. raw:: html
+
+  </details>
+

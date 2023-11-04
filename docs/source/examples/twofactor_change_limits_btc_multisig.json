@@ -1,0 +1,25 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example (returned BTC limit)</a></summary>
+
+.. code-block:: json
+
+  {
+    "bits": "500.00",
+    "btc": "0.00050000",
+    "fiat": "0.00",
+    "fiat_currency": "USD",
+    "fiat_rate": "1.10000000",
+    "is_current": true,
+    "is_fiat": false,
+    "mbtc": "0.50000",
+    "satoshi": 50000,
+    "sats": "50000",
+    "ubtc": "500.00"
+  }
+
+.. raw:: html
+
+  </details>
+

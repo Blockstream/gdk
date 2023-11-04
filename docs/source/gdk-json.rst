@@ -724,63 +724,25 @@ Fee estimates JSON
 
 .. _twofactor_configuration:
 
-Two-Factor config JSON
+Two Factor Config JSON
 ----------------------
 
 Describes the wallets enabled two factor methods, current spending limits, and two factor reset status.
 
-.. code-block:: json
+.. include:: examples/get_twofactor_config_none_multisig.json
 
- {
-  "all_methods": [
-    "email",
-    "sms",
-    "phone",
-    "gauth"
-  ],
-  "any_enabled": true,
-  "email": {
-    "confirmed": true,
-    "data": "***@@g***",
-    "enabled": true
-  },
-  "enabled_methods": [
-    "email"
-  ],
-  "gauth": {
-    "confirmed": false,
-    "data": "otpauth://totp/Green%20Bitcoin?secret=IZ3SMET5RDWVUSHB4CPTKUWBJM4HSYHO",
-    "enabled": false
-  },
-  "limits": {
-    "bits": "5000.00",
-    "btc": "0.00500000",
-    "fiat": "0.01",
-    "fiat_currency": "EUR",
-    "fiat_rate": "1.10000000",
-    "is_fiat": false,
-    "mbtc": "5.00000",
-    "satoshi": 500000,
-    "sats": "500000",
-    "ubtc": "5000.00"
-  },
-  "phone": {
-    "confirmed": false,
-    "data": "",
-    "enabled": false
-  },
-  "sms": {
-    "confirmed": false,
-    "data": "",
-    "enabled": false
-  },
-  "twofactor_reset": {
-    "days_remaining": -1,
-    "is_active": false,
-    "is_disputed": false
-  }
- }
+.. include:: examples/get_twofactor_config_all_multisig.json
 
+.. include:: examples/get_twofactor_config_singlesig.json
+
+:all_methods: An array containing all two factor methods available.
+:any_enabled: ``true`` if any two factor method is enabled, ``false`` otherwise.
+:enabled_methods: An array containing all enabled two factor methods.
+:limits: :ref:`transaction-limits` describing the users current limit.
+:twofactor_reset/days_remaining: The number of days remaining before the wallets two factor
+                                 authentication is reset, or -1 if no reset procedure is underway.
+:twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.
+:twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
 When the user has a fiat spending limit set instead of BTC, limits are returned as e.g:
 
@@ -793,11 +755,6 @@ When the user has a fiat spending limit set instead of BTC, limits are returned 
       "is_fiat": true
     }
   }
-
-:twofactor_reset/days_remaining: The number of days remaining before the wallets two factor
-                                 authentication is reset, or -1 if no reset procedure is underway.
-:twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.
-:twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
 
 .. _bcur-encode:
@@ -1035,7 +992,7 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
 :subaccount: The subaccount to fetch unspent outputs for.
 :num_confs: Pass ``0`` for unconfirmed UTXOs or ``1`` for confirmed.
 :all_coins: Pass ``true`` to include UTXOs with status ``frozen``. Defaults to ``false``.
-:expired_at: If given, only UTXOs where two-factor authentication expires
+:expired_at: If given, only UTXOs where two factor authentication expires
     by the given block are returned.
 :confidential: Pass ``true`` to include only confidential UTXOs. Defaults to ``false``.
 :dust_limit: If given, only UTXOs with a value greater than the limit value are returned.
@@ -1094,7 +1051,7 @@ Contains unspent outputs for the wallet as requested by `GA_get_unspent_outputs`
 :user_path: The BIP32 path for the user key.
 :public_key: Singlesig only. The user public key.
 :expiry_height: Multisig only.
-                The block height when two-factor authentication expires.
+                The block height when two factor authentication expires.
 :script_type: Multisig only. Integer representing the type of script.
 :user_status: Multisig only. 0 for ``"default"`` and 1 for ``"frozen"``.
 :subtype: Multisig only. For ``"address_type"`` ``"csv"``,
@@ -1182,10 +1139,35 @@ the networks information.
 Transaction limits JSON
 -----------------------
 
-.. code-block:: json
+Describes the users spending limits/desired spending limits. A spending limit
+of zero means the user has no limit currently set.
 
-  {"is_fiat":false,"mbtc":"555"}
-  {"is_fiat":true,"fiat":"555"}
+.. warning:: Fiat spending limits are deprecated and support will be removed in a future release.
+
+When calling `GA_twofactor_change_limits`, the caller should pass whether or
+not the limit is in fiat, and the value. For limits in BTC, the value can be given
+as any unit from :ref:`convert-amount` (e.g. ``"satoshi"``, ``"mbtc"`` etc).
+
+.. include:: examples/twofactor_change_limits_fiat.json
+
+:is_fiat: ``true`` to indicate a fiat limit is being set.
+:fiat: A string containing the limit amount in fiat cents.
+:fiat_currency: The currency of the limit.
+
+.. include:: examples/twofactor_change_limits_btc.json
+
+:is_fiat: ``false`` to indicate a BTC limit is being set.
+:<value_key>: A value key from :ref:`convert-amount` giving the limit.
+
+The returned value from `GA_twofactor_change_limits`, and the ``"limits"``
+section of :ref:`twofactor_configuration` is identical to the set value for
+fiat. For BTC, the limit is passed through `GA_convert_amount` and so all
+units are returned.
+
+.. include:: examples/twofactor_change_limits_fiat_multisig.json
+.. include:: examples/twofactor_change_limits_btc_multisig.json
+
+
 
 .. _twofactor-detail:
 
