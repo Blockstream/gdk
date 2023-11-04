@@ -64,7 +64,7 @@
             "subtype": 0
           }
         ],
-        "rbf_optin": false,
+        "rbf_optin": true,
         "satoshi": {
           "btc": 12340
         },
