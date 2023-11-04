@@ -2814,11 +2814,10 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
         if (m_twofactor_config.is_null() || reset_cached) {
-            const auto config = wamp_cast_json(m_wamp->call(locker, "twofactor.get_config"));
+            auto config = wamp_cast_json(m_wamp->call(locker, "twofactor.get_config"));
             set_twofactor_config(locker, config);
         }
-        nlohmann::json ret = m_twofactor_config;
-
+        auto ret = m_twofactor_config;
         ret["limits"] = get_spending_limits(locker);
         return ret;
     }
@@ -2924,18 +2923,12 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
         auto config = wamp_cast_json(m_wamp->call(locker, "twofactor.enable_" + method, code));
-        if (!config.is_boolean()) {
-            if (!config.contains("gauth_url")) {
-                // Copy over the existing gauth value until gauth is sorted out
-                // TODO: Fix gauth so the user passes the secret
-                config["gauth_url"] = json_get_value(m_twofactor_config["gauth"], "data", MASKED_GAUTH_SEED);
-            }
-            set_twofactor_config(locker, config);
-        } else {
-            // FIXME: Remove when all backends are updated
-            m_twofactor_config[method] = { { "enabled", true }, { "confirmed", true }, { "data", std::string() } };
-            set_enabled_twofactor_methods(locker);
+        if (!config.contains("gauth_url")) {
+            // Copy over the existing gauth value until gauth is sorted out
+            // TODO: Fix gauth so the user passes the secret
+            config["gauth_url"] = json_get_value(m_twofactor_config["gauth"], "data", MASKED_GAUTH_SEED);
         }
+        set_twofactor_config(locker, config);
     }
 
     void ga_session::enable_gauth(const std::string& code, const nlohmann::json& twofactor_data)
@@ -2943,15 +2936,9 @@ namespace sdk {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT(!m_twofactor_config.is_null()); // Caller must fetch before changing
 
-        const auto config
+        auto config
             = wamp_cast_json(m_wamp->call(locker, "twofactor.enable_gauth", code, mp_cast(twofactor_data).get()));
-        if (!config.is_boolean()) {
-            set_twofactor_config(locker, config);
-        } else {
-            // FIXME: Remove when all backends are updated
-            m_twofactor_config["gauth"] = { { "enabled", true }, { "confirmed", true }, { "data", MASKED_GAUTH_SEED } };
-            set_enabled_twofactor_methods(locker);
-        }
+        set_twofactor_config(locker, config);
     }
 
     void ga_session::disable_twofactor(const std::string& method, const nlohmann::json& twofactor_data)
