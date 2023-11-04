@@ -20,7 +20,7 @@ def run(command):
     return result.stdout
 
 
-def write_json(j, session_type, name):
+def write_json(j, session_type, name, title_extra=''):
     # Format a JSON dict, wrap it in clickable expanding links and
     # save it to a file for the docs to include.
     json_dumps = lambda d: json.dumps(d, indent=2, sort_keys=True, default=lambda t: f'{t}')
@@ -29,7 +29,8 @@ def write_json(j, session_type, name):
     suffix = f'_{session_type}' if session_type else ''
     title = 'Example'
     if session_type:
-        title = f'{session_type.replace("_", " ").title()} example'
+        title_extra = f' {title_extra}' if title_extra else ''
+        title = f'{session_type.replace("_", " ").title()} example{title_extra}'
     with open(f'./docs/source/examples/{name}{suffix}.json', 'w') as f:
         f.write('.. raw:: html\n')
         f.write('\n')
@@ -46,6 +47,39 @@ def write_json(j, session_type, name):
         f.write('  </details>\n')
         f.write('\n')
 
+def do_2fa(user, method, confirmed, enabled):
+    data = '+123456789'
+    if method == 'gauth':
+        data = user.get_twofactor_config()['gauth']['data']
+    if method == 'email':
+        data = 'sample_email@my_domain.com'
+
+    cfg = {'confirmed': confirmed, 'enabled': enabled, 'data': data}
+    return user.change_settings_twofactor(method, cfg).resolve()
+
+def generate_twofactor_examples(user, session_type):
+    # 2fa config (empty)
+    config = user.get_twofactor_config()
+    write_json(config, session_type, 'get_twofactor_config_none', '(no two-factor methods enabled)')
+    # Spending limits
+    details = {'is_fiat': True, 'fiat': '1.50', 'fiat_currency': 'USD'}
+    set_limits = user.twofactor_change_limits(details).resolve()
+    write_json(set_limits, session_type, 'twofactor_change_limits_fiat', '(returned fiat limit)')
+    details = {'is_fiat': False, 'satoshi': 50000}
+    set_limits = user.twofactor_change_limits(details).resolve()
+    write_json(set_limits, session_type, 'twofactor_change_limits_btc', '(returned BTC limit)')
+    # unset spending limits
+    user.twofactor_change_limits({'is_fiat': False, 'satoshi': 0}).resolve()
+
+    # 2fa config (all enabled)
+    for method in config['all_methods']:
+        do_2fa(user, method, True, True)
+    config = user.get_twofactor_config()
+    # Remove telegram until it is available globally
+    # FIXME: telegram is not returned in the initial call to get_twofactor_config above
+    config['all_methods'] = config['all_methods'][:-1]
+    del config['telegram']
+    write_json(config, session_type, 'get_twofactor_config_all', '(all two-factor methods enabled)')
 
 def generate_examples(network, session_type, mnemonic):
     user = gdk.Session({'name': network})
@@ -55,17 +89,6 @@ def generate_examples(network, session_type, mnemonic):
     addr = user.get_receive_address({'subaccount': 0}).resolve()
     run(f'cli sendtoaddress {addr["address"]} 0.0001234') # Do early to give time to receive
     write_json(addr, session_type, 'get_receive_address')
-    if session_type == 'multisig':
-        # Same for all networks, just do once
-        networks = gdk.get_networks()
-        write_json(networks, '', 'get_networks')
-        network = gdk.get_networks()['mainnet']
-        write_json(network, '', 'network')
-        # bcur_decode
-        for ur in UR_DOCS:
-            j = user.bcur_decode({'part': ur}).resolve()
-            ur_type = ur.split('/')[0].split(':')[1].replace('-', '_')
-            write_json(j, '', f'bcur_decode_{ur_type}')
 
     # get_settings
     settings = user.get_settings()
@@ -102,6 +125,25 @@ def generate_examples(network, session_type, mnemonic):
     utxos = user.get_unspent_outputs({'subaccount': 0, 'num_confs': 0}).resolve()
     write_json(utxos, session_type, 'get_unspent_outputs')
 
+    if session_type != 'multisig':
+        if session_type == 'singlesig':
+            config = user.get_twofactor_config()
+            write_json(config, session_type, 'get_twofactor_config',
+                       '(two-factor and limits not available)')
+        return
+    # The following JSON is either multisig specific or the same for all
+    # networks. Generate it only for multisig-BTC to avoid repeated work.
+    networks = gdk.get_networks()
+    write_json(networks, '', 'get_networks')
+    network = gdk.get_networks()['mainnet']
+    write_json(network, '', 'network')
+    # bcur_decode
+    for ur in UR_DOCS:
+        j = user.bcur_decode({'part': ur}).resolve()
+        ur_type = ur.split('/')[0].split(':')[1].replace('-', '_')
+        write_json(j, '', f'bcur_decode_{ur_type}')
+    # 2fa
+    generate_twofactor_examples(user, session_type)
 
 if __name__ == '__main__':
     # Remove any existing session cache from previous runs
