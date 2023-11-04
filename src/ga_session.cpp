@@ -2874,8 +2874,8 @@ namespace sdk {
                 enabled_methods.emplace_back(m);
             }
         }
-        m_twofactor_config["enabled_methods"] = std::move(enabled_methods);
         m_twofactor_config["any_enabled"] = !enabled_methods.empty();
+        m_twofactor_config["enabled_methods"] = std::move(enabled_methods);
     }
 
     std::vector<std::string> ga_session::get_enabled_twofactor_methods()

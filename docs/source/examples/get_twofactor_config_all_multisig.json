@@ -12,7 +12,7 @@
       "phone",
       "gauth"
     ],
-    "any_enabled": false,
+    "any_enabled": true,
     "email": {
       "confirmed": true,
       "data": "sa***@my***",
