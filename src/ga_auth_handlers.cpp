@@ -1605,7 +1605,7 @@ namespace sdk {
         : auth_handler_impl(session, "change_settings_twofactor")
         , m_method_to_update(method_to_update)
         , m_details(std::move(details))
-        , m_enabling(m_details.value("enabled", true))
+        , m_enabling(false)
         , m_initialized(false)
     {
     }
@@ -1613,6 +1613,7 @@ namespace sdk {
     void change_settings_twofactor_call::initialize()
     {
         m_session->ensure_full_session();
+        m_enabling = j_bool(m_details, "enabled").value_or(true);
 
         m_current_config = m_session->get_twofactor_config();
         const auto& current_subconfig = m_current_config.at(m_method_to_update);
@@ -1683,6 +1684,9 @@ namespace sdk {
     auth_handler::state_type change_settings_twofactor_call::call_impl()
     {
         if (!m_initialized) {
+            if (m_net_params.is_electrum()) {
+                throw user_error("Two-Factor settings cannot be changed for singlesig wallets");
+            }
             initialize();
             m_initialized = true;
             return m_state;
