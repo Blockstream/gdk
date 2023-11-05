@@ -883,8 +883,8 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  * Enable or disable a two factor authentication method.
  *
  * :param session: The session to use
- * :param method: The two factor method to enable/disable, i.e. ``"email"``, ``"sms"``, ``"phone"``, ``"gauth"``
- * :param twofactor_details: The two factor method and associated data such as an email address. :ref:`twofactor-detail`
+ * :param method: The two factor method to enable/disable, e.g. ``"email"``, ``"sms"``, ``"phone"``, ``"gauth"``
+ * :param twofactor_details: :ref:`twofactor-detail` giving the two factor method and associated data.
  * :param call: Destination for the resulting GA_auth_handler to perform the action
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
