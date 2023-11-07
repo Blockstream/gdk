@@ -6,8 +6,6 @@
 
 ### Changed
 
-- GA_create_subaccount: Multisig: emit subaccount "synced" notification when
-  a new subaccount is created.
 - Transaction signing with hardware wallets is now available without setting
   the "enable_ss_liquid_hww" gdk config setting. This setting can be removed
   from the calling application when updating; it is no longer required.
@@ -15,6 +13,33 @@
 ### Fixed
 
 ### Removed
+
+## Release 0.68.4 - 23-10-26
+
+### Fixed
+
+- Liquid: Singlesig: Fix cache re-load.
+
+## Release 0.68.3 - 23-10-25
+
+### Fixed
+
+- Singlesig: Fix incorrectly reported unconfirmed transactions.
+
+## Release 0.68.2 - 23-10-16
+
+### Changed
+
+- GA_create_subaccount: Multisig: emit subaccount "synced" notification when
+  a new subaccount is created.
+
+## Release 0.68.1 - 23-10-10
+
+### Fixed
+
+- tor: patch error message to prevent play store flagging a security issue incorrectly.
+- Multisig: psbt: detect and mark change outputs when signing PSBT/PSET.
+- Fix the mingw compilation/login crash issues.
 
 ## Release 0.68.0 - 23-09-27
 
