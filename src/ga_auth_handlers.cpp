@@ -1135,7 +1135,7 @@ namespace sdk {
 
     auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        if (!m_net_params.is_electrum() || !m_details.value("refresh", false) || m_subaccount_type.empty()) {
+        if (!m_net_params.is_electrum() || !j_bool_or_false(m_details, "refresh") || m_subaccount_type.empty()) {
             m_result = { { "subaccounts", m_session->get_subaccounts() } };
             return state_type::done;
         }
