@@ -8,7 +8,13 @@
 #include "exception.hpp"
 
 namespace {
-static auto find(const nlohmann::json& src, std::string_view key) { return src.find(key); }
+static auto find(const nlohmann::json& src, std::string_view key)
+{
+    if (src.is_null()) {
+        return src.end();
+    }
+    return src.find(key);
+}
 static auto get_or_throw(const nlohmann::json& src, std::string_view key)
 {
     auto it = find(src, key);
