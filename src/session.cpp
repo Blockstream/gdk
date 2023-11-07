@@ -180,8 +180,9 @@ namespace sdk {
 
             auto impl = session_impl::create(net_params);
             impl->set_notification_handler(m_notification_handler, m_notification_context);
-            impl->connect();
             m_impl = impl;
+            locker.unlock();
+            impl->connect();
         } catch (const std::exception& ex) {
             log_exception("exception on connect:", ex);
             std::rethrow_exception(std::current_exception());
