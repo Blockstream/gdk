@@ -404,10 +404,26 @@ namespace sdk {
             std::this_thread::sleep_for(50ms);
             locker.lock();
             const auto current_state = m_state.load();
+            const auto desired_state = m_desired_state.load();
             locker.unlock();
             if (current_state == new_state || current_state == state_t::exited) {
+                // We have achieved the state we asked for, or been asked to exit.
                 GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(current_state);
                 return;
+            }
+            if (desired_state != new_state) {
+                // Another thread has asked for a different state via
+                // GA_reconnect_hint, e.g. has asked to disconnect while
+                // we are connecting.
+                GDK_LOG_SEV(log_level::info)
+                    << "change_state_to: " << state_str(new_state) << " target changed to " << state_str(desired_state)
+                    << " by another thread (current state " << state_str(current_state) << ')';
+                // We throw a timeout error for the original caller, so they can
+                // handle the error with the existing logic for a sync timeout
+                // failure. The caller knows that they changed the state
+                // via another thread, and thus can differentiate actual timeout
+                // from cancellation, should they want to process them differently.
+                throw timeout_error();
             }
         }
         throw timeout_error();
