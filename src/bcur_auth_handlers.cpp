@@ -40,7 +40,7 @@ namespace sdk {
     namespace {
         // FIXME: this whole set of functions inside this anonymous namespace should be moved to ur-c library
 
-        static std::string format(const crypto_eckey& key)
+        static std::string format_eckey(const crypto_eckey& key)
         {
             switch (key.type) {
             case crypto_eckey::eckey_type_private:
@@ -54,7 +54,7 @@ namespace sdk {
             }
         }
 
-        static std::string format(const crypto_hdkey& key)
+        static std::string format_hdkey(const crypto_hdkey& key, bool is_bip44 = false)
         {
             std::string keyorigin;
             keyorigin.resize(15);
@@ -84,10 +84,21 @@ namespace sdk {
             }
 
             derivationpath.resize(len);
+            if (is_bip44 && derivationpath.empty()) {
+                /* HD Keys inside crypto-account do not include the
+                 * derivation path, but are only allowed to be bip44
+                 * compatible. Append the bip44 derivation so
+                 * callers can use the resulting descriptor.
+                 * TODO: The correct path is "/<0;1>/<star>", but wallets
+                 * that do not understand multi-index descriptors require
+                 * "/0/<star>" and must infer the change addresses themselves.
+                 */
+                derivationpath = "/0/*";
+            }
             return keyorigin + base58check_from_bytes(bip32) + derivationpath;
         }
 
-        static std::string format(const crypto_output& output)
+        static std::string format_output(const crypto_output& output, bool is_bip44 = false)
         {
             std::string descriptor;
             std::string descriptor_end;
@@ -125,18 +136,25 @@ namespace sdk {
                 descriptor_end += ")";
                 break;
             case output_keyexp::keyexp_type_cosigner:
+                /* NOTE: cosigner() is just made-up nonsense, no software will
+                 *       decode it and no BIP has ever been proposed for it.
+                 */
                 descriptor += "cosigner(";
                 descriptor_end += ")";
                 break;
             case output_keyexp::keyexp_type_na:
                 throw user_error("output_keyexp not available");
             }
-            switch (output.output.key.keytype) {
+            const auto& key = output.output.key;
+            switch (key.keytype) {
             case output_keyexp::keyexp_keytype_eckey:
-                return descriptor + format(output.output.key.key.eckey) + descriptor_end;
+                /* EC Keys cannot appear in 'crypto-account's so no bip44
+                 * path needs to be appended.
+                 */
+                return descriptor + format_eckey(key.key.eckey) + descriptor_end;
                 break;
             case output_keyexp::keyexp_keytype_hdkey:
-                return descriptor + format(output.output.key.key.hdkey) + descriptor_end;
+                return descriptor + format_hdkey(key.key.hdkey, is_bip44) + descriptor_end;
                 break;
             case output_keyexp::keyexp_keytype_na:
                 throw user_error("output_keyexp not available");
@@ -171,7 +189,7 @@ namespace sdk {
             if (result != URC_OK) {
                 throw user_error("ur-c: Parsing crypto-output failed with error code:" + std::to_string(result));
             }
-            return format(output);
+            return format_output(output);
         }
 
         static crypto_account parseaccount(const std::vector<uint8_t>& raw)
@@ -369,11 +387,14 @@ namespace sdk {
         } else if (urtype == "crypto-output") {
             m_result["descriptor"] = parseoutput(ur.cbor());
         } else if (urtype == "crypto-account") {
-            crypto_account account = parseaccount(ur.cbor());
+            const auto account = parseaccount(ur.cbor());
             m_result["master_fingerprint"] = (boost::format("%08x") % account.master_fingerprint).str();
-            for (size_t idx = 0; idx < account.descriptors_count; idx++) {
-                m_result["descriptors"].push_back(format(account.descriptors[idx]));
+            nlohmann::json::array_t descriptors;
+            for (size_t i = 0; i < account.descriptors_count; i++) {
+                constexpr bool is_bip44 = true;
+                descriptors.push_back(format_output(account.descriptors[i], is_bip44));
             }
+            m_result["descriptors"] = std::move(descriptors);
         } else if (urtype == "jade-bip8539-reply") {
             auto response = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
             m_result.update(response);
