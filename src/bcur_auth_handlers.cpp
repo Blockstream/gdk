@@ -163,7 +163,7 @@ namespace sdk {
             __builtin_unreachable();
         }
 
-        static std::string parsepsbt(const std::vector<uint8_t>& raw)
+        static nlohmann::json parse_psbt(const std::vector<uint8_t>& raw)
         {
             crypto_psbt psbt;
             int result = URC_OK;
@@ -179,17 +179,17 @@ namespace sdk {
             if (result != URC_OK) {
                 throw user_error("ur-c: Parsing crypto_psbt failed with error code:" + std::to_string(result));
             }
-            return base64_from_bytes({ psbt.buffer, psbt.psbt_len });
+            return { { "psbt", base64_from_bytes({ psbt.buffer, psbt.psbt_len }) } };
         }
 
-        static std::string parseoutput(const std::vector<uint8_t>& raw)
+        static nlohmann::json parse_output(const std::vector<uint8_t>& raw)
         {
             crypto_output output;
             int result = urc_crypto_output_parse(raw.data(), raw.size(), &output);
             if (result != URC_OK) {
                 throw user_error("ur-c: Parsing crypto-output failed with error code:" + std::to_string(result));
             }
-            return format_output(output);
+            return { { "descriptor", format_output(output) } };
         }
 
         static nlohmann::json parse_account(const std::vector<uint8_t>& raw)
@@ -383,22 +383,21 @@ namespace sdk {
         }
 
         const auto& ur = m_decoder->result_ur();
-        m_result = { { "ur_type", ur.type() } };
+        auto ur_type = boost::algorithm::to_lower_copy(ur.type());
 
-        const auto urtype = boost::algorithm::to_lower_copy(ur.type());
-        if (urtype == "crypto-psbt") {
-            m_result["psbt"] = parsepsbt(ur.cbor());
-        } else if (urtype == "crypto-output") {
-            m_result["descriptor"] = parseoutput(ur.cbor());
-        } else if (urtype == "crypto-account") {
-            m_result.update(parse_account(ur.cbor()));
-        } else if (urtype == "jade-bip8539-reply") {
-            auto response = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
-            m_result.update(response);
+        if (ur_type == "crypto-psbt") {
+            m_result = parse_psbt(ur.cbor());
+        } else if (ur_type == "crypto-output") {
+            m_result = parse_output(ur.cbor());
+        } else if (ur_type == "crypto-account") {
+            m_result = parse_account(ur.cbor());
+        } else if (ur_type == "jade-bip8539-reply") {
+            m_result = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
         } else {
             // bytes or an unknown type - return the raw CBOR
-            m_result["data"] = b2h(ur.cbor());
+            m_result = { { "data", b2h(ur.cbor()) } };
         }
+        m_result["ur_type"] = std::move(ur_type);
         return state_type::done;
 #endif
     }
