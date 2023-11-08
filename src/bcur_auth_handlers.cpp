@@ -192,19 +192,23 @@ namespace sdk {
             return format_output(output);
         }
 
-        static crypto_account parseaccount(const std::vector<uint8_t>& raw)
+        static nlohmann::json parse_account(const std::vector<uint8_t>& raw)
         {
             crypto_account account;
-            auto&& ca_parse_fn = urc_crypto_account_parse;
-            auto&& ja_parse_fn = urc_jade_account_parse;
-            int result = URC_OK;
-            for (const auto& parse_fn : { ca_parse_fn, ja_parse_fn }) {
-                result = parse_fn(raw.data(), raw.size(), &account);
-                if (result == URC_OK) {
-                    return account;
+            int result = urc_crypto_account_parse(raw.data(), raw.size(), &account);
+            if (result != URC_OK) {
+                result = urc_jade_account_parse(raw.data(), raw.size(), &account);
+                if (result != URC_OK) {
+                    throw user_error("ur-c: Parsing account failed with error code:" + std::to_string(result));
                 }
             }
-            throw user_error("ur-c: Parsing account failed with error code:" + std::to_string(result));
+            nlohmann::json::array_t descriptors;
+            for (size_t i = 0; i < account.descriptors_count; i++) {
+                constexpr bool is_bip44 = true;
+                descriptors.push_back(format_output(account.descriptors[i], is_bip44));
+            }
+            auto fingerprint = (boost::format("%08x") % account.master_fingerprint).str();
+            return { { "master_fingerprint", fingerprint }, { "descriptors", std::move(descriptors) } };
         }
 
         static nlohmann::json parse_jaderesponse(
@@ -387,14 +391,7 @@ namespace sdk {
         } else if (urtype == "crypto-output") {
             m_result["descriptor"] = parseoutput(ur.cbor());
         } else if (urtype == "crypto-account") {
-            const auto account = parseaccount(ur.cbor());
-            m_result["master_fingerprint"] = (boost::format("%08x") % account.master_fingerprint).str();
-            nlohmann::json::array_t descriptors;
-            for (size_t i = 0; i < account.descriptors_count; i++) {
-                constexpr bool is_bip44 = true;
-                descriptors.push_back(format_output(account.descriptors[i], is_bip44));
-            }
-            m_result["descriptors"] = std::move(descriptors);
+            m_result.update(parse_account(ur.cbor()));
         } else if (urtype == "jade-bip8539-reply") {
             auto response = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
             m_result.update(response);
