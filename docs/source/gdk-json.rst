@@ -762,7 +762,7 @@ Contains CBOR data to encode into UR format using `GA_bcur_encode`.
  }
 
 :ur_type: The type of the CBOR-encoded data.
-:data: CBOR-encoded data in hexadecimal format.
+:data: CBOR-encoded data in hex format.
 :max_fragment_len: The maximum size of each UR-encoded fragment to return.
 
 Where ``data`` is longer than ``max_fragment_len``, the result is a multi-part
@@ -798,11 +798,14 @@ Contains UR encoded data to decode into CBOR using `GA_bcur_decode`.
 .. code-block:: json
 
  {
-    "part": "ur:crypto-seed/oeadgdstaslplabghydrpfmkbggufgludprfgmaotpiecffltnlpqdenos"
+    "part": "ur:crypto-seed/oeadgdstaslplabghydrpfmkbggufgludprfgmaotpiecffltnlpqdenos",
+    "return_raw_data": true
  }
 
-:part: The UR-encoded string for an individual part. For multi-part decoding, the
-    parts can be provided in any order.
+:part: Mandatory. The UR-encoded string for an individual part. For multi-part
+       decoding, the parts can be provided in any order.
+:return_raw_data: Optional, default ``false``. If ``true``, return the raw
+        CBOR byte data as a hex string in addition to any decoded data.
 
 
 .. _bcur-decoded:
@@ -812,34 +815,38 @@ BCUR Decoded data JSON
 
 Contains CBOR data decoded from UR format using `GA_bcur_decode`.
 The returned JSON depends on the type of the input as returned in
-the ``ur-type`` element. If the type is not one of those listed below,
+the ``ur_type`` element. If the type is not one of those listed below,
 it is returned as if it were ``"bytes"``.
+
+if ``"return_raw_data"`` was given as ``true`` when calling `GA_bcur_decode`,
+decoded data will additionally contain a ``"data"`` element as detailed
+in the ``"bytes"`` ``ur_type`` section below.
 
 .. include:: examples/bcur_decode_crypto_psbt.json
 
-:ur-type: "crypto-psbt".
+:ur_type: "crypto-psbt".
 :psbt: The psbt in base-64 format.
 
 .. include:: examples/bcur_decode_crypto_output.json
 
-:ur-type: "crypto-output".
+:ur_type: "crypto-output".
 :descriptor: The bitcoin output descriptor.
 
 .. include:: examples/bcur_decode_crypto_account.json
 
-:ur-type: "crypto-account".
+:ur_type: "crypto-account".
 :descriptors: The list of all available descriptors for the account.
 :master_fingerprint: The BIP32 key fingerprint of the master key of the account.
 
 .. include:: examples/bcur_decode_bytes.json
 
-:ur-type: "bytes".
-:data: The decoded bytes in hexadecimal format.
+:ur_type: "bytes".
+:data: The decoded bytes in hex format.
 
 .. include:: examples/bcur_decode_custom.json
 
-:ur-type: "custom".
-:data: The decoded data in hexadecimal format.
+:ur_type: "custom".
+:data: The decoded data in hex format.
 
 
 .. _settings:
@@ -1078,7 +1085,7 @@ deleted, any frozen outputs it contained will be unspendable forever.
 .. code-block:: json
 
   {
-    "list" : [
+    "list": [
       {
         "txhash": "09933a297fde31e6477d5aab75f164e0d3864e4f23c3afd795d9121a296513c0",
         "pt_idx": 1,

@@ -382,6 +382,7 @@ namespace sdk {
             return m_state;
         }
 
+        bool return_raw_data = j_bool_or_false(m_details, "return_raw_data");
         const auto& ur = m_decoder->result_ur();
         auto ur_type = boost::algorithm::to_lower_copy(ur.type());
 
@@ -394,8 +395,10 @@ namespace sdk {
         } else if (ur_type == "jade-bip8539-reply") {
             m_result = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
         } else {
-            // bytes or an unknown type - return the raw CBOR
-            m_result = { { "data", b2h(ur.cbor()) } };
+            return_raw_data = true; // bytes or an unknown type, return raw
+        }
+        if (return_raw_data) {
+            m_result["data"] = b2h(ur.cbor());
         }
         m_result["ur_type"] = std::move(ur_type);
         return state_type::done;
