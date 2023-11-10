@@ -6,3 +6,6 @@ set(CMAKE_CXX_COMPILER g++)
 list(APPEND GDK_LINK_OPTIONS
         "-static-libstdc++"
 )
+if( CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options("-ggdb3" "-fno-omit-frame-pointer")
+endif()

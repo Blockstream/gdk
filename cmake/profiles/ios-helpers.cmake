@@ -1,3 +1,8 @@
+
+if( CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options("-ggdb3" "-fno-omit-frame-pointer")
+endif()
+
 macro(init_apple_environment)
     set(CMAKE_IOS_INSTALL_COMBINED FALSE)
     # allow cmake to search outside of iOS sysroot

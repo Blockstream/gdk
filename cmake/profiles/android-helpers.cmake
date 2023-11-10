@@ -1,3 +1,8 @@
+
+if( CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options("-ggdb3" "-fno-omit-frame-pointer")
+endif()
+
 macro(initialize_android_environment)
     if(NOT ANDROID_ABI OR NOT ANDROID_PLATFORM)
         message(FATAL_ERROR "please, when including this file, be sure you have previously declared $ANDROID_ABI and $ANDROID_PLATFORM")

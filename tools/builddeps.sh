@@ -176,10 +176,18 @@ else
 fi
 
 if [ ${BUILDTYPE} == "debug" ]; then
-    export CFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
-    export CXXFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
-    export CPPFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
-    export BUILDTYPE=${BUILDTYPE}
+    if [ ${BUILD} == "--mingw-w64" ]; then
+        # when debugging in windows try dwarf-2 or stabs formats
+        export CFLAGS="-g -gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export CXXFLAGS="-gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export CPPFLAGS="-g -gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export BUILDTYPE=${BUILDTYPE}
+    else
+        export CFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export CXXFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export CPPFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
+        export BUILDTYPE=${BUILDTYPE}
+    fi
 else
     export CFLAGS="$CFLAGS -O2 -DNDEBUG"
     export CXXFLAGS="$CXXFLAGS -O2 -DNDEBUG"
