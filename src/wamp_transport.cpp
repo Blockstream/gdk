@@ -311,10 +311,9 @@ namespace sdk {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
-    wamp_transport::wamp_transport(const network_parameters& net_params, io_runner& runner,
-        boost::asio::io_context::strand& strand, wamp_transport::notify_fn_t fn, std::string server_prefix)
+    wamp_transport::wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand,
+        wamp_transport::notify_fn_t fn, std::string server_prefix)
         : m_net_params(net_params)
-        , m_io(runner)
         , m_strand(strand)
         , m_server_prefix(std::move(server_prefix))
         , m_server(m_net_params.get_connection_string(m_server_prefix))
@@ -336,7 +335,7 @@ namespace sdk {
         if (!m_net_params.is_tls_connection(m_server_prefix)) {
             m_client = std::make_unique<client>();
             m_client->set_pong_timeout_handler(std::bind(&wamp_transport::heartbeat_timeout_cb, this, _1, _2));
-            m_client->init_asio(&m_io.get_io_context());
+            m_client->init_asio(&m_strand.context());
             return;
         }
 
@@ -346,7 +345,7 @@ namespace sdk {
             return tls_init(m_wamp_host_name, m_net_params.gait_wamp_cert_roots(), m_net_params.gait_wamp_cert_pins(),
                 m_net_params.cert_expiry_threshold());
         });
-        m_client_tls->init_asio(&m_io.get_io_context());
+        m_client_tls->init_asio(&m_strand.context());
     }
 
     wamp_transport::~wamp_transport()
@@ -429,10 +428,12 @@ namespace sdk {
 
     void wamp_transport::emit_state(wamp_transport::state_t current, wamp_transport::state_t desired, uint64_t wait_ms)
     {
-        constexpr bool async = true;
+        constexpr bool async = false;
         nlohmann::json state(
             { { "current_state", state_str(current) }, { "next_state", state_str(desired) }, { "wait_ms", wait_ms } });
-        m_notify_fn({ { "event", "network" }, { "network", std::move(state) } }, async);
+        nlohmann::json notification = { { "event", "network" }, { "network", std::move(state) } };
+        boost::asio::post(m_strand,
+            [fn = std::ref(m_notify_fn), notification = std::move(notification)]() { fn.get()(notification, async); });
     }
 
     const char* wamp_transport::state_str(state_t state) const
@@ -508,7 +509,7 @@ namespace sdk {
     {
         const bool is_tls = m_net_params.is_tls_connection(m_server_prefix);
         const bool is_debug = gdk_config()["log_level"] == "debug";
-        const auto& executor = m_io.get_io_context().get_executor();
+        const auto& executor = m_strand.context().get_executor();
 
         // The last failure number that we handled
         auto last_handled_failure_count = m_failure_count.load();
@@ -597,7 +598,7 @@ namespace sdk {
                 } else {
                     t = std::make_shared<transport>(*m_client, m_server, proxy, is_debug);
                 }
-                s = std::make_shared<autobahn::wamp_session>(m_io.get_io_context(), is_debug);
+                s = std::make_shared<autobahn::wamp_session>(m_strand.context(), is_debug);
                 t->attach(std::static_pointer_cast<autobahn::wamp_transport_handler>(s));
                 bool failed = false;
                 if (no_std_exception_escape(

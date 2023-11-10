@@ -45,8 +45,8 @@ namespace sdk {
         using notify_fn_t = std::function<void(nlohmann::json, bool)>;
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
-        wamp_transport(const network_parameters& net_params, io_runner& runner, boost::asio::io_context::strand& strand,
-            notify_fn_t fn, std::string server_prefix = {});
+        wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand, notify_fn_t fn,
+            std::string server_prefix = {});
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
@@ -124,7 +124,6 @@ namespace sdk {
 
         // These members are immutable after construction
         const network_parameters& m_net_params;
-        io_runner& m_io;
         boost::asio::io_context::strand& m_strand;
         std::thread m_reconnect_thread; // Runs the reconnection logic
         const std::string m_server_prefix;

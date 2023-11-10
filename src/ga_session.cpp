@@ -271,7 +271,7 @@ namespace sdk {
         , m_spv_thread_done(false)
         , m_spv_thread_stop(false)
     {
-        m_wamp = std::make_unique<wamp_transport>(m_net_params, *session_impl::m_io, *session_impl::m_strand,
+        m_wamp = std::make_unique<wamp_transport>(m_net_params, *session_impl::m_strand,
             [this](nlohmann::json details, bool async) { emit_notification(std::move(details), async); });
 
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
