@@ -75,6 +75,8 @@ macro(create_gdkrust_target)
             $<$<PLATFORM_ID:Windows>:bcrypt>
             $<$<PLATFORM_ID:iOS>:objc>
             $<$<PLATFORM_ID:Windows>:ws2_32>
+            $<$<PLATFORM_ID:Windows>:ntdll>
+            $<$<AND:$<PLATFORM_ID:Windows>,$<CONFIG:Debug>>:userenv>
     )
 endmacro()
 

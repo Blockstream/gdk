@@ -62,6 +62,12 @@ target_compile_options(greenaddress-objects
         "-fstack-protector-strong"
         "-fno-strict-aliasing"
 )
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND MINGW)
+    set_source_files_properties(ga_session.cpp PROPERTIES COMPILE_FLAGS "-O1")
+    set_source_files_properties(http_client.cpp PROPERTIES COMPILE_FLAGS "-O1")
+    set_source_files_properties(wamp_transport.cpp PROPERTIES COMPILE_FLAGS "-O1")
+    target_link_options(greenaddress-objects PRIVATE "-Wa,-mbig-obj")
+endif()
 target_compile_options(greenaddress-objects PRIVATE
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall>
     $<$<CXX_COMPILER_ID:GNU,Clang>:-Wextra>
