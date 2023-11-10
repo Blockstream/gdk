@@ -277,7 +277,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
-cmake --build tmp/${source_name}/build --target zlibstatic zlib
+cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
 # no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
 find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type l -delete
@@ -307,7 +307,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DEVENT__DISABLE_DEBUG_MODE:BOOL=TRUE \
     -DEVENT__DISABLE_TESTS:BOOL=TRUE \
     -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE
-cmake --build tmp/${source_name}/build
+cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
 
 
