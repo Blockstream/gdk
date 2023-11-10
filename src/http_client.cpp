@@ -344,8 +344,8 @@ namespace sdk {
             }
 
             for (const auto& field : response.base()) {
-                const std::string field_name = field.name_string().to_string();
-                const std::string field_value = field.value().to_string();
+                const std::string field_name = std::string(field.name_string());
+                const std::string field_value = std::string(field.value());
                 body["headers"][boost::algorithm::to_lower_copy(field_name)] = field_value;
             }
 

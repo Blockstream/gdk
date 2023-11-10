@@ -15,6 +15,7 @@
 
 #include <condition_variable>
 #include <cstdio>
+#include <set>
 #include <stdlib.h>
 #include <string>
 #include <vector>

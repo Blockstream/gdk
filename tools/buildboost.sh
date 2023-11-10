@@ -35,7 +35,7 @@ if [ \( "$BUILD" = "--ndk" \) ]; then
 using clang : :
 ${CXX}
 :
-<compileflags>-std=c++14
+<compileflags>-std=c++17
 <compileflags>"${SDK_CPPFLAGS}"
 $EXTRA_COMPILE_FLAGS
 <compileflags>"--sysroot=${SYSROOT}"
@@ -69,7 +69,7 @@ using darwin : arm :
 ${XCODE_DEFAULT_PATH}/clang++
 :
 <root>${IOS_SDK_PATH}
-<compileflags>-std=c++14
+<compileflags>-std=c++17
 <compileflags>"${SDK_CFLAGS}"
 $EXTRA_COMPILE_FLAGS
 <compileflags>"${IOS_MIN_VERSION}"
@@ -91,7 +91,7 @@ elif [ \( "$BUILD" = "--windows" \) ]; then
 using gcc : :
 x86_64-w64-mingw32-g++-posix
 :
-<compileflags>-std=c++14
+<compileflags>-std=c++17
 <compileflags>"${SDK_CFLAGS}"
 <compileflags>"-fvisibility=hidden"
 $(compile_flags $@)

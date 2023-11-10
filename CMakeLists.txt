@@ -44,7 +44,7 @@ else()
     set(Boost_USE_DEBUG_LIBS OFF)
 endif()
 set(Boost_NO_SYSTEM_PATHS ON)
-find_package(Boost 1.76.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
+find_package(Boost 1.82.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
 if(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
     #https://gitlab.kitware.com/cmake/cmake/-/issues/20638
     set_target_properties(Boost::log_setup PROPERTIES
