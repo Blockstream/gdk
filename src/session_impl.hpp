@@ -18,7 +18,6 @@ namespace sdk {
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
     class ga_pubkeys;
-    class io_runner;
     class user_pubkeys;
     class signer;
     class Tx;
@@ -261,7 +260,7 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
-        std::unique_ptr<io_runner> m_io;
+        io_runner m_io;
         std::unique_ptr<boost::asio::io_context::strand> m_strand;
 
         const std::string m_user_proxy;

@@ -47,8 +47,8 @@ namespace sdk {
 
     session_impl::session_impl(network_parameters&& net_params)
         : m_net_params(net_params)
-        , m_io(std::make_unique<io_runner>())
-        , m_strand(std::make_unique<boost::asio::io_context::strand>(m_io->get_io_context()))
+        , m_io()
+        , m_strand(std::make_unique<boost::asio::io_context::strand>(m_io.get_io_context()))
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
@@ -63,7 +63,6 @@ namespace sdk {
 
     session_impl::~session_impl()
     {
-        no_std_exception_escape([this] { m_io.reset(); }, "session_impl m_io");
         no_std_exception_escape([this] { m_strand.reset(); }, "session_impl m_strand");
     }
 
@@ -127,7 +126,7 @@ namespace sdk {
 
             std::shared_ptr<http_client> client;
             auto&& get = [&] {
-                client = make_http_client(m_io->get_io_context(), ssl_ctx.get());
+                client = make_http_client(m_io.get_io_context(), ssl_ctx.get());
                 GDK_RUNTIME_ASSERT(client != nullptr);
 
                 const auto verb = boost::beast::http::string_to_verb(params["method"]);
