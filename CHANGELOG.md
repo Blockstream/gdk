@@ -4,13 +4,25 @@
 
 ### Added
 
+- Add support for BC-UR encoding/decoding negotiated BIP85 generated entropy.
+- Add support for enabling phone two-factor as a backup for sms.
+- Allow cancelling an in-progress GA_connect call from another thread.
+- Document two-factor and pricing limit JSON formats.
+- Supply Java bindings with the debian build artfacts.
+
 ### Changed
 
 - Transaction signing with hardware wallets is now available without setting
   the "enable_ss_liquid_hww" gdk config setting. This setting can be removed
   from the calling application when updating; it is no longer required.
+- GA_validate_asset_domain_name: Enable asset domain name validation.
 
 ### Fixed
+
+- Fix master fingerprint when decoding BC-UR crypto-account.
+- Fix missing descriptor wildcards when decoding BC-UR crypto-account.
+- Two-factor: Fix the ``"any_enabled"`` element in two-factor config.
+- Singlesig: Return disabled config for two-factor and spending limts.
 
 ### Removed
 
