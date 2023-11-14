@@ -250,25 +250,28 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> output_script_from_utxo(const network_parameters& net_params, ga_pubkeys& pubkeys,
-        user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
+    std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
+        ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
     {
-        const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
-        const uint32_t pointer = utxo.at("pointer");
-        const uint32_t version = utxo.value("version", 1u);
-        const std::string addr_type = utxo.at("address_type");
+        using namespace address_type;
+        const auto& addr_type = j_strref(utxo, "address_type");
+        const auto subaccount = j_uint32ref(utxo, "subaccount");
+        const auto pointer = j_uint32ref(utxo, "pointer");
 
         uint32_t subtype = 0;
-        if (addr_type == address_type::csv) {
+        if (addr_type == csv) {
             // subtype indicates the number of csv blocks and must be one of the known bucket values
             subtype = utxo.at("subtype");
             const auto csv_buckets = net_params.csv_buckets();
             const auto csv_bucket_p = std::find(std::begin(csv_buckets), std::end(csv_buckets), subtype);
             GDK_RUNTIME_ASSERT_MSG(csv_bucket_p != csv_buckets.end(), "Unknown csv bucket");
+        } else {
+            GDK_RUNTIME_ASSERT(addr_type == p2wsh || addr_type == p2sh);
         }
 
         pub_key_t ga_pub_key;
-        if (version == 0) {
+        constexpr uint32_t default_addr_version = 1;
+        if (j_uint32(utxo, "version").value_or(default_addr_version) == 0) {
             // Service keys for legacy version 0 addresses are not derived from the user's GA path
             ga_pub_key = h2b<EC_PUBLIC_KEY_LEN>(net_params.pub_key());
         } else {
@@ -278,8 +281,8 @@ namespace sdk {
 
         if (recovery_pubkeys.have_subaccount(subaccount)) {
             // 2of3
-            return output_script(
-                net_params, ga_pub_key, user_pub_key, recovery_pubkeys.derive(subaccount, pointer), addr_type, subtype);
+            const auto recovery_pub_key = recovery_pubkeys.derive(subaccount, pointer);
+            return output_script(net_params, ga_pub_key, user_pub_key, recovery_pub_key, addr_type, subtype);
         }
         // 2of2
         return output_script(net_params, ga_pub_key, user_pub_key, {}, addr_type, subtype);
@@ -287,15 +290,15 @@ namespace sdk {
 
     std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo)
     {
+        using namespace address_type;
         const auto& net_params = session.get_network_parameters();
-        const auto address_type = utxo.at("address_type");
-        if (address_type == address_type::p2sh_p2wpkh || address_type == address_type::p2wpkh
-            || address_type == address_type::p2pkh) {
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
             const auto pubkeys = session.pubkeys_from_utxo(utxo);
-            return get_address_from_public_key(net_params, pubkeys.at(0), address_type);
+            return get_address_from_public_key(net_params, pubkeys.at(0), addr_type);
         }
         const auto out_script = session.output_script_from_utxo(utxo);
-        return get_address_from_script(net_params, out_script, address_type);
+        return get_address_from_script(net_params, out_script, addr_type);
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,

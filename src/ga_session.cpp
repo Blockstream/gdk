@@ -3133,26 +3133,6 @@ namespace sdk {
         return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
     }
 
-    std::vector<unsigned char> ga_session::output_script_from_utxo(const nlohmann::json& utxo)
-    {
-        locker_t locker(m_mutex);
-        return output_script_from_utxo(locker, utxo);
-    }
-
-    std::vector<unsigned char> ga_session::output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo)
-    {
-        using namespace address_type;
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == p2pkh) {
-            return scriptpubkey_p2pkh_from_public_key(pubkeys_from_utxo(utxo).at(0));
-        }
-        GDK_RUNTIME_ASSERT(addr_type == csv || addr_type == p2wsh || addr_type == p2sh);
-
-        return ::ga::sdk::output_script_from_utxo(
-            m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
-    }
-
     nlohmann::json ga_session::service_sign_transaction(const nlohmann::json& details,
         const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts)
     {

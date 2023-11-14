@@ -151,8 +151,6 @@ namespace sdk {
         std::string get_service_xpub(uint32_t subaccount);
         std::string get_recovery_xpub(uint32_t subaccount);
 
-        std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
-
         std::pair<std::string, bool> get_cached_master_blinding_key();
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
 
@@ -206,7 +204,6 @@ namespace sdk {
             locker_t& locker, nlohmann::json& utxo, const std::vector<unsigned char>& nonce_commitment);
         bool cleanup_utxos(session_impl::locker_t& locker, nlohmann::json& utxos, const std::string& for_txhash,
             unique_pubkeys_and_scripts_t& missing);
-        std::vector<unsigned char> output_script_from_utxo(session_impl::locker_t& locker, const nlohmann::json& utxo);
 
         std::unique_ptr<locker_t> get_multi_call_locker(uint32_t category_flags, bool wait_for_lock);
         void on_new_transaction(const std::vector<uint32_t>& subaccounts, nlohmann::json details);

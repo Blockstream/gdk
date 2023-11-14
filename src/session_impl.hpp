@@ -229,6 +229,7 @@ namespace sdk {
         virtual bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         virtual std::string get_service_xpub(uint32_t subaccount);
         virtual std::string get_recovery_xpub(uint32_t subaccount);
+
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
@@ -251,6 +252,9 @@ namespace sdk {
         // to multiple threads in a single process or actions in another
         // process (e.g. the user is logged in twice in different apps)
         //
+        std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
+        std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
+
         nlohmann::json get_proxy_settings(locker_t& locker);
         nlohmann::json get_net_call_params(locker_t& locker, uint32_t timeout_secs);
 
