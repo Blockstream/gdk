@@ -312,12 +312,12 @@ namespace sdk {
 
     bool is_segwit_address_type(const nlohmann::json& utxo)
     {
-        const std::string addr_type = utxo.at("address_type");
-        if (addr_type == address_type::csv || addr_type == address_type::p2wsh || addr_type == address_type::p2wpkh
-            || addr_type == address_type::p2sh_p2wpkh) {
+        using namespace address_type;
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == csv || addr_type == p2wsh || addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
             return true;
         }
-        if (addr_type == address_type::p2sh || addr_type == address_type::p2pkh) {
+        if (addr_type == p2sh || addr_type == p2pkh) {
             return false;
         }
         GDK_RUNTIME_ASSERT_MSG(false, std::string("unknown address_type ") + addr_type);

@@ -2526,7 +2526,7 @@ namespace sdk {
         // Compute the locktime of our UTXOs locally where we can
         bool need_nlocktime_info = false;
         for (auto& utxo : utxos) {
-            if (utxo["address_type"] != address_type::csv) {
+            if (j_strref(utxo, "address_type") != address_type::csv) {
                 // We must get the nlocktime information from the server for this UTXO
                 need_nlocktime_info = true;
             } else {
@@ -2661,7 +2661,7 @@ namespace sdk {
         json_add_if_missing(address, "subtype", 0, true); // Convert null subtype to 0
         json_rename_key(address, "addr_type", "address_type");
 
-        const std::string addr_type = address["address_type"];
+        const auto& addr_type = j_strref(address, "address_type");
         set_addr_script_type(address, addr_type);
 
         // Ensure the the server returned a script
@@ -2738,18 +2738,19 @@ namespace sdk {
 
     nlohmann::json ga_session::get_receive_address(const nlohmann::json& details)
     {
+        using namespace address_type;
         const uint32_t subaccount = details.at("subaccount");
-        const std::string addr_type_ = details.value("address_type", std::string{});
+        auto addr_type = j_str_or_empty(details, "address_type");
+        if (addr_type.empty()) {
+            addr_type = get_default_address_type(subaccount);
+        }
 
-        const std::string addr_type = addr_type_.empty() ? get_default_address_type(subaccount) : addr_type_;
-        GDK_RUNTIME_ASSERT_MSG(
-            addr_type == address_type::p2sh || addr_type == address_type::p2wsh || addr_type == address_type::csv,
-            "Unknown address type");
+        GDK_RUNTIME_ASSERT_MSG(addr_type == p2sh || addr_type == p2wsh || addr_type == csv, "Unknown address type");
 
         constexpr bool return_pointer = true;
         auto address = wamp_cast_json(m_wamp->call("vault.fund", subaccount, return_pointer, addr_type));
         update_address_info(address, false);
-        GDK_RUNTIME_ASSERT(address["address_type"] == addr_type);
+        GDK_RUNTIME_ASSERT(j_strref(address, "address_type") == addr_type);
         return address;
     }
 

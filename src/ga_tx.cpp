@@ -124,7 +124,7 @@ namespace sdk {
         {
             // Calculate the subtype of a tx input we wish to present as a utxo.
             uint32_t subtype = 0;
-            if (utxo["address_type"] == address_type::csv) {
+            if (j_strref(utxo, "address_type") == address_type::csv) {
                 // CSV inputs use the CSV time as the subtype: fetch this from the
                 // redeem script in the inputs witness data. The user can change
                 // their CSV time at any time, so we must use the value that was
@@ -909,21 +909,21 @@ namespace sdk {
 
     void Tx::set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r)
     {
+        using namespace address_type;
+        const auto& addr_type = j_strref(utxo, "address_type");
         auto der = h2b(der_hex);
-        const auto addr_type = utxo.at("address_type");
 
-        if (addr_type == address_type::p2pkh || addr_type == address_type::p2sh_p2wpkh
-            || addr_type == address_type::p2wpkh) {
+        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
             const auto public_key = h2b(utxo.at("public_key"));
 
-            if (addr_type == address_type::p2pkh) {
+            if (addr_type == p2pkh) {
                 // Singlesig (or sweep) p2pkh
                 set_input_script(index, scriptsig_p2pkh_from_der(public_key, der));
                 return;
             }
             // Singlesig segwit
             set_input_witness(index, make_witness_stack({ der, public_key }).get());
-            if (addr_type == address_type::p2sh_p2wpkh) {
+            if (addr_type == p2sh_p2wpkh) {
                 set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
                 // for native segwit ensure the scriptsig is empty
@@ -932,14 +932,14 @@ namespace sdk {
             return;
         }
         const auto script = h2b(utxo.at("prevout_script"));
-        if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+        if (addr_type == csv || addr_type == p2wsh) {
             // Multisig segwit
             set_input_witness(index, make_witness_stack({ der }).get());
             constexpr uint32_t witness_ver = 0;
             set_input_script(index, witness_script(script, witness_ver));
         } else {
             // Multisig pre-segwit
-            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
+            GDK_RUNTIME_ASSERT(addr_type == p2sh);
             constexpr bool has_sighash_byte = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash_byte);
             const uint32_t user_sighash_flags = der.back();
@@ -969,19 +969,20 @@ namespace sdk {
 
     std::vector<sig_and_sighash_t> Tx::get_input_signatures(const nlohmann::json& utxo, size_t index) const
     {
+        using namespace address_type;
+        const auto& addr_type = j_strref(utxo, "address_type");
         const auto& input = get_input(index);
 
         // TODO: handle backup paths:
         // - 2of3 p2sh, backup key signing
         // - 2of3 p2wsh, backup key signing
         // - 2of2 csv, csv path
-        const std::string addr_type = utxo.at("address_type");
         if (!is_segwit_address_type(utxo)) {
-            if (addr_type == address_type::p2pkh) {
+            if (addr_type == p2pkh) {
                 // p2pkh: script sig: <user_sig> <pubkey>
                 return { get_sig_from_p2pkh_script_sig({ input.script, input.script_len }) };
             }
-            GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh);
+            GDK_RUNTIME_ASSERT(addr_type == p2sh);
             // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
             // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
             return get_sigs_from_multisig_script_sig({ input.script, input.script_len });
@@ -990,7 +991,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(input.witness);
         const auto num_items = input.witness->num_items;
 
-        if (addr_type == address_type::p2sh_p2wpkh || addr_type == address_type::p2wpkh) {
+        if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
             // p2sh-p2wpkh: witness stack: <user_sig> <pubkey>
             GDK_RUNTIME_ASSERT(num_items == 2);
             return { ec_sig_from_witness(input.witness, 0) };
@@ -1004,7 +1005,7 @@ namespace sdk {
         auto user_sig = ec_sig_from_witness(input.witness, num_items - 2);
         auto ga_sig = ec_sig_from_witness(input.witness, num_items - 3);
 
-        if (m_is_liquid && addr_type == address_type::csv) {
+        if (m_is_liquid && addr_type == csv) {
             // Liquid 2of2 csv: sigs are inverted in the witness stack
             std::swap(user_sig, ga_sig);
         }

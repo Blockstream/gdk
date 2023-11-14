@@ -687,9 +687,8 @@ namespace sdk {
                 input["skip_signing"] = true;
                 input.erase("private_key");
             } else if (!input.value("skip_signing", false)) {
-                // Wallet input we have been asked to sign.
-                const auto& addr_type = input.at("address_type");
-                GDK_RUNTIME_ASSERT(!addr_type.empty()); // Must be spendable by us
+                // Wallet input we have been asked to sign. Must be spendable by us
+                GDK_RUNTIME_ASSERT(!j_strref(input, "address_type").empty());
 
                 // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
                 if (use_ae_protocol) {
@@ -1160,11 +1159,12 @@ namespace sdk {
             } else {
                 // Found an empty subaccount for the current subaccount type,
                 // step to the next subaccount type.
-                if (m_subaccount_type == address_type::p2sh_p2wpkh) {
-                    m_subaccount_type = address_type::p2wpkh;
-                } else if (m_subaccount_type == address_type::p2wpkh) {
-                    m_subaccount_type = address_type::p2pkh;
-                } else if (m_subaccount_type == address_type::p2pkh) {
+                using namespace address_type;
+                if (m_subaccount_type == p2sh_p2wpkh) {
+                    m_subaccount_type = p2wpkh;
+                } else if (m_subaccount_type == p2wpkh) {
+                    m_subaccount_type = p2pkh;
+                } else if (m_subaccount_type == p2pkh) {
                     m_subaccount_type.clear();
                     // No more subaccount types, ready to return
                     return m_state;
