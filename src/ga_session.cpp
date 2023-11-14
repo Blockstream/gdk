@@ -430,7 +430,8 @@ namespace sdk {
 
     std::string ga_session::get_challenge(const pub_key_t& public_key)
     {
-        const auto address = get_address_from_public_key(m_net_params, public_key, address_type::p2pkh);
+        const nlohmann::json fake_utxo{ { "address_type", "p2pkh" }, { "public_key", b2h(public_key) } };
+        const auto address = get_address_from_utxo(*this, fake_utxo);
         const bool nlocktime_support = true;
         return wamp_cast(m_wamp->call("login.get_trezor_challenge", address, nlocktime_support));
     }

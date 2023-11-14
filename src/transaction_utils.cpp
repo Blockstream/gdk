@@ -187,20 +187,6 @@ namespace sdk {
         return p2sh_p2wsh_address_from_bytes(net_params, script);
     }
 
-    std::string get_address_from_public_key(
-        const network_parameters& net_params, byte_span_t public_key, const std::string& addr_type)
-    {
-        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
-
-        if (addr_type == address_type::p2sh_p2wpkh) {
-            return p2sh_p2wpkh_address_from_public_key(net_params, public_key);
-        } else if (addr_type == address_type::p2wpkh) {
-            return p2wpkh_address_from_public_key(net_params, public_key);
-        }
-        GDK_RUNTIME_ASSERT(addr_type == address_type::p2pkh);
-        return p2pkh_address_from_public_key(net_params, public_key);
-    }
-
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey)
     {
         // TODO: Fix wally_scriptpubkey_to_address and use that
@@ -294,8 +280,14 @@ namespace sdk {
         const auto& net_params = session.get_network_parameters();
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
-            const auto pubkeys = session.pubkeys_from_utxo(utxo);
-            return get_address_from_public_key(net_params, pubkeys.at(0), addr_type);
+            const auto pub_key = session.pubkeys_from_utxo(utxo).at(0);
+            GDK_VERIFY(wally_ec_public_key_verify(pub_key.data(), pub_key.size()));
+            if (addr_type == p2sh_p2wpkh) {
+                return p2sh_p2wpkh_address_from_public_key(net_params, pub_key);
+            } else if (addr_type == p2wpkh) {
+                return p2wpkh_address_from_public_key(net_params, pub_key);
+            }
+            return p2pkh_address_from_public_key(net_params, pub_key);
         }
         const auto out_script = session.output_script_from_utxo(utxo);
         return get_address_from_script(net_params, out_script, addr_type);

@@ -39,9 +39,6 @@ namespace sdk {
 
     bool is_segwit_address_type(const nlohmann::json& utxo);
 
-    std::string get_address_from_public_key(
-        const network_parameters& net_params, byte_span_t public_key, const std::string& addr_type);
-
     std::string get_address_from_script(
         const network_parameters& net_params, byte_span_t script, const std::string& addr_type);
 
