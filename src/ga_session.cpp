@@ -2225,11 +2225,9 @@ namespace sdk {
                     const auto satoshi = j_amountref(ep);
                     if (is_tx_output) {
                         totals[asset_id] += satoshi.signed_value();
-                        if (j_str_is_empty(ep, "address")) {
-                            // Add the wallet address for relevant outputs
-                            const auto script = output_script_from_utxo(locker, ep);
-                            ep["address"] = get_address_from_script(m_net_params, script, ep["address_type"]);
-                        }
+                        // TODO: validate the server provided address,
+                        // or always derive it (and remove from the Green backend)
+                        GDK_RUNTIME_ASSERT(!j_str_is_empty(ep, "address"));
                     } else {
                         totals[asset_id] -= satoshi.signed_value();
                     }
@@ -2666,23 +2664,21 @@ namespace sdk {
         const std::string addr_type = address["address_type"];
         set_addr_script_type(address, addr_type);
 
-        // Compute the address from the script the server returned
-        const auto server_script = h2b(address.at("script"));
-        const auto server_address = get_address_from_script(m_net_params, server_script, addr_type);
-
-        if (!old_watch_only) {
-            // Verify the server returned script matches what we generate
-            // locally from the UTXO details (and thus that the address
-            // is valid)
-            GDK_RUNTIME_ASSERT(server_script == output_script_from_utxo(address));
-        }
+        // Ensure the the server returned a script
+        const auto server_script = h2b(j_strref(address, "script"));
+        // Verify the server returned script matches what we generate
+        // locally from the UTXO details (and thus that the address
+        // is valid). Skip this for old watch only sessions which don't
+        // have a client blob and so can't verify.
+        const bool verify_script = !old_watch_only;
+        const auto derived_address = get_address_from_utxo(*this, address, verify_script);
 
         if (!address.contains("address")) {
-            address["address"] = server_address;
+            address["address"] = derived_address;
         } else {
             // The server returned an address; It must match the address
             // generated from the script (which we verified above)
-            GDK_RUNTIME_ASSERT(address["address"] == server_address);
+            GDK_RUNTIME_ASSERT(address["address"] == derived_address);
         }
 
         if (addr_type == address_type::csv) {
@@ -2703,7 +2699,7 @@ namespace sdk {
         }
 
         constexpr bool allow_unconfidential = true;
-        address["scriptpubkey"] = b2h(scriptpubkey_from_address(m_net_params, server_address, allow_unconfidential));
+        address["scriptpubkey"] = b2h(scriptpubkey_from_address(m_net_params, derived_address, allow_unconfidential));
 
         if (m_net_params.is_liquid()) {
             // Mark the address as non-confidential. It will be converted to

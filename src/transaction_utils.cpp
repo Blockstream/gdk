@@ -177,16 +177,6 @@ namespace sdk {
         return addr_segwit_from_bytes(witness_program, net_params.bech32_prefix());
     }
 
-    std::string get_address_from_script(
-        const network_parameters& net_params, byte_span_t script, const std::string& addr_type)
-    {
-        if (addr_type == address_type::p2sh) {
-            return p2sh_address_from_bytes(net_params, script);
-        }
-        GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
-        return p2sh_p2wsh_address_from_bytes(net_params, script);
-    }
-
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey)
     {
         // TODO: Fix wally_scriptpubkey_to_address and use that
@@ -274,7 +264,7 @@ namespace sdk {
         return output_script(net_params, ga_pub_key, user_pub_key, {}, addr_type, subtype);
     }
 
-    std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo)
+    std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo, bool verify_script)
     {
         using namespace address_type;
         const auto& net_params = session.get_network_parameters();
@@ -289,7 +279,21 @@ namespace sdk {
             return p2pkh_address_from_public_key(net_params, pub_key);
         }
         const auto out_script = session.output_script_from_utxo(utxo);
-        return get_address_from_script(net_params, out_script, addr_type);
+        if (verify_script) {
+            // Verify the generated script must match the "script" element.
+            // Used to validate scripts returned by the Green backend.
+            // Once all sessions can generate addresses, the backend will
+            // be simplified to not provide them. Hence, check for that here.
+            auto utxo_script_hex = j_str(utxo, "script");
+            if (utxo_script_hex.has_value()) {
+                GDK_RUNTIME_ASSERT(h2b(utxo_script_hex.value()) == out_script);
+            }
+        }
+        if (addr_type == address_type::p2sh) {
+            return p2sh_address_from_bytes(net_params, out_script);
+        }
+        GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
+        return p2sh_p2wsh_address_from_bytes(net_params, out_script);
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
