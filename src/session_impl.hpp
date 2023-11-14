@@ -3,13 +3,13 @@
 #pragma once
 
 #include <atomic>
-#include <boost/asio/io_context.hpp>
 #include <mutex>
 #include <set>
 #include <thread>
 
 #include "amount.hpp"
 #include "ga_wally.hpp"
+#include "io_runner.hpp"
 #include "network_parameters.hpp"
 
 namespace ga {

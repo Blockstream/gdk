@@ -1,6 +1,7 @@
 #include "ga_auth_handlers.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/asio/io_context.hpp>
 #include <utility>
 
 #include "assertion.hpp"

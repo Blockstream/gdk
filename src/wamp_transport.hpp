@@ -2,7 +2,6 @@
 #define GDK_WAMP_TRANSPORT_HPP
 #pragma once
 
-#include <boost/asio/io_context.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>

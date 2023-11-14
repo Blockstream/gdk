@@ -4,8 +4,6 @@
 
 #include <memory>
 
-#include "boost_wrapper.hpp"
-
 namespace ga {
 namespace sdk {
 

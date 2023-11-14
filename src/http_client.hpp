@@ -2,12 +2,14 @@
 #define GDK_HTTP_CLIENT_HPP
 #pragma once
 
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/ssl.hpp>
 #include <chrono>
 #include <future>
 #include <memory>
 #include <nlohmann/json.hpp>
 
-#include "boost_wrapper.hpp"
 #include "gsl_wrapper.hpp"
 
 namespace ga {

@@ -1,5 +1,4 @@
 #include <array>
-#include <boost/asio/io_context.hpp>
 #include <cstdio>
 #include <fstream>
 #include <map>
@@ -15,7 +14,6 @@
 #include "session.hpp"
 
 #include "autobahn_wrapper.hpp"
-#include "boost_wrapper.hpp"
 #include "exception.hpp"
 #include "http_client.hpp"
 #include "io_runner.hpp"

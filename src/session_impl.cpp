@@ -1,5 +1,8 @@
-#include "session_impl.hpp"
-#include "boost_wrapper.hpp"
+
+#include <boost/algorithm/string.hpp>
+#include <boost/asio/io_context.hpp>
+#include <boost/asio/strand.hpp>
+
 #include "exception.hpp"
 #include "ga_psbt.hpp"
 #include "ga_rust.hpp"
@@ -11,12 +14,11 @@
 #include "io_runner.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
+#include "session_impl.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
-#include <boost/algorithm/string/predicate.hpp>
-#include <boost/asio/io_context.hpp>
 
 namespace ga {
 namespace sdk {

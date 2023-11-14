@@ -50,7 +50,12 @@ target_compile_definitions(greenaddress-objects
         greenaddress_objects_EXPORTS
         _FORTIFY_SOURCE=2
 )
-
+if(Windows)
+    target_compile_definitions(greenaddress-objects PUBLIC
+        BOOST_ASIO_DISABLE_IOCP
+        BOOST_ASIO_DISABLE_VISIBILITY
+    )
+endif()
 
 target_compile_options(greenaddress-objects 
     PRIVATE
