@@ -218,9 +218,9 @@ namespace sdk {
         std::shared_ptr<signer> get_signer();
         virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
 
-        virtual ga_pubkeys& get_ga_pubkeys() = 0;
+        virtual ga_pubkeys& get_ga_pubkeys();
         virtual user_pubkeys& get_user_pubkeys();
-        virtual user_pubkeys& get_recovery_pubkeys() = 0;
+        virtual user_pubkeys& get_recovery_pubkeys();
 
         // Cached data
         virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
@@ -230,7 +230,7 @@ namespace sdk {
         virtual std::string get_service_xpub(uint32_t subaccount);
         virtual std::string get_recovery_xpub(uint32_t subaccount);
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
-        virtual std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
+        std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
 
     protected:
         // Locking per-session assumes the following thread safety model:

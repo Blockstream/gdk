@@ -495,13 +495,25 @@ namespace sdk {
         // Overriden for multisig
     }
 
-    // Post-login idempotent
+    ga_pubkeys& session_impl::get_ga_pubkeys()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
     user_pubkeys& session_impl::get_user_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
         return *m_user_pubkeys;
     }
 
+    user_pubkeys& session_impl::get_recovery_pubkeys()
+    {
+        GDK_RUNTIME_ASSERT(false);
+        __builtin_unreachable();
+    }
+
+    // Post-login idempotent
     amount session_impl::get_dust_threshold(const std::string& asset_id_hex) const
     {
         if (m_net_params.is_liquid() && asset_id_hex != m_net_params.get_policy_asset()) {
@@ -545,19 +557,30 @@ namespace sdk {
     {
         using namespace address_type;
         const auto& addr_type = j_strref(utxo, "address_type");
+        const bool is_electrum = m_net_params.is_electrum();
+
         if (addr_type == p2pkh) {
             if (!utxo.contains("subaccount")) {
+                // Sweep UTXO
                 return { h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key")) };
             }
-        } else {
+            // Multisig doesn't support p2pkh except for sweep UTXOs
+            GDK_RUNTIME_ASSERT(is_electrum);
+        } else if (is_electrum) {
             GDK_RUNTIME_ASSERT(addr_type == p2sh_p2wpkh || addr_type == p2wpkh);
+        } else {
+            GDK_RUNTIME_ASSERT(addr_type == csv || addr_type == p2wsh || addr_type == p2sh);
         }
-        GDK_RUNTIME_ASSERT(m_net_params.is_electrum()); // Default impl is single sig
+
         const auto subaccount = j_uint32ref(utxo, "subaccount");
         const auto pointer = j_uint32ref(utxo, "pointer");
-        const auto is_internal = j_boolref(utxo, "is_internal");
         locker_t locker(m_mutex);
-        return { get_user_pubkeys().derive(subaccount, pointer, is_internal) };
+        if (is_electrum) {
+            const auto is_internal = j_boolref(utxo, "is_internal");
+            return { get_user_pubkeys().derive(subaccount, pointer, is_internal) };
+        }
+        // TODO: consider returning the recovery key (2of3) as well
+        return { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) };
     }
 
     nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)

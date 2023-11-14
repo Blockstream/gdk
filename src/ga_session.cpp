@@ -3153,20 +3153,6 @@ namespace sdk {
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
-    std::vector<pub_key_t> ga_session::pubkeys_from_utxo(const nlohmann::json& utxo)
-    {
-        const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == address_type::p2pkh) {
-            return { h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key")) };
-        }
-        const uint32_t subaccount = utxo.at("subaccount");
-        const uint32_t pointer = utxo.at("pointer");
-        locker_t locker(m_mutex);
-        // TODO: consider returning the recovery key (2of3) as well
-        return std::vector<pub_key_t>(
-            { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) });
-    }
-
     nlohmann::json ga_session::service_sign_transaction(const nlohmann::json& details,
         const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts)
     {
