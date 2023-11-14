@@ -1574,11 +1574,8 @@ impl Syncer {
                     }
                 }
 
-                // "get_history" network calls
+                let mut b_scripts_updated = vec![];
                 for (_, index, _, script) in batch {
-                    let cache_txids_for_this_script =
-                        map_script_txids.get(&script).cloned().unwrap_or_default();
-
                     let b_script = script.into_bitcoin();
                     match last_statuses.get(&b_script) {
                         Some(last_status) => {
@@ -1590,9 +1587,9 @@ impl Syncer {
                                 last_used.external = index;
                             }
                             let cache_status = cache_statuses.get(&b_script);
-                            if Some(last_status) == cache_status {
-                                // No need to check this script since nothing has changed
-                                continue;
+                            if Some(last_status) != cache_status {
+                                // Something has changed, get the history for this script
+                                b_scripts_updated.push(b_script);
                             }
                         }
                         None => {
@@ -1601,13 +1598,15 @@ impl Syncer {
                             if count_consecutive_empty >= self.gap_limit {
                                 // No need to sync further
                                 break 'outer;
-                            } else {
-                                continue;
                             }
                         }
                     }
-                    let history = client.script_get_history(&b_script)?;
+                }
 
+                let history = client
+                    .batch_script_get_history(b_scripts_updated.iter().map(|s| s.as_script()))?;
+
+                for (history, b_script) in history.iter().zip(b_scripts_updated) {
                     let txid_height_pairs =
                         history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
                     let status = account::compute_script_status(txid_height_pairs);
@@ -1632,6 +1631,9 @@ impl Syncer {
 
                         server_txids_for_this_script.insert(el.tx_hash.into_net(net));
                     }
+
+                    let cache_txids_for_this_script =
+                        map_script_txids.get(&b_script).cloned().unwrap_or_default();
 
                     for txid in
                         cache_txids_for_this_script.difference(&server_txids_for_this_script)
@@ -1713,7 +1715,7 @@ impl Syncer {
     fn create_map_script_txids(
         &self,
         account: &Account,
-    ) -> Result<HashMap<BEScript, HashSet<BETxid>>, Error> {
+    ) -> Result<HashMap<bitcoin::ScriptBuf, HashSet<BETxid>>, Error> {
         let mut script_txid = HashMap::new();
         let store_read = self.store.read()?;
         let acc_store = store_read.account_cache(account.num())?;
@@ -1725,7 +1727,7 @@ impl Syncer {
                         previous_tx.tx.output_script(previous_outpoint.vout());
                     if acc_store.paths.contains_key(&previous_script_pubkey) {
                         script_txid
-                            .entry(previous_script_pubkey)
+                            .entry(previous_script_pubkey.into_bitcoin())
                             .or_insert(HashSet::new())
                             .insert(*txid);
                     }
@@ -1736,7 +1738,10 @@ impl Syncer {
                 let script_pubkey = tx.tx.output_script(i as u32);
 
                 if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey) {
-                    script_txid.entry(script_pubkey).or_insert(HashSet::new()).insert(*txid);
+                    script_txid
+                        .entry(script_pubkey.into_bitcoin())
+                        .or_insert(HashSet::new())
+                        .insert(*txid);
                 }
             }
         }
