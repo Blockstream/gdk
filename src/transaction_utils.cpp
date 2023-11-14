@@ -281,7 +281,6 @@ namespace sdk {
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
             const auto pub_key = session.pubkeys_from_utxo(utxo).at(0);
-            GDK_VERIFY(wally_ec_public_key_verify(pub_key.data(), pub_key.size()));
             if (addr_type == p2sh_p2wpkh) {
                 return p2sh_p2wpkh_address_from_public_key(net_params, pub_key);
             } else if (addr_type == p2wpkh) {

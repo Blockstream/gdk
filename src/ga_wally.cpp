@@ -314,7 +314,6 @@ namespace sdk {
 
     std::vector<unsigned char> scriptpubkey_p2pkh_from_public_key(byte_span_t public_key)
     {
-        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
         return scriptpubkey_p2pkh_from_hash160(hash160(public_key));
     }
 

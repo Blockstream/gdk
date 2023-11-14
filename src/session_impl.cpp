@@ -585,7 +585,9 @@ namespace sdk {
         if (addr_type == p2pkh) {
             if (!utxo.contains("subaccount")) {
                 // Sweep UTXO
-                return { h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key")) };
+                auto pub_key = h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key"));
+                GDK_VERIFY(wally_ec_public_key_verify(pub_key.data(), pub_key.size()));
+                return { std::move(pub_key) };
             }
             // Multisig doesn't support p2pkh except for sweep UTXOs
             GDK_RUNTIME_ASSERT(is_electrum);
