@@ -698,25 +698,34 @@ impl Account {
         Ok(store.account_cache(self.account_num)?.script_statuses.clone().unwrap_or_default())
     }
 
-    pub fn get_script(
+    pub fn get_script_batch(
         &self,
         is_internal: bool,
-        j: u32,
-    ) -> Result<(bool, DerivationPath, BEScript), Error> {
+        batch_count: u32,
+    ) -> Result<Vec<(bool, u32, DerivationPath, BEScript)>, Error> {
         let store = self.store.read()?;
         let acc_store = store.account_cache(self.account_num)?;
 
-        let path = DerivationPath::from(&[(is_internal as u32).into(), j.into()][..]);
-        let mut cached = true;
-        let script = acc_store.scripts.get(&path).cloned().map_or_else(
-            || -> Result<BEScript, Error> {
-                cached = false;
-                Ok(self.derive_address(is_internal, j)?.script_pubkey())
-            },
-            Ok,
-        )?;
+        let mut result = vec![];
+        // TODO: investigate how different batch sizes affect performance
+        const BATCH_SIZE: u32 = 20;
+        let start = batch_count * BATCH_SIZE;
+        let end = start + BATCH_SIZE;
 
-        Ok((cached, path, script))
+        for j in start..end {
+            let path = DerivationPath::from(&[(is_internal as u32).into(), j.into()][..]);
+            let mut cached = true;
+            let script = acc_store.scripts.get(&path).cloned().map_or_else(
+                || -> Result<BEScript, Error> {
+                    cached = false;
+                    Ok(self.derive_address(is_internal, j)?.script_pubkey())
+                },
+                Ok,
+            )?;
+            result.push((cached, j, path, script));
+        }
+
+        Ok(result)
     }
 
     pub fn get_address_data(&self, address: &BEAddress) -> Result<AddressDataResult, Error> {

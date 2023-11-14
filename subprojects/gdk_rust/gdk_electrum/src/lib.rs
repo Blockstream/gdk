@@ -758,14 +758,15 @@ impl ElectrumSession {
                     }
                 };
 
-                match syncer.sync(&client, &mut last_statuses) {
+                let first_sync_bool = first_sync.load(Ordering::Relaxed);
+                match syncer.sync(&client, &mut last_statuses, first_sync_bool) {
                     Ok(sync_result) => {
                         state_updater.update_if_needed(true);
                         // Skip sending transaction notifications if it's the
                         // first call to sync. This allows us to _not_ notify
                         // transactions that were sent or received before
                         // login.
-                        if first_sync.load(Ordering::Relaxed) {
+                        if first_sync_bool {
                             info!("first sync completed");
                         } else {
                             txs_to_notify.extend(sync_result.tx_ntfs);
@@ -1405,6 +1406,7 @@ impl Syncer {
         &self,
         client: &Client,
         last_statuses: &mut ScriptStatuses,
+        first_sync: bool,
     ) -> Result<SyncResult, Error> {
         trace!("start sync");
 
@@ -1412,7 +1414,7 @@ impl Syncer {
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
         for account in accounts.values() {
-            self.sync_account(account, client, last_statuses, &mut updated_txs)?;
+            self.sync_account(account, client, last_statuses, &mut updated_txs, first_sync)?;
         }
 
         self.empty_recent_spent_utxos()?;
@@ -1494,6 +1496,7 @@ impl Syncer {
         client: &Client,
         last_statuses: &mut ScriptStatuses,
         updated_txs: &mut HashMap<BETxid, BETransaction>,
+        first_sync: bool,
     ) -> Result<(), Error> {
         let map_script_txids = self.create_map_script_txids(account)?;
         let mut new_statuses = ScriptStatuses::new();
@@ -1509,93 +1512,132 @@ impl Syncer {
         for i in wallet_chains {
             let is_internal = i == 1;
             let mut count_consecutive_empty = 0;
-            for j in 0.. {
+            'outer: for batch_count in 0.. {
                 if !self.user_wants_to_sync.load(Ordering::Relaxed) {
                     return Err(Error::UserDoesntWantToSync);
                 }
-                let (cached, path, script) = account.get_script(is_internal, j)?;
-                if !cached {
-                    scripts.insert(script.clone(), path);
-                }
-                let cache_txids_for_this_script =
-                    map_script_txids.get(&script).cloned().unwrap_or_default();
-
-                let b_script = script.into_bitcoin();
-
-                match client.script_subscribe(&b_script) {
-                    Ok(Some(status)) => {
-                        // First time: script is subscribed, script contains at least 1 tx
-                        last_statuses.insert(b_script.clone(), status);
-                    }
-                    Ok(None) => {
-                        // First time: script is subscribed, script doesn't contain a tx yet
-                        ()
-                    }
-                    Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
-                        // Second or following iteration
-                        if let Some(status) = client.script_pop(&b_script)? {
-                            // There is an update, new tx for this script
-                            last_statuses.insert(b_script.clone(), status);
-                        } else {
-                            // There are no new transactions since last iteration
-                        }
-                    }
-                    Err(e) => return Err(Error::ClientError(e)),
-                };
-                match last_statuses.get(&b_script) {
-                    Some(last_status) => {
-                        // Script has a tx
-                        count_consecutive_empty = 0;
-                        if is_internal {
-                            last_used.internal = j;
-                        } else {
-                            last_used.external = j;
-                        }
-                        let cache_status = cache_statuses.get(&b_script);
-                        if Some(last_status) == cache_status {
-                            // No need to check this script since nothing has changed
-                            continue;
-                        }
-                    }
-                    None => {
-                        // Script never had a tx, initially and neither via updates
-                        count_consecutive_empty += 1;
-                        if count_consecutive_empty >= self.gap_limit {
-                            break;
-                        } else {
-                            continue;
-                        }
+                let batch = account.get_script_batch(is_internal, batch_count)?;
+                for (cached, _, path, script) in &batch {
+                    if !cached {
+                        scripts.insert(script.clone(), path.clone());
                     }
                 }
-                let history = client.script_get_history(&b_script)?;
+                let b_scripts: Vec<_> =
+                    batch.iter().map(|(_, _, _, script)| script.clone().into_bitcoin()).collect();
 
-                let txid_height_pairs =
-                    history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
-                let status = account::compute_script_status(txid_height_pairs);
-                new_statuses.insert(b_script.clone(), status);
-
-                let mut server_txids_for_this_script = HashSet::new();
-
-                let net = self.network.id();
-                for el in history {
-                    // el.height = -1 means unconfirmed with unconfirmed parents
-                    // el.height =  0 means unconfirmed with confirmed parents
-                    // but we threat those tx the same
-                    let height = el.height.max(0);
-                    heights_set.insert(height as u32);
-                    if height == 0 {
-                        txid_height.insert(el.tx_hash.into_net(net), None);
-                    } else {
-                        txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
+                // "script_subscribe" network calls
+                if first_sync {
+                    // During the first sync we haven't subscribed to any script yet, to minimize
+                    // the network calls we do a batch request.
+                    match client.batch_script_subscribe(b_scripts.iter().map(|s| s.as_script())) {
+                        Ok(v) => {
+                            for (status, b_script) in v.iter().zip(b_scripts) {
+                                if let Some(status) = status {
+                                    // First time script is subscribed, script is in at least one tx
+                                    last_statuses.insert(b_script, *status);
+                                } else {
+                                    // First time script is subscribed, script is not in any tx
+                                    ()
+                                }
+                            }
+                        }
+                        Err(e) => return Err(Error::ClientError(e)),
                     }
-
-                    history_txs_id.insert(el.tx_hash.into_net(net));
-
-                    server_txids_for_this_script.insert(el.tx_hash.into_net(net));
+                } else {
+                    // During syncs following the first one, we might highly likely hit Error::AlreadySubscribed,
+                    // which allows us to skip network calls. However this is not compatible with
+                    // the batch calls, since the return value is Result<Vec<_>, _> we can't
+                    // realize if multiple scripts are already subscribed. Thus here we do single
+                    // network calls, although if the subscription is still in place, the
+                    // iteration will not require a network call. This case should be the most
+                    // frequent one.
+                    for b_script in b_scripts {
+                        match client.script_subscribe(&b_script) {
+                            Ok(Some(status)) => {
+                                // Subscription dropped, created a new one, script is in at least 1 tx
+                                last_statuses.insert(b_script, status);
+                            }
+                            Ok(None) => {
+                                // Subscription dropped, created a new one, script is not in any tx
+                            }
+                            Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
+                                // Already subscribed for this script (no network call)
+                                if let Some(status) = client.script_pop(&b_script)? {
+                                    // There is an update, new txs for this script
+                                    last_statuses.insert(b_script, status);
+                                } else {
+                                    // There are no new transactions since last iteration
+                                }
+                            }
+                            Err(e) => return Err(Error::ClientError(e)),
+                        };
+                    }
                 }
 
-                for txid in cache_txids_for_this_script.difference(&server_txids_for_this_script) {
-                    txids_to_remove.push(*txid);
+                // "get_history" network calls
+                for (_, index, _, script) in batch {
+                    let cache_txids_for_this_script =
+                        map_script_txids.get(&script).cloned().unwrap_or_default();
+
+                    let b_script = script.into_bitcoin();
+                    match last_statuses.get(&b_script) {
+                        Some(last_status) => {
+                            // Script has a tx
+                            count_consecutive_empty = 0;
+                            if is_internal {
+                                last_used.internal = index;
+                            } else {
+                                last_used.external = index;
+                            }
+                            let cache_status = cache_statuses.get(&b_script);
+                            if Some(last_status) == cache_status {
+                                // No need to check this script since nothing has changed
+                                continue;
+                            }
+                        }
+                        None => {
+                            // Script never had a tx, initially and neither via updates
+                            count_consecutive_empty += 1;
+                            if count_consecutive_empty >= self.gap_limit {
+                                // No need to sync further
+                                break 'outer;
+                            } else {
+                                continue;
+                            }
+                        }
+                    }
+                    let history = client.script_get_history(&b_script)?;
+
+                    let txid_height_pairs =
+                        history.iter().map(|tx| (BETxid::Bitcoin(tx.tx_hash), tx.height));
+                    let status = account::compute_script_status(txid_height_pairs);
+                    new_statuses.insert(b_script.clone(), status);
+
+                    let mut server_txids_for_this_script = HashSet::new();
+
+                    let net = self.network.id();
+                    for el in history {
+                        // el.height = -1 means unconfirmed with unconfirmed parents
+                        // el.height =  0 means unconfirmed with confirmed parents
+                        // but we threat those tx the same
+                        let height = el.height.max(0);
+                        heights_set.insert(height as u32);
+                        if height == 0 {
+                            txid_height.insert(el.tx_hash.into_net(net), None);
+                        } else {
+                            txid_height.insert(el.tx_hash.into_net(net), Some(height as u32));
+                        }
+
+                        history_txs_id.insert(el.tx_hash.into_net(net));
+
+                        server_txids_for_this_script.insert(el.tx_hash.into_net(net));
+                    }
+
+                    for txid in
+                        cache_txids_for_this_script.difference(&server_txids_for_this_script)
+                    {
+                        txids_to_remove.push(*txid);
+                    }
                 }
             }
         }
