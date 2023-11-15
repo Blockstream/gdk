@@ -41,7 +41,7 @@ release-python:
     - /opt/process_release
   artifacts:
     name: "$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
-    expire_in: 14 days
+    expire_in: 3 days
     paths:
     - $CI_PROJECT_DIR/gdk_dist
     when: on_success
