@@ -24,6 +24,7 @@
 - Fix missing descriptor wildcards when decoding BC-UR crypto-account.
 - Two-factor: Fix the ``"any_enabled"`` element in two-factor config.
 - Singlesig: Return disabled config for two-factor and spending limts.
+- Fix macosx_x86_64 python wheel
 
 ### Removed
 
