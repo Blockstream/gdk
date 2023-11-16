@@ -978,6 +978,7 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
   {
     "subaccount": 3,
     "num_confs": 0,
+    "address_type": "csv",
     "all_coins": false,
     "expired_at": 99999,
     "confidential": false,
@@ -987,6 +988,9 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
 
 :subaccount: The subaccount to fetch unspent outputs for.
 :num_confs: Pass ``0`` for unconfirmed UTXOs or ``1`` for confirmed.
+:address_type: If given, one of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the
+    type of addresses to return. Defaults to blank (no address filtering).
 :all_coins: Pass ``true`` to include UTXOs with status ``frozen``. Defaults to ``false``.
 :expired_at: If given, only UTXOs where two factor authentication expires
     by the given block are returned.

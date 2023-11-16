@@ -1272,8 +1272,8 @@ namespace sdk {
         static bool compare_blockheight(const nlohmann::json& lhs, const nlohmann::json& rhs)
         {
             const uint32_t max_bh = 0xffffffff;
-            const uint32_t lhs_bh = lhs.at("block_height");
-            const uint32_t rhs_bh = rhs.at("block_height");
+            const auto lhs_bh = j_uint32ref(lhs, "block_height");
+            const auto rhs_bh = j_uint32ref(rhs, "block_height");
             return (lhs_bh ? lhs_bh : max_bh) < (rhs_bh ? rhs_bh : max_bh);
         }
 
@@ -1311,12 +1311,12 @@ namespace sdk {
 
     void get_unspent_outputs_call::initialize()
     {
-        const uint32_t num_confs = m_details.value("num_confs", 0xff);
+        const auto num_confs = j_uint32(m_details, "num_confs").value_or(0xff);
         if (num_confs != 0 && num_confs != 1u) {
             set_error("num_confs must be set to 0 or 1");
             return;
         }
-        auto p = m_session->get_cached_utxos(m_details.at("subaccount"), num_confs);
+        auto p = m_session->get_cached_utxos(j_uint32ref(m_details, "subaccount"), num_confs);
         if (p) {
             // Return the cached result, after filtering it
             m_result = *p;
@@ -1383,7 +1383,8 @@ namespace sdk {
         if (encache && !m_net_params.is_electrum()) {
             // Encache the unfiltered results, and set our result to a copy
             // for filtering.
-            auto p = m_session->set_cached_utxos(m_details.at("subaccount"), m_details.at("num_confs"), m_result);
+            auto p = m_session->set_cached_utxos(
+                j_uint32ref(m_details, "subaccount"), j_uint32ref(m_details, "num_confs"), m_result);
             m_result = *p;
         }
 
@@ -1394,27 +1395,36 @@ namespace sdk {
             return;
         }
 
+        const auto address_type = j_str_or_empty(m_details, "address_type");
+        if (!address_type.empty()) {
+            // The user only wants a particular address type, filter out others
+            filter_utxos(
+                outputs, [&address_type](const auto& u) { return j_strref(u, "address_type") != address_type; });
+        }
+
         const bool is_liquid = m_net_params.is_liquid();
-        if (is_liquid && m_details.value("confidential", false)) {
-            // The user wants only confidential UTXOs, filter out non-confidential
-            filter_utxos(outputs, [](const auto& u) { return !u.value("is_blinded", false); });
+        if (is_liquid && j_bool_or_false(m_details, "confidential")) {
+            // The user only wants confidential UTXOs, filter out non-confidential
+            filter_utxos(outputs, [](const auto& u) { return !j_bool_or_false(u, "is_blinded"); });
         }
 
-        if (!m_details.value("all_coins", false)) {
+        if (!j_bool_or_false(m_details, "all_coins")) {
             // User did not request frozen UTXOs, filter them out
-            filter_utxos(outputs,
-                [](const auto& u) { return u.value("user_status", USER_STATUS_DEFAULT) == USER_STATUS_FROZEN; });
+            filter_utxos(outputs, [](const auto& u) {
+                return j_uint32(u, "user_status").value_or(USER_STATUS_DEFAULT) == USER_STATUS_FROZEN;
+            });
         }
 
-        if (m_details.contains("expired_at")) {
+        const auto expired_at = j_uint32(m_details, "expired_at");
+        if (expired_at.has_value()) {
             // Return only UTXOs that have expired as at block number 'expired_at'.
             // A UTXO is expired if its nlocktime has been reached; i.e. its
             // nlocktime is less than or equal to the block number in
             // 'expired_at'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
-            const uint32_t at = m_details.at("expired_at");
             constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
-            filter_utxos(outputs, [at, max_](const auto& u) { return u.value("expiry_height", max_) > at; });
+            filter_utxos(
+                outputs, [expired_at, max_](const auto& u) { return u.value("expiry_height", max_) > expired_at; });
         }
 
         const auto dust_limit = j_amount_or_zero(m_details, "dust_limit");
@@ -1438,7 +1448,7 @@ namespace sdk {
 
     std::string get_unspent_outputs_call::get_sort_by() const
     {
-        auto sort_by = json_get_value(m_details, "sort_by");
+        auto sort_by = j_str_or_empty(m_details, "sort_by");
         if (sort_by.empty()) {
             const auto sa_type = m_session->get_subaccount_type(m_details.at("subaccount"));
             // For 2of2, spend older outputs first by default, to reduce redeposits.

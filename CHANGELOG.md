@@ -6,6 +6,7 @@
 
 - Add support for BC-UR encoding/decoding negotiated BIP85 generated entropy.
 - Add support for enabling phone two-factor as a backup for sms.
+- Add support for filtering unspent outputs by address_type.
 - Allow cancelling an in-progress GA_connect call from another thread.
 - Document two-factor and pricing limit JSON formats.
 - Supply Java bindings with the debian build artfacts.
