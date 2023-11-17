@@ -111,10 +111,10 @@ namespace sdk {
     } // namespace address_type
 
     // Dummy signatures are needed for correctly sizing transactions. If our signer supports
-    // low-R signatures, we estimate on a 71 byte signature, and occasionally produce 70 byte
-    // signatures. Otherwise, we estimate on 72 bytes and occasionally produce 70 or 71 byte
+    // low-R signatures, we estimate on a 70 byte signature (low-R, low-S).
+    // Otherwise, we estimate on 72 bytes and occasionally produce 70 or 71 byte
     // signatures. Worst-case overestimation is therefore 2 bytes per input * 2 sigs, or
-    // 1 vbyte per input for segwit transactions.
+    // 1 vbyte per input for segwit transactions, when low-R signatures are not available.
 
     // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
 #define SIG_SLED(INITIAL, B) INITIAL, B, B, B, B, B, B, B, B, B, B, B, B, B, B, B
@@ -124,13 +124,13 @@ namespace sdk {
 #define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
 
     static const ecdsa_sig_t DUMMY_GA_SIG = { { SIG_HIGH, SIG_HIGH } };
-    static const ecdsa_sig_t DUMMY_GA_SIG_LOW_R = { { SIG_LOW, SIG_HIGH } };
+    static const ecdsa_sig_t DUMMY_GA_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
 
     // DER encodings of the above
     static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH
         = { { 0x00, 0x49, 0x30, 0x46, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x21, 0x00, SIG_HIGH, 0x01 } };
     static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH_LOW_R
-        = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x20, SIG_LOW, 0x02, 0x21, 0x00, SIG_HIGH, 0x01 } };
+        = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, 0x01 } };
 
     static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
