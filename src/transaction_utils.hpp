@@ -65,6 +65,9 @@ namespace sdk {
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential);
 
+    // Returns true if the UXTO is not a sweep UTXO and has a wallet address_type
+    bool is_wallet_utxo(const nlohmann::json& utxo);
+
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
 

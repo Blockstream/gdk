@@ -780,7 +780,7 @@ namespace sdk {
         }
     }
 
-    static bool is_wallet_input(const nlohmann::json& utxo)
+    bool is_wallet_utxo(const nlohmann::json& utxo)
     {
         return j_str_is_empty(utxo, "private_key") && !j_str_is_empty(utxo, "address_type");
     }
@@ -790,7 +790,7 @@ namespace sdk {
         std::set<uint32_t> ret;
         if (auto utxos_p = details.find("transaction_inputs"); utxos_p != details.end()) {
             for (auto& utxo : *utxos_p) {
-                if (is_wallet_input(utxo)) {
+                if (is_wallet_utxo(utxo)) {
                     ret.insert(utxo.at("subaccount").get<uint32_t>());
                 }
             }
@@ -799,7 +799,7 @@ namespace sdk {
             for (auto& asset : utxos_p->items()) {
                 if (asset.key() != "error") {
                     for (auto& utxo : asset.value()) {
-                        if (is_wallet_input(utxo)) {
+                        if (is_wallet_utxo(utxo)) {
                             ret.insert(utxo.at("subaccount").get<uint32_t>());
                         }
                     }

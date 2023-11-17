@@ -388,17 +388,11 @@ namespace sdk {
         return outputs;
     }
 
-    // FIXME: duplicated from transaction_utils.cpp
-    static bool is_wallet_input(const nlohmann::json& utxo)
-    {
-        return j_str_is_empty(utxo, "private_key") && !j_str_is_empty(utxo, "address_type");
-    }
-
     nlohmann::json Psbt::to_json(session_impl& session, nlohmann::json utxos) const
     {
         auto result = get_details(session, { { "utxos", std::move(utxos) } });
         const auto& inputs = result.at("transaction_inputs");
-        const size_t num_wallet_inputs = std::count_if(inputs.begin(), inputs.end(), is_wallet_input);
+        const size_t num_wallet_inputs = std::count_if(inputs.begin(), inputs.end(), is_wallet_utxo);
         result["is_partial"] = num_wallet_inputs != inputs.size();
         return result;
     }
