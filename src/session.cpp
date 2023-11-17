@@ -13,6 +13,7 @@
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_session.hpp"
+#include "ga_strings.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
@@ -429,7 +430,9 @@ namespace sdk {
     session::impl_ptr session::get_nonnull_impl() const
     {
         auto impl = get_impl();
-        GDK_RUNTIME_ASSERT(impl != nullptr);
+        if (!impl) {
+            throw user_error(res::id_you_are_not_connected);
+        }
         return impl;
     }
 

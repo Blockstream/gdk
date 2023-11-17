@@ -443,7 +443,10 @@ namespace sdk {
     std::shared_ptr<signer> session_impl::get_nonnull_signer()
     {
         auto signer = get_signer();
-        GDK_RUNTIME_ASSERT(signer != nullptr);
+        if (!signer) {
+            // The session is not logged in
+            throw user_error("Authentication required");
+        }
         return signer;
     }
 
