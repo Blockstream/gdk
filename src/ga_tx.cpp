@@ -23,9 +23,6 @@
 namespace ga {
 namespace sdk {
     namespace {
-        // Dummy data for transaction creation with correctly sized data for fee estimation
-        static const std::array<unsigned char, 3 + SHA256_LEN> DUMMY_WITNESS_SCRIPT{};
-
         static const std::string UTXO_SEL_DEFAULT("default"); // Use the default utxo selection strategy
         static const std::string UTXO_SEL_MANUAL("manual"); // Use manual utxo selection
 
@@ -55,55 +52,79 @@ namespace sdk {
             return false;
         }
 
-        // Add a UTXO to a transaction. Returns the amount added
+        // Add a UTXO to a transaction, and optionally to "transaction_inputs".
+        // Sets "sequence" and "user_path" in the source UTXO, and creates dummy
+        // script/witness items so that fee estimation is accurate.
+        // The script/witness are updated when the tx is signed.
+        // Returns the amount of the added UTXO.
         static amount add_utxo(
             session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& utxo, bool add_to_tx_inputs)
         {
+            using namespace address_type;
             GDK_RUNTIME_ASSERT(!has_utxo(tx, utxo));
 
-            const std::string txhash = utxo.at("txhash");
-            const auto txid = h2b_rev(txhash);
-            const uint32_t index = utxo.at("pt_idx");
-            const bool low_r = session.get_nonnull_signer()->supports_low_r();
-            const bool is_external = !j_str_is_empty(utxo, "private_key");
-            const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
-            const uint32_t sequence = utxo.value("sequence", seq_default);
+            const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
+            const uint32_t dummy_sig_type = is_low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
 
+            const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
+            const auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
             utxo["sequence"] = sequence;
 
+            std::vector<unsigned char> script;
+            wally_tx_witness_stack_ptr witness;
+
             if (utxo.contains("script_sig") && utxo.contains("witness")) {
-                const auto script_sig = h2b(utxo.at("script_sig"));
-                const auto& wit_items = j_arrayref(utxo, "witness");
-                auto witness = make_witness_stack();
-                for (const auto& item : wit_items) {
+                script = h2b(j_strref(utxo, "script_sig"));
+                witness = make_witness_stack();
+                for (const auto& item : j_arrayref(utxo, "witness")) {
                     tx_witness_stack_add(witness, h2b(item));
                 }
-                tx.add_input(txid, index, sequence, script_sig, witness.get());
-            } else if (is_external) {
-                const auto script = dummy_external_input_script(low_r, h2b(utxo.at("public_key")));
-                tx.add_input(txid, index, sequence, script);
             } else {
-                // Populate the prevout script if missing so signing can use it later
-                if (utxo.find("prevout_script") == utxo.end()) {
-                    const auto script = session.output_script_from_utxo(utxo);
-                    utxo["prevout_script"] = b2h(script);
-                }
-                const auto script = h2b(utxo.at("prevout_script"));
+                const auto& addr_type = j_strref(utxo, "address_type");
+
                 utxo_add_paths(session, utxo);
 
-                if (is_segwit_address_type(utxo)) {
-                    // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
-                    const uint32_t dummy_sig_type = low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
-                    auto witness = make_witness_stack();
-                    tx_witness_stack_add_dummy(witness, WALLY_TX_DUMMY_NULL);
+                // Populate the prevout script if missing so signing can use it later
+                if (utxo.find("prevout_script") == utxo.end()) {
+                    utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
+                }
+
+                if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+                    const auto public_key = h2b(j_strref(utxo, "public_key"));
+                    if (addr_type == p2pkh) {
+                        // Singlesig or sweep p2pkh
+                        script = dummy_scriptsig_p2pkh(is_low_r, public_key);
+                    } else {
+                        // Singlesig segwit
+                        witness = make_witness_stack();
+                        tx_witness_stack_add_dummy(witness, dummy_sig_type);
+                        tx_witness_stack_add(witness, public_key);
+                        if (addr_type == p2sh_p2wpkh) {
+                            script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
+                        }
+                        // For p2wpkh, the script is empty
+                    }
+                } else if (addr_type == csv || addr_type == p2wsh) {
+                    // Multisig segwit
+                    witness = make_witness_stack();
+                    if (addr_type == p2wsh) {
+                        // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
+                        tx_witness_stack_add_dummy(witness, WALLY_TX_DUMMY_NULL);
+                    }
                     tx_witness_stack_add_dummy(witness, dummy_sig_type);
                     tx_witness_stack_add_dummy(witness, dummy_sig_type);
-                    tx_witness_stack_add(witness, script);
-                    tx.add_input(txid, index, sequence, DUMMY_WITNESS_SCRIPT, witness.get());
+                    tx_witness_stack_add(witness, h2b(utxo.at("prevout_script")));
+                    script.resize(3 + SHA256_LEN); // Dummy witness script
                 } else {
-                    tx.add_input(txid, index, sequence, dummy_input_script(low_r, script));
+                    // Multisig pre-segwit
+                    GDK_RUNTIME_ASSERT(addr_type == p2sh);
+                    script = dummy_input_script(is_low_r, h2b(utxo.at("prevout_script")));
                 }
             }
+            // Add the input to the tx
+            const auto txid = h2b_rev(j_strref(utxo, "txhash"));
+            const auto index = j_uint32ref(utxo, "pt_idx");
+            tx.add_input(txid, index, sequence, script, witness.get());
             if (add_to_tx_inputs) {
                 result["transaction_inputs"].push_back(utxo);
             }

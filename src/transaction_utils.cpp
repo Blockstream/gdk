@@ -348,7 +348,7 @@ namespace sdk {
         return input_script(low_r, prevout_script, dummy_sig, dummy_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
     }
 
-    std::vector<unsigned char> dummy_external_input_script(bool low_r, byte_span_t pub_key)
+    std::vector<unsigned char> dummy_scriptsig_p2pkh(bool low_r, byte_span_t pub_key)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
         return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, WALLY_SIGHASH_ALL));
