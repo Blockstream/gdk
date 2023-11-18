@@ -120,8 +120,11 @@ a message using the given path.
        "signature": "304402207c673ef4255873cf095016c98c4982cea9a5133060b66a380f1bf3880e54f6c8022056fd731cbd44cd96366212439717a888470ed481628cba81195c557d5c4fc39c"
      }
 
-:signature: The ECDSA signature corresponding to the given message.
-    It must use DER encoding, without the sighash byte.
+:signature: The ECDSA signature corresponding to the given message. It
+    must be returned as hex-encoded DER format, without a sighash byte, and
+    must be in low-S form. Additionally, if the :ref:`hw-device` for the
+    signer indicates low-R support, and Anti-Exfil is not being used, the
+    signature must also be low-R.
 
 
 .. _hw-action-get-blinding-public-keys:
@@ -290,7 +293,12 @@ one or more inputs of a transaction.
        "signatures": [ "30440220580c7ef934d5d8f31c1c592fbf0e5bc3267b76995206f0eb61616eb2f8f6e1c4022022e3feaf88469328bdaff3990a6069bda4e320e46e0531ba1e403cd50a9252e901" ]
      }
 
-:signatures: The ECDSA signatures corresponding to each input in the request, hex-encoded from the DER represention plus sighash byte.
+:signatures: The ECDSA signatures corresponding to each input in the
+    request, or an empty string if ``"skip_signing"`` is ``true`` for the
+    input. Signatures must be returned as hex-encoded DER format, with the
+    sighash byte, and must be in low-S form. Additionally, if
+    the :ref:`hw-device` for the signer indicates low-R support, and
+    Anti-Exfil is not being used, the signatures must also be low-R.
 
 
 .. _anti-exfil-request:

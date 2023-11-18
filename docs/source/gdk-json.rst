@@ -178,7 +178,9 @@ Describes the capabilities of an external signing device.
 
 :name: The unique name of the hardware device.
 :supports_arbitrary_scripts: True if the device can sign non-standard scripts such as CSV.
-:supports_low_r: True if the device can produce low-R ECDSA signatures.
+:supports_low_r: True if the device can produce low-R ECDSA signatures. Note that
+                 all signing devices must produce low-S signatures to comply with
+                 network standardness rules.
 :supports_liquid: 0 if the device does not support Liquid, 1 otherwise.
 :supports_host_unblinding: True if the device supports returning the Liquid master blinding key.
 :supports_external_blinding: True if the device supports blinding and signing Liquid transactions

@@ -137,7 +137,7 @@ Coin selection
 --------------
 
 Callers can control the UTXOs used when creating a transaction. When using
-``"utxo_strategy"``: ``"default"``, Bitcoin and Liquid-Bitcoin UXTOs are
+``"utxo_strategy"``: ``"default"``, Bitcoin and Liquid-Bitcoin UTXOs are
 selected from the ``"utxos"`` element. The caller can reorder and filter
 these UTXOs using the query parameters to `GA_get_unspent_outputs` to
 control which UTXOs are used (and their ordering, if ``"randomize_inputs"``
