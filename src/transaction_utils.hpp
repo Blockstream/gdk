@@ -47,15 +47,15 @@ namespace sdk {
         ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
     // Make a multisig scriptSig
-    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
+    std::vector<unsigned char> scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script,
         const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags);
 
-    // Make a multisig scriptSig with a user signature and PUSH(0) marker for the GA sig
-    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
+    // Make a multisig scriptSig with a user signature and PUSH(0) marker for the Green backend sig
+    std::vector<unsigned char> scriptsig_multisig_for_backend(bool low_r,
+        const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
 
-    // Make a multisig scriptSig with dummy signatures for (fee estimation)
-    std::vector<unsigned char> dummy_input_script(bool low_r, const std::vector<unsigned char>& prevout_script);
+    // Make a multisig scriptSig with dummy signatures for fee estimation
+    std::vector<unsigned char> dummy_scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script);
 
     std::vector<unsigned char> dummy_scriptsig_p2pkh(bool low_r, byte_span_t pub_key);
 

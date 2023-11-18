@@ -118,7 +118,7 @@ namespace sdk {
                 } else {
                     // Multisig pre-segwit
                     GDK_RUNTIME_ASSERT(addr_type == p2sh);
-                    script = dummy_input_script(is_low_r, h2b(utxo.at("prevout_script")));
+                    script = dummy_scriptsig_multisig(is_low_r, h2b(utxo.at("prevout_script")));
                 }
             }
             // Add the input to the tx
@@ -964,7 +964,8 @@ namespace sdk {
             constexpr bool has_sighash_byte = true;
             const auto user_sig = ec_sig_from_der(der, has_sighash_byte);
             const uint32_t user_sighash_flags = der.back();
-            set_input_script(index, input_script(is_low_r, script, user_sig, user_sighash_flags));
+            auto scriptsig = scriptsig_multisig_for_backend(is_low_r, script, user_sig, user_sighash_flags);
+            set_input_script(index, scriptsig);
         }
     }
 

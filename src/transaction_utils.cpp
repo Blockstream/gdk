@@ -110,11 +110,14 @@ namespace sdk {
         const std::string csv("csv");
     } // namespace address_type
 
-    // Dummy signatures are needed for correctly sizing transactions. If our signer supports
-    // low-R signatures, we estimate on a 70 byte signature (low-R, low-S).
-    // Otherwise, we estimate on 72 bytes and occasionally produce 70 or 71 byte
-    // signatures. Worst-case overestimation is therefore 2 bytes per input * 2 sigs, or
-    // 1 vbyte per input for segwit transactions, when low-R signatures are not available.
+    // Dummy signatures are needed for correctly sizing transactions.
+    // All signers are required to produce Low-S signatures to comply with
+    // Bitcoin's standardness rules.
+    // If our signer supports low-R, we estimate on a 71 byte signature
+    // (low-R, low-S plus sighash byte).
+    // Otherwise, we estimate on 72 bytes (high-R, low-S plus sighash byte).
+    // We occasionally produce smaller signatures, with decreasing probability
+    // as the signature size gets smaller.
 
     // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
 #define SIG_SLED(INITIAL, B) INITIAL, B, B, B, B, B, B, B, B, B, B, B, B, B, B, B
@@ -123,14 +126,14 @@ namespace sdk {
 #define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
 #define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
 
-    static const ecdsa_sig_t DUMMY_GA_SIG = { { SIG_HIGH, SIG_HIGH } };
+    static const ecdsa_sig_t DUMMY_GA_SIG = { { SIG_HIGH, SIG_LOW } };
     static const ecdsa_sig_t DUMMY_GA_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
 
     // DER encodings of the above
     static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH
-        = { { 0x00, 0x49, 0x30, 0x46, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x21, 0x00, SIG_HIGH, 0x01 } };
+        = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
     static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH_LOW_R
-        = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, 0x01 } };
+        = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
 
     static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
@@ -310,13 +313,14 @@ namespace sdk {
         return false;
     }
 
-    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
+    std::vector<unsigned char> scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script,
         const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
     {
         const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
         std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
         init_container(sigs, ga_sig, user_sig);
-        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LOW_R_LEN : EC_SIGNATURE_DER_MAX_LEN;
+        constexpr uint32_t EC_SIGNATURE_DER_MAX_LOW_S_LEN = EC_SIGNATURE_DER_MAX_LEN - 1;
+        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LOW_R_LEN : EC_SIGNATURE_DER_MAX_LOW_S_LEN;
         // OP_O [sig + sighash_flags] [sig + sighash_flags] [prevout_script]
         // 3 below allows for up to an OP_PUSHDATA2 prevout script size.
         std::vector<unsigned char> script(1 + (sig_len + 2) * 2 + 3 + prevout_script.size());
@@ -324,14 +328,14 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags)
+    std::vector<unsigned char> scriptsig_multisig_for_backend(bool low_r,
+        const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
         const std::vector<unsigned char>& dummy_push = low_r ? DUMMY_GA_SIG_DER_PUSH_LOW_R : DUMMY_GA_SIG_DER_PUSH;
 
         std::vector<unsigned char> full_script
-            = input_script(low_r, prevout_script, user_sig, dummy_sig, user_sighash_flags, WALLY_SIGHASH_ALL);
+            = scriptsig_multisig(low_r, prevout_script, user_sig, dummy_sig, user_sighash_flags, WALLY_SIGHASH_ALL);
         // Replace the dummy sig with PUSH(0)
         GDK_RUNTIME_ASSERT(std::search(full_script.begin(), full_script.end(), dummy_push.begin(), dummy_push.end())
             == full_script.begin());
@@ -342,10 +346,10 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> dummy_input_script(bool low_r, const std::vector<unsigned char>& prevout_script)
+    std::vector<unsigned char> dummy_scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script)
     {
         const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
-        return input_script(low_r, prevout_script, dummy_sig, dummy_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
+        return scriptsig_multisig(low_r, prevout_script, dummy_sig, dummy_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
     }
 
     std::vector<unsigned char> dummy_scriptsig_p2pkh(bool low_r, byte_span_t pub_key)
