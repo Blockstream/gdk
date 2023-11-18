@@ -296,20 +296,6 @@ namespace sdk {
         return p2sh_p2wsh_address_from_bytes(net_params, out_script);
     }
 
-    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
-    {
-        const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
-        std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
-        init_container(sigs, ga_sig, user_sig);
-        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LOW_R_LEN : EC_SIGNATURE_DER_MAX_LEN;
-        // OP_O [sig + sighash_flags] [sig + sighash_flags] [prevout_script]
-        // 3 below allows for up to an OP_PUSHDATA2 prevout script size.
-        std::vector<unsigned char> script(1 + (sig_len + 2) * 2 + 3 + prevout_script.size());
-        scriptsig_multisig_from_bytes(prevout_script, sigs, sighash_flags, script);
-        return script;
-    }
-
     bool is_segwit_address_type(const nlohmann::json& utxo)
     {
         using namespace address_type;
@@ -322,6 +308,20 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT_MSG(false, std::string("unknown address_type ") + addr_type);
         return false;
+    }
+
+    std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
+        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
+    {
+        const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
+        std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
+        init_container(sigs, ga_sig, user_sig);
+        const uint32_t sig_len = low_r ? EC_SIGNATURE_DER_MAX_LOW_R_LEN : EC_SIGNATURE_DER_MAX_LEN;
+        // OP_O [sig + sighash_flags] [sig + sighash_flags] [prevout_script]
+        // 3 below allows for up to an OP_PUSHDATA2 prevout script size.
+        std::vector<unsigned char> script(1 + (sig_len + 2) * 2 + 3 + prevout_script.size());
+        scriptsig_multisig_from_bytes(prevout_script, sigs, sighash_flags, script);
+        return script;
     }
 
     std::vector<unsigned char> input_script(bool low_r, const std::vector<unsigned char>& prevout_script,
