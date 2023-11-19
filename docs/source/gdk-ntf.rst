@@ -117,7 +117,7 @@ Notified when a new block is mined by the network.
 
 :block/block_hash: The hash of the block.
 :block/block_height: The height of the block.
-:block/initial_timestamp: Multisig only. The time that the users wallet was created, in seconds since the epoc.
+:block/initial_timestamp: Multisig only. The time that the users wallet was created, in seconds since the epoch.
 :block/previous_hash: The hash of the block prior to this block.
 
 
