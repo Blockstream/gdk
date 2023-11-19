@@ -25,7 +25,7 @@ Because gdk will create new change addresses when constructing transactions,
 passing the result of the last call to `GA_create_transaction` makes each call
 significantly faster and more efficient compared to passing in the initial JSON.
 
-When using gdk as a integration solution, `GA_create_transaction` is generally
+When using gdk as an integration solution, `GA_create_transaction` is generally
 only called once, and if an error occurs the operation is aborted.
 
 Note that the returned JSON will contain additional elements beyond those
@@ -152,7 +152,7 @@ UTXOs will be added to the resulting transaction.
 
 The sum of input UTXOs for a given asset must be sufficient to cover the
 amounts sent to any addressees receiving it, or an error will occur unless
-``"is_partial"`` is ``true``. Excess amounts will be either be returned to
+``"is_partial"`` is ``true``. Excess amounts will either be returned to
 the wallet as change, or if an addressee has ``"is_greedy"`` set to ``true``
 then the remainder will be assigned to it. When ``"utxo_strategy"`` is set
 to ``"default"``, UTXOs from the ``"utxos"`` element will be omitted from
@@ -194,7 +194,7 @@ funds for the fee increase given in ``"utxos"``.
 
 :previous_transaction: The transaction to bump, as returned from :ref:`tx-list`.
 :fee_rate: The new fee rate in satoshi per 1000 bytes to use for fee
-           calculation. This must be higher than the exiting fee rate
+           calculation. This must be higher than the existing fee rate
            in ``"previous_transaction"``.
 
 Sweeping
