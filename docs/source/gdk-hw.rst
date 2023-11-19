@@ -290,7 +290,7 @@ one or more inputs of a transaction.
        "signatures": [ "30440220580c7ef934d5d8f31c1c592fbf0e5bc3267b76995206f0eb61616eb2f8f6e1c4022022e3feaf88469328bdaff3990a6069bda4e320e46e0531ba1e403cd50a9252e901" ]
      }
 
-:signatures: The ECDSA signatures corresponding to each input in the request, hex-encoded from the DER represention plus sighash byte.
+:signatures: The ECDSA signatures corresponding to each input in the request, hex-encoded from the DER representation plus sighash byte.
 
 
 .. _anti-exfil-request:
