@@ -345,8 +345,6 @@ namespace sdk {
 
     void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness);
 
-    void tx_witness_stack_add_dummy(const wally_tx_witness_stack_ptr& stack, uint32_t flags);
-
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);

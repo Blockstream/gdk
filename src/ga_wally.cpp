@@ -982,11 +982,6 @@ namespace sdk {
         GDK_VERIFY(wally_tx_witness_stack_add(stack.get(), witness.data(), witness.size()));
     }
 
-    void tx_witness_stack_add_dummy(const wally_tx_witness_stack_ptr& stack, uint32_t flags)
-    {
-        GDK_VERIFY(wally_tx_witness_stack_add_dummy(stack.get(), flags));
-    }
-
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi)
     {
         cvalue_t ct_value;

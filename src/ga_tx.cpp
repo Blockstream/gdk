@@ -64,7 +64,6 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(!has_utxo(tx, utxo));
 
             const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
-            const uint32_t dummy_sig_type = is_low_r ? WALLY_TX_DUMMY_SIG_LOW_R : WALLY_TX_DUMMY_SIG;
 
             const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
             const auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
@@ -96,9 +95,7 @@ namespace sdk {
                         script = dummy_scriptsig_p2pkh(is_low_r, public_key);
                     } else {
                         // Singlesig segwit
-                        witness = make_witness_stack();
-                        tx_witness_stack_add_dummy(witness, dummy_sig_type);
-                        tx_witness_stack_add(witness, public_key);
+                        witness = dummy_witness_p2wpkh(is_low_r, public_key);
                         if (addr_type == p2sh_p2wpkh) {
                             script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
                         }
@@ -106,14 +103,7 @@ namespace sdk {
                     }
                 } else if (addr_type == csv || addr_type == p2wsh) {
                     // Multisig segwit
-                    witness = make_witness_stack();
-                    if (addr_type == p2wsh) {
-                        // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
-                        tx_witness_stack_add_dummy(witness, WALLY_TX_DUMMY_NULL);
-                    }
-                    tx_witness_stack_add_dummy(witness, dummy_sig_type);
-                    tx_witness_stack_add_dummy(witness, dummy_sig_type);
-                    tx_witness_stack_add(witness, h2b(utxo.at("prevout_script")));
+                    witness = dummy_witness_multisig(is_low_r, h2b(utxo.at("prevout_script")), addr_type);
                     script.resize(3 + SHA256_LEN); // Dummy witness script
                 } else {
                     // Multisig pre-segwit

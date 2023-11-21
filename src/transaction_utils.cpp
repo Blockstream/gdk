@@ -126,14 +126,18 @@ namespace sdk {
 #define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
 #define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
 
-    static const ecdsa_sig_t DUMMY_GA_SIG = { { SIG_HIGH, SIG_LOW } };
-    static const ecdsa_sig_t DUMMY_GA_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
+    static const ecdsa_sig_t DUMMY_SIG = { { SIG_HIGH, SIG_LOW } };
+    static const ecdsa_sig_t DUMMY_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
 
-    // DER encodings of the above
-    static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH
+    // Script pushes of DER encodings of the above sigs including sighash byte
+    static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH
         = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
-    static const std::vector<unsigned char> DUMMY_GA_SIG_DER_PUSH_LOW_R
+    static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH_LOW_R
         = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
+
+    // DER encodings of the above sigs including sighash byte
+    static const byte_span_t DUMMY_SIG_DER{ byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2) };
+    static const byte_span_t DUMMY_SIG_DER_LOW_R{ byte_span_t(DUMMY_SIG_DER_PUSH_LOW_R).subspan(2) };
 
     static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
@@ -313,8 +317,8 @@ namespace sdk {
         return false;
     }
 
-    std::vector<unsigned char> scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script,
-        const ecdsa_sig_t& user_sig, const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
+    std::vector<unsigned char> scriptsig_multisig(bool low_r, byte_span_t prevout_script, const ecdsa_sig_t& user_sig,
+        const ecdsa_sig_t& ga_sig, uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
     {
         const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
         std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
@@ -331,8 +335,8 @@ namespace sdk {
     std::vector<unsigned char> scriptsig_multisig_for_backend(bool low_r,
         const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags)
     {
-        const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
-        const std::vector<unsigned char>& dummy_push = low_r ? DUMMY_GA_SIG_DER_PUSH_LOW_R : DUMMY_GA_SIG_DER_PUSH;
+        const auto& dummy_sig = low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG;
+        const auto& dummy_push = low_r ? DUMMY_SIG_DER_PUSH_LOW_R : DUMMY_SIG_DER_PUSH;
 
         std::vector<unsigned char> full_script
             = scriptsig_multisig(low_r, prevout_script, user_sig, dummy_sig, user_sighash_flags, WALLY_SIGHASH_ALL);
@@ -346,16 +350,33 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> dummy_scriptsig_multisig(bool low_r, const std::vector<unsigned char>& prevout_script)
+    std::vector<unsigned char> dummy_scriptsig_multisig(bool low_r, byte_span_t prevout_script)
     {
-        const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
+        const auto& dummy_sig = low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG;
         return scriptsig_multisig(low_r, prevout_script, dummy_sig, dummy_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
+    }
+
+    wally_tx_witness_stack_ptr dummy_witness_multisig(
+        bool low_r, byte_span_t prevout_script, const std::string& addr_type)
+    {
+        const auto& dummy_sig = low_r ? DUMMY_SIG_DER_LOW_R : DUMMY_SIG_DER;
+        if (addr_type == address_type::p2wsh) {
+            // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
+            return make_witness_stack({ byte_span_t{}, dummy_sig, DUMMY_SIG_DER_LOW_R, prevout_script });
+        }
+        return make_witness_stack({ dummy_sig, DUMMY_SIG_DER_LOW_R, prevout_script });
     }
 
     std::vector<unsigned char> dummy_scriptsig_p2pkh(bool low_r, byte_span_t pub_key)
     {
-        const ecdsa_sig_t& dummy_sig = low_r ? DUMMY_GA_SIG_LOW_R : DUMMY_GA_SIG;
+        const auto& dummy_sig = low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG;
         return scriptsig_p2pkh_from_der(pub_key, ec_sig_to_der(dummy_sig, WALLY_SIGHASH_ALL));
+    }
+
+    wally_tx_witness_stack_ptr dummy_witness_p2wpkh(bool low_r, byte_span_t pub_key)
+    {
+        const auto& dummy_sig = low_r ? DUMMY_SIG_DER_LOW_R : DUMMY_SIG_DER;
+        return make_witness_stack({ dummy_sig, pub_key });
     }
 
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver)
