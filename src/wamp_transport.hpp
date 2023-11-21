@@ -2,6 +2,7 @@
 #define GDK_WAMP_TRANSPORT_HPP
 #pragma once
 
+#include <boost/asio/io_context.hpp>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string>
@@ -16,7 +17,6 @@ namespace sdk {
     class exponential_backoff;
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
-    class io_runner;
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);

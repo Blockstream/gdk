@@ -260,7 +260,7 @@ namespace sdk {
 
         // Immutable upon construction
         const network_parameters m_net_params;
-        io_runner m_io;
+        io_runner<1> m_io;
         std::unique_ptr<boost::asio::io_context::strand> m_strand;
 
         const std::string m_user_proxy;

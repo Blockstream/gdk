@@ -16,7 +16,6 @@
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
 #include "http_client.hpp"
-#include "io_runner.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
