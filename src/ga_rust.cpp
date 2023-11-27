@@ -420,7 +420,16 @@ namespace sdk {
 
     std::string ga_rust::broadcast_transaction(const std::string& tx_hex)
     {
-        return rust_call("broadcast_transaction", nlohmann::json(tx_hex), m_session).get<std::string>();
+        try {
+            return rust_call("broadcast_transaction", nlohmann::json(tx_hex), m_session).get<std::string>();
+        } catch (const std::exception& e) {
+            // Translate core rpc/electrum errors where possible for i18n
+            const std::string what = e.what();
+            if (what.find("min relay fee not met") != std::string::npos) {
+                throw user_error(res::id_fee_rate_is_below_minimum);
+            }
+            throw;
+        }
     }
 
     void ga_rust::send_nlocktimes() { throw std::runtime_error("send_nlocktimes not implemented"); }
