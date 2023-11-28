@@ -26,7 +26,6 @@
             "pt_idx": 0,
             "satoshi": 0,
             "script": "",
-            "script_type": 0,
             "subaccount": 0,
             "subtype": 0
           }
@@ -44,7 +43,6 @@
             "pt_idx": 0,
             "satoshi": 0,
             "script": "00143a80523fbffeb0f3f4cdd788e2b4f40e7afa4057",
-            "script_type": 0,
             "subaccount": 0,
             "subtype": 0
           },
@@ -65,7 +63,6 @@
             "pt_idx": 1,
             "satoshi": 12340,
             "script": "a914007edc4b1153a320e490b5fe29a33e95af2d3c7387",
-            "script_type": 0,
             "subaccount": 0,
             "subtype": 0,
             "unconfidential_address": "XBPrpZvDkTp1TY3kAhNtLBzo4Vycb9BsQt"
@@ -81,7 +78,6 @@
             "pt_idx": 2,
             "satoshi": 0,
             "script": "",
-            "script_type": 0,
             "subaccount": 0,
             "subtype": 0
           }

@@ -25,7 +25,6 @@
           "pt_idx": 0,
           "satoshi": 12340,
           "script": "a91469a22b9f6314c0fe6db92286592ec287ac52c03587",
-          "script_type": 15,
           "subaccount": 0,
           "subtype": 65535,
           "txhash": "46dd2e84591e3a27c85d3ead917a1469dd09458fb1d76bce6b58885bf5d6ebbc",

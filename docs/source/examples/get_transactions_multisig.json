@@ -25,7 +25,6 @@
             "pointer": 0,
             "pt_idx": 0,
             "satoshi": 5000000000,
-            "script_type": 160,
             "subaccount": 0,
             "subtype": 0
           }
@@ -42,7 +41,6 @@
             "pointer": 1,
             "pt_idx": 0,
             "satoshi": 12340,
-            "script_type": 15,
             "subaccount": 0,
             "subtype": 51840
           },
@@ -56,7 +54,6 @@
             "pointer": 0,
             "pt_idx": 1,
             "satoshi": 4999986230,
-            "script_type": 9,
             "subaccount": 0,
             "subtype": 0
           }

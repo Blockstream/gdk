@@ -16,7 +16,6 @@
           "prevout_script": "2102ea2fe5fcee6e1ada9ee3f4228ac1b83554cff618c8bc6ef64d9988e2f4bb13a1ad21023cebb0d3a3434d1df033c3c41e3d02f2e0b44a64c3d58519ca656b4f5363f591ac73640380ca00b268",
           "pt_idx": 0,
           "satoshi": 12340,
-          "script_type": 15,
           "subaccount": 0,
           "subtype": 51840,
           "txhash": "1a45e3a1140b17b45277e7e1189ff8385c7e0fd4cd88a5840b15ee600d5dbc30",

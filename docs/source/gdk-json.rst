@@ -424,7 +424,6 @@ Describes a transaction input in :ref:`tx-list`.
 :pointer: For user wallet addresses, the address number/final number in the address derivation path.
 :pt_idx: Deprecated, will be removed in a future release.
 :satoshi: The amount of the input in satoshi.
-:script_type: Deprecated, will be removed in a future release.
 :subaccount: For user wallet addresses, the subaccount this output belongs to, or ``0``.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
 
@@ -468,7 +467,6 @@ Describes a transaction output in :ref:`tx-list`.
 :pointer: For user wallet addresses, the address number/final number in the address derivation path.
 :pt_idx: Deprecated, will be removed in a future release.
 :satoshi: The amount of the output in satoshi.
-:script_type: Deprecated, will be removed in a future release.
 :subaccount: For user wallet addresses, the subaccount this output belongs to, or ``0``.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks used in the receiving scriptpubkey.
 
@@ -902,7 +900,6 @@ Receive address details JSON
 :pointer: The address number/final number in the address derivation path.
 :script: The locking script of the address.
 :scriptpubkey: The scriptpubkey of the address.
-:script_type: Integer representing the type of script.
 :subaccount: The subaccount this address belongs to. Matches ``"pointer"`` from :ref:`subaccount-list` or :ref:`subaccount-detail`.
 :subtype: For ``"address_type"`` ``"csv"``, the number of CSV blocks referenced in ``"script"``, otherwise, 0.
 :user_path: The BIP32 path for the user key.
@@ -1054,7 +1051,6 @@ Contains unspent outputs for the wallet as requested by `GA_get_unspent_outputs`
 :public_key: Singlesig only. The user public key.
 :expiry_height: Multisig only.
                 The block height when two factor authentication expires.
-:script_type: Multisig only. Integer representing the type of script.
 :user_status: Multisig only. 0 for ``"default"`` and 1 for ``"frozen"``.
 :subtype: Multisig only. For ``"address_type"`` ``"csv"``,
           the number of CSV blocks referenced in ``"script"``, otherwise, 0.

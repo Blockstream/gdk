@@ -6,6 +6,9 @@
 
 ### Changed
 
+- The deprecated ``"script_type"`` element has been removed from returned
+  address, UTXO and transaction list JSON.
+
 ### Fixed
 
 ### Removed
