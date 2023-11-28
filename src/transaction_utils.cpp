@@ -363,12 +363,13 @@ namespace sdk {
         return p2sh_p2wsh_address_from_bytes(net_params, out_script);
     }
 
-    std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig, byte_span_t ga_sig,
-        uint32_t user_sighash_flags, uint32_t ga_sighash_flags)
+    static std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig,
+        byte_span_t green_sig, uint32_t user_sighash_flags = WALLY_SIGHASH_ALL,
+        uint32_t ga_sighash_flags = WALLY_SIGHASH_ALL)
     {
         const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
         std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
-        init_container(sigs, ga_sig, user_sig);
+        init_container(sigs, green_sig, user_sig);
         // OP_O [sig + sighash_flags] [sig + sighash_flags] [prevout_script]
         // 3 below allows for up to an OP_PUSHDATA2 prevout script size.
         std::vector<unsigned char> script;
@@ -384,8 +385,8 @@ namespace sdk {
     std::vector<unsigned char> scriptsig_multisig_for_backend(bool /*is_low_r*/,
         const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags)
     {
-        const auto ga_sig = dummy_sig(true); /* Green backend is always low-R */
-        auto script = scriptsig_multisig(prevout_script, user_sig, ga_sig, user_sighash_flags, WALLY_SIGHASH_ALL);
+        const auto green_sig = dummy_sig(true); /* Green backend is always low-R */
+        auto script = scriptsig_multisig(prevout_script, user_sig, green_sig, user_sighash_flags);
 
         // Replace the dummy sig with PUSH(0)
         const auto ga_push = dummy_sig_der_push(true);
@@ -395,35 +396,6 @@ namespace sdk {
         std::vector<unsigned char> backend_script(OP_0_PREFIX.size() + suffix.size());
         init_container(backend_script, OP_0_PREFIX, suffix);
         return backend_script;
-    }
-
-    std::vector<unsigned char> dummy_scriptsig_multisig(bool is_low_r, byte_span_t prevout_script)
-    {
-        const auto ga_sig = dummy_sig(true); /* Green backend is always low-R */
-        return scriptsig_multisig(prevout_script, dummy_sig(is_low_r), ga_sig, WALLY_SIGHASH_ALL, WALLY_SIGHASH_ALL);
-    }
-
-    wally_tx_witness_stack_ptr dummy_witness_multisig(
-        bool is_low_r, byte_span_t prevout_script, const std::string& addr_type)
-    {
-        const auto user_sig_der = dummy_sig_der(is_low_r);
-        const auto ga_sig_der = dummy_sig_der(true); /* Green backend is always low-R */
-
-        if (addr_type == address_type::p2wsh) {
-            // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
-            return make_witness_stack({ byte_span_t{}, user_sig_der, ga_sig_der, prevout_script });
-        }
-        return make_witness_stack({ user_sig_der, ga_sig_der, prevout_script });
-    }
-
-    std::vector<unsigned char> dummy_scriptsig_p2pkh(bool is_low_r, byte_span_t pub_key)
-    {
-        return scriptsig_p2pkh_from_der(pub_key, dummy_sig_der(is_low_r));
-    }
-
-    wally_tx_witness_stack_ptr dummy_witness_p2wpkh(bool is_low_r, byte_span_t pub_key)
-    {
-        return make_witness_stack({ dummy_sig_der(is_low_r), pub_key });
     }
 
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver)
@@ -474,6 +446,7 @@ namespace sdk {
         wally_tx_witness_stack_ptr witness;
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
+            // An external or already finalized input
             script = h2b(j_strref(utxo, "script_sig"));
             witness = make_witness_stack();
             for (const auto& item : j_arrayref(utxo, "witness")) {
@@ -489,27 +462,45 @@ namespace sdk {
                 utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
             }
 
+            // Dummy sigs for fee estimation. User is low-R according to
+            // the signer. Green is always low-R.
+            const auto user_sig = dummy_sig(is_low_r);
+            const auto user_der = dummy_sig_der(is_low_r);
+            const auto green_sig = dummy_sig(true);
+            const auto green_der = dummy_sig_der(true);
+
             if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+                // Singlesig
                 const auto public_key = h2b(j_strref(utxo, "public_key"));
                 if (addr_type == p2pkh) {
                     // Singlesig or sweep p2pkh
-                    script = dummy_scriptsig_p2pkh(is_low_r, public_key);
+                    script = scriptsig_p2pkh_from_der(public_key, user_der);
                 } else {
                     // Singlesig segwit
-                    witness = dummy_witness_p2wpkh(is_low_r, public_key);
+                    witness = make_witness_stack({ user_der, public_key });
                     if (addr_type == p2sh_p2wpkh) {
                         script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
                     }
                     // For p2wpkh, the script is empty
                 }
-            } else if (addr_type == csv || addr_type == p2wsh) {
-                // Multisig segwit
-                witness = dummy_witness_multisig(is_low_r, h2b(utxo.at("prevout_script")), addr_type);
-                script.resize(3 + SHA256_LEN); // Dummy witness script
             } else {
-                // Multisig pre-segwit
-                GDK_RUNTIME_ASSERT(addr_type == p2sh);
-                script = dummy_scriptsig_multisig(is_low_r, h2b(utxo.at("prevout_script")));
+                // Multisig
+                const auto prevout_script = h2b(j_strref(utxo, "prevout_script"));
+
+                if (addr_type == csv || addr_type == p2wsh) {
+                    // Multisig segwit
+                    if (addr_type == address_type::p2wsh) {
+                        // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
+                        witness = make_witness_stack({ byte_span_t{}, user_der, green_der, prevout_script });
+                    } else {
+                        witness = make_witness_stack({ user_der, green_der, prevout_script });
+                    }
+                    script.resize(3 + SHA256_LEN); // Dummy witness script
+                } else {
+                    // Multisig pre-segwit
+                    GDK_RUNTIME_ASSERT(addr_type == p2sh);
+                    script = scriptsig_multisig(prevout_script, user_sig, green_sig);
+                }
             }
         }
         // Add the input to the tx

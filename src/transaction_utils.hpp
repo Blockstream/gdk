@@ -39,26 +39,9 @@ namespace sdk {
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
         ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
-    // Make a multisig scriptSig
-    std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig, byte_span_t ga_sig,
-        uint32_t user_sighash_flags, uint32_t ga_sighash_flags);
-
     // Make a multisig scriptSig with a user signature and PUSH(0) marker for the Green backend sig
     std::vector<unsigned char> scriptsig_multisig_for_backend(bool is_low_r,
         const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
-
-    // Make a multisig scriptSig with dummy signatures for fee estimation
-    std::vector<unsigned char> dummy_scriptsig_multisig(bool is_low_r, byte_span_t prevout_script);
-
-    // Make a multisig witness stack with dummy signatures for fee estimation
-    wally_tx_witness_stack_ptr dummy_witness_multisig(
-        bool is_low_r, byte_span_t prevout_script, const std::string& addr_type);
-
-    // Make a singlesig scriptSig with a dummy signature for fee estimation
-    std::vector<unsigned char> dummy_scriptsig_p2pkh(bool low_r, byte_span_t pub_key);
-
-    // Make a singlesig witness stack with a dummy signature for fee estimation
-    wally_tx_witness_stack_ptr dummy_witness_p2wpkh(bool is_low_r, byte_span_t pub_key);
 
     std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver);
 
