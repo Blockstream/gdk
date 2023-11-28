@@ -169,7 +169,7 @@ namespace sdk {
     std::vector<unsigned char> scriptsig_p2sh_p2wpkh_from_bytes(byte_span_t public_key)
     {
         const uint32_t witness_ver = 0;
-        return witness_program_from_bytes(public_key, witness_ver, WALLY_SCRIPT_HASH160 | WALLY_SCRIPT_AS_PUSH);
+        return witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160 | WALLY_SCRIPT_AS_PUSH);
     }
 
     void scriptpubkey_csv_2of2_then_1_from_bytes(
@@ -319,7 +319,7 @@ namespace sdk {
     std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script)
     {
         const uint32_t witness_ver = 0;
-        const auto witness_program = witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256);
+        const auto witness_program = witness_script(script, witness_ver, WALLY_SCRIPT_SHA256);
         return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
     }
 
@@ -330,7 +330,7 @@ namespace sdk {
         return static_cast<uint32_t>(typ);
     }
 
-    std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags)
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver, uint32_t flags)
     {
         GDK_RUNTIME_ASSERT(witness_ver == 0); // Only segwit v0 is supported
         size_t written;
@@ -955,20 +955,20 @@ namespace sdk {
         return ret;
     }
 
-    wally_tx_witness_stack_ptr make_witness_stack(std::initializer_list<byte_span_t> items)
+    wally_tx_witness_stack_ptr witness_stack(std::initializer_list<byte_span_t> items, size_t num_expected)
     {
         struct wally_tx_witness_stack* p;
-        GDK_VERIFY(wally_tx_witness_stack_init_alloc(items.size(), &p));
+        GDK_VERIFY(wally_tx_witness_stack_init_alloc(num_expected ? num_expected : items.size(), &p));
         auto wit = wally_tx_witness_stack_ptr(p);
-        for (const auto& item : items) {
-            tx_witness_stack_add(wit, item);
-        }
+        witness_stack_add(wit, items);
         return wit;
     }
 
-    void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness)
+    void witness_stack_add(const wally_tx_witness_stack_ptr& stack, std::initializer_list<byte_span_t> items)
     {
-        GDK_VERIFY(wally_tx_witness_stack_add(stack.get(), witness.data(), witness.size()));
+        for (const auto& item : items) {
+            GDK_VERIFY(wally_tx_witness_stack_add(stack.get(), item.data(), item.size()));
+        }
     }
 
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi)

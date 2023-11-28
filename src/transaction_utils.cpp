@@ -224,7 +224,7 @@ namespace sdk {
         const network_parameters& net_params, byte_span_t script_or_pubkey, uint32_t flags)
     {
         const uint32_t witness_ver = 0;
-        return p2sh_address_from_bytes(net_params, witness_program_from_bytes(script_or_pubkey, witness_ver, flags));
+        return p2sh_address_from_bytes(net_params, witness_script(script_or_pubkey, witness_ver, flags));
     }
 
     inline auto p2sh_p2wsh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
@@ -240,7 +240,7 @@ namespace sdk {
     inline auto p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
     {
         const uint32_t witness_ver = 0;
-        const auto witness_program = witness_program_from_bytes(public_key, witness_ver, WALLY_SCRIPT_HASH160);
+        const auto witness_program = witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160);
         return addr_segwit_from_bytes(witness_program, net_params.bech32_prefix());
     }
 
@@ -398,11 +398,6 @@ namespace sdk {
         return backend_script;
     }
 
-    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver)
-    {
-        return witness_program_from_bytes(script, witness_ver, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
-    }
-
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential)
     {
@@ -448,9 +443,10 @@ namespace sdk {
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
             script = h2b(j_strref(utxo, "script_sig"));
-            witness = make_witness_stack();
-            for (const auto& item : j_arrayref(utxo, "witness")) {
-                tx_witness_stack_add(witness, h2b(item));
+            const auto& witness_items = j_arrayref(utxo, "witness");
+            witness = witness_stack({}, witness_items.size());
+            for (const auto& item : witness_items) {
+                witness_stack_add(witness, { h2b(item) });
             }
         } else {
             const auto& addr_type = j_strref(utxo, "address_type");
@@ -477,7 +473,7 @@ namespace sdk {
                     script = scriptsig_p2pkh_from_der(public_key, user_der);
                 } else {
                     // Singlesig segwit
-                    witness = make_witness_stack({ user_der, public_key });
+                    witness = witness_stack({ user_der, public_key });
                     if (addr_type == p2sh_p2wpkh) {
                         script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
                     }
@@ -491,9 +487,9 @@ namespace sdk {
                     // Multisig segwit
                     if (addr_type == address_type::p2wsh) {
                         // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
-                        witness = make_witness_stack({ byte_span_t{}, user_der, green_der, prevout_script });
+                        witness = witness_stack({ byte_span_t{}, user_der, green_der, prevout_script });
                     } else {
-                        witness = make_witness_stack({ user_der, green_der, prevout_script });
+                        witness = witness_stack({ user_der, green_der, prevout_script });
                     }
                     script.resize(3 + SHA256_LEN); // Dummy witness script
                 } else {

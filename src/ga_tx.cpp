@@ -864,7 +864,7 @@ namespace sdk {
                 return;
             }
             // Singlesig segwit
-            set_input_witness(index, make_witness_stack({ der, public_key }).get());
+            set_input_witness(index, witness_stack({ der, public_key }).get());
             if (addr_type == p2sh_p2wpkh) {
                 set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
             } else {
@@ -876,9 +876,10 @@ namespace sdk {
         const auto script = h2b(utxo.at("prevout_script"));
         if (addr_type == csv || addr_type == p2wsh) {
             // Multisig segwit
-            set_input_witness(index, make_witness_stack({ der }).get());
+            set_input_witness(index, witness_stack({ der }).get());
             constexpr uint32_t witness_ver = 0;
-            set_input_script(index, witness_script(script, witness_ver));
+            constexpr uint32_t flags = WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH;
+            set_input_script(index, witness_script(script, witness_ver, flags));
         } else {
             // Multisig pre-segwit
             GDK_RUNTIME_ASSERT(addr_type == p2sh);

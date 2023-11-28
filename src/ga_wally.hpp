@@ -154,7 +154,7 @@ namespace sdk {
 
     uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey);
 
-    std::vector<unsigned char> witness_program_from_bytes(byte_span_t script, uint32_t witness_ver, uint32_t flags);
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver, uint32_t flags);
 
     std::array<unsigned char, SHA256_LEN> format_bitcoin_message_hash(byte_span_t message);
 
@@ -338,9 +338,9 @@ namespace sdk {
 
     std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices);
 
-    wally_tx_witness_stack_ptr make_witness_stack(std::initializer_list<byte_span_t> items = {});
+    wally_tx_witness_stack_ptr witness_stack(std::initializer_list<byte_span_t> items = {}, size_t num_expected = 0);
 
-    void tx_witness_stack_add(const wally_tx_witness_stack_ptr& stack, byte_span_t witness);
+    void witness_stack_add(const wally_tx_witness_stack_ptr& stack, std::initializer_list<byte_span_t> items);
 
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 

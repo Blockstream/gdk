@@ -43,8 +43,6 @@ namespace sdk {
     std::vector<unsigned char> scriptsig_multisig_for_backend(bool is_low_r,
         const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
 
-    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver);
-
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential);
