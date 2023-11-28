@@ -4,6 +4,7 @@
 
 #include "ga_wally.hpp"
 #include <nlohmann/json_fwd.hpp>
+#include <optional>
 
 namespace ga {
 namespace sdk {
@@ -34,6 +35,7 @@ namespace sdk {
         const struct wally_tx_input& get_input(size_t index) const;
         auto get_inputs() { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
         auto get_inputs() const { return gsl::make_span(m_tx->inputs, m_tx->num_inputs); }
+        std::optional<uint32_t> find_input_spending(byte_span_t txid, uint32_t vout) const;
 
         void add_input(byte_span_t txhash, uint32_t index, uint32_t sequence, byte_span_t script,
             const struct wally_tx_witness_stack* witness = nullptr);

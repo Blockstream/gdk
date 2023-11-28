@@ -72,6 +72,13 @@ namespace sdk {
     // Set the error in a transaction, if it hasn't been set already
     void set_tx_error(nlohmann::json& result, const std::string& error, bool overwrite = false);
 
+    // Add a UTXO to a transaction, and optionally to "transaction_inputs".
+    // Sets "sequence" and "user_path" in the source UTXO, and creates dummy
+    // script/witness items so that fee estimation is accurate.
+    // Returns the amount of the added UTXO.
+    amount add_tx_input(
+        session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs);
+
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 

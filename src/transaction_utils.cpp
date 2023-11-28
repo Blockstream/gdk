@@ -454,6 +454,72 @@ namespace sdk {
         }
     }
 
+    amount add_tx_input(
+        session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs)
+    {
+        using namespace address_type;
+
+        // Ensure this input hasn't been added before
+        const auto txid = h2b_rev(j_strref(utxo, "txhash"));
+        const auto vout = j_uint32ref(utxo, "pt_idx");
+        GDK_RUNTIME_ASSERT(!tx.find_input_spending(txid, vout).has_value());
+
+        const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
+
+        const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
+        const auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
+        utxo["sequence"] = sequence;
+
+        std::vector<unsigned char> script;
+        wally_tx_witness_stack_ptr witness;
+
+        if (utxo.contains("script_sig") && utxo.contains("witness")) {
+            script = h2b(j_strref(utxo, "script_sig"));
+            witness = make_witness_stack();
+            for (const auto& item : j_arrayref(utxo, "witness")) {
+                tx_witness_stack_add(witness, h2b(item));
+            }
+        } else {
+            const auto& addr_type = j_strref(utxo, "address_type");
+
+            utxo_add_paths(session, utxo);
+
+            // Populate the prevout script if missing so signing can use it later
+            if (utxo.find("prevout_script") == utxo.end()) {
+                utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
+            }
+
+            if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+                const auto public_key = h2b(j_strref(utxo, "public_key"));
+                if (addr_type == p2pkh) {
+                    // Singlesig or sweep p2pkh
+                    script = dummy_scriptsig_p2pkh(is_low_r, public_key);
+                } else {
+                    // Singlesig segwit
+                    witness = dummy_witness_p2wpkh(is_low_r, public_key);
+                    if (addr_type == p2sh_p2wpkh) {
+                        script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
+                    }
+                    // For p2wpkh, the script is empty
+                }
+            } else if (addr_type == csv || addr_type == p2wsh) {
+                // Multisig segwit
+                witness = dummy_witness_multisig(is_low_r, h2b(utxo.at("prevout_script")), addr_type);
+                script.resize(3 + SHA256_LEN); // Dummy witness script
+            } else {
+                // Multisig pre-segwit
+                GDK_RUNTIME_ASSERT(addr_type == p2sh);
+                script = dummy_scriptsig_multisig(is_low_r, h2b(utxo.at("prevout_script")));
+            }
+        }
+        // Add the input to the tx
+        tx.add_input(txid, vout, sequence, script, witness.get());
+        if (add_to_tx_inputs) {
+            result["transaction_inputs"].push_back(utxo);
+        }
+        return j_amountref(utxo);
+    }
+
     // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)
