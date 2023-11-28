@@ -2079,9 +2079,10 @@ namespace sdk {
             } else if (address_type_p == utxo.end()) {
                 // This UTXO has not been processed yet
                 // Address type is non-blank for spendable UTXOs
-                std::string addr_type = get_utxo_address_type_from_script_type(utxo);
-
+                auto addr_type = address_type_from_script_type(j_uint32ref(utxo, "script_type"));
                 const bool is_external = !j_str_is_empty(utxo, "private_key");
+                // For multisig, p2pkh is only valid for sweep (external) utxos
+                GDK_RUNTIME_ASSERT(is_external == (addr_type == address_type::p2pkh));
                 if (is_external) {
                     json_rename_key(utxo, "tx_hash", "txhash");
                     json_rename_key(utxo, "tx_pos", "pt_idx");
@@ -2630,20 +2631,6 @@ namespace sdk {
         }
     }
 
-    static void set_addr_script_type(nlohmann::json& address, const std::string& addr_type)
-    {
-        // Add the script type, to allow addresses to be used interchangeably with utxos
-        script_type addr_script_type;
-        if (addr_type == address_type::csv) {
-            addr_script_type = script_type::ga_p2sh_p2wsh_csv_fortified_out;
-        } else if (addr_type == address_type::p2wsh) {
-            addr_script_type = script_type::ga_p2sh_p2wsh_fortified_out;
-        } else {
-            addr_script_type = script_type::ga_p2sh_fortified_out;
-        }
-        address["script_type"] = addr_script_type;
-    }
-
     void ga_session::update_address_info(nlohmann::json& address, bool is_historic)
     {
         bool old_watch_only;
@@ -2662,7 +2649,7 @@ namespace sdk {
         json_rename_key(address, "addr_type", "address_type");
 
         const auto& addr_type = j_strref(address, "address_type");
-        set_addr_script_type(address, addr_type);
+        address["script_type"] = address_type_to_script_type(addr_type);
 
         // Ensure the the server returned a script
         const auto server_script = h2b(j_strref(address, "script"));

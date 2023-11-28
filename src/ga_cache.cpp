@@ -870,8 +870,9 @@ namespace sdk {
         utxo["branch"] = get_uint32(m_stmt_scriptpubkey_search, 1);
         utxo["pointer"] = get_uint32(m_stmt_scriptpubkey_search, 2);
         utxo["subtype"] = get_uint32(m_stmt_scriptpubkey_search, 3);
-        utxo["script_type"] = get_uint32(m_stmt_scriptpubkey_search, 4);
-        utxo["address_type"] = get_utxo_address_type_from_script_type(utxo);
+        const auto script_type = get_uint32(m_stmt_scriptpubkey_search, 4);
+        utxo["script_type"] = script_type;
+        utxo["address_type"] = address_type_from_script_type(script_type);
 
         step_final(m_stmt_scriptpubkey_search);
         return utxo;
