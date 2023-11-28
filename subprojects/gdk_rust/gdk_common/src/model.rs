@@ -297,9 +297,6 @@ pub struct GetTxInOut {
     pub satoshi: u64,
 
     /// Multisig field, always 0.
-    pub script_type: u32,
-
-    /// Multisig field, always 0.
     pub subtype: u32,
 
     // Liquid fields

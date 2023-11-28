@@ -476,7 +476,6 @@ impl Account {
                         is_output: false,
                         is_spent: true,
                         pt_idx: vin as u32,
-                        script_type: 0,
                         subtype: 0,
                         is_relevant,
                         is_internal,
@@ -559,7 +558,6 @@ impl Account {
                         // expensive: involing db hits and potentially network calls; postponing it for now.
                         is_spent: false,
                         pt_idx: vout,
-                        script_type: 0,
                         subtype: 0,
                         is_relevant,
                         is_internal,
