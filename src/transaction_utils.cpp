@@ -157,6 +157,7 @@ namespace sdk {
         } else if (addr_type == address_type::p2wsh) {
             return ga_p2sh_p2wsh_fortified_out;
         }
+        GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh)
         return ga_p2sh_fortified_out;
     }
 

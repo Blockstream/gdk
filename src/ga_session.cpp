@@ -2114,6 +2114,7 @@ namespace sdk {
                 json_add_if_missing(utxo, "subtype", 0u);
                 json_add_if_missing(utxo, "is_internal", false);
                 utxo["address_type"] = std::move(addr_type);
+                utxo.erase("script_type");
             }
         }
 
@@ -2463,13 +2464,6 @@ namespace sdk {
         return m_cache->insert_liquid_blinding_data(pubkey, script, nonce, blinding_pubkey);
     }
 
-    void ga_session::encache_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch,
-        uint32_t pointer, uint32_t subtype, uint32_t script_type)
-    {
-        locker_t locker(m_mutex);
-        m_cache->insert_scriptpubkey_data(scriptpubkey, subaccount, branch, pointer, subtype, script_type);
-    }
-
     void ga_session::encache_new_scriptpubkeys(uint32_t subaccount)
     {
         uint32_t current_last_pointer = 0;
@@ -2484,11 +2478,12 @@ namespace sdk {
             for (auto& address : result.at("list")) {
                 const bool allow_unconfidential = true;
                 const auto spk = scriptpubkey_from_address(m_net_params, address.at("address"), allow_unconfidential);
-                const uint32_t branch = json_get_value(address, "branch", 1);
-                const uint32_t pointer = address.at("pointer");
-                const uint32_t subtype = json_get_value(address, "subtype", 0);
-                const uint32_t script_type = address.at("script_type");
-                encache_scriptpubkey_data(spk, subaccount, branch, pointer, subtype, script_type);
+                const uint32_t branch = j_uint32(address, "branch").value_or(1);
+                const uint32_t pointer = j_uint32ref(address, "pointer");
+                const uint32_t subtype = j_uint32_or_zero(address, "subtype");
+                const auto& addr_type = j_strref(address, "address_type");
+                locker_t locker(m_mutex);
+                m_cache->insert_scriptpubkey_data(spk, subaccount, branch, pointer, subtype, addr_type);
             }
             if (result.contains("last_pointer")) {
                 details["last_pointer"] = result.at("last_pointer");
@@ -2647,9 +2642,7 @@ namespace sdk {
         json_rename_key(address, "ad", "address"); // Returned by wamp call get_my_addresses
         json_add_if_missing(address, "subtype", 0, true); // Convert null subtype to 0
         json_rename_key(address, "addr_type", "address_type");
-
-        const auto& addr_type = j_strref(address, "address_type");
-        address["script_type"] = address_type_to_script_type(addr_type);
+        address.erase("script_type");
 
         // Ensure the the server returned a script
         const auto server_script = h2b(j_strref(address, "script"));
@@ -2668,7 +2661,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(address["address"] == derived_address);
         }
 
-        if (addr_type == address_type::csv) {
+        if (j_strref(address, "address_type") == address_type::csv) {
             // Make sure the csv value used is in our csv buckets. If isn't,
             // coins held in such scripts may not be recoverable.
             uint32_t addr_csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);

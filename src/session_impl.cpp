@@ -346,13 +346,6 @@ namespace sdk {
         return false; // No caching by default, so return 'not updated'
     }
 
-    void session_impl::encache_scriptpubkey_data(byte_span_t /*scriptpubkey*/, const uint32_t /*subaccount*/,
-        const uint32_t /*branch*/, const uint32_t /*pointer*/, const uint32_t /*subtype*/,
-        const uint32_t /*script_type*/)
-    {
-        // Overriden for multisig
-    }
-
     void session_impl::encache_new_scriptpubkeys(const uint32_t /*subaccount*/)
     {
         // Overriden for multisig

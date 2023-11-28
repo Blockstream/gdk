@@ -834,7 +834,7 @@ namespace sdk {
     }
 
     void cache::insert_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch,
-        uint32_t pointer, uint32_t subtype, uint32_t script_type)
+        uint32_t pointer, uint32_t subtype, const std::string& addr_type)
     {
         GDK_RUNTIME_ASSERT(!scriptpubkey.empty());
         GDK_RUNTIME_ASSERT(pointer > 0);
@@ -847,7 +847,8 @@ namespace sdk {
         bind_int(m_stmt_scriptpubkey_insert, 3, branch);
         bind_int(m_stmt_scriptpubkey_insert, 4, pointer);
         bind_int(m_stmt_scriptpubkey_insert, 5, subtype);
-        bind_int(m_stmt_scriptpubkey_insert, 6, script_type);
+        // TODO: update the cache to not store script_type
+        bind_int(m_stmt_scriptpubkey_insert, 6, address_type_to_script_type(addr_type));
 
         step_final(m_stmt_scriptpubkey_insert);
         m_require_write = true;
@@ -871,7 +872,6 @@ namespace sdk {
         utxo["pointer"] = get_uint32(m_stmt_scriptpubkey_search, 2);
         utxo["subtype"] = get_uint32(m_stmt_scriptpubkey_search, 3);
         const auto script_type = get_uint32(m_stmt_scriptpubkey_search, 4);
-        utxo["script_type"] = script_type;
         utxo["address_type"] = address_type_from_script_type(script_type);
 
         step_final(m_stmt_scriptpubkey_search);

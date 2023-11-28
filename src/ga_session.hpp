@@ -132,8 +132,6 @@ namespace sdk {
 
         bool encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
             const std::string& nonce_hex, const std::string& blinding_pubkey_hex);
-        void encache_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch, uint32_t pointer,
-            uint32_t subtype, uint32_t script_type);
         void encache_new_scriptpubkeys(uint32_t subaccount);
         nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
 

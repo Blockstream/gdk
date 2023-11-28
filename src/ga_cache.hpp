@@ -61,7 +61,7 @@ namespace sdk {
 
         nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
         void insert_scriptpubkey_data(byte_span_t scriptpubkey, uint32_t subaccount, uint32_t branch, uint32_t pointer,
-            uint32_t subtype, uint32_t script_type);
+            uint32_t subtype, const std::string& addr_type);
         uint32_t get_latest_scriptpubkey_pointer(uint32_t subaccount);
 
         void save_db();
