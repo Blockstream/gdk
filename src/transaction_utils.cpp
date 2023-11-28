@@ -110,6 +110,19 @@ namespace sdk {
         const std::string csv("csv");
     } // namespace address_type
 
+    bool address_type_is_segwit(const std::string& addr_type)
+    {
+        using namespace address_type;
+        if (addr_type == csv || addr_type == p2wsh || addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
+            return true;
+        }
+        if (addr_type == p2sh || addr_type == p2pkh) {
+            return false;
+        }
+        GDK_RUNTIME_ASSERT_MSG(false, std::string("unknown address_type ") + addr_type);
+        return false;
+    }
+
     // Dummy signatures are needed for correctly sizing transactions.
     // All signers are required to produce Low-S signatures to comply with
     // Bitcoin's standardness rules.
@@ -310,20 +323,6 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
         return p2sh_p2wsh_address_from_bytes(net_params, out_script);
-    }
-
-    bool is_segwit_address_type(const nlohmann::json& utxo)
-    {
-        using namespace address_type;
-        const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == csv || addr_type == p2wsh || addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
-            return true;
-        }
-        if (addr_type == p2sh || addr_type == p2pkh) {
-            return false;
-        }
-        GDK_RUNTIME_ASSERT_MSG(false, std::string("unknown address_type ") + addr_type);
-        return false;
     }
 
     std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig, byte_span_t ga_sig,

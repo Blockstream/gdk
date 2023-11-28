@@ -37,7 +37,7 @@ namespace sdk {
         extern const std::string csv;
     } // namespace address_type
 
-    bool is_segwit_address_type(const nlohmann::json& utxo);
+    bool address_type_is_segwit(const std::string& addr_type);
 
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey);
 

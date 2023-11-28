@@ -989,7 +989,7 @@ namespace sdk {
         // - 2of3 p2sh, backup key signing
         // - 2of3 p2wsh, backup key signing
         // - 2of2 csv, csv path
-        if (!is_segwit_address_type(utxo)) {
+        if (!address_type_is_segwit(addr_type)) {
             if (addr_type == p2pkh) {
                 // p2pkh: script sig: <user_sig> <pubkey>
                 return { get_sig_from_p2pkh_script_sig({ input.script, input.script_len }) };
@@ -1173,7 +1173,8 @@ namespace sdk {
         std::array<unsigned char, SHA256_LEN> ret;
         const auto satoshi = j_amountref(utxo).value();
         const auto script = h2b(utxo.at("prevout_script"));
-        const uint32_t flags = is_segwit_address_type(utxo) ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const bool is_segwit = address_type_is_segwit(j_strref(utxo, "address_type"));
+        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
         validate_sighash_flags(sighash_flags, m_is_liquid);
 

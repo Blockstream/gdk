@@ -657,8 +657,8 @@ namespace sdk {
         if (is_partial_multisig) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
-                auto addr_type = j_str_or_empty(utxo, "address_type");
-                if (!addr_type.empty() && !is_segwit_address_type(utxo)) {
+                const auto addr_type = j_str_or_empty(utxo, "address_type");
+                if (!addr_type.empty() && !address_type_is_segwit(addr_type)) {
                     throw user_error("Non-segwit utxos cannnot be used with partial signing");
                 }
             }
@@ -2008,8 +2008,8 @@ namespace sdk {
                 // Multisig partial signing. Ensure all inputs to be signed are segwit
                 auto& inputs = m_details.at("transaction_inputs");
                 for (const auto& utxo : inputs) {
-                    auto addr_type = j_str_or_empty(utxo, "address_type");
-                    if (!addr_type.empty() && !is_segwit_address_type(utxo)) {
+                    const auto addr_type = j_str_or_empty(utxo, "address_type");
+                    if (!addr_type.empty() && !address_type_is_segwit(addr_type)) {
                         throw user_error("Non-segwit utxos cannnot be used with partial signing");
                     }
                 }
