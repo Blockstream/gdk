@@ -168,8 +168,7 @@ namespace sdk {
 
     std::vector<unsigned char> scriptsig_p2sh_p2wpkh_from_bytes(byte_span_t public_key)
     {
-        const uint32_t witness_ver = 0;
-        return witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160 | WALLY_SCRIPT_AS_PUSH);
+        return witness_script(public_key, WALLY_SCRIPT_HASH160 | WALLY_SCRIPT_AS_PUSH);
     }
 
     void scriptpubkey_csv_2of2_then_1_from_bytes(
@@ -318,8 +317,7 @@ namespace sdk {
 
     std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script)
     {
-        const uint32_t witness_ver = 0;
-        const auto witness_program = witness_script(script, witness_ver, WALLY_SCRIPT_SHA256);
+        const auto witness_program = witness_script(script, WALLY_SCRIPT_SHA256);
         return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
     }
 
@@ -330,13 +328,13 @@ namespace sdk {
         return static_cast<uint32_t>(typ);
     }
 
-    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver, uint32_t flags)
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t flags)
     {
-        GDK_RUNTIME_ASSERT(witness_ver == 0); // Only segwit v0 is supported
+        constexpr uint32_t segwit_v0 = 0;
         size_t written;
         std::vector<unsigned char> ret(WALLY_WITNESSSCRIPT_MAX_LEN);
         GDK_VERIFY(wally_witness_program_from_bytes_and_version(
-            script.data(), script.size(), witness_ver, flags, &ret[0], ret.size(), &written));
+            script.data(), script.size(), segwit_v0, flags, &ret[0], ret.size(), &written));
         GDK_RUNTIME_ASSERT(written <= ret.size());
         ret.resize(written);
         return ret;

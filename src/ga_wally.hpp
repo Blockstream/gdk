@@ -153,7 +153,8 @@ namespace sdk {
 
     uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey);
 
-    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t witness_ver, uint32_t flags);
+    // Create a v0 segwit witness program
+    std::vector<unsigned char> witness_script(byte_span_t script, uint32_t flags);
 
     std::array<unsigned char, SHA256_LEN> format_bitcoin_message_hash(byte_span_t message);
 

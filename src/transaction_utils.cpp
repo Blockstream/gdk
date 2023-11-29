@@ -132,47 +132,12 @@ namespace sdk {
             return ret;
         }
 
-        static auto base58_address_from_bytes(unsigned char version, byte_span_t script_or_pubkey)
+        static auto base58_address(unsigned char version, byte_span_t bytes)
         {
             std::array<unsigned char, HASH160_LEN + 1> addr_bytes;
             addr_bytes[0] = version;
-            GDK_VERIFY(
-                wally_hash160(script_or_pubkey.data(), script_or_pubkey.size(), addr_bytes.begin() + 1, HASH160_LEN));
+            GDK_VERIFY(wally_hash160(bytes.data(), bytes.size(), addr_bytes.begin() + 1, HASH160_LEN));
             return base58check_from_bytes(addr_bytes);
-        }
-
-        inline auto p2sh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
-        {
-            return base58_address_from_bytes(net_params.btc_p2sh_version(), script);
-        }
-
-        inline auto p2pkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-        {
-            return base58_address_from_bytes(net_params.btc_version(), public_key);
-        }
-
-        static auto p2sh_wrapped_address_from_bytes(
-            const network_parameters& net_params, byte_span_t script_or_pubkey, uint32_t flags)
-        {
-            const uint32_t witness_ver = 0;
-            return p2sh_address_from_bytes(net_params, witness_script(script_or_pubkey, witness_ver, flags));
-        }
-
-        inline auto p2sh_p2wsh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
-        {
-            return p2sh_wrapped_address_from_bytes(net_params, script, WALLY_SCRIPT_SHA256);
-        }
-
-        inline auto p2sh_p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-        {
-            return p2sh_wrapped_address_from_bytes(net_params, public_key, WALLY_SCRIPT_HASH160);
-        }
-
-        inline auto p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-        {
-            const uint32_t witness_ver = 0;
-            const auto witness_program = witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160);
-            return segwit_address(net_params, witness_program);
         }
 
         // Note that if id_nonconfidential_addresses_not is returned in 'error', this
@@ -390,12 +355,14 @@ namespace sdk {
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
             const auto pub_key = session.pubkeys_from_utxo(utxo).at(0);
-            if (addr_type == p2sh_p2wpkh) {
-                return p2sh_p2wpkh_address_from_public_key(net_params, pub_key);
-            } else if (addr_type == p2wpkh) {
-                return p2wpkh_address_from_public_key(net_params, pub_key);
+            if (addr_type == p2pkh) {
+                return base58_address(net_params.btc_version(), pub_key);
             }
-            return p2pkh_address_from_public_key(net_params, pub_key);
+            const auto witness_program = witness_script(pub_key, WALLY_SCRIPT_HASH160);
+            if (addr_type == p2sh_p2wpkh) {
+                return base58_address(net_params.btc_p2sh_version(), witness_program);
+            }
+            return segwit_address(net_params, witness_program);
         }
         const auto out_script = session.output_script_from_utxo(utxo);
         if (verify_script) {
@@ -403,16 +370,16 @@ namespace sdk {
             // Used to validate scripts returned by the Green backend.
             // Once all sessions can generate addresses, the backend will
             // be simplified to not provide them. Hence, check for that here.
-            auto utxo_script_hex = j_str(utxo, "script");
-            if (utxo_script_hex.has_value()) {
-                GDK_RUNTIME_ASSERT(h2b(utxo_script_hex.value()) == out_script);
+            if (auto script_hex = j_str(utxo, "script"); script_hex.has_value()) {
+                GDK_RUNTIME_ASSERT(h2b(script_hex.value()) == out_script);
             }
         }
         if (addr_type == address_type::p2sh) {
-            return p2sh_address_from_bytes(net_params, out_script);
+            return base58_address(net_params.btc_p2sh_version(), out_script);
         }
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
-        return p2sh_p2wsh_address_from_bytes(net_params, out_script);
+        const auto witness_program = witness_script(out_script, WALLY_SCRIPT_SHA256);
+        return base58_address(net_params.btc_p2sh_version(), witness_program);
     }
 
     static std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig,
@@ -519,15 +486,15 @@ namespace sdk {
 
             if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
                 // Singlesig
-                const auto public_key = h2b(j_strref(utxo, "public_key"));
+                const auto pub_key = h2b(j_strref(utxo, "public_key"));
                 if (addr_type == p2pkh) {
                     // Singlesig or sweep p2pkh
-                    script = scriptsig_p2pkh_from_der(public_key, user_der);
+                    script = scriptsig_p2pkh_from_der(pub_key, user_der);
                 } else {
                     // Singlesig segwit
-                    witness = witness_stack({ user_der, public_key });
+                    witness = witness_stack({ user_der, pub_key });
                     if (addr_type == p2sh_p2wpkh) {
-                        script = scriptsig_p2sh_p2wpkh_from_bytes(public_key);
+                        script = scriptsig_p2sh_p2wpkh_from_bytes(pub_key);
                     }
                     // For p2wpkh, the script is empty
                 }
@@ -567,17 +534,17 @@ namespace sdk {
 
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
-            const auto public_key = h2b(utxo.at("public_key"));
+            const auto pub_key = h2b(utxo.at("public_key"));
 
             if (addr_type == p2pkh) {
                 // Singlesig (or sweep) p2pkh
-                tx.set_input_script(index, scriptsig_p2pkh_from_der(public_key, der));
+                tx.set_input_script(index, scriptsig_p2pkh_from_der(pub_key, der));
                 return;
             }
             // Singlesig segwit
-            tx.set_input_witness(index, witness_stack({ der, public_key }).get());
+            tx.set_input_witness(index, witness_stack({ der, pub_key }).get());
             if (addr_type == p2sh_p2wpkh) {
-                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(pub_key));
             } else {
                 // for native segwit ensure the scriptsig is empty
                 tx.set_input_script(index, byte_span_t());
@@ -588,9 +555,8 @@ namespace sdk {
         if (addr_type == csv || addr_type == p2wsh) {
             // Multisig segwit
             tx.set_input_witness(index, witness_stack({ der }).get());
-            constexpr uint32_t witness_ver = 0;
             constexpr uint32_t flags = WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH;
-            tx.set_input_script(index, witness_script(script, witness_ver, flags));
+            tx.set_input_script(index, witness_script(script, flags));
         } else {
             // Multisig pre-segwit
             GDK_RUNTIME_ASSERT(addr_type == p2sh);
@@ -682,13 +648,13 @@ namespace sdk {
 
             if (is_liquid && !is_blinded) {
                 // Fetch the blinding key from the confidential address
-                std::string blinding_key;
+                pub_key_t blinding_key;
                 if (boost::starts_with(address, blech32_prefix)) {
-                    blinding_key = b2h(confidential_addr_segwit_to_ec_public_key(address, blech32_prefix));
+                    blinding_key = confidential_addr_segwit_to_ec_public_key(address, blech32_prefix);
                 } else {
-                    blinding_key = b2h(confidential_addr_to_ec_public_key(address, net_params.blinded_prefix()));
+                    blinding_key = confidential_addr_to_ec_public_key(address, net_params.blinded_prefix());
                 }
-                addressee["blinding_key"] = std::move(blinding_key);
+                addressee["blinding_key"] = b2h(blinding_key);
             }
         } catch (const std::exception& e) {
             return e.what();
