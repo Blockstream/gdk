@@ -220,10 +220,6 @@ namespace sdk {
     // Returns true if 'hex' decodes correctly to 'len' bytes
     bool validate_hex(const std::string& hex, size_t len);
 
-    std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family);
-
-    std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family);
-
     std::string base58check_from_bytes(byte_span_t data);
 
     bool validate_base58check(const std::string& base58);

@@ -458,37 +458,6 @@ namespace sdk {
         return hex.size() == len * 2 && wally_hex_verify(hex.c_str()) == WALLY_OK;
     }
 
-    std::vector<unsigned char> addr_segwit_to_bytes(const std::string& addr, const std::string& family)
-    {
-        const uint32_t flags = 0;
-        size_t written;
-        std::vector<unsigned char> ret(WALLY_WITNESSSCRIPT_MAX_LEN);
-        bool valid = false;
-
-        if (wally_addr_segwit_to_bytes(addr.c_str(), family.c_str(), flags, &ret[0], ret.size(), &written) == WALLY_OK
-            && written > 0) {
-            // A valid segwit address is either v0 (p2wpkh or p2wsh) or v1 (p2tr).
-            if (ret[0] == OP_0) {
-                valid = written == WALLY_SCRIPTPUBKEY_P2WSH_LEN || written == WALLY_SCRIPTPUBKEY_P2WPKH_LEN;
-            } else if (ret[0] == OP_1) {
-                valid = written == WALLY_SCRIPTPUBKEY_P2TR_LEN;
-            }
-        }
-        if (!valid) {
-            throw user_error(res::id_invalid_address);
-        }
-        ret.resize(written);
-        return ret;
-    }
-
-    std::string addr_segwit_from_bytes(byte_span_t bytes, const std::string& family)
-    {
-        const uint32_t flags = 0;
-        char* ret = 0;
-        GDK_VERIFY(wally_addr_segwit_from_bytes(bytes.data(), bytes.size(), family.c_str(), flags, &ret));
-        return make_string(ret);
-    }
-
     std::string base58check_from_bytes(byte_span_t data)
     {
         char* ret;

@@ -99,6 +99,39 @@ namespace sdk {
 
         static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
+        static auto segwit_address(const network_parameters& net_params, byte_span_t bytes)
+        {
+            constexpr uint32_t flags = 0;
+            const auto family = net_params.bech32_prefix();
+            char* ret = 0;
+            GDK_VERIFY(wally_addr_segwit_from_bytes(bytes.data(), bytes.size(), family.c_str(), flags, &ret));
+            return make_string(ret);
+        }
+
+        static auto segwit_address_decode(const network_parameters& net_params, const std::string& addr)
+        {
+            constexpr uint32_t flags = 0;
+            const auto family = net_params.bech32_prefix();
+            std::vector<unsigned char> ret(WALLY_WITNESSSCRIPT_MAX_LEN);
+            size_t written;
+            bool valid = wally_addr_segwit_to_bytes(addr.c_str(), family.c_str(), flags, &ret[0], ret.size(), &written)
+                == WALLY_OK;
+            if (valid && ret[0] == OP_0) {
+                // v0 (p2wpkh or p2wsh)
+                valid = written == WALLY_SCRIPTPUBKEY_P2WSH_LEN || written == WALLY_SCRIPTPUBKEY_P2WPKH_LEN;
+            } else if (valid && ret[0] == OP_1) {
+                // v1 (p2tr).
+                valid = written == WALLY_SCRIPTPUBKEY_P2TR_LEN;
+            } else {
+                valid = false; // Failed to parse or Unknown version
+            }
+            if (!valid) {
+                throw user_error(res::id_invalid_address);
+            }
+            ret.resize(written);
+            return ret;
+        }
+
         static auto base58_address_from_bytes(unsigned char version, byte_span_t script_or_pubkey)
         {
             std::array<unsigned char, HASH160_LEN + 1> addr_bytes;
@@ -139,7 +172,7 @@ namespace sdk {
         {
             const uint32_t witness_ver = 0;
             const auto witness_program = witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160);
-            return addr_segwit_from_bytes(witness_program, net_params.bech32_prefix());
+            return segwit_address(net_params, witness_program);
         }
 
         // Note that if id_nonconfidential_addresses_not is returned in 'error', this
@@ -187,7 +220,7 @@ namespace sdk {
             try {
                 if (is_bech32 || is_blech32) {
                     // Segwit address
-                    return addr_segwit_to_bytes(address, net_params.bech32_prefix());
+                    return segwit_address_decode(net_params, address);
                 } else {
                     // Base58 encoded bitcoin address
                     const auto addr_bytes = base58check_to_bytes(address);
@@ -276,7 +309,7 @@ namespace sdk {
             return base58check_from_bytes(addr_bytes);
         } else if (script_type == WALLY_SCRIPT_TYPE_P2WPKH || script_type == WALLY_SCRIPT_TYPE_P2WSH
             || script_type == WALLY_SCRIPT_TYPE_P2TR) {
-            return addr_segwit_from_bytes(scriptpubkey, net_params.bech32_prefix());
+            return segwit_address(net_params, scriptpubkey);
         }
         GDK_RUNTIME_ASSERT_MSG(false, std::string("unhandled scriptpubkey ") + b2h(scriptpubkey));
         return std::string();
