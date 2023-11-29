@@ -568,7 +568,6 @@ namespace sdk {
         }
     }
 
-    // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)
     {

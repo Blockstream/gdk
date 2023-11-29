@@ -631,12 +631,8 @@ namespace sdk {
                 a.addressee_indices.push_back(i);
                 // Add the value of this output to the required total
                 a.required_total += j_amountref(addressee);
-            }
-
-            // Add all addressees to our transaction, in order
-            for (size_t i = 0; i < addressees_p->size(); ++i) {
-                auto& json_addressee = addressees_p->at(i);
-                add_tx_addressee_output(session, result, tx, json_addressee);
+                // Add the addressee to our transaction
+                add_tx_addressee_output(session, result, tx, addressee);
             }
 
             if (!are_tx_outputs_unique(result)) {
