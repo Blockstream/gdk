@@ -36,7 +36,6 @@ template <> struct default_delete<struct wally_tx_output> {
 namespace ga {
 namespace sdk {
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
-    using wally_tx_witness_stack_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
 
     using byte_span_t = gsl::span<const unsigned char>;
     using uint32_span_t = gsl::span<const uint32_t>;
@@ -337,10 +336,6 @@ namespace sdk {
     abf_vbf_t asset_blinding_key_to_abf_vbf(byte_span_t blinding_key, byte_span_t hash_prevouts, uint32_t output_index);
 
     std::array<unsigned char, SHA256_LEN> get_hash_prevouts(byte_span_t txids, uint32_span_t output_indices);
-
-    wally_tx_witness_stack_ptr witness_stack(std::initializer_list<byte_span_t> items = {}, size_t num_expected = 0);
-
-    void witness_stack_add(const wally_tx_witness_stack_ptr& stack, std::initializer_list<byte_span_t> items);
 
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi);
 

@@ -955,22 +955,6 @@ namespace sdk {
         return ret;
     }
 
-    wally_tx_witness_stack_ptr witness_stack(std::initializer_list<byte_span_t> items, size_t num_expected)
-    {
-        struct wally_tx_witness_stack* p;
-        GDK_VERIFY(wally_tx_witness_stack_init_alloc(num_expected ? num_expected : items.size(), &p));
-        auto wit = wally_tx_witness_stack_ptr(p);
-        witness_stack_add(wit, items);
-        return wit;
-    }
-
-    void witness_stack_add(const wally_tx_witness_stack_ptr& stack, std::initializer_list<byte_span_t> items)
-    {
-        for (const auto& item : items) {
-            GDK_VERIFY(wally_tx_witness_stack_add(stack.get(), item.data(), item.size()));
-        }
-    }
-
     cvalue_t tx_confidential_value_from_satoshi(uint64_t satoshi)
     {
         cvalue_t ct_value;

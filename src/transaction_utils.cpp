@@ -15,100 +15,116 @@
 
 #include <cctype>
 
-namespace {
-// Script types returned by the Green backend server
-constexpr uint32_t ga_p2sh_fortified_out = 10;
-constexpr uint32_t ga_p2sh_p2wsh_fortified_out = 14;
-constexpr uint32_t ga_p2sh_p2wsh_csv_fortified_out = 15;
-constexpr uint32_t ga_redeem_p2sh_fortified = 150;
-constexpr uint32_t ga_redeem_p2sh_p2wsh_fortified = 159;
-constexpr uint32_t ga_redeem_p2sh_p2wsh_csv_fortified = 162;
-
-static bool isupper(const std::string& s)
-{
-    // String is upper case if no lower case characters are found
-    return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::islower(c) != 0; });
-}
-
-static bool islower(const std::string& s)
-{
-    // String is lower case if no upper case characters are found
-    return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::isupper(c) != 0; });
-}
-
-using namespace ga::sdk;
-
-// Note that if id_nonconfidential_addresses_not is returned in 'error', this
-// call still returns the resulting script. This behaviour is used by
-// add_tx_addressee_output when adding preblinded outputs (where is_blinded=true).
-static std::vector<unsigned char> output_script_for_address(
-    const network_parameters& net_params, std::string address, std::string& error)
-{
-    // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
-    const bool is_bech32 = boost::istarts_with(address, net_params.bech32_prefix());
-    const bool is_blech32 = net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix());
-    const bool is_base58 = !is_blech32 && !is_bech32 && validate_base58check(address);
-
-    if (!is_bech32 && !is_blech32 && !is_base58) {
-        error = res::id_invalid_address; // Unknown address type
-        return {};
-    }
-
-    if ((is_bech32 || is_blech32) && !(islower(address) || isupper(address))) {
-        // BIP-173 specifically disallows mixed case
-        error = res::id_invalid_address;
-        return {};
-    }
-
-    if (net_params.is_liquid()) {
-        if (is_bech32) {
-            error = res::id_nonconfidential_addresses_not;
-        } else {
-            try {
-                if (is_blech32) {
-                    address = confidential_addr_to_addr_segwit(
-                        address, net_params.blech32_prefix(), net_params.bech32_prefix());
-                } else if (is_possible_confidential_addr(address)) {
-                    address = confidential_addr_to_addr(address, net_params.blinded_prefix());
-                } else {
-                    error = res::id_nonconfidential_addresses_not;
-                }
-            } catch (const std::exception& e) {
-                // If the address isn't blech32, its base58 with the wrong prefix byte
-                error = is_blech32 ? res::id_invalid_address : res::id_nonconfidential_addresses_not;
-            }
-        }
-    }
-
-    try {
-        if (is_bech32 || is_blech32) {
-            // Segwit address
-            return addr_segwit_to_bytes(address, net_params.bech32_prefix());
-        } else {
-            // Base58 encoded bitcoin address
-            const auto addr_bytes = base58check_to_bytes(address);
-            GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
-            const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
-
-            if (addr_bytes.front() == net_params.btc_p2sh_version()) {
-                return scriptpubkey_p2sh_from_hash160(script_hash);
-            }
-            if (addr_bytes.front() == net_params.btc_version()) {
-                return scriptpubkey_p2pkh_from_hash160(script_hash);
-            }
-        }
-    } catch (const std::exception&) {
-        // Return id_invalid_address below
-    }
-    if (error.empty()) {
-        error = res::id_invalid_address;
-    }
-    return {};
-}
-} // namespace
-
 namespace ga {
 namespace sdk {
+    namespace {
+        // Script types returned by the Green backend server
+        constexpr uint32_t ga_p2sh_fortified_out = 10;
+        constexpr uint32_t ga_p2sh_p2wsh_fortified_out = 14;
+        constexpr uint32_t ga_p2sh_p2wsh_csv_fortified_out = 15;
+        constexpr uint32_t ga_redeem_p2sh_fortified = 150;
+        constexpr uint32_t ga_redeem_p2sh_p2wsh_fortified = 159;
+        constexpr uint32_t ga_redeem_p2sh_p2wsh_csv_fortified = 162;
+
+        static bool isupper(const std::string& s)
+        {
+            // String is upper case if no lower case characters are found
+            return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::islower(c) != 0; });
+        }
+
+        static bool islower(const std::string& s)
+        {
+            // String is lower case if no upper case characters are found
+            return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::isupper(c) != 0; });
+        }
+
+        using witness_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
+
+        static void witness_stack_add(const witness_ptr& stack, std::initializer_list<byte_span_t> items)
+        {
+            for (const auto& item : items) {
+                GDK_VERIFY(wally_tx_witness_stack_add(stack.get(), item.data(), item.size()));
+            }
+        }
+
+        static witness_ptr witness_stack(std::initializer_list<byte_span_t> items, size_t num_expected = 0)
+        {
+            struct wally_tx_witness_stack* p;
+            GDK_VERIFY(wally_tx_witness_stack_init_alloc(num_expected ? num_expected : items.size(), &p));
+            auto wit = witness_ptr(p);
+            witness_stack_add(wit, items);
+            return wit;
+        }
+
+        // Note that if id_nonconfidential_addresses_not is returned in 'error', this
+        // call still returns the resulting script. This behaviour is used by
+        // add_tx_addressee_output when adding preblinded outputs (where is_blinded=true).
+        static std::vector<unsigned char> output_script_for_address(
+            const network_parameters& net_params, std::string address, std::string& error)
+        {
+            // bech32 is a vanilla bech32 address, blech32 is a confidential liquid address
+            const bool is_bech32 = boost::istarts_with(address, net_params.bech32_prefix());
+            const bool is_blech32 = net_params.is_liquid() && boost::istarts_with(address, net_params.blech32_prefix());
+            const bool is_base58 = !is_blech32 && !is_bech32 && validate_base58check(address);
+
+            if (!is_bech32 && !is_blech32 && !is_base58) {
+                error = res::id_invalid_address; // Unknown address type
+                return {};
+            }
+
+            if ((is_bech32 || is_blech32) && !(islower(address) || isupper(address))) {
+                // BIP-173 specifically disallows mixed case
+                error = res::id_invalid_address;
+                return {};
+            }
+
+            if (net_params.is_liquid()) {
+                if (is_bech32) {
+                    error = res::id_nonconfidential_addresses_not;
+                } else {
+                    try {
+                        if (is_blech32) {
+                            address = confidential_addr_to_addr_segwit(
+                                address, net_params.blech32_prefix(), net_params.bech32_prefix());
+                        } else if (is_possible_confidential_addr(address)) {
+                            address = confidential_addr_to_addr(address, net_params.blinded_prefix());
+                        } else {
+                            error = res::id_nonconfidential_addresses_not;
+                        }
+                    } catch (const std::exception& e) {
+                        // If the address isn't blech32, its base58 with the wrong prefix byte
+                        error = is_blech32 ? res::id_invalid_address : res::id_nonconfidential_addresses_not;
+                    }
+                }
+            }
+
+            try {
+                if (is_bech32 || is_blech32) {
+                    // Segwit address
+                    return addr_segwit_to_bytes(address, net_params.bech32_prefix());
+                } else {
+                    // Base58 encoded bitcoin address
+                    const auto addr_bytes = base58check_to_bytes(address);
+                    GDK_RUNTIME_ASSERT(addr_bytes.size() == 1 + HASH160_LEN);
+                    const auto script_hash = gsl::make_span(addr_bytes).subspan(1, HASH160_LEN);
+
+                    if (addr_bytes.front() == net_params.btc_p2sh_version()) {
+                        return scriptpubkey_p2sh_from_hash160(script_hash);
+                    }
+                    if (addr_bytes.front() == net_params.btc_version()) {
+                        return scriptpubkey_p2pkh_from_hash160(script_hash);
+                    }
+                }
+            } catch (const std::exception&) {
+                // Return id_invalid_address below
+            }
+            if (error.empty()) {
+                error = res::id_invalid_address;
+            }
+            return {};
+        }
+    } // namespace
+
     namespace address_type {
         const std::string p2pkh("p2pkh");
         const std::string p2wpkh("p2wpkh");
@@ -438,7 +454,7 @@ namespace sdk {
         utxo["sequence"] = sequence;
 
         std::vector<unsigned char> script;
-        wally_tx_witness_stack_ptr witness;
+        witness_ptr witness;
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
