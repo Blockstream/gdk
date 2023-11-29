@@ -3138,24 +3138,14 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(unsigned_tx.get_weight() < MAX_TX_WEIGHT);
 
         nlohmann::json private_data;
-        // FIXME: social_destination/social_destination_type/payreq if BIP70
-
-        const auto blinding_nonces_p = result.find("blinding_nonces");
-        if (blinding_nonces_p != result.end()) {
-            private_data["blinding_nonces"] = *blinding_nonces_p;
+        if (auto p = result.find("blinding_nonces"); p != result.end()) {
+            private_data["blinding_nonces"] = *p;
         }
 
         const auto mp_2fa = mp_cast(twofactor_data);
         const auto mp_pd = mp_cast(private_data);
-        nlohmann::json tx_details;
-        // TODO: Merge these calls when the servers are updated
-        if (is_send) {
-            constexpr bool return_tx = true;
-            tx_details
-                = wamp_cast_json(m_wamp->call("vault.send_raw_tx", tx_hex, mp_2fa.get(), mp_pd.get(), return_tx));
-        } else {
-            tx_details = wamp_cast_json(m_wamp->call("vault.sign_raw_tx", tx_hex, mp_2fa.get(), mp_pd.get()));
-        }
+        const char* handler = is_send ? "vault.send_raw_tx" : "vault.sign_raw_tx";
+        auto tx_details = wamp_cast_json(m_wamp->call(handler, tx_hex, mp_2fa.get(), mp_pd.get()));
 
         const amount::value_type decrease = tx_details.at("limit_decrease");
         const auto txhash_hex = tx_details["txhash"];
