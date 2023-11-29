@@ -2078,30 +2078,23 @@ namespace sdk {
                 }
             } else if (address_type_p == utxo.end()) {
                 // This UTXO has not been processed yet
+                GDK_RUNTIME_ASSERT(j_str_is_empty(utxo, "private_key"));
+
                 // Address type is non-blank for spendable UTXOs
                 auto addr_type = address_type_from_script_type(j_uint32ref(utxo, "script_type"));
-                const bool is_external = !j_str_is_empty(utxo, "private_key");
-                // For multisig, p2pkh is only valid for sweep (external) utxos
-                GDK_RUNTIME_ASSERT(is_external == (addr_type == address_type::p2pkh));
-                if (is_external) {
-                    json_rename_key(utxo, "tx_hash", "txhash");
-                    json_rename_key(utxo, "tx_pos", "pt_idx");
-                    utxo["satoshi"] = j_amount_or_zero(utxo, "value").value();
-                } else {
-                    if (is_liquid) {
-                        if (j_bool(utxo, "is_relevant").value_or(true)) {
-                            updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
-                        } else {
-                            constexpr bool mark_unconfidential = false;
-                            remove_utxo_proofs(utxo, mark_unconfidential);
-                        }
+                if (is_liquid) {
+                    if (j_bool(utxo, "is_relevant").value_or(true)) {
+                        updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
                     } else {
-                        // Use lexical conversion as the server returns value as a string
-                        amount::value_type value;
-                        using boost::conversion::try_lexical_convert;
-                        GDK_RUNTIME_ASSERT(try_lexical_convert(j_str_or_empty(utxo, "value"), value));
-                        utxo["satoshi"] = value;
+                        constexpr bool mark_unconfidential = false;
+                        remove_utxo_proofs(utxo, mark_unconfidential);
                     }
+                } else {
+                    // Use lexical conversion as the server returns value as a string
+                    amount::value_type value;
+                    using boost::conversion::try_lexical_convert;
+                    GDK_RUNTIME_ASSERT(try_lexical_convert(j_str_or_empty(utxo, "value"), value));
+                    utxo["satoshi"] = value;
                 }
                 if (!utxo.contains("error")) {
                     utxo.erase("value"); // Only remove value if we unblinded it
