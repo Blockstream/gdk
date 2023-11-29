@@ -849,48 +849,6 @@ namespace sdk {
         GDK_VERIFY(wally_tx_set_input_witness(m_tx.get(), index, witness));
     }
 
-    void Tx::set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r)
-    {
-        using namespace address_type;
-        const auto& addr_type = j_strref(utxo, "address_type");
-        auto der = h2b(der_hex);
-
-        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
-            const auto public_key = h2b(utxo.at("public_key"));
-
-            if (addr_type == p2pkh) {
-                // Singlesig (or sweep) p2pkh
-                set_input_script(index, scriptsig_p2pkh_from_der(public_key, der));
-                return;
-            }
-            // Singlesig segwit
-            set_input_witness(index, witness_stack({ der, public_key }).get());
-            if (addr_type == p2sh_p2wpkh) {
-                set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
-            } else {
-                // for native segwit ensure the scriptsig is empty
-                set_input_script(index, byte_span_t());
-            }
-            return;
-        }
-        const auto script = h2b(utxo.at("prevout_script"));
-        if (addr_type == csv || addr_type == p2wsh) {
-            // Multisig segwit
-            set_input_witness(index, witness_stack({ der }).get());
-            constexpr uint32_t witness_ver = 0;
-            constexpr uint32_t flags = WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH;
-            set_input_script(index, witness_script(script, witness_ver, flags));
-        } else {
-            // Multisig pre-segwit
-            GDK_RUNTIME_ASSERT(addr_type == p2sh);
-            constexpr bool has_sighash_byte = true;
-            const auto user_sig = ec_sig_from_der(der, has_sighash_byte);
-            const uint32_t user_sighash_flags = der.back();
-            auto scriptsig = scriptsig_multisig_for_backend(is_low_r, script, user_sig, user_sighash_flags);
-            set_input_script(index, scriptsig);
-        }
-    }
-
     void Tx::randomize_inputs(nlohmann::json& tx_inputs)
     {
         // Permute positions

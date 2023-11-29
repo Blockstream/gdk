@@ -42,6 +42,7 @@ namespace sdk {
 
         void set_input_signature(size_t index, const nlohmann::json& utxo, const std::string& der_hex, bool is_low_r);
         void set_input_script(size_t index, byte_span_t script);
+        void set_input_witness(size_t index, const struct wally_tx_witness_stack* witness);
 
         std::vector<sig_and_sighash_t> get_input_signatures(const nlohmann::json& utxo, size_t index) const;
 
@@ -77,8 +78,6 @@ namespace sdk {
 
     private:
         uint32_t get_flags() const;
-
-        void set_input_witness(size_t index, const struct wally_tx_witness_stack* witness);
 
         struct tx_deleter {
             void operator()(struct wally_tx* p);

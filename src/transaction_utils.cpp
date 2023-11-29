@@ -507,6 +507,49 @@ namespace sdk {
         return j_amountref(utxo);
     }
 
+    void add_tx_user_signature(
+        session_impl& /*session*/, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t der, bool is_low_r)
+    {
+        using namespace address_type;
+        const nlohmann::json& utxo = j_arrayref(result, "transaction_inputs").at(index);
+
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+            const auto public_key = h2b(utxo.at("public_key"));
+
+            if (addr_type == p2pkh) {
+                // Singlesig (or sweep) p2pkh
+                tx.set_input_script(index, scriptsig_p2pkh_from_der(public_key, der));
+                return;
+            }
+            // Singlesig segwit
+            tx.set_input_witness(index, witness_stack({ der, public_key }).get());
+            if (addr_type == p2sh_p2wpkh) {
+                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(public_key));
+            } else {
+                // for native segwit ensure the scriptsig is empty
+                tx.set_input_script(index, byte_span_t());
+            }
+            return;
+        }
+        const auto script = h2b(utxo.at("prevout_script"));
+        if (addr_type == csv || addr_type == p2wsh) {
+            // Multisig segwit
+            tx.set_input_witness(index, witness_stack({ der }).get());
+            constexpr uint32_t witness_ver = 0;
+            constexpr uint32_t flags = WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH;
+            tx.set_input_script(index, witness_script(script, witness_ver, flags));
+        } else {
+            // Multisig pre-segwit
+            GDK_RUNTIME_ASSERT(addr_type == p2sh);
+            constexpr bool has_sighash_byte = true;
+            const auto user_sig = ec_sig_from_der(der, has_sighash_byte);
+            const uint32_t user_sighash_flags = der.back();
+            auto scriptsig = scriptsig_multisig_for_backend(is_low_r, script, user_sig, user_sighash_flags);
+            tx.set_input_script(index, scriptsig);
+        }
+    }
+
     // TODO: Merge this validation with add_tx_addressee_output to avoid re-parsing?
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)

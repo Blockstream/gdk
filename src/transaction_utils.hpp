@@ -60,6 +60,10 @@ namespace sdk {
     amount add_tx_input(
         session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs);
 
+    // Add the users signature to a transaction input
+    void add_tx_user_signature(
+        session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t der, bool is_low_r);
+
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 

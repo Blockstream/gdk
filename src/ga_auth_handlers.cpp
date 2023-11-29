@@ -821,7 +821,7 @@ namespace sdk {
                 }
                 txin["private_key"] = std::move(m_sweep_private_keys[i]);
             }
-            tx.set_input_signature(i, txin, der_hex, is_low_r);
+            add_tx_user_signature(*m_session, m_twofactor_data, tx, i, h2b(der_hex), is_low_r);
         }
 
         // Return our input details with the signatures updated
