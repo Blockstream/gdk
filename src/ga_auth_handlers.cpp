@@ -809,11 +809,10 @@ namespace sdk {
             }
         }
 
-        const bool is_low_r = signer->supports_low_r();
         for (size_t i = 0; i < inputs.size(); ++i) {
             auto& txin = inputs.at(i);
             std::string der_hex = signatures.at(i);
-            if (txin.value("skip_signing", false)) {
+            if (j_bool_or_false(txin, "skip_signing")) {
                 GDK_RUNTIME_ASSERT(der_hex.empty());
                 der_hex = m_sweep_signatures.at(i);
                 if (der_hex.empty()) {
@@ -821,7 +820,7 @@ namespace sdk {
                 }
                 txin["private_key"] = std::move(m_sweep_private_keys[i]);
             }
-            add_tx_user_signature(*m_session, m_twofactor_data, tx, i, h2b(der_hex), is_low_r);
+            tx_set_user_signature(*m_session, m_twofactor_data, tx, i, h2b(der_hex));
         }
 
         // Return our input details with the signatures updated
@@ -1998,6 +1997,10 @@ namespace sdk {
         }
 
         // TODO: Add the recipient to twofactor_data for more server verification
+        if (!m_net_params.is_electrum()) {
+            tx_create_signature_placeholders(*m_session, m_details);
+        }
+
         const bool is_partial = m_details.value("is_partial", false);
         if (m_type == "send") {
             m_result = m_session->send_transaction(m_details, m_twofactor_data);

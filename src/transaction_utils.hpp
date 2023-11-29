@@ -39,10 +39,6 @@ namespace sdk {
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
         ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
-    // Make a multisig scriptSig with a user signature and PUSH(0) marker for the Green backend sig
-    std::vector<unsigned char> scriptsig_multisig_for_backend(bool is_low_r,
-        const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags);
-
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential);
@@ -60,9 +56,12 @@ namespace sdk {
     amount add_tx_input(
         session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs);
 
-    // Add the users signature to a transaction input
-    void add_tx_user_signature(
-        session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t der, bool is_low_r);
+    // Set the users signature in a transaction input
+    void tx_set_user_signature(
+        session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t user_der);
+
+    // Create placeholders in p2sh scriptsigs and alter witness data for Green backend signing
+    void tx_create_signature_placeholders(session_impl& session, nlohmann::json& result);
 
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);

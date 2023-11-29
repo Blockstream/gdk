@@ -72,32 +72,21 @@ namespace sdk {
 #define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
 #define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
 
-        static const ecdsa_sig_t DUMMY_SIG = { { SIG_HIGH, SIG_LOW } };
-        static const ecdsa_sig_t DUMMY_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
-
-        // Script pushes of DER encodings of the above sigs including sighash byte
+        // OP_0 [High-R DER encoded dummy sig including sighash byte]
         static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH
             = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
+        // OP_0 [Low-R DER encoded dummy sig including sighash byte]
         static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH_LOW_R
             = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
 
-        // DER encodings of the above sigs including sighash byte
-        static const byte_span_t DUMMY_SIG_DER{ byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2) };
-        static const byte_span_t DUMMY_SIG_DER_LOW_R{ byte_span_t(DUMMY_SIG_DER_PUSH_LOW_R).subspan(2) };
-
-        static inline byte_span_t dummy_sig(bool is_low_r) { return is_low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG; }
-
-        static inline byte_span_t dummy_sig_der(bool is_low_r)
+        // Return a DER encoded dummy sig including sighash byte
+        static byte_span_t dummy_sig_der(bool is_low_r)
         {
-            return is_low_r ? DUMMY_SIG_DER_LOW_R : DUMMY_SIG_DER;
+            if (is_low_r) {
+                return byte_span_t(DUMMY_SIG_DER_PUSH_LOW_R).subspan(2);
+            }
+            return byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2);
         }
-
-        static inline byte_span_t dummy_sig_der_push(bool is_low_r)
-        {
-            return is_low_r ? DUMMY_SIG_DER_PUSH_LOW_R : DUMMY_SIG_DER_PUSH;
-        }
-
-        static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
 
         static auto segwit_address(const network_parameters& net_params, byte_span_t bytes)
         {
@@ -401,22 +390,6 @@ namespace sdk {
         return script;
     }
 
-    std::vector<unsigned char> scriptsig_multisig_for_backend(bool /*is_low_r*/,
-        const std::vector<unsigned char>& prevout_script, const ecdsa_sig_t& user_sig, uint32_t user_sighash_flags)
-    {
-        const auto green_sig = dummy_sig(true); /* Green backend is always low-R */
-        auto script = scriptsig_multisig(prevout_script, user_sig, green_sig, user_sighash_flags);
-
-        // Replace the dummy sig with PUSH(0)
-        const auto ga_push = dummy_sig_der_push(true);
-        GDK_RUNTIME_ASSERT(std::search(script.begin(), script.end(), ga_push.begin(), ga_push.end()) == script.begin());
-        auto suffix = gsl::make_span(script).subspan(ga_push.size());
-
-        std::vector<unsigned char> backend_script(OP_0_PREFIX.size() + suffix.size());
-        init_container(backend_script, OP_0_PREFIX, suffix);
-        return backend_script;
-    }
-
     std::vector<unsigned char> scriptpubkey_from_address(
         const network_parameters& net_params, const std::string& address, bool allow_unconfidential)
     {
@@ -440,11 +413,58 @@ namespace sdk {
         }
     }
 
+    static std::pair<std::vector<unsigned char>, witness_ptr> scriptsig_and_witness(
+        session_impl& session, const nlohmann::json& utxo, byte_span_t user_der, byte_span_t green_der)
+    {
+        using namespace address_type;
+        std::vector<unsigned char> scriptsig;
+        witness_ptr witness;
+
+        const auto& addr_type = j_strref(utxo, "address_type");
+        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+            // Singlesig
+            const auto pub_key = h2b(j_strref(utxo, "public_key"));
+            if (addr_type == p2pkh) {
+                // Singlesig or sweep p2pkh
+                scriptsig = scriptsig_p2pkh_from_der(pub_key, user_der);
+            } else {
+                // Singlesig segwit
+                witness = witness_stack({ user_der, pub_key });
+                if (addr_type == p2sh_p2wpkh) {
+                    scriptsig = scriptsig_p2sh_p2wpkh_from_bytes(pub_key);
+                }
+                // For p2wpkh, the scriptsig is empty
+            }
+        } else {
+            // Multisig
+            const auto prevout_script = h2b(j_strref(utxo, "prevout_script"));
+
+            if (addr_type == csv || addr_type == p2wsh) {
+                // Multisig segwit
+                if (addr_type == address_type::p2wsh) {
+                    // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
+                    witness = witness_stack({ byte_span_t{}, green_der, user_der, prevout_script });
+                } else {
+                    if (session.get_network_parameters().is_liquid()) {
+                        witness = witness_stack({ user_der, green_der, prevout_script });
+                    } else {
+                        witness = witness_stack({ green_der, user_der, prevout_script });
+                    }
+                }
+                scriptsig = witness_script(prevout_script, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
+            } else {
+                // Multisig pre-segwit
+                GDK_RUNTIME_ASSERT(addr_type == p2sh);
+                scriptsig = scriptsig_multisig(
+                    prevout_script, ec_sig_from_der(user_der, true), ec_sig_from_der(green_der, true));
+            }
+        }
+        return { std::move(scriptsig), std::move(witness) };
+    }
+
     amount add_tx_input(
         session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs)
     {
-        using namespace address_type;
-
         // Ensure this input hasn't been added before
         const auto txid = h2b_rev(j_strref(utxo, "txhash"));
         const auto vout = j_uint32ref(utxo, "pt_idx");
@@ -456,20 +476,18 @@ namespace sdk {
         const auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
         utxo["sequence"] = sequence;
 
-        std::vector<unsigned char> script;
+        std::vector<unsigned char> scriptsig;
         witness_ptr witness;
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
-            script = h2b(j_strref(utxo, "script_sig"));
+            scriptsig = h2b(j_strref(utxo, "script_sig"));
             const auto& witness_items = j_arrayref(utxo, "witness");
             witness = witness_stack({}, witness_items.size());
             for (const auto& item : witness_items) {
                 witness_stack_add(witness, { h2b(item) });
             }
         } else {
-            const auto& addr_type = j_strref(utxo, "address_type");
-
             utxo_add_paths(session, utxo);
 
             // Populate the prevout script if missing so signing can use it later
@@ -477,95 +495,67 @@ namespace sdk {
                 utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
             }
 
-            // Dummy sigs for fee estimation. User is low-R according to
-            // the signer. Green is always low-R.
-            const auto user_sig = dummy_sig(is_low_r);
             const auto user_der = dummy_sig_der(is_low_r);
-            const auto green_sig = dummy_sig(true);
             const auto green_der = dummy_sig_der(true);
-
-            if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
-                // Singlesig
-                const auto pub_key = h2b(j_strref(utxo, "public_key"));
-                if (addr_type == p2pkh) {
-                    // Singlesig or sweep p2pkh
-                    script = scriptsig_p2pkh_from_der(pub_key, user_der);
-                } else {
-                    // Singlesig segwit
-                    witness = witness_stack({ user_der, pub_key });
-                    if (addr_type == p2sh_p2wpkh) {
-                        script = scriptsig_p2sh_p2wpkh_from_bytes(pub_key);
-                    }
-                    // For p2wpkh, the script is empty
-                }
-            } else {
-                // Multisig
-                const auto prevout_script = h2b(j_strref(utxo, "prevout_script"));
-
-                if (addr_type == csv || addr_type == p2wsh) {
-                    // Multisig segwit
-                    if (addr_type == address_type::p2wsh) {
-                        // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
-                        witness = witness_stack({ byte_span_t{}, user_der, green_der, prevout_script });
-                    } else {
-                        witness = witness_stack({ user_der, green_der, prevout_script });
-                    }
-                    script.resize(3 + SHA256_LEN); // Dummy witness script
-                } else {
-                    // Multisig pre-segwit
-                    GDK_RUNTIME_ASSERT(addr_type == p2sh);
-                    script = scriptsig_multisig(prevout_script, user_sig, green_sig);
-                }
-            }
+            std::tie(scriptsig, witness) = scriptsig_and_witness(session, utxo, user_der, green_der);
         }
         // Add the input to the tx
-        tx.add_input(txid, vout, sequence, script, witness.get());
+        tx.add_input(txid, vout, sequence, scriptsig, witness.get());
         if (add_to_tx_inputs) {
             result["transaction_inputs"].push_back(utxo);
         }
         return j_amountref(utxo);
     }
 
-    void add_tx_user_signature(
-        session_impl& /*session*/, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t der, bool is_low_r)
+    void tx_set_user_signature(
+        session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t user_der)
     {
-        using namespace address_type;
         const nlohmann::json& utxo = j_arrayref(result, "transaction_inputs").at(index);
 
-        const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
-            const auto pub_key = h2b(utxo.at("public_key"));
+        GDK_RUNTIME_ASSERT(!utxo.contains("script_sig") || !utxo.contains("witness"));
 
-            if (addr_type == p2pkh) {
-                // Singlesig (or sweep) p2pkh
-                tx.set_input_script(index, scriptsig_p2pkh_from_der(pub_key, der));
-                return;
+        const auto green_der = dummy_sig_der(true);
+        auto [scriptsig, witness] = scriptsig_and_witness(session, utxo, user_der, green_der);
+        tx.set_input_script(index, scriptsig);
+        tx.set_input_witness(index, witness.get());
+    }
+
+    void tx_create_signature_placeholders(session_impl& session, nlohmann::json& result)
+    {
+        using namespace address_type;
+        // For non-segwit (p2sh) inputs, the Green backend expects a PUSH(0) in
+        // place of its own signatures in the input scriptsigs when signing.
+        // For segwit inputs, it expects the witness stack to contain only the
+        // users signature at position 0.
+        const std::array<unsigned char, 3> prefix = { { 0x00, 0x01, 0x00 } }; // OP_0 [0]
+        byte_span_t green_push{ DUMMY_SIG_DER_PUSH_LOW_R }; /* Includes OP_0 prefix */
+        const bool is_liquid = session.get_network_parameters().is_liquid();
+        Tx tx(j_strref(result, "transaction"), is_liquid);
+
+        const auto& inputs = j_arrayref(result, "transaction_inputs");
+        for (size_t index = 0; index < inputs.size(); ++index) {
+            const auto& utxo = inputs.at(index);
+            if (j_bool_or_false(utxo, "skip_signing")) {
+                continue;
             }
-            // Singlesig segwit
-            tx.set_input_witness(index, witness_stack({ der, pub_key }).get());
-            if (addr_type == p2sh_p2wpkh) {
-                tx.set_input_script(index, scriptsig_p2sh_p2wpkh_from_bytes(pub_key));
-            } else {
-                // for native segwit ensure the scriptsig is empty
-                tx.set_input_script(index, byte_span_t());
+            const auto& addr_type = j_strref(utxo, "address_type");
+            if (addr_type == p2sh) {
+                const auto& txin = tx.get_input(index);
+                if (txin.script_len > green_push.size() && !memcmp(txin.script, green_push.data(), green_push.size())) {
+                    auto suffix = gsl::make_span(txin.script, txin.script_len).subspan(green_push.size());
+                    std::vector<unsigned char> scriptsig(prefix.size() + suffix.size());
+                    init_container(scriptsig, prefix, suffix);
+                    tx.set_input_script(index, scriptsig);
+                }
+            } else if (addr_type == csv || addr_type == p2wsh) {
+                const auto sigs = tx.get_input_signatures(utxo, index);
+                GDK_RUNTIME_ASSERT(sigs.size() == 2u); // Green, User
+                const auto& sig_and_sighash = sigs.at(1);
+                const auto user_der = ec_sig_to_der(sig_and_sighash.first, sig_and_sighash.second);
+                tx.set_input_witness(index, witness_stack({ user_der }).get());
             }
-            return;
         }
-        const auto script = h2b(utxo.at("prevout_script"));
-        if (addr_type == csv || addr_type == p2wsh) {
-            // Multisig segwit
-            tx.set_input_witness(index, witness_stack({ der }).get());
-            constexpr uint32_t flags = WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH;
-            tx.set_input_script(index, witness_script(script, flags));
-        } else {
-            // Multisig pre-segwit
-            GDK_RUNTIME_ASSERT(addr_type == p2sh);
-            constexpr bool has_sighash_byte = true;
-            const auto user_sig = ec_sig_from_der(der, has_sighash_byte);
-            const uint32_t user_sighash_flags = der.back();
-            auto scriptsig = scriptsig_multisig_for_backend(is_low_r, script, user_sig, user_sighash_flags);
-            tx.set_input_script(index, scriptsig);
-        }
+        result["transaction"] = tx.to_hex();
     }
 
     std::string validate_tx_addressee(
