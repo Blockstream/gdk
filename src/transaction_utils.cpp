@@ -56,6 +56,92 @@ namespace sdk {
             return wit;
         }
 
+        // Dummy signatures are needed for correctly sizing transactions.
+        // All signers are required to produce Low-S signatures to comply with
+        // Bitcoin's standardness rules.
+        // If our signer supports low-R, we estimate on a 71 byte signature
+        // (low-R, low-S plus sighash byte).
+        // Otherwise, we estimate on 72 bytes (high-R, low-S plus sighash byte).
+        // We occasionally produce smaller signatures, with decreasing probability
+        // as the signature size gets smaller.
+
+        // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
+#define SIG_SLED(INITIAL, B) INITIAL, B, B, B, B, B, B, B, B, B, B, B, B, B, B, B
+#define SIG_BYTES(INITIAL, B) SIG_SLED(INITIAL, B), SIG_SLED(B, B)
+
+#define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
+#define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
+
+        static const ecdsa_sig_t DUMMY_SIG = { { SIG_HIGH, SIG_LOW } };
+        static const ecdsa_sig_t DUMMY_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
+
+        // Script pushes of DER encodings of the above sigs including sighash byte
+        static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH
+            = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
+        static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH_LOW_R
+            = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
+
+        // DER encodings of the above sigs including sighash byte
+        static const byte_span_t DUMMY_SIG_DER{ byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2) };
+        static const byte_span_t DUMMY_SIG_DER_LOW_R{ byte_span_t(DUMMY_SIG_DER_PUSH_LOW_R).subspan(2) };
+
+        static inline byte_span_t dummy_sig(bool is_low_r) { return is_low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG; }
+
+        static inline byte_span_t dummy_sig_der(bool is_low_r)
+        {
+            return is_low_r ? DUMMY_SIG_DER_LOW_R : DUMMY_SIG_DER;
+        }
+
+        static inline byte_span_t dummy_sig_der_push(bool is_low_r)
+        {
+            return is_low_r ? DUMMY_SIG_DER_PUSH_LOW_R : DUMMY_SIG_DER_PUSH;
+        }
+
+        static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
+
+        static auto base58_address_from_bytes(unsigned char version, byte_span_t script_or_pubkey)
+        {
+            std::array<unsigned char, HASH160_LEN + 1> addr_bytes;
+            addr_bytes[0] = version;
+            GDK_VERIFY(
+                wally_hash160(script_or_pubkey.data(), script_or_pubkey.size(), addr_bytes.begin() + 1, HASH160_LEN));
+            return base58check_from_bytes(addr_bytes);
+        }
+
+        inline auto p2sh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
+        {
+            return base58_address_from_bytes(net_params.btc_p2sh_version(), script);
+        }
+
+        inline auto p2pkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
+        {
+            return base58_address_from_bytes(net_params.btc_version(), public_key);
+        }
+
+        static auto p2sh_wrapped_address_from_bytes(
+            const network_parameters& net_params, byte_span_t script_or_pubkey, uint32_t flags)
+        {
+            const uint32_t witness_ver = 0;
+            return p2sh_address_from_bytes(net_params, witness_script(script_or_pubkey, witness_ver, flags));
+        }
+
+        inline auto p2sh_p2wsh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
+        {
+            return p2sh_wrapped_address_from_bytes(net_params, script, WALLY_SCRIPT_SHA256);
+        }
+
+        inline auto p2sh_p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
+        {
+            return p2sh_wrapped_address_from_bytes(net_params, public_key, WALLY_SCRIPT_HASH160);
+        }
+
+        inline auto p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
+        {
+            const uint32_t witness_ver = 0;
+            const auto witness_program = witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160);
+            return addr_segwit_from_bytes(witness_program, net_params.bech32_prefix());
+        }
+
         // Note that if id_nonconfidential_addresses_not is returned in 'error', this
         // call still returns the resulting script. This behaviour is used by
         // add_tx_addressee_output when adding preblinded outputs (where is_blinded=true).
@@ -175,89 +261,6 @@ namespace sdk {
         }
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh)
         return ga_p2sh_fortified_out;
-    }
-
-    // Dummy signatures are needed for correctly sizing transactions.
-    // All signers are required to produce Low-S signatures to comply with
-    // Bitcoin's standardness rules.
-    // If our signer supports low-R, we estimate on a 71 byte signature
-    // (low-R, low-S plus sighash byte).
-    // Otherwise, we estimate on 72 bytes (high-R, low-S plus sighash byte).
-    // We occasionally produce smaller signatures, with decreasing probability
-    // as the signature size gets smaller.
-
-    // We construct our dummy sigs R, S from OP_SUBSTR/OP_INVALIDOPCODE.
-#define SIG_SLED(INITIAL, B) INITIAL, B, B, B, B, B, B, B, B, B, B, B, B, B, B, B
-#define SIG_BYTES(INITIAL, B) SIG_SLED(INITIAL, B), SIG_SLED(B, B)
-
-#define SIG_HIGH SIG_BYTES(OP_INVALIDOPCODE, OP_SUBSTR)
-#define SIG_LOW SIG_BYTES(OP_SUBSTR, OP_SUBSTR)
-
-    static const ecdsa_sig_t DUMMY_SIG = { { SIG_HIGH, SIG_LOW } };
-    static const ecdsa_sig_t DUMMY_SIG_LOW_R = { { SIG_LOW, SIG_LOW } };
-
-    // Script pushes of DER encodings of the above sigs including sighash byte
-    static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH
-        = { { 0x00, 0x48, 0x30, 0x45, 0x02, 0x21, 0x00, SIG_HIGH, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
-    static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH_LOW_R
-        = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
-
-    // DER encodings of the above sigs including sighash byte
-    static const byte_span_t DUMMY_SIG_DER{ byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2) };
-    static const byte_span_t DUMMY_SIG_DER_LOW_R{ byte_span_t(DUMMY_SIG_DER_PUSH_LOW_R).subspan(2) };
-
-    static inline byte_span_t dummy_sig(bool is_low_r) { return is_low_r ? DUMMY_SIG_LOW_R : DUMMY_SIG; }
-
-    static inline byte_span_t dummy_sig_der(bool is_low_r) { return is_low_r ? DUMMY_SIG_DER_LOW_R : DUMMY_SIG_DER; }
-
-    static inline byte_span_t dummy_sig_der_push(bool is_low_r)
-    {
-        return is_low_r ? DUMMY_SIG_DER_PUSH_LOW_R : DUMMY_SIG_DER_PUSH;
-    }
-
-    static const std::array<unsigned char, 3> OP_0_PREFIX = { { 0x00, 0x01, 0x00 } };
-
-    static auto base58_address_from_bytes(unsigned char version, byte_span_t script_or_pubkey)
-    {
-        std::array<unsigned char, HASH160_LEN + 1> addr_bytes;
-        addr_bytes[0] = version;
-        GDK_VERIFY(
-            wally_hash160(script_or_pubkey.data(), script_or_pubkey.size(), addr_bytes.begin() + 1, HASH160_LEN));
-        return base58check_from_bytes(addr_bytes);
-    }
-
-    inline auto p2sh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
-    {
-        return base58_address_from_bytes(net_params.btc_p2sh_version(), script);
-    }
-
-    inline auto p2pkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-    {
-        return base58_address_from_bytes(net_params.btc_version(), public_key);
-    }
-
-    static auto p2sh_wrapped_address_from_bytes(
-        const network_parameters& net_params, byte_span_t script_or_pubkey, uint32_t flags)
-    {
-        const uint32_t witness_ver = 0;
-        return p2sh_address_from_bytes(net_params, witness_script(script_or_pubkey, witness_ver, flags));
-    }
-
-    inline auto p2sh_p2wsh_address_from_bytes(const network_parameters& net_params, byte_span_t script)
-    {
-        return p2sh_wrapped_address_from_bytes(net_params, script, WALLY_SCRIPT_SHA256);
-    }
-
-    inline auto p2sh_p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-    {
-        return p2sh_wrapped_address_from_bytes(net_params, public_key, WALLY_SCRIPT_HASH160);
-    }
-
-    inline auto p2wpkh_address_from_public_key(const network_parameters& net_params, byte_span_t public_key)
-    {
-        const uint32_t witness_ver = 0;
-        const auto witness_program = witness_script(public_key, witness_ver, WALLY_SCRIPT_HASH160);
-        return addr_segwit_from_bytes(witness_program, net_params.bech32_prefix());
     }
 
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey)
