@@ -11,6 +11,9 @@
 
 ### Fixed
 
+- Multisig: Fixed the fee and fee rate becoming incorrect after signing
+  only the users inputs.
+
 ### Removed
 
 ## Release 0.69.0 - 23-11-16
