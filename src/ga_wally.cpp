@@ -217,49 +217,6 @@ namespace sdk {
         return csv_blocks;
     }
 
-    sig_and_sighash_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig)
-    {
-        // <user_sig> <pubkey>
-        constexpr bool has_sighash_byte = true;
-        const size_t push_len = script_sig[0];
-        GDK_RUNTIME_ASSERT(push_len && push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
-        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= push_len + 2);
-        const auto der_sig = script_sig.subspan(1, push_len);
-        return { ec_sig_from_der(der_sig, has_sighash_byte), der_sig.back() };
-    }
-
-    std::vector<sig_and_sighash_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig)
-    {
-        constexpr bool has_sighash_byte = true;
-        size_t offset = 0;
-        size_t push_len = 0;
-        // OP_0 <ga_sig> <user_sig> <redeem_script>
-
-        GDK_RUNTIME_ASSERT(script_sig[offset] == OP_0);
-        ++offset;
-
-        push_len = script_sig[offset];
-        GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
-        ++offset;
-        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
-        const auto ga_der_sig = script_sig.subspan(offset, push_len);
-        const uint32_t ga_sighash_flags = ga_der_sig[push_len - 1];
-        const ecdsa_sig_t ga_sig = ec_sig_from_der(ga_der_sig, has_sighash_byte);
-        auto ga_pair = std::make_pair(std::move(ga_sig), ga_sighash_flags);
-        offset += push_len;
-
-        push_len = script_sig[offset];
-        GDK_RUNTIME_ASSERT(push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
-        ++offset;
-        GDK_RUNTIME_ASSERT(static_cast<size_t>(script_sig.size()) >= offset + push_len);
-        const auto user_der_sig = script_sig.subspan(offset, push_len);
-        const uint32_t user_sighash_flags = user_der_sig[push_len - 1];
-        const ecdsa_sig_t user_sig = ec_sig_from_der(user_der_sig, has_sighash_byte);
-        auto user_pair = std::make_pair(std::move(user_sig), user_sighash_flags);
-
-        return { std::move(ga_pair), std::move(user_pair) };
-    }
-
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out)
     {
         GDK_RUNTIME_ASSERT(!out.empty());
@@ -583,9 +540,16 @@ namespace sdk {
 
     ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte)
     {
-        ecdsa_sig_t ret;
-        GDK_VERIFY(wally_ec_sig_from_der(der.data(), der.size() - (has_sighash_byte ? 1 : 0), ret.data(), ret.size()));
-        return ret;
+        ecdsa_sig_t sig;
+        int ret = WALLY_EINVAL;
+        if (der.size()) {
+            const auto non_sighash_len = der.size() - (has_sighash_byte ? 1 : 0);
+            ret = wally_ec_sig_from_der(der.data(), non_sighash_len, sig.data(), sig.size());
+        }
+        if (ret != WALLY_OK) {
+            throw user_error("Invalid signature");
+        }
+        return sig;
     }
 
     bool ec_sig_verify(byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags)

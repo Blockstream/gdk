@@ -43,7 +43,6 @@ namespace sdk {
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
     using ecdsa_sig_rec_t = std::array<unsigned char, EC_SIGNATURE_RECOVERABLE_LEN>;
-    using sig_and_sighash_t = std::pair<ecdsa_sig_t, uint32_t>;
     using chain_code_t = std::array<unsigned char, 32>;
     using pbkdf2_hmac256_t = std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>;
     using pbkdf2_hmac512_t = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>;
@@ -133,10 +132,6 @@ namespace sdk {
         byte_span_t keys, uint32_t csv_blocks, bool optimize, std::vector<unsigned char>& out);
 
     uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
-
-    sig_and_sighash_t get_sig_from_p2pkh_script_sig(byte_span_t script_sig);
-
-    std::vector<sig_and_sighash_t> get_sigs_from_multisig_script_sig(byte_span_t script_sig);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
@@ -249,7 +244,7 @@ namespace sdk {
     ecdsa_sig_rec_t ec_sig_rec_from_compact(byte_span_t compact_sig, byte_span_t hash, byte_span_t public_key);
 
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash_flags = WALLY_SIGHASH_ALL);
-    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte = false);
+    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte);
 
     bool ec_sig_verify(
         byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);

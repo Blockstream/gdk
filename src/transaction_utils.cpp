@@ -550,9 +550,7 @@ namespace sdk {
             } else if (addr_type == csv || addr_type == p2wsh) {
                 const auto sigs = tx.get_input_signatures(utxo, index);
                 GDK_RUNTIME_ASSERT(sigs.size() == 2u); // Green, User
-                const auto& sig_and_sighash = sigs.at(1);
-                const auto user_der = ec_sig_to_der(sig_and_sighash.first, sig_and_sighash.second);
-                tx.set_input_witness(index, witness_stack({ user_der }).get());
+                tx.set_input_witness(index, witness_stack({ sigs.at(1) }).get());
             }
         }
         result["transaction"] = tx.to_hex();
