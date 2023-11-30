@@ -485,7 +485,12 @@ namespace sdk {
             const auto& witness_items = j_arrayref(utxo, "witness");
             witness = witness_stack({}, witness_items.size());
             for (const auto& item : witness_items) {
-                witness_stack_add(witness, { h2b(item) });
+                const auto& item_hex = item.get_ref<const std::string&>();
+                if (item_hex.empty()) {
+                    witness_stack_add(witness, { {} });
+                } else {
+                    witness_stack_add(witness, { h2b(item_hex) });
+                }
             }
         } else {
             utxo_add_paths(session, utxo);
