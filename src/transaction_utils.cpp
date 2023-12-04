@@ -525,44 +525,6 @@ namespace sdk {
         tx.set_input_witness(index, witness.get());
     }
 
-    void tx_create_signature_placeholders(session_impl& session, nlohmann::json& result)
-    {
-        using namespace address_type;
-        const std::array<unsigned char, 3> prefix = { { 0x00, 0x01, 0x00 } }; // OP_0 [0]
-        byte_span_t green_push{ DUMMY_SIG_DER_PUSH_LOW_R }; /* Includes OP_0 prefix */
-        const bool is_liquid = session.get_network_parameters().is_liquid();
-
-        const auto& inputs = j_arrayref(result, "transaction_inputs");
-        bool has_p2sh = false;
-
-        for (size_t index = 0; !has_p2sh && index < inputs.size(); ++index) {
-            const auto& utxo = inputs.at(index);
-            if (!j_bool_or_false(utxo, "skip_signing") && j_strref(utxo, "address_type") == p2sh) {
-                has_p2sh = true;
-            }
-        }
-        if (!has_p2sh) {
-            return; // No p2sh inputs found, no munging to do
-        }
-
-        Tx tx(j_strref(result, "transaction"), is_liquid);
-        for (size_t index = 0; index < inputs.size(); ++index) {
-            const auto& utxo = inputs.at(index);
-            if (!j_bool_or_false(utxo, "skip_signing") && j_strref(utxo, "address_type") == p2sh) {
-                // For non-segwit (p2sh) inputs, the Green backend expects a PUSH(0) in
-                // place of its own signatures in the input scriptsigs when signing.
-                const auto& txin = tx.get_input(index);
-                if (txin.script_len > green_push.size() && !memcmp(txin.script, green_push.data(), green_push.size())) {
-                    auto suffix = gsl::make_span(txin.script, txin.script_len).subspan(green_push.size());
-                    std::vector<unsigned char> scriptsig(prefix.size() + suffix.size());
-                    init_container(scriptsig, prefix, suffix);
-                    tx.set_input_script(index, scriptsig);
-                }
-            }
-        }
-        result["transaction"] = tx.to_hex();
-    }
-
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)
     {

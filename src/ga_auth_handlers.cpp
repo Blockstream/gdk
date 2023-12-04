@@ -1996,10 +1996,7 @@ namespace sdk {
             json_rename_key(m_twofactor_data, "amount", key);
         }
 
-        // TODO: Add the recipient to twofactor_data for more server verification
-        if (!m_net_params.is_electrum()) {
-            tx_create_signature_placeholders(*m_session, m_details);
-        }
+        // TODO: Add the recipient to twofactor_data for more server verification?
 
         const bool is_partial = m_details.value("is_partial", false);
         if (m_type == "send") {

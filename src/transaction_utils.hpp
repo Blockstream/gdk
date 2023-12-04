@@ -60,9 +60,6 @@ namespace sdk {
     void tx_set_user_signature(
         session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t user_der);
 
-    // Create placeholders in p2sh scriptsigs and alter witness data for Green backend signing
-    void tx_create_signature_placeholders(session_impl& session, nlohmann::json& result);
-
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 
