@@ -256,7 +256,6 @@ namespace sdk {
         uint64_t m_earliest_block_time;
         uint64_t m_nlocktime;
         uint32_t m_csv_blocks;
-        std::vector<uint32_t> m_csv_buckets;
 
         nlohmann::json m_assets;
 

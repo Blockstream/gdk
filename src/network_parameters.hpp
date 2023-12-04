@@ -65,7 +65,8 @@ namespace sdk {
         std::string get_blob_server_url() const;
         std::string get_registry_connection_string() const;
         bool is_tls_connection(const std::string& config_prefix) const;
-        std::vector<uint32_t> csv_buckets() const;
+        bool are_matching_csv_buckets(const nlohmann::json::array_t& buckets) const;
+        bool is_valid_csv_value(uint32_t csv_blocks) const;
         uint32_t cert_expiry_threshold() const;
         uint32_t get_max_reorg_blocks() const;
         std::string get_price_url() const;

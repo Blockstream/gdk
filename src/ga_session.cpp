@@ -568,16 +568,12 @@ namespace sdk {
         m_login_data["wallet_hash_id"] = std::move(wallet_hash_id);
         m_login_data["xpub_hash_id"] = std::move(xpub_hash_id);
 
-        // Check that csv blocks used are recoverable and provided by the server
-        const auto net_csv_buckets = m_net_params.csv_buckets();
-        for (uint32_t bucket : m_login_data["csv_times"]) {
-            if (std::find(net_csv_buckets.begin(), net_csv_buckets.end(), bucket) != net_csv_buckets.end()) {
-                m_csv_buckets.insert(m_csv_buckets.end(), bucket);
-            }
-        }
-        GDK_RUNTIME_ASSERT(m_csv_buckets.size() > 0);
-        m_csv_blocks = m_login_data["csv_blocks"];
-        GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), m_csv_blocks) != m_csv_buckets.end());
+        // Make sure our list of valid csv blocks values matches the server,
+        // and that our current csv blocks setting is valid.
+        GDK_RUNTIME_ASSERT(m_net_params.are_matching_csv_buckets(j_arrayref(m_login_data, "csv_times")));
+        const auto csv_blocks = j_uint32ref(m_login_data, "csv_blocks");
+        GDK_RUNTIME_ASSERT(m_net_params.is_valid_csv_value(csv_blocks));
+        m_csv_blocks = csv_blocks;
         if (!m_watch_only) {
             m_nlocktime = m_login_data["nlocktime_blocks"];
         }
@@ -2623,13 +2619,11 @@ namespace sdk {
     {
         bool old_watch_only;
         uint32_t csv_blocks;
-        std::vector<uint32_t> csv_buckets;
         {
             locker_t locker(m_mutex);
             // Old (non client blob) watch only sessions cannot validate addrs
             old_watch_only = m_watch_only && !m_blob_aes_key.has_value();
             csv_blocks = m_csv_blocks;
-            csv_buckets = is_historic ? m_csv_buckets : std::vector<uint32_t>();
         }
 
         json_rename_key(address, "ad", "address"); // Returned by wamp call get_my_addresses
@@ -2655,18 +2649,13 @@ namespace sdk {
         }
 
         if (j_strref(address, "address_type") == address_type::csv) {
-            // Make sure the csv value used is in our csv buckets. If isn't,
-            // coins held in such scripts may not be recoverable.
+            // Make sure the csv value used is in our csv buckets. If it
+            // isn't, coins held in such scripts may not be recoverable.
             uint32_t addr_csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);
-            if (is_historic) {
-                // For historic addresses only check csvtime is in our bucket
-                // list, since the user may have changed their settings.
-                GDK_RUNTIME_ASSERT(
-                    std::find(csv_buckets.begin(), csv_buckets.end(), addr_csv_blocks) != csv_buckets.end());
-            } else {
+            GDK_RUNTIME_ASSERT(m_net_params.is_valid_csv_value(addr_csv_blocks));
+            if (!is_historic) {
                 // For new addresses, ensure that the csvtime is the users
-                // current csv_blocks setting. This also ensures it is
-                // one of the bucket values as a side effect.
+                // current csv_blocks setting.
                 GDK_RUNTIME_ASSERT(addr_csv_blocks == csv_blocks);
             }
         }
@@ -3209,25 +3198,25 @@ namespace sdk {
 
     void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
-        const uint32_t value = locktime_details.at("value");
+        const auto csv_blocks = j_uint32ref(locktime_details, "value");
+        GDK_RUNTIME_ASSERT(m_net_params.is_valid_csv_value(csv_blocks));
+
         locker_t locker(m_mutex);
         // This not only saves a server round trip in case of bad value, but
         // also ensures that the value is recoverable.
-        GDK_RUNTIME_ASSERT(std::find(m_csv_buckets.begin(), m_csv_buckets.end(), value) != m_csv_buckets.end());
-        auto result = m_wamp->call(locker, "login.set_csvtime", value, mp_cast(twofactor_data).get());
+        auto result = m_wamp->call(locker, "login.set_csvtime", csv_blocks, mp_cast(twofactor_data).get());
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
-
-        m_csv_blocks = value;
+        m_csv_blocks = csv_blocks;
     }
 
     void ga_session::set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
     {
-        const uint32_t value = locktime_details.at("value");
-        auto result = m_wamp->call("login.set_nlocktime", value, mp_cast(twofactor_data).get());
+        const auto nlocktime = j_uint32ref(locktime_details, "value");
+        auto result = m_wamp->call("login.set_nlocktime", nlocktime, mp_cast(twofactor_data).get());
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
         locker_t locker(m_mutex);
-        m_nlocktime = value;
+        m_nlocktime = nlocktime;
     }
 
     void ga_session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)

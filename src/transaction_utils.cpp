@@ -307,15 +307,14 @@ namespace sdk {
         const auto subaccount = j_uint32ref(utxo, "subaccount");
         const auto pointer = j_uint32ref(utxo, "pointer");
 
-        uint32_t subtype = 0;
+        const auto subtype = j_uint32_or_zero(utxo, "subtype");
         if (addr_type == csv) {
-            // subtype indicates the number of csv blocks and must be one of the known bucket values
-            subtype = utxo.at("subtype");
-            const auto csv_buckets = net_params.csv_buckets();
-            const auto csv_bucket_p = std::find(std::begin(csv_buckets), std::end(csv_buckets), subtype);
-            GDK_RUNTIME_ASSERT_MSG(csv_bucket_p != csv_buckets.end(), "Unknown csv bucket");
+            if (!net_params.is_valid_csv_value(subtype)) {
+                throw user_error("invalid CSV block value");
+            }
         } else {
             GDK_RUNTIME_ASSERT(addr_type == p2wsh || addr_type == p2sh);
+            GDK_RUNTIME_ASSERT(subtype == 0); // Not used for non-csv addrs
         }
 
         pub_key_t ga_pub_key;

@@ -4,6 +4,7 @@
 #include "assertion.hpp"
 #include "containers.hpp"
 #include "exception.hpp"
+#include "json_utils.hpp"
 #include "network_parameters.hpp"
 #include "session.hpp" // TODO: gdk_config() doesn't belong in session
 
@@ -829,7 +830,17 @@ namespace sdk {
     {
         return boost::algorithm::starts_with(get_connection_string(config_prefix), "wss://");
     }
-    std::vector<uint32_t> network_parameters::csv_buckets() const { return m_details.at("csv_buckets"); }
+    bool network_parameters::are_matching_csv_buckets(const nlohmann::json::array_t& buckets) const
+    {
+        return j_arrayref(m_details, "csv_buckets") == buckets;
+    }
+
+    bool network_parameters::is_valid_csv_value(uint32_t csv_blocks) const
+    {
+        const auto& buckets = j_arrayref(m_details, "csv_buckets");
+        return std::find(buckets.begin(), buckets.end(), csv_blocks) != buckets.end();
+    }
+
     uint32_t network_parameters::cert_expiry_threshold() const { return m_details.at("cert_expiry_threshold"); }
     // max_reorg_blocks indicates the maximum number of blocks that gdk will expect to re-org on-chain.
     // In the event that a re-org is larger than this value, AND the user has a tx re-orged in a block
