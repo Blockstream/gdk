@@ -444,10 +444,25 @@ namespace sdk {
                     // p2sh-p2wsh has a preceeding OP_0 for OP_CHECKMULTISIG
                     witness = witness_stack({ byte_span_t{}, green_der, user_der, prevout_script });
                 } else {
-                    if (session.get_network_parameters().is_liquid()) {
-                        witness = witness_stack({ user_der, green_der, prevout_script });
+                    // CSV
+                    const auto& net_params = session.get_network_parameters();
+                    const auto sequence = j_uint32_or_zero(utxo, "sequence");
+                    const bool is_expired_csv = net_params.is_valid_csv_value(sequence);
+                    if (net_params.is_liquid()) {
+                        if (is_expired_csv) {
+                            // Expired csv spend (non-optimized)
+                            witness = witness_stack({ user_der, prevout_script });
+                        } else {
+                            witness = witness_stack({ user_der, green_der, prevout_script });
+                        }
                     } else {
-                        witness = witness_stack({ green_der, user_der, prevout_script });
+                        if (is_expired_csv) {
+                            // Expired csv spend (optimized)
+                            witness = witness_stack({ byte_span_t{}, user_der, prevout_script });
+                        } else {
+                            // Normal csv spend
+                            witness = witness_stack({ green_der, user_der, prevout_script });
+                        }
                     }
                 }
                 scriptsig = witness_script(prevout_script, WALLY_SCRIPT_SHA256 | WALLY_SCRIPT_AS_PUSH);
@@ -469,10 +484,11 @@ namespace sdk {
         const auto vout = j_uint32ref(utxo, "pt_idx");
         GDK_RUNTIME_ASSERT(!tx.find_input_spending(txid, vout).has_value());
 
+        const auto transaction_version = j_uint32ref(result, "transaction_version");
         const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
 
         const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
-        const auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
+        auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
         utxo["sequence"] = sequence;
 
         std::vector<unsigned char> scriptsig;
@@ -497,6 +513,17 @@ namespace sdk {
             // Populate the prevout script if missing so signing can use it later
             if (utxo.find("prevout_script") == utxo.end()) {
                 utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
+            }
+
+            if (transaction_version >= WALLY_TX_VERSION_2 && sequence == seq_default
+                && j_strref(utxo, "address_type") == address_type::csv) {
+                const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
+                if (expiry_height && expiry_height <= session.get_block_height()) {
+                    // Expired CSV input: mark as an expired spend
+                    sequence = expiry_height - j_uint32ref(utxo, "block_height");
+                    GDK_RUNTIME_ASSERT(session.get_network_parameters().is_valid_csv_value(sequence));
+                    utxo["sequence"] = sequence;
+                }
             }
 
             const auto user_der = dummy_sig_der(is_low_r);

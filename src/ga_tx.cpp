@@ -174,6 +174,10 @@ namespace sdk {
             }
 
             if (is_rbf) {
+                const auto tx_version = tx.get_version();
+                result["transaction_version"] = tx_version;
+                result["transaction_locktime"] = tx.get_locktime();
+
                 // Compute addressees and any change details from the old tx
                 const auto& outputs = prev_tx.at("outputs");
                 GDK_RUNTIME_ASSERT(tx.get_num_outputs() == outputs.size());
@@ -286,6 +290,7 @@ namespace sdk {
                     GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
                     utxo["txhash"] = b2h_rev(tx.get_input(i).txhash);
                     utxo["pt_idx"] = tx.get_input(i).index;
+                    utxo["sequence"] = tx.get_input(i).sequence;
                     calculate_input_subtype(utxo, tx, i);
                     const auto script = session.output_script_from_utxo(utxo);
                     utxo["prevout_script"] = b2h(script);
@@ -301,14 +306,23 @@ namespace sdk {
                     // Verify the transaction signatures to prevent outputs
                     // from being modified. Also store the users sighash in
                     // case it wasn't SIGHASH_ALL.
-                    const auto der_sigs = tx.get_input_signatures(item.second, item.first);
+                    const auto der_sigs = tx.get_input_signatures(net_params, item.second, item.first);
                     const auto pubkeys = session.pubkeys_from_utxo(item.second);
                     for (size_t i = 0; i < der_sigs.size(); ++i) {
-                        const auto sighash_flags = der_sigs.at(i).back();
+                        const auto& der_sig = der_sigs.at(i);
+                        if (!is_electrum && tx_version >= WALLY_TX_VERSION_2 && i == 0 && der_sig.empty()
+                            && net_params.is_valid_csv_value(tx.get_input(i).sequence)) {
+                            // Expired csv spend. Ignore the missing green sig, and
+                            // ensure we have a user sig to verify/get the sighash.
+                            GDK_LOG_SEV(log_level::debug) << "RBF tx input " << item.first << " spent via expiry";
+                            GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
+                            continue;
+                        }
+                        const auto sighash_flags = der_sig.back();
                         item.second["user_sighash"] = sighash_flags;
                         const auto signature_hash = tx.get_signature_hash(item.second, item.first, sighash_flags);
                         constexpr bool has_sighash_byte = true;
-                        const auto sig = ec_sig_from_der(der_sigs.at(i), has_sighash_byte);
+                        const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
                         GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), signature_hash, sig));
                     }
                     // Add to the used UTXOs
@@ -620,6 +634,7 @@ namespace sdk {
             const uint32_t current_block_height = session.get_block_height();
             const uint32_t locktime = result.value("transaction_locktime", current_block_height);
             const uint32_t tx_version = result.value("transaction_version", WALLY_TX_VERSION_2);
+            result["transaction_version"] = tx_version;
             Tx tx(locktime, tx_version, is_liquid);
             if (!is_rbf && !result.contains("transaction_locktime")) {
                 tx.set_anti_snipe_locktime(current_block_height);
@@ -889,7 +904,8 @@ namespace sdk {
         memcpy(m_tx->inputs + txin_offset, reordered_inputs.data(), n);
     }
 
-    std::vector<byte_span_t> Tx::get_input_signatures(const nlohmann::json& utxo, size_t index) const
+    std::vector<byte_span_t> Tx::get_input_signatures(
+        const network_parameters& net_params, const nlohmann::json& utxo, size_t index) const
     {
         using namespace address_type;
         const auto& addr_type = j_strref(utxo, "address_type");
@@ -915,16 +931,32 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(num_items == 2);
             return { der_from_witness(input.witness, 0) };
         }
-        // 2of2 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
-        // 2of2 csv:   witness stack: <user_sig> <ga_sig> <redeem_script> (Liquid, not optimized)
-        // 2of2 csv:   witness stack: <ga_sig> <user_sig> <redeem_script>
-        // 2of3 p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script>
+        // 2of2 p2wsh:       witness stack: <> <ga_sig> <user_sig> <redeem_script>
+        // 2of2 csv:         witness stack: <user_sig> <ga_sig> <redeem_script> (Liquid, not optimized)
+        // 2of2 csv:         witness stack: <ga_sig> <user_sig> <redeem_script>
+        // 2of2 expired csv: witness stack: <> <user_sig> <redeem_script>
+        // 2of2 expired csv: witness stack: <user_sig> <redeem_script> (Liquid, not optimized)
+        // 2of3 p2wsh:       witness stack: <> <ga_sig> <user_sig> <redeem_script>
         // 2of2_no_recovery p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (Liquid)
         GDK_RUNTIME_ASSERT(num_items == 3 || num_items == 4);
         size_t user_index = num_items - 2, green_index = num_items - 3;
-        if (m_is_liquid && addr_type == csv) {
-            // Liquid 2of2 csv: sigs are inverted in the witness stack
-            std::swap(user_index, green_index);
+        if (addr_type == csv) {
+            const bool may_be_expired
+                = get_version() >= WALLY_TX_VERSION_2 && net_params.is_valid_csv_value(input.sequence);
+            if (m_is_liquid) {
+                if (may_be_expired && input.witness->num_items == 2) {
+                    // Expired csv utxo with just the users sig
+                    return { byte_span_t{}, der_from_witness(input.witness, user_index) };
+                } else {
+                    // Liquid 2of2 csv: sigs are inverted in the witness stack
+                    std::swap(user_index, green_index);
+                }
+            } else {
+                if (may_be_expired && input.witness->items[0].witness_len == 0) {
+                    // Expired csv utxo with just the users sig
+                    return { byte_span_t{}, der_from_witness(input.witness, user_index) };
+                }
+            }
         }
         return { der_from_witness(input.witness, green_index), der_from_witness(input.witness, user_index) };
     }
@@ -1171,8 +1203,6 @@ namespace sdk {
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
-            // TODO: If the UTXO is CSV and expired, spend it using the users key only (smaller)
-            // Note that this requires setting the inputs sequence number to the CSV time too
             uint32_t sighash_flags = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
             const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
 

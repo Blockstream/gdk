@@ -45,7 +45,8 @@ namespace sdk {
         void set_input_witness(size_t index, const struct wally_tx_witness_stack* witness);
 
         // Returns the validated DER sigs including their sighash byte
-        std::vector<byte_span_t> get_input_signatures(const nlohmann::json& utxo, size_t index) const;
+        std::vector<byte_span_t> get_input_signatures(
+            const network_parameters& net_params, const nlohmann::json& utxo, size_t index) const;
 
         void randomize_inputs(nlohmann::json& tx_inputs);
 
