@@ -329,7 +329,13 @@ namespace sdk {
 
         m_wamp_call_options.set_timeout(std::chrono::seconds(WAMP_CALL_TIMEOUT_SECS));
 
-        m_reconnect_thread = std::thread([this] { reconnect_handler(); });
+        m_reconnect_thread = std::thread([this] {
+            reconnect_handler();
+            // Pass an empty handler through the strand and wait for it.
+            // After this we know all outstanding reconnect_handler tasks
+            // such as notifications have been processed.
+            boost::asio::post(m_strand, boost::asio::use_future).get();
+        });
 
         if (!m_net_params.is_tls_connection(m_server_prefix)) {
             m_client = std::make_unique<client>();
