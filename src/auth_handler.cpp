@@ -137,7 +137,7 @@ namespace sdk {
 
     void auth_handler_impl::set_error(const std::string& error_message)
     {
-        GDK_LOG_SEV(log_level::warning) << m_name << " call exception: " << error_message;
+        GDK_LOG(warning) << m_name << " call exception: " << error_message;
         m_state = state_type::error;
         m_error = error_message;
     }
@@ -452,7 +452,7 @@ namespace sdk {
                     ++i;
                 }
                 if (updated) {
-                    GDK_LOG_SEV(log_level::debug) << "signer xpub cache updated";
+                    GDK_LOG(debug) << "signer xpub cache updated";
                     get_session().encache_signer_xpubs(signer);
                 }
                 // Replace the request/reply with the actually requested xpubs
@@ -568,7 +568,7 @@ namespace sdk {
             const Tx tx(required_data.at("transaction").get<std::string>(), signer->is_liquid());
             result["signatures"] = sign_transaction(get_session(), tx, required_data.at("transaction_inputs"));
         } else {
-            GDK_LOG_SEV(log_level::warning) << "Unknown hardware request " << status.dump();
+            GDK_LOG(warning) << "Unknown hardware request " << status.dump();
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");
         }
         handler->resolve_hw_reply(std::move(result));

@@ -314,7 +314,7 @@ namespace sdk {
                             && net_params.is_valid_csv_value(tx.get_input(i).sequence)) {
                             // Expired csv spend. Ignore the missing green sig, and
                             // ensure we have a user sig to verify/get the sighash.
-                            GDK_LOG_SEV(log_level::debug) << "RBF tx input " << item.first << " spent via expiry";
+                            GDK_LOG(debug) << "RBF tx input " << item.first << " spent via expiry";
                             GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
                             continue;
                         }
@@ -1271,7 +1271,7 @@ namespace sdk {
 
         const std::string error = json_get_value(details, "error");
         if (!error.empty()) {
-            GDK_LOG_SEV(log_level::debug) << " attempt to blind with error: " << details.dump();
+            GDK_LOG(debug) << " attempt to blind with error: " << details.dump();
             throw user_error(error);
         }
         const auto& assetblinders = blinding_data.at("assetblinders");

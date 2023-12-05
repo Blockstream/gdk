@@ -1896,7 +1896,7 @@ namespace sdk {
                     user_limits = m_session->convert_amount(user_limits);
                 } catch (const std::exception& ex) {
                     // If the fiat limit cannot be converted, require 2FA
-                    GDK_LOG_SEV(log_level::warning) << "2FA limit unavailable: " << ex.what();
+                    GDK_LOG(warning) << "2FA limit unavailable: " << ex.what();
                     user_limits.clear();
                 }
             }

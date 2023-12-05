@@ -264,11 +264,11 @@ namespace sdk {
     {
         try {
             const size_t spv_status = rust_call("spv_verify_tx", details);
-            GDK_LOG_SEV(log_level::debug) << "spv_verify_tx:" << details.at("txid") << ":" << details.at("height")
-                                          << "=" << spv_get_status_string(spv_status);
+            GDK_LOG(debug) << "spv_verify_tx:" << details.at("txid") << ":" << details.at("height") << "="
+                           << spv_get_status_string(spv_status);
             return spv_status;
         } catch (const std::exception& e) {
-            GDK_LOG_SEV(log_level::warning) << "spv_verify_tx exception:" << e.what();
+            GDK_LOG(warning) << "spv_verify_tx exception:" << e.what();
             return SPV_STATUS_DISABLED;
         }
     }
@@ -771,7 +771,7 @@ namespace sdk {
             }
         } catch (const std::exception&) {
         }
-        GDK_LOG_SEV(log_level::info) << context << (*context ? " " : "") << "ignoring exception:" << message;
+        GDK_LOG(info) << context << (*context ? " " : "") << "ignoring exception:" << message;
         return true;
     }
 

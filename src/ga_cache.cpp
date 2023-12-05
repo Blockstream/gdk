@@ -59,7 +59,7 @@ namespace sdk {
                 char* err_msg = nullptr;
                 const int rc = sqlite3_exec(db.get(), sql, 0, 0, &err_msg);
                 if (rc != SQLITE_OK) {
-                    GDK_LOG_SEV(log_level::info) << "Bad exec_check RC " << rc << " err_msg: " << err_msg;
+                    GDK_LOG(info) << "Bad exec_check RC " << rc << " err_msg: " << err_msg;
                     GDK_RUNTIME_ASSERT(false);
                 }
             };
@@ -107,7 +107,7 @@ namespace sdk {
         {
             try {
                 auto err_msg = sqlite3_errmsg(db);
-                GDK_LOG_SEV(log_level::error) << "DB error: " << err_msg;
+                GDK_LOG(error) << "DB error: " << err_msg;
                 return err_msg;
             } catch (const std::exception&) {
             }
@@ -166,7 +166,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(!key.empty());
             std::ifstream f(path, f.in | f.binary);
             if (!f.is_open()) {
-                GDK_LOG_SEV(log_level::info) << "Load db, no file or bad file " << path;
+                GDK_LOG(info) << "Load db, no file or bad file " << path;
                 return std::vector<unsigned char>();
             }
 
@@ -203,7 +203,7 @@ namespace sdk {
                         continue;
                     }
                 }
-                GDK_LOG_SEV(log_level::info) << "Deleting old version " << version << " db file " << path;
+                GDK_LOG(info) << "Deleting old version " << version << " db file " << path;
                 unlink(path.c_str());
             }
         }
@@ -214,7 +214,7 @@ namespace sdk {
             try {
                 plaintext = load_db_file(key, path);
             } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::info) << "Bad decryption for file " << path << " error " << ex.what();
+                GDK_LOG(info) << "Bad decryption for file " << path << " error " << ex.what();
                 unlink(path.c_str());
             }
 
@@ -227,7 +227,7 @@ namespace sdk {
                 tmpdb.get(), "main", plaintext.data(), plaintext.size(), plaintext.size(), SQLITE_DESERIALIZE_READONLY);
 
             if (rc != SQLITE_OK) {
-                GDK_LOG_SEV(log_level::info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
+                GDK_LOG(info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
                 unlink(path.c_str());
                 return false;
             }
@@ -239,9 +239,9 @@ namespace sdk {
                 db_log_error(db.get());
                 return false;
             }
-            GDK_LOG_SEV(log_level::debug) << path << " updating schema";
+            GDK_LOG(debug) << path << " updating schema";
             create_db_schema(db);
-            GDK_LOG_SEV(log_level::info) << path << " loaded correctly";
+            GDK_LOG(info) << path << " loaded correctly";
             return true;
         }
 
@@ -293,7 +293,7 @@ namespace sdk {
             try {
                 callback(gsl::make_span(res, len));
             } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::error) << "Blob callback exception: " << ex.what();
+                GDK_LOG(error) << "Blob callback exception: " << ex.what();
             }
             step_final(stmt);
         }
@@ -325,7 +325,7 @@ namespace sdk {
                 auto tx_json = nlohmann::json::from_msgpack(span.begin(), span.end());
                 callback(timestamp, txhash_hex, block, spent, spv_status, tx_json);
             } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::error) << "Tx callback exception: " << ex.what();
+                GDK_LOG(error) << "Tx callback exception: " << ex.what();
                 return false; // Stop iterating on any exception
             }
             return true;
@@ -487,7 +487,7 @@ namespace sdk {
                         if (!prev_blob.empty()) {
                             upsert_key_value(blob_key, prev_blob);
                         }
-                        GDK_LOG_SEV(log_level::info) << "Copied client blob from previous version";
+                        GDK_LOG(info) << "Copied client blob from previous version";
                         m_require_write = true;
                     }
                 } catch (const std::exception&) {
@@ -526,7 +526,7 @@ namespace sdk {
         } });
         if (ver < MINOR_VERSION) {
             // Delete cache items that can be re-populated as the latest minor version
-            GDK_LOG_SEV(log_level::info) << "Updating tx cache version " << ver << " to v" << MINOR_VERSION;
+            GDK_LOG(info) << "Updating tx cache version " << ver << " to v" << MINOR_VERSION;
             if (m_is_liquid && ver < 1) {
                 // Delete pre-v1 blinding data, tx will be deleted below
                 exec_sql(m_db, "DELETE FROM LiquidOutput;");

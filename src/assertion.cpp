@@ -16,7 +16,7 @@ namespace sdk {
         const char* sep = error_message.empty() ? "" : ":";
         const std::string msg
             = std::string("assertion failure: ") + file + ":" + std::to_string(line) + sep + error_message;
-        GDK_LOG_SEV(log_level::error) << msg;
+        GDK_LOG(error) << msg;
         throw assertion_error(msg);
     }
 } // namespace sdk

@@ -70,26 +70,26 @@ namespace sdk {
 
         const int before = X509_cmp_time(X509_get0_notBefore(cert), &start_before);
         if (before == 0) {
-            GDK_LOG_SEV(log_level::error) << "Error checking certificate not before time";
+            GDK_LOG(error) << "Error checking certificate not before time";
             return false;
         }
         // -1: start time is earlier than or equal to yesterday - ok
         // +1: start time is later than yesterday - fail
         if (before == 1) {
-            GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (not yet valid)";
+            GDK_LOG(debug) << "Rejecting certificate (not yet valid)";
             return false;
         }
 
         const int after = X509_cmp_time(X509_get0_notAfter(cert), &expire_after);
         if (after == 0) {
-            GDK_LOG_SEV(log_level::error) << "Error checking certificate not after time";
+            GDK_LOG(error) << "Error checking certificate not after time";
             return false;
         }
         // -1: expiry time is earlier than or equal to expire_after - fail
         // +1: expiry time is later than expire_after - ok
         if (after == -1) {
             // The not after (expiry) time is earlier than expire_after
-            GDK_LOG_SEV(log_level::debug) << "Rejecting certificate (expired)";
+            GDK_LOG(debug) << "Rejecting certificate (expired)";
             return false;
         }
 
@@ -116,22 +116,21 @@ namespace sdk {
         const int chain_length = sk_X509_num(chain.get());
 
         // Walk the certificate chain looking for a pinned certificate in `pins`
-        GDK_LOG_SEV(log_level::debug) << "Checking for pinned certificate";
+        GDK_LOG(debug) << "Checking for pinned certificate";
         for (int idx = 0; idx < chain_length; ++idx) {
             const X509* cert = sk_X509_value(chain.get(), idx);
             if (X509_digest(cert, EVP_sha256(), sha256_digest_buf.data(), &written) == 0
                 || written != sha256_digest_buf.size()) {
-                GDK_LOG_SEV(log_level::error) << "X509_digest failed certificate idx " << idx;
+                GDK_LOG(error) << "X509_digest failed certificate idx " << idx;
                 return false;
             }
             const auto hex_digest = b2h(sha256_digest_buf);
             if (std::find(pins.begin(), pins.end(), hex_digest) != pins.end()) {
-                GDK_LOG_SEV(log_level::debug) << "Found pinned certificate " << hex_digest;
+                GDK_LOG(debug) << "Found pinned certificate " << hex_digest;
                 if (is_cert_in_date_range(cert, cert_expiry_threshold)) {
                     return true;
                 }
-                GDK_LOG_SEV(log_level::warning) << "Ignoring expiring pinned certificate:\n"
-                                                << cert_to_pretty_string(cert);
+                GDK_LOG(warning) << "Ignoring expiring pinned certificate:\n" << cert_to_pretty_string(cert);
             }
         }
 
@@ -159,8 +158,7 @@ namespace sdk {
             if (!is_cert_in_date_range(cert.get(), cert_expiry_threshold)) {
                 // Avoid adding expired certificates as they can cause validation failures
                 // even if there are other non-expired roots available.
-                GDK_LOG_SEV(log_level::warning) << "Ignoring expiring root certificate:\n"
-                                                << cert_to_pretty_string(cert.get());
+                GDK_LOG(warning) << "Ignoring expiring root certificate:\n" << cert_to_pretty_string(cert.get());
                 continue;
             }
 
@@ -174,7 +172,7 @@ namespace sdk {
                 // Pre-verification includes checking for things like expired certificates
                 if (!preverified) {
                     const int err = X509_STORE_CTX_get_error(vctx.native_handle());
-                    GDK_LOG_SEV(log_level::error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
+                    GDK_LOG(error) << "x509 certificate error: " << X509_verify_cert_error_string(err);
                     return false;
                 }
 
@@ -183,7 +181,7 @@ namespace sdk {
                 // If no pins are specified skip the check altogether
                 const bool have_pins = !pins.empty() && !pins[0].empty();
                 if (have_pins && !check_cert_pins(pins, vctx, cert_expiry_threshold)) {
-                    GDK_LOG_SEV(log_level::error) << "Failing ssl verification, failed pin check";
+                    GDK_LOG(error) << "Failing ssl verification, failed pin check";
                     return false;
                 }
 
@@ -203,20 +201,20 @@ namespace sdk {
 
     std::future<nlohmann::json> http_client::request(beast::http::verb verb, const nlohmann::json& params)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client";
+        GDK_LOG(debug) << "http_client";
 
         m_host = params.at("host");
         m_port = params.at("port");
         const std::string target = params.at("target");
         const std::string proxy_uri = params.at("proxy");
 
-        GDK_LOG_SEV(log_level::debug) << "Connecting to " << m_host << ":" << m_port << " for target " << target;
+        GDK_LOG(debug) << "Connecting to " << m_host << ":" << m_port << " for target " << target;
 
         const auto timeout_p = params.find("timeout");
         if (timeout_p != params.end()) {
             m_timeout = std::chrono::seconds(timeout_p->get<int>());
         }
-        GDK_LOG_SEV(log_level::debug) << "HTTP timeout " << m_timeout.count() << " seconds";
+        GDK_LOG(debug) << "HTTP timeout " << m_timeout.count() << " seconds";
 
         preamble(m_host);
 
@@ -267,7 +265,7 @@ namespace sdk {
 
     void http_client::on_resolve(beast::error_code ec, asio::ip::tcp::resolver::results_type results)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client:on_resolve";
+        GDK_LOG(debug) << "http_client:on_resolve";
 
         NET_ERROR_CODE_CHECK("on resolve", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -276,7 +274,7 @@ namespace sdk {
 
     void http_client::on_write(beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client:on_write";
+        GDK_LOG(debug) << "http_client:on_write";
 
         NET_ERROR_CODE_CHECK("on write", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -286,7 +284,7 @@ namespace sdk {
 
     void http_client::on_read(beast::error_code ec, size_t __attribute__((unused)) bytes_transferred)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client:on_read";
+        GDK_LOG(debug) << "http_client:on_read";
 
         NET_ERROR_CODE_CHECK("on read", ec);
         get_lowest_layer().cancel();
@@ -295,7 +293,7 @@ namespace sdk {
 
     void http_client::on_shutdown(beast::error_code ec)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client";
+        GDK_LOG(debug) << "http_client";
 
         if (ec && ec != asio::error::eof && ec != asio::ssl::error::stream_truncated) {
             set_exception(ec.message());
@@ -314,7 +312,7 @@ namespace sdk {
 
         if (result == beast::http::status::not_modified) {
             const nlohmann::json body = { { "not_modified", true } };
-            GDK_LOG_SEV(log_level::debug) << "using cached resource";
+            GDK_LOG(debug) << "using cached resource";
             m_promise.set_value(body);
             return;
         }
@@ -369,7 +367,7 @@ namespace sdk {
     void tls_http_client::on_connect(
         beast::error_code ec, __attribute__((unused)) const asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client:on_connect";
+        GDK_LOG(debug) << "http_client:on_connect";
 
         NET_ERROR_CODE_CHECK("on connect", ec);
         async_handshake();
@@ -377,7 +375,7 @@ namespace sdk {
 
     void tls_http_client::on_handshake(beast::error_code ec)
     {
-        GDK_LOG_SEV(log_level::debug) << "http_client:on_handshake";
+        GDK_LOG(debug) << "http_client:on_handshake";
 
         NET_ERROR_CODE_CHECK("on handshake", ec);
         get_lowest_layer().expires_after(m_timeout);
@@ -469,7 +467,7 @@ namespace sdk {
     void tcp_http_client::on_connect(boost::beast::error_code ec,
         __attribute__((unused)) const boost::asio::ip::tcp::resolver::results_type::endpoint_type& type)
     {
-        GDK_LOG_SEV(log_level::debug) << "tcp_http_client";
+        GDK_LOG(debug) << "tcp_http_client";
 
         NET_ERROR_CODE_CHECK("on connect", ec);
 

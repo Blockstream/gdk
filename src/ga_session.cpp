@@ -37,8 +37,6 @@
 #include "wamp_transport.hpp"
 #include "xpub_hdkey.hpp"
 
-#define TX_CACHE_LEVEL log_level::debug
-
 using namespace std::literals;
 
 namespace ga {
@@ -85,7 +83,7 @@ namespace sdk {
             for (const auto& item : details.items()) {
                 const std::string key = item.key();
                 if (std::find(TX_NTFY_FIELDS.begin(), TX_NTFY_FIELDS.end(), key) == TX_NTFY_FIELDS.end()) {
-                    GDK_LOG_SEV(log_level::info) << "Ignoring tx notification: unknown field " << item.key();
+                    GDK_LOG(info) << "Ignoring tx notification: unknown field " << item.key();
                     return true; // Skip this notification as we don't understand it
                 }
             }
@@ -225,8 +223,7 @@ namespace sdk {
             const auto& caps = supports_csv ? USER_AGENT_CAPS : USER_AGENT_CAPS_NO_CSV;
             auto user_agent = caps + version;
             if (user_agent.size() > max_len) {
-                GDK_LOG_SEV(log_level::warning)
-                    << "Truncating user agent string, exceeds max length (" << max_len << ")";
+                GDK_LOG(warning) << "Truncating user agent string, exceeds max length (" << max_len << ")";
                 user_agent = user_agent.substr(0, max_len);
             }
             return user_agent;
@@ -370,7 +367,7 @@ namespace sdk {
     void ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_LOG_SEV(log_level::debug) << "Set fee estimates " << fee_estimates.dump();
+        GDK_LOG(debug) << "Set fee estimates " << fee_estimates.dump();
 
         // Convert server estimates into an array of NUM_FEE_ESTIMATES estimates
         // ordered by block, with the minimum allowable fee at position 0
@@ -627,8 +624,7 @@ namespace sdk {
             m_fiat_rate = amount::format_amount(rate_str, 8);
         } catch (const std::exception& e) {
             m_fiat_rate.clear();
-            GDK_LOG_SEV(log_level::error)
-                << "failed to update fiat rate from string '" << rate_str << "': " << e.what();
+            GDK_LOG(error) << "failed to update fiat rate from string '" << rate_str << "': " << e.what();
         }
     }
 
@@ -753,7 +749,7 @@ namespace sdk {
 
             const auto json_str = details.dump();
             if (std::find(m_tx_notifications.begin(), m_tx_notifications.end(), json_str) != m_tx_notifications.end()) {
-                GDK_LOG_SEV(log_level::debug) << "eliding notification:" << json_str;
+                GDK_LOG(debug) << "eliding notification:" << json_str;
                 return; // Elide duplicate notifications sent by the server
             }
 
@@ -773,7 +769,7 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
 
                 // Update affected subaccounts as required
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
+                GDK_LOG(debug) << "Tx sync(" << subaccount << "): new tx " << txhash_hex;
                 m_cache->on_new_transaction(subaccount, txhash_hex);
                 m_synced_subaccounts.erase(subaccount);
             }
@@ -835,11 +831,11 @@ namespace sdk {
 
             if (last.empty()) {
                 // First login for this session.
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: first login";
+                GDK_LOG(debug) << "Tx sync: first login";
                 treat_as_reorg = true;
             } else if (is_relogin && last != details) {
                 // Re-login and we have missed a block or a reorg while logged out
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: re-login, reorg or missed block";
+                GDK_LOG(debug) << "Tx sync: re-login, reorg or missed block";
                 // If the current block isn't the next sequentially from our last,
                 // treat this as a reorg since we can't differentiate reorgs from
                 // multiple missed blocks.
@@ -847,18 +843,18 @@ namespace sdk {
                 may_have_missed_tx = true;
             } else if (details["previous_hash"] != last["block_hash"]) {
                 // Missed a block or encountered a reorg while logged in
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: reorg or missed block";
+                GDK_LOG(debug) << "Tx sync: reorg or missed block";
                 treat_as_reorg = true;
                 may_have_missed_tx = true;
             } else {
                 // Received the next sequential block while logged in,
                 // or re-login and the block hasn't changed.
                 // (happy path, continue below to delete mempool txs only)
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: new n+1 block";
+                GDK_LOG(debug) << "Tx sync: new n+1 block";
             }
 
-            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync: on new block" << (treat_as_reorg ? " (treat_as_reorg)" : "")
-                                        << (may_have_missed_tx ? " (may_have_missed_tx)" : "");
+            GDK_LOG(debug) << "Tx sync: on new block" << (treat_as_reorg ? " (treat_as_reorg)" : "")
+                           << (may_have_missed_tx ? " (may_have_missed_tx)" : "");
 
             std::vector<uint32_t> modified_subaccounts;
             uint32_t reorg_block = 0;
@@ -867,8 +863,8 @@ namespace sdk {
                 const uint32_t last_seen_block_height = m_cache->get_latest_block();
                 const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), last_seen_block_height);
                 reorg_block = last_seen_block_height - num_reorg_blocks;
-                GDK_LOG_SEV(TX_CACHE_LEVEL)
-                    << "Tx sync: removing " << num_reorg_blocks << " blocks from cache tip " << last_seen_block_height;
+                GDK_LOG(debug) << "Tx sync: removing " << num_reorg_blocks << " blocks from cache tip "
+                               << last_seen_block_height;
 
                 // We can't trust the SPV state of any txs younger than the
                 // max reorg depth, so clear them.
@@ -892,7 +888,7 @@ namespace sdk {
                 if (removed_txs || may_have_missed_tx) {
                     // If we were synced, we are no longer synced if we removed
                     // any txs or may have missed a new mempool tx
-                    GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << sa.first << "): marking unsynced";
+                    GDK_LOG(debug) << "Tx sync(" << sa.first << "): marking unsynced";
                     m_synced_subaccounts.erase(sa.first);
                     modified_subaccounts.push_back(sa.first);
                 }
@@ -945,7 +941,7 @@ namespace sdk {
                             { "rate", std::move(fiat_rate) } } } },
                 false);
         } else {
-            GDK_LOG_SEV(log_level::warning) << "Ignoring irrelevant ticker update";
+            GDK_LOG(warning) << "Ignoring irrelevant ticker update";
         }
     }
 
@@ -1054,7 +1050,7 @@ namespace sdk {
             const uint64_t seq = event.at("sequence");
             if (seq != 0) {
                 // Ignore client blobs whose sequence numbers we don't understand
-                GDK_LOG_SEV(log_level::warning) << "Unexpected client blob sequence " << seq;
+                GDK_LOG(warning) << "Unexpected client blob sequence " << seq;
                 return;
             }
             locker_t notify_locker(m_mutex);
@@ -1107,7 +1103,7 @@ namespace sdk {
     void ga_session::load_client_blob(session_impl::locker_t& locker, bool encache)
     {
         // Load the latest blob from the server
-        GDK_LOG_SEV(log_level::info) << "Fetching client blob from server";
+        GDK_LOG(info) << "Fetching client blob from server";
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         auto ret = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
         const auto server_blob = base64_to_bytes(ret["blob"]);
@@ -1139,7 +1135,7 @@ namespace sdk {
         blob_b64.reset();
         if (!wamp_cast<bool>(result)) {
             // Raced with another update on the server, caller should try again
-            GDK_LOG_SEV(log_level::info) << "Save client blob race, retrying";
+            GDK_LOG(info) << "Save client blob race, retrying";
             return false;
         }
         // Blob has been saved on the server, cache it locally
@@ -1339,7 +1335,7 @@ namespace sdk {
             const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
             return nlohmann::json::parse(plaintext.begin(), plaintext.end());
         } catch (const autobahn::call_error& e) {
-            GDK_LOG_SEV(log_level::warning) << "pin " << (is_login ? "login " : "") << "failed: " << e.what();
+            GDK_LOG(warning) << "pin " << (is_login ? "login " : "") << "failed: " << e.what();
             if (is_login) {
                 reset_all_session_data(false);
             }
@@ -1866,9 +1862,9 @@ namespace sdk {
                         // Inverted: See encache_signer_xpubs()
                         signer->cache_bip32_xpub(item.value(), item.key());
                     }
-                    GDK_LOG_SEV(log_level::debug) << "Loaded " << cached.size() << " cached xpubs";
+                    GDK_LOG(debug) << "Loaded " << cached.size() << " cached xpubs";
                 } catch (const std::exception& e) {
-                    GDK_LOG_SEV(log_level::warning) << "Error reading xpubs: " << e.what();
+                    GDK_LOG(warning) << "Error reading xpubs: " << e.what();
                 }
             }
         } });
@@ -2120,19 +2116,19 @@ namespace sdk {
         const auto cleanup = gsl::finally([this]() { m_multi_call_category &= ~MC_TX_CACHE; });
 
         const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
-        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
+        GDK_LOG(debug) << "Tx sync(" << subaccount << "): latest timestamp = " << timestamp;
 
         if (m_synced_subaccounts.count(subaccount)) {
             // We know our cache is up to date, avoid going to the server
-            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): already synced";
+            GDK_LOG(debug) << "Tx sync(" << subaccount << "): already synced";
             return { { "list", nlohmann::json::array() }, { "more", false }, { "sync_ts", timestamp } };
         }
 
         // Get a page of txs from the server if any are newer than our last cached one
         auto result = m_wamp->call(locker, "txs.get_list_v3", subaccount, timestamp);
         nlohmann::json ret = wamp_cast_json(result);
-        GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << "): server returned " << ret["list"].size()
-                                    << " txs, more = " << ret["more"];
+        GDK_LOG(debug) << "Tx sync(" << subaccount << "): server returned " << ret["list"].size()
+                       << " txs, more = " << ret["more"];
 
         auto& txs = ret["list"];
         // TODO: Return rejected txs to the caller
@@ -2177,8 +2173,7 @@ namespace sdk {
         if (sync_disrupted) {
             // Cached tx data was changed while syncing, e.g. a block or tx arrived.
             // Only cache any blinding data/liquid outputs, not the returned txs.
-            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount << ") disrupted: " << txs["sync_ts"]
-                                        << " != " << timestamp;
+            GDK_LOG(debug) << "Tx sync(" << subaccount << ") disrupted: " << txs["sync_ts"] << " != " << timestamp;
             txs["more"] = true; // Ensure the caller iterates to re-sync
             // Mark the subaccount as not yet up to date
             m_synced_subaccounts.erase(subaccount);
@@ -2314,8 +2309,7 @@ namespace sdk {
             if (!sync_disrupted) {
                 // Insert the tx into the DB cache now that it is cleaned up/unblinded
                 const uint64_t tx_timestamp = tx_details.at("created_at_ts");
-                GDK_LOG_SEV(TX_CACHE_LEVEL)
-                    << "Tx sync(" << subaccount << ") inserting " << txhash << ":" << tx_timestamp;
+                GDK_LOG(debug) << "Tx sync(" << subaccount << ") inserting " << txhash << ":" << tx_timestamp;
                 m_cache->insert_transaction(subaccount, tx_timestamp, txhash, tx_details);
                 txs["sync_ts"] = tx_timestamp;
             }
@@ -2377,11 +2371,11 @@ namespace sdk {
 
             std::string spv_status;
             if (m_spv_verified_txs.count(txhash_hex)) {
-                GDK_LOG_SEV(log_level::debug) << txhash_hex << " cached as verified";
+                GDK_LOG(debug) << txhash_hex << " cached as verified";
                 spv_status = "verified"; // Previously verified
             } else {
                 spv_status = spv_get_status_string(spv_verify_tx(spv_params));
-                GDK_LOG_SEV(log_level::debug) << txhash_hex << " status " << spv_status;
+                GDK_LOG(debug) << txhash_hex << " status " << spv_status;
             }
             if (!are_downloading && spv_status == "in_progress") {
                 // Start syncing headers for SPV if we aren't already doing it
@@ -2414,8 +2408,8 @@ namespace sdk {
         const auto timestamp = m_cache->get_latest_transaction_timestamp(subaccount);
         const bool sync_disrupted = details["sync_ts"] != timestamp;
         if (sync_disrupted) {
-            GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx sync(" << subaccount
-                                        << ") disrupted before fetch: " << details["sync_ts"] << " != " << timestamp;
+            GDK_LOG(debug) << "Tx sync(" << subaccount << ") disrupted before fetch: " << details["sync_ts"]
+                           << " != " << timestamp;
             // Note we don't need to update m_synced_subaccounts here as
             // the caller will re-iterate to sync
             return nlohmann::json(false);
@@ -2597,7 +2591,7 @@ namespace sdk {
                 }
             } });
             if (!tx_bin.empty()) {
-                GDK_LOG_SEV(TX_CACHE_LEVEL) << "Tx cache using cached " << txhash_hex;
+                GDK_LOG(debug) << "Tx cache using cached " << txhash_hex;
             } else {
                 // Not found, ask the server
                 auto server_tx_hex = wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex));
@@ -2610,7 +2604,7 @@ namespace sdk {
             }
             return Tx(tx_bin, m_net_params.is_liquid());
         } catch (const std::exception& e) {
-            GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
+            GDK_LOG(warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
         }
     }
@@ -3271,14 +3265,14 @@ namespace sdk {
         uint32_t last_fetched_height = 0;
 
         // Loop downloading block headers until we are caught up, then exit
-        GDK_LOG_SEV(log_level::info) << "spv_download_headers: starting sync";
+        GDK_LOG(info) << "spv_download_headers: starting sync";
         for (;;) {
             try {
                 uint32_t block_height;
                 {
                     locker_t locker(m_mutex);
                     if (m_spv_thread_stop) {
-                        GDK_LOG_SEV(log_level::info) << "spv_download_headers: exit requested";
+                        GDK_LOG(info) << "spv_download_headers: exit requested";
                         break; // We have been asked to terminate; do so
                     }
                     block_height = m_last_block_notification["block_height"];
@@ -3289,7 +3283,7 @@ namespace sdk {
                 }
                 const auto ret = rust_call("spv_download_headers", spv_params);
                 const auto fetched_height = ret.at("height");
-                GDK_LOG_SEV(log_level::debug) << "spv_download_headers:" << fetched_height << '/' << block_height;
+                GDK_LOG(debug) << "spv_download_headers:" << fetched_height << '/' << block_height;
                 if (fetched_height == block_height) {
                     break; // Caught up, exit
                 }
@@ -3299,7 +3293,7 @@ namespace sdk {
                 last_fetched_height = fetched_height;
                 std::this_thread::sleep_for(delay_ms);
             } catch (const std::exception& e) {
-                GDK_LOG_SEV(log_level::warning) << "spv_download_headers exception:" << e.what();
+                GDK_LOG(warning) << "spv_download_headers exception:" << e.what();
                 break; // Exception, exit
             }
         }

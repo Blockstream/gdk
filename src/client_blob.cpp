@@ -197,7 +197,7 @@ namespace sdk {
         // This check prevents the server maliciously returning an old blob
         const uint64_t new_version = new_data[USER_VERSION];
         const uint64_t current_version = get_user_version();
-        GDK_LOG_SEV(log_level::info) << "Load blob ver " << new_version << " over " << current_version;
+        GDK_LOG(info) << "Load blob ver " << new_version << " over " << current_version;
         // Allow to load a v1 blob over a v1 blob for initial creation races
         const bool is_newer = new_version > current_version || (current_version == 1 && new_version == 1);
         GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");

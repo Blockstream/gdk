@@ -29,7 +29,7 @@ namespace sdk {
             if (hint != "connect" && hint != "disconnect") {
                 GDK_RUNTIME_ASSERT_MSG(false, std::string(hint_type) + " must be either 'connect' or 'disconnect'");
             }
-            GDK_LOG_SEV(log_level::info) << "reconnect_hint: " << hint_type << ":" << hint;
+            GDK_LOG(info) << "reconnect_hint: " << hint_type << ":" << hint;
         }
 
     } // namespace
@@ -145,7 +145,7 @@ namespace sdk {
             }
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
-            GDK_LOG_SEV(log_level::warning) << "Error http_request: " << ex.what();
+            GDK_LOG(warning) << "Error http_request: " << ex.what();
         }
         return result;
     }
@@ -178,7 +178,7 @@ namespace sdk {
         try {
             rust_call("refresh_assets", params);
         } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::error) << "error refreshing assets: " << ex.what();
+            GDK_LOG(error) << "error refreshing assets: " << ex.what();
         }
     }
 
@@ -198,7 +198,7 @@ namespace sdk {
         try {
             return rust_call("get_assets", params);
         } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::error) << "error fetching assets: " << ex.what();
+            GDK_LOG(error) << "error fetching assets: " << ex.what();
             return { { "assets", nlohmann::json::object() }, { "icons", nlohmann::json::object() },
                 { "error", ex.what() } };
         }
@@ -252,10 +252,10 @@ namespace sdk {
             });
             tor_proxy = socksify(tor_proxy);
             if (tor_proxy.empty()) {
-                GDK_LOG_SEV(log_level::warning) << "Timeout initiating tor connection";
+                GDK_LOG(warning) << "Timeout initiating tor connection";
                 throw timeout_error();
             }
-            GDK_LOG_SEV(log_level::info) << "tor socks address " << tor_proxy;
+            GDK_LOG(info) << "tor socks address " << tor_proxy;
             locker_t locker(m_mutex);
             m_tor_proxy = tor_proxy;
             return tor_proxy;

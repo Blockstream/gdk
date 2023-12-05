@@ -37,7 +37,7 @@ namespace sdk {
         {
             try {
                 const auto what = e.what();
-                GDK_LOG_SEV(log_level::debug) << preamble << what;
+                GDK_LOG(debug) << preamble << what;
             } catch (const std::exception&) {
             }
         }
@@ -103,7 +103,7 @@ namespace sdk {
 #if (__ANDROID_API__ >= __ANDROID_API_P__)
         /* FIXME: See FIXME above */
         if (android_fdsan_set_error_level) {
-            GDK_LOG_SEV(log_level::info) << "fdsan disabled";
+            GDK_LOG(info) << "fdsan disabled";
         }
 #endif
 #endif /* ANDROID */
@@ -138,7 +138,7 @@ namespace sdk {
             std::pair<std::string, std::string> details;
             try {
                 details = remap_ga_server_error(get_error_details(e));
-                GDK_LOG_SEV(log_level::debug) << "server exception (" << details.first << "):" << details.second;
+                GDK_LOG(debug) << "server exception (" << details.first << "):" << details.second;
             } catch (const std::exception&) {
                 log_exception("call error:", e);
             }
@@ -210,8 +210,7 @@ namespace sdk {
             p.swap(m_impl); // Ensure the session_impl is deleted in this block
             if (p) {
                 const bool is_electrum = p->get_network_parameters().is_electrum();
-                GDK_LOG_SEV(log_level::info)
-                    << "destroying " << (is_electrum ? "single" : "multi") << "sig session " << (void*)this;
+                GDK_LOG(info) << "destroying " << (is_electrum ? "single" : "multi") << "sig session " << (void*)this;
                 p->disconnect();
             }
         });
@@ -221,7 +220,7 @@ namespace sdk {
     {
         auto p = get_impl();
         if (!p) {
-            GDK_LOG_SEV(log_level::info) << "null session context. backing off...";
+            GDK_LOG(info) << "null session context. backing off...";
             return;
         }
 

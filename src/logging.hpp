@@ -79,7 +79,7 @@ namespace sdk {
         return gdk_logger_t{};
     }
 
-#define GDK_LOG_SEV(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), sev)
+#define GDK_LOG(sev) BOOST_LOG_SEV(::ga::sdk::gdk_logger::get(), log_level::sev)
 
 } // namespace sdk
 } // namespace ga

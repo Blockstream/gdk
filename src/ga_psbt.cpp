@@ -337,7 +337,7 @@ namespace sdk {
                 if (m_is_liquid) {
                     const auto unblinded = unblind_output(session, tx, i);
                     if (unblinded.contains("error")) {
-                        GDK_LOG_SEV(log_level::warning) << "output " << i << ": " << unblinded.at("error");
+                        GDK_LOG(warning) << "output " << i << ": " << unblinded.at("error");
                         // FIXME: store blinded
                         continue; // Failed to unblind
                     }

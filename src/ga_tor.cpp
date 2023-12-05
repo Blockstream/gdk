@@ -345,8 +345,7 @@ namespace sdk {
                         self->m_reply_handlers.front()(*self, self->m_message);
                         self->m_reply_handlers.pop_front();
                     } else {
-                        GDK_LOG_SEV(log_level::debug)
-                            << "tor: Received unexpected sync reply " << self->m_message.m_code;
+                        GDK_LOG(debug) << "tor: Received unexpected sync reply " << self->m_message.m_code;
                     }
                 }
                 self->m_message.clear();
@@ -356,7 +355,7 @@ namespace sdk {
         //  Do this after evbuffer_readln to make sure all full lines have been
         //  removed from the buffer. Everything left is an incomplete line.
         if (evbuffer_get_length(input) > MAX_LINE_LENGTH) {
-            GDK_LOG_SEV(log_level::debug) << "tor: Disconnecting because MAX_LINE_LENGTH exceeded";
+            GDK_LOG(debug) << "tor: Disconnecting because MAX_LINE_LENGTH exceeded";
             self->disconnect();
         }
     }
@@ -366,13 +365,13 @@ namespace sdk {
         tor_control_connection* self = static_cast<tor_control_connection*>(ctx);
 
         if (what & BEV_EVENT_CONNECTED) {
-            GDK_LOG_SEV(log_level::info) << "tor: Control successfully connected!";
+            GDK_LOG(info) << "tor: Control successfully connected!";
             self->m_connected(*self);
         } else if (what & (BEV_EVENT_EOF | BEV_EVENT_ERROR)) {
             if (what & BEV_EVENT_ERROR) {
-                GDK_LOG_SEV(log_level::info) << "tor: Error connecting to Tor control socket";
+                GDK_LOG(info) << "tor: Error connecting to Tor control socket";
             } else {
-                GDK_LOG_SEV(log_level::info) << "tor: End of stream\n";
+                GDK_LOG(info) << "tor: End of stream\n";
             }
 
             self->disconnect();
@@ -390,10 +389,10 @@ namespace sdk {
         if (evutil_parse_sockaddr_port(
                 m_tor_control_port.c_str(), (struct sockaddr*)&connect_to_addr, &connect_to_addrlen)
             < 0) {
-            GDK_LOG_SEV(log_level::info) << "tor: Error parsing socket address " << m_tor_control_port;
+            GDK_LOG(info) << "tor: Error parsing socket address " << m_tor_control_port;
             return false;
         }
-        GDK_LOG_SEV(log_level::info) << "tor: connecting to controller " << m_tor_control_port;
+        GDK_LOG(info) << "tor: connecting to controller " << m_tor_control_port;
 
         // Create a new socket, set up callbacks and enable notification bits
         m_b_conn = bufferevent_socket_new(m_base, -1, BEV_OPT_CLOSE_ON_FREE);
@@ -406,7 +405,7 @@ namespace sdk {
 
         // Finally, connect to target
         if (bufferevent_socket_connect(m_b_conn, (struct sockaddr*)&connect_to_addr, connect_to_addrlen) < 0) {
-            GDK_LOG_SEV(log_level::info) << "tor: Error connecting to address " << m_tor_control_port;
+            GDK_LOG(info) << "tor: Error connecting to address " << m_tor_control_port;
             return false;
         }
         return true;
@@ -458,7 +457,7 @@ namespace sdk {
             }
         } while (tor_control_port.empty());
 
-        GDK_LOG_SEV(log_level::info) << "tor: control port " << tor_control_port;
+        GDK_LOG(info) << "tor: control port " << tor_control_port;
         GDK_RUNTIME_ASSERT(tor_control_port.size() > TOR_CONTROL_PORT_TAG.size());
         tor_control_port.erase(0, TOR_CONTROL_PORT_TAG.size());
         return tor_control_port;
@@ -477,7 +476,7 @@ namespace sdk {
         , m_tor_control_file(get_tor_control_file(m_tor_datadir))
         , m_stopping(false)
     {
-        GDK_LOG_SEV(log_level::info) << "Starting up internal Tor";
+        GDK_LOG(info) << "Starting up internal Tor";
 
         const std::string conf_socks_port = socks5_port.empty() ? "auto" : socks5_port;
 
@@ -517,16 +516,16 @@ namespace sdk {
                 = tor_main_configuration_set_command_line(tor_conf, argv_conf.size(), (char**)argv_conf.data());
             GDK_RUNTIME_ASSERT(!conf_res);
 
-            GDK_LOG_SEV(log_level::info) << "tor_run_main begins";
+            GDK_LOG(info) << "tor_run_main begins";
             tor_run_main(tor_conf);
-            GDK_LOG_SEV(log_level::info) << "tor_run_main exited";
+            GDK_LOG(info) << "tor_run_main exited";
 
             tor_main_configuration_free(tor_conf);
 
             m_base = nullptr;
         });
 
-        GDK_LOG_SEV(log_level::info) << "Tor thread started";
+        GDK_LOG(info) << "Tor thread started";
 
         m_tor_control_port = get_tor_control_port(m_tor_control_file);
         m_conn = std::make_unique<tor_control_connection>(m_base, m_tor_control_port);
@@ -556,7 +555,7 @@ namespace sdk {
 
         no_std_exception_escape([this] {
             if (!m_conn->command("SIGNAL HALT", std::bind(&tor_controller_impl::stopped_cb, this))) {
-                GDK_LOG_SEV(log_level::info) << "tor: could not send the HALT signal, is Tor already stopped?";
+                GDK_LOG(info) << "tor: could not send the HALT signal, is Tor already stopped?";
             }
 
             // This is blocking because if we return immediately the caller could try to start tor while the
@@ -610,7 +609,7 @@ namespace sdk {
     void tor_controller_impl::authchallenge_cb(tor_control_connection& _conn, const tor_control_reply& reply)
     {
         GDK_RUNTIME_ASSERT(reply.m_code == 250);
-        GDK_LOG_SEV(log_level::info) << "tor: SAFECOOKIE authentication challenge successful";
+        GDK_LOG(info) << "tor: SAFECOOKIE authentication challenge successful";
 
         const auto l = split_tor_reply_line(reply.m_lines[0]);
         GDK_RUNTIME_ASSERT(l.first == "AUTHCHALLENGE");
@@ -642,7 +641,7 @@ namespace sdk {
     void tor_controller_impl::auth_cb(tor_control_connection& _conn, const tor_control_reply& reply)
     {
         GDK_RUNTIME_ASSERT(reply.m_code == 250);
-        GDK_LOG_SEV(log_level::info) << "tor: ready, waiting for the circuit";
+        GDK_LOG(info) << "tor: ready, waiting for the circuit";
 
         if (!_conn.command("GETINFO status/bootstrap-phase",
                 std::bind(
@@ -672,7 +671,7 @@ namespace sdk {
         m_init_cv.notify_all();
 
         if (m_bootstrap_phase->progress == 100) {
-            GDK_LOG_SEV(log_level::info) << "tor: the circuit is ready, we can finally use it!";
+            GDK_LOG(info) << "tor: the circuit is ready, we can finally use it!";
 
             if (!_conn.command("GETINFO net/listeners/socks",
                     std::bind(&tor_controller_impl::socks_cb, this, std::placeholders::_2))) {
@@ -691,12 +690,12 @@ namespace sdk {
     void tor_controller_impl::socks_cb(const tor_control_reply& reply)
     {
         GDK_RUNTIME_ASSERT(reply.m_code == 250);
-        GDK_LOG_SEV(log_level::info) << "tor: SOCKSPORT ready";
+        GDK_LOG(info) << "tor: SOCKSPORT ready";
 
         auto m = parse_tor_reply_mapping(reply.m_lines[0]);
         GDK_RUNTIME_ASSERT(!m.empty());
 
-        GDK_LOG_SEV(log_level::info) << "tor: settings socks5 to " << m["net/listeners/socks"];
+        GDK_LOG(info) << "tor: settings socks5 to " << m["net/listeners/socks"];
         std::lock_guard<std::mutex> _(m_init_mutex);
         m_socks5 = "socks5://" + m["net/listeners/socks"];
         m_init_cv.notify_all();
@@ -713,7 +712,7 @@ namespace sdk {
         throw reconnect_error();
     }
 
-    void tor_controller_impl::stopped_cb() { GDK_LOG_SEV(log_level::info) << "tor: halt command received"; }
+    void tor_controller_impl::stopped_cb() { GDK_LOG(info) << "tor: halt command received"; }
 
     std::string tor_controller_impl::wait_for_socks5(
         uint32_t timeout, std::function<void(std::shared_ptr<tor_bootstrap_phase>)> phase_cb)
@@ -745,7 +744,7 @@ namespace sdk {
     static std::unique_ptr<tor_controller_impl> make_controller(const std::string& socks5_port)
     {
         const std::string tor_datadir = gdk_config()["tordir"];
-        GDK_LOG_SEV(log_level::info) << "tor: using '" << tor_datadir << "' as tor datadir";
+        GDK_LOG(info) << "tor: using '" << tor_datadir << "' as tor datadir";
         return std::make_unique<tor_controller_impl>(socks5_port, tor_datadir);
     }
 

@@ -192,7 +192,7 @@ namespace sdk {
             if (status == boost::future_status::ready) {
                 f.get();
             } else {
-                GDK_LOG_SEV(log_level::info) << "future not ready on " << context;
+                GDK_LOG(info) << "future not ready on " << context;
             }
         }
 
@@ -224,12 +224,12 @@ namespace sdk {
 
                 // Wait for the transport to be disconnected
                 bool connected = true;
-                GDK_LOG_SEV(log_level::debug) << "waiting for connection to die";
+                GDK_LOG(debug) << "waiting for connection to die";
                 while (connected) {
                     auto f = asio::post(executor, std::packaged_task<bool()>([&t] { return t->is_connected(); }));
                     connected = f.get();
                 }
-                GDK_LOG_SEV(log_level::debug) << "connection is dead";
+                GDK_LOG(debug) << "connection is dead";
 
                 no_std_exception_escape(
                     [&executor, &t] { asio::post(executor, std::packaged_task<void()>([&t] { t->detach(); })).get(); });
@@ -238,7 +238,7 @@ namespace sdk {
 
         static bool connection_ping_ok(std::shared_ptr<autobahn::wamp_websocket_transport>& t, bool is_tls)
         {
-            GDK_LOG_SEV(log_level::info) << "net: pinging";
+            GDK_LOG(info) << "net: pinging";
             if (is_tls) {
                 return std::static_pointer_cast<transport_tls>(t)->ping(std::string());
             }
@@ -385,7 +385,7 @@ namespace sdk {
 
     void wamp_transport::change_state_to(wamp_transport::state_t new_state, const std::string& proxy, bool wait)
     {
-        GDK_LOG_SEV(log_level::info) << "change_state_to: requesting state " << state_str(new_state);
+        GDK_LOG(info) << "change_state_to: requesting state " << state_str(new_state);
         locker_t locker(m_mutex);
         if (!proxy.empty()) {
             m_proxy = proxy;
@@ -410,16 +410,16 @@ namespace sdk {
             locker.unlock();
             if (current_state == new_state || current_state == state_t::exited) {
                 // We have achieved the state we asked for, or been asked to exit.
-                GDK_LOG_SEV(log_level::info) << "change_state_to: changed to " << state_str(current_state);
+                GDK_LOG(info) << "change_state_to: changed to " << state_str(current_state);
                 return;
             }
             if (desired_state != new_state) {
                 // Another thread has asked for a different state via
                 // GA_reconnect_hint, e.g. has asked to disconnect while
                 // we are connecting.
-                GDK_LOG_SEV(log_level::info)
-                    << "change_state_to: " << state_str(new_state) << " target changed to " << state_str(desired_state)
-                    << " by another thread (current state " << state_str(current_state) << ')';
+                GDK_LOG(info) << "change_state_to: " << state_str(new_state) << " target changed to "
+                              << state_str(desired_state) << " by another thread (current state "
+                              << state_str(current_state) << ')';
                 // We throw a timeout error for the original caller, so they can
                 // handle the error with the existing logic for a sync timeout
                 // failure. The caller knows that they changed the state
@@ -469,7 +469,7 @@ namespace sdk {
     {
         ++m_failure_count;
         locker.unlock();
-        GDK_LOG_SEV(log_level::info) << reason << ", notifying failure";
+        GDK_LOG(info) << reason << ", notifying failure";
         if (notify_condition) {
             m_condition.notify_all();
         }
@@ -520,7 +520,7 @@ namespace sdk {
         auto last_handled_failure_count = m_failure_count.load();
         exponential_backoff backoff;
 
-        GDK_LOG_SEV(log_level::info) << "net: thread started for gdk version " << GDK_COMMIT;
+        GDK_LOG(info) << "net: thread started for gdk version " << GDK_COMMIT;
 
         for (;;) {
             decltype(m_transport) t;
@@ -534,7 +534,7 @@ namespace sdk {
             const bool need_to_ping = !m_proxy.empty();
 
             if (desired_state != state_t::exited && last_handled_failure_count != failure_count) {
-                GDK_LOG_SEV(log_level::info) << "net: unhandled failure detected";
+                GDK_LOG(info) << "net: unhandled failure detected";
                 desired_state = state_t::disconnected;
             } else if (state == desired_state) {
                 // We are already in the desired state. Wait until something changes
@@ -558,8 +558,7 @@ namespace sdk {
                 continue;
             }
 
-            GDK_LOG_SEV(log_level::info) << "net: desired " << state_str(desired_state) << " actual "
-                                         << state_str(state);
+            GDK_LOG(info) << "net: desired " << state_str(desired_state) << " actual " << state_str(state);
 
             if (desired_state == state_t::exited || desired_state == state_t::disconnected) {
                 // We want the connection closed
@@ -569,7 +568,7 @@ namespace sdk {
                     m_subscriptions.swap(subscriptions);
 
                     unique_unlock unlocker(locker);
-                    GDK_LOG_SEV(log_level::info) << "net: disconnecting";
+                    GDK_LOG(info) << "net: disconnecting";
                     handle_disconnect(executor, t, s);
                 }
 
@@ -595,8 +594,7 @@ namespace sdk {
                 const std::string proxy = m_proxy;
                 locker.unlock();
 
-                GDK_LOG_SEV(log_level::info)
-                    << "net: connect to " << m_server << (proxy.empty() ? "" : std::string(" via ") + proxy);
+                GDK_LOG(info) << "net: connect to " << m_server << (proxy.empty() ? "" : std::string(" via ") + proxy);
 
                 if (is_tls) {
                     t = std::make_shared<transport_tls>(*m_client_tls, m_server, proxy, is_debug);
@@ -631,7 +629,7 @@ namespace sdk {
                     continue;
                 }
 
-                GDK_LOG_SEV(log_level::info) << "net: connection successful";
+                GDK_LOG(info) << "net: connection successful";
                 backoff.reset(); // Start our backoff sequence again when we reconnect
                 locker.lock();
                 m_session.swap(s);
@@ -651,7 +649,7 @@ namespace sdk {
     {
         backoff.increment();
         const auto backoff_time = backoff.get_backoff();
-        GDK_LOG_SEV(log_level::info) << "net: backing off for " << backoff_time.count() << "s";
+        GDK_LOG(info) << "net: backing off for " << backoff_time.count() << "s";
         const auto start = std::chrono::system_clock::now();
         auto&& elapsed_fn = [this, start, backoff_time] {
             if (is_elapsed(start, backoff_time)) {
@@ -688,7 +686,7 @@ namespace sdk {
                        topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options)
                       .get();
         }
-        GDK_LOG_SEV(log_level::debug) << "subscribed to " << topic << ":" << sub.id();
+        GDK_LOG(debug) << "subscribed to " << topic << ":" << sub.id();
         m_subscriptions.emplace_back(sub);
     }
 

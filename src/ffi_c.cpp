@@ -121,9 +121,9 @@ struct call_timer {
     call_timer(const char* func)
         : m_func(func)
     {
-        GDK_LOG_SEV(ga::sdk::log_level::info) << "CALL: " << m_func;
+        GDK_LOG(info) << "CALL: " << m_func;
     }
-    ~call_timer() { GDK_LOG_SEV(ga::sdk::log_level::info) << "RETN: " << m_func; }
+    ~call_timer() { GDK_LOG(info) << "RETN: " << m_func; }
     const char* m_func;
 #else
     call_timer(const char* /*func*/) {}

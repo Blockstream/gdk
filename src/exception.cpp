@@ -38,7 +38,7 @@ namespace sdk {
             // Missing prevout indicates that a tx being bumped has been
             // confirmed and therefore the bump tx's previous output cannot
             // be found. Remap this to a more friendly error message.
-            GDK_LOG_SEV(log_level::debug) << details.second;
+            GDK_LOG(debug) << details.second;
             return std::make_pair(details.first, res::id_transaction_already_confirmed);
         } else if (details.second == "User not found or invalid password") {
             return std::make_pair(details.first, res::id_user_not_found_or_invalid);

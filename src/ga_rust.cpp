@@ -71,7 +71,7 @@ namespace sdk {
 
     void ga_rust::disconnect()
     {
-        GDK_LOG_SEV(log_level::debug) << "ga_rust::disconnect";
+        GDK_LOG(debug) << "ga_rust::disconnect";
         rust_call("disconnect", {}, m_session);
     }
 
@@ -301,7 +301,7 @@ namespace sdk {
         try {
             return rust_call("get_available_currencies", p, m_session);
         } catch (const std::exception& ex) {
-            GDK_LOG_SEV(log_level::error) << "error fetching currencies: " << ex.what();
+            GDK_LOG(error) << "error fetching currencies: " << ex.what();
             return { { "error", ex.what() } };
         }
     }
@@ -393,7 +393,7 @@ namespace sdk {
             const std::string tx_hex = rust_call("get_transaction_hex", nlohmann::json(txhash_hex), m_session);
             return Tx(tx_hex, m_net_params.is_liquid());
         } catch (const std::exception& e) {
-            GDK_LOG_SEV(log_level::warning) << "Error fetching " << txhash_hex << " : " << e.what();
+            GDK_LOG(warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
         }
     }
@@ -500,7 +500,7 @@ namespace sdk {
                 auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
                 fiat_rate = xrates.value(currency, "");
             } catch (const std::exception& ex) {
-                GDK_LOG_SEV(log_level::warning) << "cannot fetch exchange rate " << ex.what();
+                GDK_LOG(warning) << "cannot fetch exchange rate " << ex.what();
             }
         }
 
