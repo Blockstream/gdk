@@ -69,6 +69,13 @@ namespace sdk {
             const std::string datadir = global_config["datadir"];
             global_config.emplace("registrydir", datadir + "/registry");
         }
+        if (!global_config.contains("optimize_expired_csv")) {
+            // optimize_expired_csv is a development setting to enable signing
+            // expired csv inputs with just the users signature.
+            // TODO: Remove this setting and all references to it once
+            // expired input signing is completed.
+            global_config.emplace("optimize_expired_csv", false);
+        }
 
         // Set up logging. Default to fatal logging, effectively 'none',
         // since we don't use fatal severity for logging.

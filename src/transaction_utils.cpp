@@ -7,6 +7,8 @@
 #include "ga_tx.hpp"
 #include "json_utils.hpp"
 #include "memory.hpp"
+// TODO: remove session.hpp once optimize_expired_csv default-enabled
+#include "session.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -515,8 +517,9 @@ namespace sdk {
                 utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
             }
 
-            if (transaction_version >= WALLY_TX_VERSION_2 && sequence == seq_default
-                && j_strref(utxo, "address_type") == address_type::csv) {
+            // TODO: remove optimize_expired_csv check once default-enabled
+            if (j_boolref(gdk_config(), "optimize_expired_csv") && transaction_version >= WALLY_TX_VERSION_2
+                && sequence == seq_default && j_strref(utxo, "address_type") == address_type::csv) {
                 const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
                 if (expiry_height && expiry_height <= session.get_block_height()) {
                     // Expired CSV input: mark as an expired spend
