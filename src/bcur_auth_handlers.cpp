@@ -2,30 +2,19 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
-#include "json_utils.hpp"
-#include "wally_crypto.h"
 
-#include <iterator>
 #include <nlohmann/json.hpp>
 #include <string>
 #ifdef USE_REAL_BCUR
 #include "ga_wally.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
-#include "wally_crypto.h"
+
 #include <bc-ur/bc-ur.hpp>
 #include <boost/algorithm/string.hpp>
 #include <boost/format.hpp>
 #include <gsl/span>
-extern "C" {
-#include <urc/crypto_account.h>
-#include <urc/crypto_eckey.h>
-#include <urc/crypto_hdkey.h>
-#include <urc/crypto_output.h>
-#include <urc/crypto_psbt.h>
-#include <urc/error.h>
-#include <urc/jade_bip8539.h>
-}
+#include <urc/urc.h>
 #else
 namespace ur {
 class UREncoder {
@@ -176,9 +165,8 @@ namespace sdk {
                 psbt.buffer_size = psbt_bytes.size();
                 result = urc_crypto_psbt_parse(raw.data(), raw.size(), &psbt);
             } while (result == URC_EBUFFERTOOSMALL);
-            if (result != URC_OK) {
-                throw user_error("ur-c: Parsing crypto_psbt failed with error code:" + std::to_string(result));
-            }
+            GDK_RUNTIME_ASSERT_MSG(
+                result == URC_OK, "ur-c: Parsing crypto_psbt failed with error code:" + std::to_string(result));
             return { { "psbt", base64_from_bytes({ psbt.buffer, psbt.psbt_len }) } };
         }
 
@@ -186,9 +174,8 @@ namespace sdk {
         {
             crypto_output output;
             int result = urc_crypto_output_parse(raw.data(), raw.size(), &output);
-            if (result != URC_OK) {
-                throw user_error("ur-c: Parsing crypto-output failed with error code:" + std::to_string(result));
-            }
+            GDK_RUNTIME_ASSERT_MSG(
+                result == URC_OK, "ur-c: Parsing crypto-output failed with error code:" + std::to_string(result));
             return { { "descriptor", format_output(output) } };
         }
 
@@ -198,9 +185,8 @@ namespace sdk {
             int result = urc_crypto_account_parse(raw.data(), raw.size(), &account);
             if (result != URC_OK) {
                 result = urc_jade_account_parse(raw.data(), raw.size(), &account);
-                if (result != URC_OK) {
-                    throw user_error("ur-c: Parsing account failed with error code:" + std::to_string(result));
-                }
+                GDK_RUNTIME_ASSERT_MSG(
+                    result == URC_OK, "ur-c: Parsing account failed with error code:" + std::to_string(result));
             }
             nlohmann::json::array_t descriptors;
             for (size_t i = 0; i < account.descriptors_count; i++) {
@@ -215,22 +201,15 @@ namespace sdk {
             const std::vector<uint8_t>& raw, const std::optional<std::string>& private_key)
         {
             jade_bip8539_response response;
-            std::vector<uint8_t> buffer;
-            buffer.resize(512);
-            int result = URC_OK;
-            do {
-                buffer.resize(buffer.size() * 2);
-                result
-                    = urc_jade_bip8539_response_parse(raw.data(), raw.size(), &response, buffer.data(), buffer.size());
-            } while (result == URC_EBUFFERTOOSMALL);
-            if (result != URC_OK) {
-                throw user_error("internal ur-c error, error_code: " + std::to_string(result));
-            }
+            int result = urc_jade_bip8539_response_parse(raw.data(), raw.size(), &response);
+            GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
             if (!private_key) {
-                return {
+                nlohmann::json retv = {
                     { "public_key", b2h({ response.pubkey, EC_PUBLIC_KEY_LEN }) },
-                    { "encrypted", b2h({ response.encripted_data, response.encrypted_len }) },
+                    { "encrypted", b2h({ response.encrypted_data, response.encrypted_len }) },
                 };
+                urc_jade_bip8539_response_free(&response);
+                return retv;
             }
             std::vector<uint8_t> privkey = h2b(private_key.value());
             GDK_RUNTIME_ASSERT(privkey.size() == EC_PRIVATE_KEY_LEN);
@@ -239,9 +218,11 @@ namespace sdk {
 
             size_t buffer_required_len = 0;
             int wally_error = wally_aes_cbc_with_ecdh_key_get_maximum_length(privkey.data(), privkey.size(), nullptr, 0,
-                response.encripted_data, response.encrypted_len, response.pubkey, EC_PUBLIC_KEY_LEN, salt.data(),
+                response.encrypted_data, response.encrypted_len, response.pubkey, EC_PUBLIC_KEY_LEN, salt.data(),
                 salt.size(), AES_FLAG_DECRYPT, &buffer_required_len);
+
             if (wally_error != WALLY_OK) {
+                urc_jade_bip8539_response_free(&response);
                 throw user_error(
                     "internal wally error on parse_jaderesponse, error_code: " + std::to_string(wally_error));
             }
@@ -250,18 +231,28 @@ namespace sdk {
             jade_entropy.resize(buffer_required_len);
             size_t buffer_written_len = 0;
             wally_error = wally_aes_cbc_with_ecdh_key(privkey.data(), privkey.size(), nullptr, 0,
-                response.encripted_data, response.encrypted_len, response.pubkey, EC_PUBLIC_KEY_LEN, salt.data(),
+                response.encrypted_data, response.encrypted_len, response.pubkey, EC_PUBLIC_KEY_LEN, salt.data(),
                 salt.size(), AES_FLAG_DECRYPT, jade_entropy.data(), jade_entropy.size(), &buffer_written_len);
-            if (wally_error != WALLY_OK) {
-                throw user_error(
-                    "internal wally error on parse_jaderesponse, error_code: " + std::to_string(wally_error));
-            }
+            urc_jade_bip8539_response_free(&response);
+            GDK_RUNTIME_ASSERT_MSG(wally_error == WALLY_OK,
+                "internal wally error on parse_jaderesponse, error_code: " + std::to_string(wally_error));
             jade_entropy.resize(buffer_written_len);
             auto mnemonic = bip39_mnemonic_from_bytes(jade_entropy);
             return {
                 { "entropy", b2h(jade_entropy) },
                 { "mnemonic", std::move(mnemonic) },
             };
+        }
+
+        nlohmann::json parse_jade_rpc(const ga::sdk::byte_span_t raw)
+        {
+            char* raw_json = nullptr;
+            int result = urc_jade_rpc_parse(raw.data(), raw.size(), &raw_json);
+            std::unique_ptr<char, decltype(&urc_string_free)> holder(raw_json, urc_string_free);
+            GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
+            std::string_view json_str(raw_json);
+            auto retv = nlohmann::json::parse(json_str);
+            return retv;
         }
 
         struct json_jaderequest {
@@ -295,20 +286,13 @@ namespace sdk {
             request.index = jrequest.index;
             memcpy(request.pubkey, public_key.data(), public_key.size());
 
-            std::vector<uint8_t> out;
-            out.resize(512);
-            int result = URC_OK;
-            size_t len = 0;
-            do {
-                out.resize(out.size() * 2);
-                len = out.size();
-                result = urc_jade_bip8539_request_format(&request, out.data(), &len);
-            } while (result == URC_EBUFFERTOOSMALL);
-            if (result != URC_OK) {
-                throw user_error("internal ur-c error, error_code: " + std::to_string(result));
-            }
-            out.resize(len);
-            return ur::UR(jrequest.ur_type, std::move(out));
+            uint8_t* buffer = nullptr;
+            size_t buffer_len = 0;
+            int result = urc_jade_bip8539_request_format(&request, &buffer, &buffer_len);
+            std::unique_ptr<uint8_t, decltype(&urc_free)> holder(buffer, urc_free);
+            GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
+            ur::UR ur(jrequest.ur_type, { buffer, buffer + buffer_len });
+            return ur;
         }
 
         static ur::UR prepare_generic_ur(const nlohmann::json& input)
@@ -394,6 +378,8 @@ namespace sdk {
             m_result = parse_account(ur.cbor());
         } else if (ur_type == "jade-bip8539-reply") {
             m_result = parse_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
+        } else if (ur_type == "jade-pin") {
+            m_result["result"] = parse_jade_rpc(ur.cbor());
         } else {
             return_raw_data = true; // bytes or an unknown type, return raw
         }
