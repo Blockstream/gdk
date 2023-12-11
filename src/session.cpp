@@ -43,11 +43,40 @@ namespace sdk {
         }
     } // namespace
 
-    int init(const nlohmann::json& config)
+    int init(nlohmann::json config)
     {
         GDK_RUNTIME_ASSERT(config.is_object());
         GDK_RUNTIME_ASSERT(!j_str_is_empty(config, "datadir"));
-        GDK_RUNTIME_ASSERT(!init_done);
+
+        // Set any defaults
+        if (!config.contains("log_level")) {
+            config.emplace("log_level", "none");
+        }
+        if (!config.contains("tordir")) {
+            const std::string datadir = config["datadir"];
+            config.emplace("tordir", datadir + "/tor");
+        }
+        if (!config.contains("registrydir")) {
+            const std::string datadir = config["datadir"];
+            config.emplace("registrydir", datadir + "/registry");
+        }
+        if (!config.contains("optimize_expired_csv")) {
+            // optimize_expired_csv is a development setting to enable signing
+            // expired csv inputs with just the users signature.
+            // TODO: Remove this setting and all references to it once
+            // expired input signing is completed.
+            config.emplace("optimize_expired_csv", false);
+        }
+
+        if (init_done) {
+            // It is invalid to call GA_init() with different configs.
+            // Calling with the existing config is a no-op.
+            GDK_RUNTIME_ASSERT(config == global_config);
+            return GA_OK; /* Already initialized */
+        }
+
+        // Initialize with the new config
+        global_config = std::move(config);
 
 #if defined(__ANDROID__) && (__ANDROID_API__ >= __ANDROID_API_P__)
         /* FIXME: workaround for tor related fdsan errors.
@@ -57,29 +86,10 @@ namespace sdk {
             android_fdsan_set_error_level(ANDROID_FDSAN_ERROR_LEVEL_WARN_ONCE);
         }
 #endif
-        global_config = config;
-        if (!global_config.contains("tordir")) {
-            const std::string datadir = global_config["datadir"];
-            global_config.emplace("tordir", datadir + "/tor");
-        }
-        if (!global_config.contains("log_level")) {
-            global_config.emplace("log_level", "none");
-        }
-        if (!global_config.contains("registrydir")) {
-            const std::string datadir = global_config["datadir"];
-            global_config.emplace("registrydir", datadir + "/registry");
-        }
-        if (!global_config.contains("optimize_expired_csv")) {
-            // optimize_expired_csv is a development setting to enable signing
-            // expired csv inputs with just the users signature.
-            // TODO: Remove this setting and all references to it once
-            // expired input signing is completed.
-            global_config.emplace("optimize_expired_csv", false);
-        }
 
         // Set up logging. Default to fatal logging, effectively 'none',
         // since we don't use fatal severity for logging.
-        const std::string level = global_config["log_level"];
+        const auto& level = j_strref(global_config, "log_level");
         if (level == "debug") {
             global_log_level = log_level::severity_level::debug;
         } else if (level == "info") {

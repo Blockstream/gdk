@@ -15,7 +15,7 @@ namespace sdk {
     class network_parameters;
     class session_impl;
 
-    int init(const nlohmann::json& config);
+    int init(nlohmann::json config);
     const nlohmann::json& gdk_config();
 
     class session {

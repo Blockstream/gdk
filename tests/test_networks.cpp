@@ -13,7 +13,6 @@ int main()
 
     nlohmann::json init_config;
     init_config["datadir"] = ".";
-    init_config["log_level"] = "none";
     init(init_config);
 
     bool failed = false;

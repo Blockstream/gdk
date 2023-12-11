@@ -16,6 +16,7 @@
 #include "autobahn_wrapper.hpp"
 #include "exception.hpp"
 #include "http_client.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
@@ -513,7 +514,7 @@ namespace sdk {
     void wamp_transport::reconnect_handler()
     {
         const bool is_tls = m_net_params.is_tls_connection(m_server_prefix);
-        const bool is_debug = gdk_config()["log_level"] == "debug";
+        const bool is_debug = j_str_or_empty(gdk_config(), "log_level") == "debug";
         const auto& executor = m_strand.context().get_executor();
 
         // The last failure number that we handled

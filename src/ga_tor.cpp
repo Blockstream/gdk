@@ -483,33 +483,35 @@ namespace sdk {
         m_tor_run_thread = std::thread([&] {
             tor_main_configuration_t* tor_conf = tor_main_configuration_new();
             GDK_RUNTIME_ASSERT(tor_conf);
-            const bool quiet = gdk_config()["log_level"] == "none";
+            const auto level = j_str(gdk_config(), "log_level").value_or("none");
+            const bool quiet = level == "none";
             std::vector<const char*> argv_conf;
-            argv_conf.reserve(17);
+            argv_conf.reserve(20);
             argv_conf.push_back("tor");
             if (quiet) {
                 argv_conf.push_back("--quiet"); // Silence all log output
             }
-            argv_conf.push_back("__DisableSignalHandlers");
-            argv_conf.push_back("1");
-            argv_conf.push_back("SafeSocks");
-            argv_conf.push_back("1");
-            argv_conf.push_back("SocksPort");
-            argv_conf.push_back(conf_socks_port.c_str());
-            argv_conf.push_back("NoExec");
-            argv_conf.push_back("1");
-            argv_conf.push_back("ControlPortWriteToFile");
-            argv_conf.push_back(m_tor_control_file.c_str());
-            argv_conf.push_back("CookieAuthentication");
-            argv_conf.push_back("1");
-            argv_conf.push_back("ControlPort");
-            argv_conf.push_back("auto");
-            argv_conf.push_back("DataDirectory");
-            argv_conf.push_back(m_tor_datadir.c_str());
+            argv_conf.emplace_back("__DisableSignalHandlers");
+            argv_conf.emplace_back("1");
+            argv_conf.emplace_back("SafeSocks");
+            argv_conf.emplace_back("1");
+            argv_conf.emplace_back("SocksPort");
+            argv_conf.emplace_back(conf_socks_port.c_str());
+            argv_conf.emplace_back("NoExec");
+            argv_conf.emplace_back("1");
+            argv_conf.emplace_back("ControlPortWriteToFile");
+            argv_conf.emplace_back(m_tor_control_file.c_str());
+            argv_conf.emplace_back("CookieAuthentication");
+            argv_conf.emplace_back("1");
+            argv_conf.emplace_back("ControlPort");
+            argv_conf.emplace_back("auto");
+            argv_conf.emplace_back("DataDirectory");
+            argv_conf.emplace_back(m_tor_datadir.c_str());
 #if not defined(NDEBUG)
             if (!quiet) {
-                argv_conf.push_back("Log");
-                argv_conf.push_back("notice"); // debug prints out way too much stuff and we don't really need them
+                argv_conf.emplace_back("Log");
+                // Note we avoid using "debug" as it logs too much redundant info
+                argv_conf.emplace_back("notice");
             }
 #endif
             int conf_res
