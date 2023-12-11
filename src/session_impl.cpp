@@ -607,8 +607,8 @@ namespace sdk {
 
     nlohmann::json session_impl::get_external_unspent_outputs(const nlohmann::json& details)
     {
-        auto private_key = json_get_value(details, "private_key");
-        auto password = json_get_value(details, "password");
+        auto private_key = j_strref(details, "private_key");
+        auto password = j_str_or_empty(details, "password");
 
         std::string address_type = "p2pkh";
         if (boost::algorithm::starts_with(private_key, "p2pkh:")) {
@@ -630,16 +630,18 @@ namespace sdk {
         } catch (const std::exception&) {
             throw user_error(res::id_invalid_private_key);
         }
-        auto public_key_bytes = ec_public_key_from_private_key(gsl::make_span(private_key_bytes), !is_compressed);
+        auto private_key_hex = b2h(private_key_bytes);
+        auto public_key_hex = b2h(ec_public_key_from_private_key(private_key_bytes, !is_compressed));
+        GDK_LOG(debug) << "lookup up " << address_type << " pubkey " << public_key_hex;
 
         constexpr uint32_t timeout_secs = 10;
         auto opt = get_net_call_params(timeout_secs);
-        opt["public_key"] = b2h(public_key_bytes);
-        opt["address_type"] = address_type;
+        opt["public_key"] = std::move(public_key_hex);
+        opt["address_type"] = std::move(address_type);
 
         nlohmann::json utxos = rust_call("get_unspent_outputs_for_private_key", opt);
         for (auto& utxo : utxos) {
-            utxo["private_key"] = b2h(private_key_bytes);
+            utxo["private_key"] = private_key_hex;
             utxo["is_compressed"] = is_compressed;
         }
         return { { "unspent_outputs", { { "btc", std::move(utxos) } } } };

@@ -136,22 +136,6 @@ namespace sdk {
         return wally_ext_key_ptr{ p };
     }
 
-    // BIP 38
-    std::vector<unsigned char> bip38_raw_to_private_key(byte_span_t priv_key, byte_span_t passphrase, uint32_t flags)
-    {
-        std::vector<unsigned char> private_key(EC_PRIVATE_KEY_LEN);
-        GDK_VERIFY(::bip38_raw_to_private_key(priv_key.data(), priv_key.size(), passphrase.data(), passphrase.size(),
-            flags, private_key.data(), private_key.size()));
-        return private_key;
-    }
-
-    size_t bip38_raw_get_flags(byte_span_t priv_key)
-    {
-        size_t flags;
-        GDK_VERIFY(::bip38_raw_get_flags(priv_key.data(), priv_key.size(), &flags));
-        return flags;
-    }
-
     //
     // Scripts
     //
@@ -575,38 +559,38 @@ namespace sdk {
     }
 
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
-        const std::string& priv_key, const std::string& passphrase, bool mainnet)
+        const std::string& encoded, const std::string& passphrase, bool is_mainnet)
     {
-        if (boost::algorithm::starts_with(priv_key, "xprv") || boost::algorithm::starts_with(priv_key, "tprv")) {
+        std::vector<unsigned char> private_key(EC_PRIVATE_KEY_LEN);
+        bool is_compressed = false;
+
+        if (boost::algorithm::starts_with(encoded, "xprv") || boost::algorithm::starts_with(encoded, "tprv")) {
             // BIP 32 Serialized private key
             // TODO: Support scanning for children under BIP44 paths
             ext_key master;
-            GDK_VERIFY(bip32_key_from_base58(priv_key.c_str(), &master));
-            std::vector<unsigned char> ret(master.priv_key + 1, master.priv_key + 1 + EC_PRIVATE_KEY_LEN);
+            GDK_VERIFY(bip32_key_from_base58(encoded.c_str(), &master));
+            memcpy(private_key.data(), master.priv_key + 1, sizeof(master.priv_key) - 1);
             wally_bzero(&master, sizeof(master));
-            constexpr bool is_compressed = false;
-            return { ret, is_compressed };
-        }
-
-        // FIXME: Add wally constants for the WIF base58 lengths
-        if (priv_key.size() == 51u || priv_key.size() == 52u) {
+        } else if (encoded.size() == 51u || encoded.size() == 52u) {
             // WIF
-            const bool is_compressed = priv_key.size() == 52u;
-            std::vector<unsigned char> priv_key_bytes(EC_PRIVATE_KEY_LEN);
-            GDK_VERIFY(wally_wif_to_bytes(priv_key.c_str(), mainnet ? 0x80 : 0xef,
-                is_compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED, priv_key_bytes.data(),
-                priv_key_bytes.size()));
-            return { priv_key_bytes, is_compressed };
+            // FIXME: Add wally constants for the WIF base58 lengths
+            is_compressed = encoded.size() == 52u;
+            uint32_t prefix = is_mainnet ? WALLY_ADDRESS_VERSION_WIF_MAINNET : WALLY_ADDRESS_VERSION_WIF_TESTNET;
+            uint32_t flags = is_compressed ? WALLY_WIF_FLAG_COMPRESSED : WALLY_WIF_FLAG_UNCOMPRESSED;
+            GDK_VERIFY(wally_wif_to_bytes(encoded.c_str(), prefix, flags, private_key.data(), private_key.size()));
+        } else if (encoded.size() == 58) {
+            // BIP38
+            auto raw = base58check_to_bytes(encoded);
+            size_t flags;
+            GDK_VERIFY(::bip38_raw_get_flags(raw.data(), raw.size(), &flags));
+            flags |= (is_mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET);
+            is_compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
+            GDK_VERIFY(::bip38_raw_to_private_key(raw.data(), raw.size(), ustring_span(passphrase).data(),
+                passphrase.size(), flags, private_key.data(), private_key.size()));
+        } else {
+            throw user_error(res::id_invalid_private_key);
         }
-
-        // BIP38
-        GDK_RUNTIME_ASSERT(priv_key.size() == 58);
-        auto bytes = base58check_to_bytes(priv_key);
-        const size_t flags = bip38_raw_get_flags(bytes);
-        const bool is_compressed = (flags & BIP38_KEY_COMPRESSED) != 0;
-        return { bip38_raw_to_private_key(
-                     bytes, ustring_span(passphrase), flags | (mainnet ? BIP38_KEY_MAINNET : BIP38_KEY_TESTNET)),
-            is_compressed };
+        return { std::move(private_key), is_compressed };
     }
 
     bool ec_private_key_verify(byte_span_t bytes)

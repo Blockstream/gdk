@@ -116,11 +116,6 @@ namespace sdk {
     constexpr uint32_t unharden(uint32_t pointer) { return pointer & 0x7fffffff; }
     inline bool is_hardened(uint32_t pointer) { return pointer & 0x80000000; }
 
-    // BIP 38
-    std::vector<unsigned char> bip38_raw_to_private_key(byte_span_t priv_key, byte_span_t passphrase, uint32_t flags);
-
-    size_t bip38_raw_get_flags(byte_span_t priv_key);
-
     //
     // Scripts
     //
@@ -253,8 +248,9 @@ namespace sdk {
 
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key, bool do_decompress = false);
 
+    // convert a WIF/BIP38/BIP32 encoded private key to a raw private key
     std::pair<std::vector<unsigned char>, bool> to_private_key_bytes(
-        const std::string& priv_key, const std::string& passphrase, bool mainnet);
+        const std::string& encoded, const std::string& passphrase, bool is_mainnet);
 
     bool ec_private_key_verify(byte_span_t bytes);
 
