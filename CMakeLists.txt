@@ -27,16 +27,10 @@ endif()
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-if(NOT EXTERNAL-DEPS-DIR)
-    message(FATAL_ERROR "please define variable EXTERNAL-DEPS-DIR with -D option")
-endif()
-
-
 
 ###### searching for dependencies
 #### projects with cmake-provided FindXXX module
 # boost
-join_path(BOOST_ROOT ${EXTERNAL-DEPS-DIR} "boost" "build")
 set(Boost_USE_STATIC_LIBS ON)
 if (CMAKE_BUILD_TYPE STREQUAL Debug)
     set(Boost_USE_DEBUG_LIBS ON)
@@ -45,41 +39,23 @@ else()
 endif()
 set(Boost_NO_SYSTEM_PATHS ON)
 find_package(Boost 1.82.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
-if(CMAKE_VERSION VERSION_LESS_EQUAL 3.20)
-    #https://gitlab.kitware.com/cmake/cmake/-/issues/20638
-    set_target_properties(Boost::log_setup PROPERTIES
-        INTERFACE_LINK_LIBRARIES Boost::log
-    )
-endif()
 # zlib
-join_path(ZLIB_ROOT ${EXTERNAL-DEPS-DIR} "zlib" "build")
+set(ZLIB_ROOT ${CMAKE_PREFIX_PATH})
 find_package(ZLIB 1.2.12 EXACT REQUIRED)
 # openSSL
-join_path(OPENSSL_ROOT_DIR ${EXTERNAL-DEPS-DIR} "openssl" "build")
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL 1.1.1 EXACT REQUIRED)
 
 #### cmake-based projects with xxx-config.cmake file
-# nlohmann_json
-join_path(nlohmann_json_ROOT ${EXTERNAL-DEPS-DIR} "nlohmann_json")
 find_package(nlohmann_json REQUIRED CONFIG)
-# ms-gsl
-join_path(Microsoft.GSL_ROOT ${EXTERNAL-DEPS-DIR} "ms-gsl")
 find_package(Microsoft.GSL REQUIRED CONFIG)
-# websocketpp
-join_path(websocketpp_ROOT ${EXTERNAL-DEPS-DIR} "websocketpp")
 find_package(websocketpp REQUIRED CONFIG)
-# msgpack
-join_path(msgpack_ROOT ${EXTERNAL-DEPS-DIR} "msgpack")
 find_package(msgpack REQUIRED CONFIG)
-#libevent
-join_path(Libevent_ROOT ${EXTERNAL-DEPS-DIR} "libevent" "build")
 find_package(Libevent REQUIRED CONFIG COMPONENTS core extra OPTIONAL_COMPONENTS pthreads)
 # ur-c
 set(URC_INCLUDE_DIRS "")
 set(URC_LINK_LIBRARIES "")
 if (ENABLE_BCUR)
-    join_path(urc_ROOT ${EXTERNAL-DEPS-DIR} "ur-c")
     find_package(urc REQUIRED)
     get_target_property(URC_INCLUDE_DIRS urc::urc INTERFACE_INCLUDE_DIRECTORIES)
     string(TOUPPER ${CMAKE_BUILD_TYPE} _upcase_build_type)
@@ -90,14 +66,10 @@ endif()
 find_package(PkgConfig REQUIRED)
 set(PKG_CONFIG_USE_CMAKE_PREFIX_PATH ON)
 # wallycore
-join_path(_wallycorePkgDir ${EXTERNAL-DEPS-DIR} "libwally-core" "build")
-list(APPEND CMAKE_PREFIX_PATH ${_wallycorePkgDir})
 pkg_check_modules(wallycore REQUIRED IMPORTED_TARGET wallycore)
 pkg_check_modules(libsecp256k1 REQUIRED IMPORTED_TARGET libsecp256k1)
 set(TINYCBOR_INCLUDE_DIRS "")
 if (ENABLE_BCUR)
-    join_path(_tinycborPkgDir ${EXTERNAL-DEPS-DIR} "tinycbor" "build")
-    list(APPEND CMAKE_PREFIX_PATH ${_tinycborPkgDir})
     pkg_check_modules(TinyCBOR REQUIRED IMPORTED_TARGET tinycbor)
     get_target_property(TINYCBOR_INCLUDE_DIRS PkgConfig::TinyCBOR INTERFACE_INCLUDE_DIRECTORIES)
     message(STATUS "TINYCBOR_INCLUDE_DIRS: ${TINYCBOR_INCLUDE_DIRS}")

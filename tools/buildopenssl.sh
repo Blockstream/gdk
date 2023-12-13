@@ -21,7 +21,7 @@ OPENSSL_MOBILE="no-hw no-engine"
 
 
 cd "${PRJ_SUBDIR}"
-openssl_prefix="${GDK_BUILD_ROOT}/openssl/build"
+openssl_prefix="${GDK_BUILD_ROOT}"
 if [ \( "$1" = "--ndk" \) ]; then
     if [ "$ANDROID_VERSION" = "19" ]; then
             OPENSSL_OPTIONS=$(echo $OPENSSL_OPTIONS | $SED -e "s/enable-ec_nistp_64_gcc_128//g")

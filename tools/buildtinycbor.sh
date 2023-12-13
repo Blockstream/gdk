@@ -28,7 +28,7 @@ else
 fi
 
 make \
-    prefix=${GDK_BUILD_ROOT}/tinycbor/build \
+    prefix=${GDK_BUILD_ROOT} \
     BUILD_SHARED=0 BUILD_STATIC=1 \
     CC=${CC} CXX=${CXX} \
     CFLAGS="${CFLAGS} -fPIC -DWITHOUT_OPEN_MEMSTREAM" LDFLAGS="${LDFLAGS} -fPIC" \

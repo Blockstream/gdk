@@ -14,11 +14,12 @@ ${SED} -i 's/#include <openssl\/opensslv.h>/#include <openssl\/opensslconf.h>/g'
 # FIXME: remove when tor is upgraded to version tor-0.4.8.1 or later.
 ${SED} -i 's/"1\.1\.1b\."/"future connections."/g' src/lib/tls/tortls_openssl.c
 
+TOR_INSTALL_DIR=${GDK_BUILD_ROOT}
 #FIXME: enable zstd for tor compression
-CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/tor/build --enable-pic \
-                --enable-static-libevent --with-libevent-dir=${GDK_BUILD_ROOT}/libevent/build \
-                --enable-static-zlib --with-zlib-dir=${GDK_BUILD_ROOT}/zlib/build \
-                --enable-static-openssl --with-openssl-dir=${GDK_BUILD_ROOT}/openssl/build \
+CONFIGURE_ARGS="--prefix=${TOR_INSTALL_DIR} --enable-pic \
+                --enable-static-libevent --with-libevent-dir=${GDK_BUILD_ROOT} \
+                --enable-static-zlib --with-zlib-dir=${GDK_BUILD_ROOT} \
+                --enable-static-openssl --with-openssl-dir=${GDK_BUILD_ROOT} \
                 --disable-asciidoc --disable-manpage --disable-html-manual \
                 --disable-system-torrc --disable-systemd --disable-zstd --disable-lzma --disable-largefile \
                 --disable-unittests --disable-tool-name-check --disable-module-dirauth \
@@ -76,10 +77,10 @@ make libtor.a -j ${NUM_JOBS}
 # make libtor.a
 make install
 # manually installing libraries and header files
-mkdir -p ${GDK_BUILD_ROOT}/tor/build/lib
-cp libtor.a ${GDK_BUILD_ROOT}/tor/build/lib
-mkdir -p ${GDK_BUILD_ROOT}/tor/build/include
+mkdir -p ${TOR_INSTALL_DIR}
+cp libtor.a ${TOR_INSTALL_DIR}/lib
+mkdir -p ${TOR_INSTALL_DIR}/include
 
-cp ../src/feature/api/tor_api.h ${GDK_BUILD_ROOT}/tor/build/include
+cp ../src/feature/api/tor_api.h ${TOR_INSTALL_DIR}/include
 
 cd -

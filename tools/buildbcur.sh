@@ -1,13 +1,13 @@
 #! /usr/bin/env bash
 set -e
 
-cp tools/bc-ur.patch ${PRJ_SUBDIR}/bc-ur.patch
-cd ${PRJ_SUBDIR}
+cp tools/bc-ur.patch ${PRJ_SUBDIR}
+cd "${PRJ_SUBDIR}"
 
 # fixes to the src files
 patch -p1 < bc-ur.patch
 
-CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/bc-ur/build "
+CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT} "
 EXTRA_CFLAGS="-fPIC -DPIC"
 EXTRA_CXXFLAGS="-fPIC -DPIC"
 EXTRA_LDFLAGS=""

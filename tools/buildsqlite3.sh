@@ -3,7 +3,7 @@ set -e
 
 cd "${PRJ_SUBDIR}"
 
-CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/sqlite/build 
+CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT} \
     --enable-static --disable-shared --disable-static-shell \
     --enable-threadsafe --disable-dynamic-extensions \
     --disable-editline --disable-readline --with-pic \

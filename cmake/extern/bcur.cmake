@@ -1,8 +1,7 @@
+
 if(ENABLE_BCUR)
-    join_path(_bcurRootDir ${EXTERNAL-DEPS-DIR} "bc-ur" "build")
-    join_path(_bcURLibDir ${_bcurRootDir} "lib")
-    join_path(BCUR_INCLUDE_DIRS ${_bcurRootDir} "include")
-    find_library(BCUR_LINK_LIBRARIES bc-ur PATHS ${_bcURLibDir})
+    find_path(BCUR_INCLUDE_DIRS NAMES "bc-ur/bc-ur.hpp")
+    find_library(BCUR_LINK_LIBRARIES bc-ur)
     add_library(extern::bc-ur STATIC IMPORTED)
     set_target_properties(extern::bc-ur
         PROPERTIES 

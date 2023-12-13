@@ -5,7 +5,8 @@ BUILDTYPE="$1"; shift
 TRIPLE="$1"; shift
 ANDROID_TOOLCHAIN_ROOT=$1; shift
 ARCHIVER=$1; shift
-OPENSSL_DIR="$1"; shift
+OPENSSL_INCLUDE_DIR="$1"; shift
+OPENSSL_CRYPTO_LIB="$1"; shift
 SOURCE_DIR="$1"; shift
 OUTPUT_DIR="$1"; shift
 ARTIFACT="$1"; shift
@@ -62,7 +63,8 @@ fi
 # behaving correctly when no-op
 oldT=$(date +%s)
 
-export OPENSSL_DIR=$OPENSSL_DIR 
+export OPENSSL_INCLUDE_DIR=$OPENSSL_INCLUDE_DIR
+export OPENSSL_LIB_DIR=$( dirname ${OPENSSL_CRYPTO_LIB} )
 export OPENSSL_STATIC=1
 # echo "cargo args: ${CARGO_ARGS[*]}"
 cargo build "${CARGO_ARGS[@]}"

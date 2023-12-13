@@ -126,7 +126,7 @@ if ! $no_deps_rebuild; then
 fi
 
 cmake_options="-B $bld_root -S . \
-    -DEXTERNAL-DEPS-DIR=$EXTERNAL_DEPS_DIR \
+    -DCMAKE_PREFIX_PATH=${EXTERNAL_DEPS_DIR} \
     -DCMAKE_TOOLCHAIN_FILE=cmake/profiles/$cmake_profile \
     -DCMAKE_BUILD_TYPE=$cmake_build_type \
     -DENABLE_TESTS:BOOL=$enable_tests \

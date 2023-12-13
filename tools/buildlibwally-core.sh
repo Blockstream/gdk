@@ -1,7 +1,7 @@
 #! /usr/bin/env bash
 set -e
 
-WALLYCORE_INSTALLDIR=${GDK_BUILD_ROOT}/libwally-core/build
+WALLYCORE_INSTALLDIR=${GDK_BUILD_ROOT}
 
 # FIXME: the whole tracking of secp_commit sha could be removed and replace by simpler
 # git submodule init

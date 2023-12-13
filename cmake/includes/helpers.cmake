@@ -59,7 +59,7 @@ macro(create_gdkrust_target)
     set(_gdkRustLibArtifact "libgdk_rust.a")
     find_tool(_buildTool "buildgdk_rust.sh")
     add_custom_target(cargo-cmd
-        COMMAND ${_buildTool} "${CMAKE_BUILD_TYPE}" "${_rustTriple}" "${ANDROID_TOOLCHAIN_ROOT}" ${CMAKE_AR} ${OPENSSL_ROOT_DIR} ${_gdkRustSrcDir} ${_gdkRustBuildDir} ${_gdkRustLibArtifact} "${CMAKE_OSX_DEPLOYMENT_TARGET}"
+        COMMAND ${_buildTool} "${CMAKE_BUILD_TYPE}" "${_rustTriple}" "${ANDROID_TOOLCHAIN_ROOT}" ${CMAKE_AR} ${OPENSSL_INCLUDE_DIR} ${OPENSSL_CRYPTO_LIBRARY} ${_gdkRustSrcDir} ${_gdkRustBuildDir} ${_gdkRustLibArtifact} "${CMAKE_OSX_DEPLOYMENT_TARGET}"
         VERBATIM
         BYPRODUCTS ${_gdkRustLibArtifact}
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}

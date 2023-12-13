@@ -1,5 +1,6 @@
-join_path(TOR_LINK_LIBRARIES ${EXTERNAL-DEPS-DIR} "tor" "build" "lib" "libtor.a")
-join_path(TOR_INCLUDE_DIRS ${EXTERNAL-DEPS-DIR} "tor" "build" "include")
+
+find_library(TOR_LINK_LIBRARIES "libtor.a")
+find_path(TOR_INCLUDE_DIRS NAMES "tor_api.h")
 
 add_library(extern::tor STATIC IMPORTED)
 set_target_properties(extern::tor PROPERTIES

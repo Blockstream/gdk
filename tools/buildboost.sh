@@ -25,7 +25,7 @@ fi
 
 
 boost_src_home="${PRJ_SUBDIR}"
-boost_bld_home="${GDK_BUILD_ROOT}/boost/build"
+boost_bld_home="${GDK_BUILD_ROOT}"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread

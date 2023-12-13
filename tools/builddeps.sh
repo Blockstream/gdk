@@ -249,6 +249,31 @@ rm -rf tmp
 mkdir tmp
 cmake_build_type=${BUILDTYPE^}
 
+
+# building  zlib
+name="zlib"
+source_url="https://github.com/madler/zlib/archive/v1.2.12.tar.gz"
+source_name="zlib-1.2.12"
+source_filename="${source_name}.tar.gz"
+source_hash="d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
+    -DCMAKE_BUILD_TYPE=${cmake_build_type}
+cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
+cmake --install tmp/${source_name}/build
+# no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
+find ${GDK_BUILD_ROOT}/lib -name "*.so*" -type l -delete
+find ${GDK_BUILD_ROOT}/lib -name "*.so*" -type f -delete
+find ${GDK_BUILD_ROOT}/lib -name "*.dylib*" -type f -delete
+find ${GDK_BUILD_ROOT}/lib -name "*.dll*" -type f -delete
+# https://github.com/madler/zlib/issues/652
+if [ ${BUILD} == "--windows" ]; then
+    mv ${GDK_BUILD_ROOT}/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/lib/libz.a
+fi
+
+
 # building wally-core
 name="libwally-core"
 source_url="https://github.com/ElementsProject/libwally-core/tarball/6f67467299a038f9ceaa12272387a7ce71fd533f/ElementsProject-libwally-core-6f67467.tar.gz"
@@ -266,29 +291,6 @@ export SECP_COMMIT=${secpcommit}
 build ${name} ${WALLYCORE_SRCDIR}
 
 
-# building  zlib
-name="zlib"
-source_url="https://github.com/madler/zlib/archive/v1.2.12.tar.gz"
-source_name="zlib-1.2.12"
-source_filename="${source_name}.tar.gz"
-source_hash="d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932"
-prepare_sources ${source_url} ${source_filename} ${source_hash}
-cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \
-    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
-    -DCMAKE_BUILD_TYPE=${cmake_build_type}
-cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
-# no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
-find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type l -delete
-find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.so*" -type f -delete
-find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dylib*" -type f -delete
-find ${GDK_BUILD_ROOT}/${name}/build/lib -name "*.dll*" -type f -delete
-# https://github.com/madler/zlib/issues/652
-if [ ${BUILD} == "--windows" ]; then
-    mv ${GDK_BUILD_ROOT}/${name}/build/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/${name}/build/lib/libz.a
-fi
-
 # building libevent
 name="libevent"
 source_url="https://github.com/libevent/libevent/archive/release-2.1.12-stable.tar.gz"
@@ -297,7 +299,7 @@ source_filename="${source_name}.tar.gz"
 source_hash="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name}/build \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DEVENT__LIBRARY_TYPE:STRING=STATIC \
@@ -308,7 +310,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DEVENT__DISABLE_TESTS:BOOL=TRUE \
     -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}/build
+cmake --install tmp/${source_name}/build
 
 
 # building openssl
@@ -353,7 +355,7 @@ source_filename="json-3.11.2.tar.xz"
 source_hash="8c4b26bf4b422252e13f332bc5e388ec0ab5c3443d24399acb675e68278d341f"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DJSON_BuildTests:BOOL=OFF \
@@ -361,7 +363,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DJSON_MultipleHeaders:BOOL=ON \
     -DJSON_SystemInclude:BOOL=ON
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 
 # building websocketpp
@@ -372,11 +374,11 @@ source_filename="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz"
 source_hash="82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 
 # building msgpack
@@ -387,15 +389,15 @@ source_filename="msgpack-4.1.1.tar.gz"
 source_hash="8115c5edcf20bc1408c798a6bdaec16c1e52b1c34859d4982a0fb03300438f0b"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-    -DBOOST_ROOT:PATH=${GDK_BUILD_ROOT}/boost/build \
+    -DBOOST_ROOT:PATH=${GDK_BUILD_ROOT} \
     -DMSGPACK_USE_STATIC_BOOST:BOOL=ON \
     -DMSGPACK_BUILD_DOCS:BOOL=OFF \
     -DMSGPACK_CXX14:BOOL=ON
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 
 # building autobahn-cpp
@@ -410,15 +412,13 @@ rm -f tmp/${source_name}/cmake/Modules/FindMsgpack.cmake
 ${SED} -ie "s/Boost REQUIRED COMPONENTS program_options system thread random/Boost COMPONENTS system thread/g" tmp/${source_name}/cmake/Includes/CMakeLists.txt
 ${SED} -ie "s/Threads REQUIRED/Threads/g" tmp/${source_name}/cmake/Includes/CMakeLists.txt
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-    -DBOOST_ROOT:PATH=${GDK_BUILD_ROOT}/boost/build \
-    -DOPENSSL_ROOT_DIR:PATH=${GDK_BUILD_ROOT}/openssl/build \
     -DAUTOBAHN_BUILD_EXAMPLES:BOOL=OFF \
-    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/websocketpp;${GDK_BUILD_ROOT}/msgpack"
+    -DCMAKE_PREFIX_PATH=${GDK_BUILD_ROOT}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 
 # building ms-gsl
@@ -429,14 +429,14 @@ source_filename="GSL-a3534567187d2edc428efd3f13466ff75fe5805c.tar.gz"
 source_hash="c0379cff645543d5076216bc5b22a3426de57796fc043527a24a6e494628d8a6"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DGSL_STANDALONE_PROJECT:BOOL=OFF \
     -DGSL_TEST:BOOL=OFF \
     -DGSL_INSTALL:BOOL=ON
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 
 # build sqlite3
@@ -478,15 +478,15 @@ source_filename="ur-c-0.3.0-rc3.tar.gz"
 source_hash="0560fb7cd5e93e0de1c9a1831a5b7081ea9a34c12acd0c32118c5bb4c50683d4"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
     -DFETCH_DEPS:BOOL=OFF \
     -DENABLE_TESTS:BOOL=OFF \
-    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/tinycbor/build;${GDK_BUILD_ROOT}/libwally-core/build" \
+    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}" \
     -DBUILD_SHARED_LIBS:BOOL=OFF
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
+cmake --install tmp/${source_name}/build
 
 rm -rf tmp
