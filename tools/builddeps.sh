@@ -250,30 +250,6 @@ mkdir tmp
 cmake_build_type=${BUILDTYPE^}
 
 
-# building  zlib
-name="zlib"
-source_url="https://github.com/madler/zlib/archive/v1.2.12.tar.gz"
-source_name="zlib-1.2.12"
-source_filename="${source_name}.tar.gz"
-source_hash="d8688496ea40fb61787500e863cc63c9afcbc524468cedeb478068924eb54932"
-prepare_sources ${source_url} ${source_filename} ${source_hash}
-cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
-    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
-    -DCMAKE_BUILD_TYPE=${cmake_build_type}
-cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
-cmake --install tmp/${source_name}/build
-# no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
-find ${GDK_BUILD_ROOT}/lib -name "*.so*" -type l -delete
-find ${GDK_BUILD_ROOT}/lib -name "*.so*" -type f -delete
-find ${GDK_BUILD_ROOT}/lib -name "*.dylib*" -type f -delete
-find ${GDK_BUILD_ROOT}/lib -name "*.dll*" -type f -delete
-# https://github.com/madler/zlib/issues/652
-if [ ${BUILD} == "--windows" ]; then
-    mv ${GDK_BUILD_ROOT}/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/lib/libz.a
-fi
-
-
 # building wally-core
 name="libwally-core"
 source_url="https://github.com/ElementsProject/libwally-core/tarball/6f67467299a038f9ceaa12272387a7ce71fd533f/ElementsProject-libwally-core-6f67467.tar.gz"
@@ -289,6 +265,30 @@ export WALLYCORE_NAME=${source_name}
 export SECP_URL=${secpurl}
 export SECP_COMMIT=${secpcommit}
 build ${name} ${WALLYCORE_SRCDIR}
+
+
+# building  zlib
+name="zlib"
+source_url="https://github.com/madler/zlib/archive/v1.3.tar.gz"
+source_name="zlib-1.3"
+source_filename="${source_name}.tar.gz"
+source_hash="b5b06d60ce49c8ba700e0ba517fa07de80b5d4628a037f4be8ad16955be7a7c0"
+prepare_sources ${source_url} ${source_filename} ${source_hash}
+cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
+    -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
+    -DCMAKE_BUILD_TYPE=${cmake_build_type}
+cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
+cmake --install tmp/${source_name}/build
+# no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
+find ${GDK_BUILD_ROOT}/lib -name "libz.so*" -type l -delete
+find ${GDK_BUILD_ROOT}/lib -name "libz.so*" -type f -delete
+find ${GDK_BUILD_ROOT}/lib -name "libz*.dylib" -type f -delete
+find ${GDK_BUILD_ROOT}/lib -name "libz.dll*" -type f -delete
+# https://github.com/madler/zlib/issues/652
+if [ ${BUILD} == "--windows" ]; then
+    mv ${GDK_BUILD_ROOT}/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/lib/libz.a
+fi
 
 
 # building libevent
@@ -315,10 +315,10 @@ cmake --install tmp/${source_name}/build
 
 # building openssl
 name="openssl"
-source_url="https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1t/openssl-1.1.1t.tar.gz"
-source_name="openssl-1.1.1t"
+source_url="https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
+source_name="openssl-1.1.1w"
 source_filename="${source_name}.tar.gz"
-source_hash="8dee9b24bdb1dcbf0c3d1e9b02fb8f6bf22165e807f45adeb7c9677536859d3b"
+source_hash="cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${OPENSSL_SRCDIR}
@@ -462,10 +462,10 @@ build ${name} ${BCUR_SRCDIR}
 
 # build tinyCBOR
 name="tinycbor"
-source_url="https://github.com/lightyear15/tinycbor/archive/refs/tags/v0.6.0-memfile.tar.gz"
-source_name="tinycbor-0.6.0-memfile"
-source_filename="tinycbor-0.6.0-memfile.tar.gz"
-source_hash="0c02390fbe6a3802ba290011cdc5fe5997297009c2288dda91dd4165b59efa68"
+source_url="https://github.com/lightyear15/tinycbor/archive/refs/tags/v0.6.0-memfile-rc1.tar.gz"
+source_name="tinycbor-0.6.0-memfile-rc1"
+source_filename="tinycbor-0.6.0-memfile-rc1.tar.gz"
+source_hash="92a5c9c3622b823a54ba887889ffa90dea15493383f21a42fee02c652fa6e8af"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BCUR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${BCUR_SRCDIR}

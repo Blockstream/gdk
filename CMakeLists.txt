@@ -41,7 +41,7 @@ set(Boost_NO_SYSTEM_PATHS ON)
 find_package(Boost 1.82.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
 # zlib
 set(ZLIB_ROOT ${CMAKE_PREFIX_PATH})
-find_package(ZLIB 1.2.12 EXACT REQUIRED)
+find_package(ZLIB 1.3 EXACT REQUIRED)
 # openSSL
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL 1.1.1 EXACT REQUIRED)
