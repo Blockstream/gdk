@@ -1,12 +1,10 @@
 #! /usr/bin/env bash
 set -e
 
-cp tools/tinycbor.patch ${PRJ_SUBDIR}
 cd "${PRJ_SUBDIR}"
 #applying patches:
 # - quit installing cbordump executable: not needed and breaks the build for windows
 # - abort when calling open_memstream in android as ndk is missing key APIs for that function
-patch -p1 < tinycbor.patch
 
 if [[ "$1" == "--ndk" ]]; then
     source ${GDK_SOURCE_ROOT}/tools/env.sh
@@ -33,5 +31,6 @@ make \
     prefix=${GDK_BUILD_ROOT}/tinycbor/build \
     BUILD_SHARED=0 BUILD_STATIC=1 \
     CC=${CC} CXX=${CXX} \
-    CFLAGS="${CFLAGS} -fPIC" LDFLAGS="${LDFLAGS} -fPIC" \
+    CFLAGS="${CFLAGS} -fPIC -DWITHOUT_OPEN_MEMSTREAM" LDFLAGS="${LDFLAGS} -fPIC" \
+    lib/libtinycbor.a \
     install

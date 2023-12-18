@@ -462,20 +462,20 @@ build ${name} ${BCUR_SRCDIR}
 
 # build tinyCBOR
 name="tinycbor"
-source_url="https://github.com/intel/tinycbor/archive/refs/tags/v0.6.0.tar.gz"
-source_name="tinycbor-0.6.0"
-source_filename="tinycbor-0.6.0.tar.gz"
-source_hash="512e2c9fce74f60ef9ed3af59161e905f9e19f30a52e433fc55f39f4c70d27e4"
+source_url="https://github.com/lightyear15/tinycbor/archive/refs/tags/v0.6.0-memfile.tar.gz"
+source_name="tinycbor-0.6.0-memfile"
+source_filename="tinycbor-0.6.0-memfile.tar.gz"
+source_hash="0c02390fbe6a3802ba290011cdc5fe5997297009c2288dda91dd4165b59efa68"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BCUR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${BCUR_SRCDIR}
 
 # build ur-c
 name="ur-c"
-source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.2.0-rc1.tar.gz"
-source_name="ur-c-0.2.0-rc1"
-source_filename="ur-c-0.2.0-rc1.tar.gz"
-source_hash="ae751ff0fcb57c79e264635043b6c9570a6f7d270d0fd452b399af432317c52a"
+source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.3.0-rc3.tar.gz"
+source_name="ur-c-0.3.0-rc3"
+source_filename="ur-c-0.3.0-rc3.tar.gz"
+source_hash="0560fb7cd5e93e0de1c9a1831a5b7081ea9a34c12acd0c32118c5bb4c50683d4"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT}/${name} \
@@ -484,7 +484,7 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
     -DFETCH_DEPS:BOOL=OFF \
     -DENABLE_TESTS:BOOL=OFF \
-    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/tinycbor/build" \
+    -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}/tinycbor/build;${GDK_BUILD_ROOT}/libwally-core/build" \
     -DBUILD_SHARED_LIBS:BOOL=OFF
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build --prefix ${GDK_BUILD_ROOT}/${name}
