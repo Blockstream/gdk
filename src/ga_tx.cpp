@@ -319,6 +319,7 @@ namespace sdk {
                             GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
                             continue;
                         }
+                        GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
                         const auto sighash_flags = der_sig.back();
                         item.second["user_sighash"] = sighash_flags;
                         const auto signature_hash = tx.get_signature_hash(item.second, item.first, sighash_flags);

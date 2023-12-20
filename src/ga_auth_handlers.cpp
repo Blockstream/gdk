@@ -1888,8 +1888,18 @@ namespace sdk {
 
         signal_2fa_request(m_type + "_raw_tx");
         m_twofactor_required = m_state == state_type::request_code;
+        Tx tx(j_strref(m_details, "transaction"), m_net_params.is_liquid());
+        auto [user_signed, server_signed, sweep_signed, has_sweeps]
+            = tx_get_user_server_sweep_signed(*m_session, m_details, tx);
 
-        if (!m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+        if (m_twofactor_required && server_signed) {
+            // Already server signed, no need for 2fa
+            m_twofactor_required = false;
+            m_state = state_type::make_call;
+        }
+
+        if (m_twofactor_required && !m_net_params.is_liquid() && !m_net_params.is_electrum()) {
+            // Avoid 2FA if this tx is under the users spending limit
             auto user_limits = m_twofactor_required ? m_session->get_spending_limits() : nlohmann::json({});
             if (user_limits.value("is_fiat", false)) {
                 try {

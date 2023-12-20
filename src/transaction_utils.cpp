@@ -90,6 +90,8 @@ namespace sdk {
             return byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2);
         }
 
+        static bool is_dummy_sig(byte_span_t sig) { return sig == dummy_sig_der(true) || sig == dummy_sig_der(false); }
+
         static auto segwit_address(const network_parameters& net_params, byte_span_t bytes)
         {
             constexpr uint32_t flags = 0;
@@ -548,10 +550,58 @@ namespace sdk {
 
         GDK_RUNTIME_ASSERT(!utxo.contains("script_sig") || !utxo.contains("witness"));
 
-        const auto green_der = dummy_sig_der(true);
+        const auto sigs = tx.get_input_signatures(session.get_network_parameters(), utxo, index);
+        byte_span_t green_der;
+        if (sigs.size() == 2u) {
+            green_der = sigs.front();
+            if (green_der.empty()) {
+                // No server sig found, use a dummy for fee estimation purposes.
+                green_der = dummy_sig_der(true);
+            }
+        }
         auto [scriptsig, witness] = scriptsig_and_witness(session, utxo, user_der, green_der);
         tx.set_input_script(index, scriptsig);
         tx.set_input_witness(index, witness.get());
+    }
+
+    std::tuple<bool, bool, bool, bool> tx_get_user_server_sweep_signed(
+        session_impl& session, const nlohmann::json& result, Tx& tx)
+    {
+        const nlohmann::json& inputs = j_arrayref(result, "transaction_inputs");
+        // Return all signing states as complete unless we discover otherwise below
+        bool user_signed = true, server_signed = true, sweep_signed = true;
+        bool has_sweeps = false; // False unless we find a sweep input below
+
+        for (size_t index = 0; index < tx.get_num_inputs(); ++index) {
+            const auto& input = inputs.at(index);
+            if (j_str_is_empty(input, "address_type") || j_bool_or_false(input, "skip_signing")
+                || input.contains("script_sig") || input.contains("witness")) {
+                // Non-wallet input, an input we are skipping, or already finalized
+                continue;
+            }
+            // Note this private key logic isn't currently reached, because
+            // sweep inputs are currently marked as "skip_signing" and so
+            // skipped above. However, ultimately we want to use this call
+            // to determine the signing status in sign_transaction and not
+            // just send_transaction (which handles server signing). When
+            // that happens, this code will be updated so that user/sweep
+            // input signing can be skipped if they are already signed.
+            if (input.contains("private_key")) {
+                has_sweeps = true;
+                sweep_signed = false; // TODO: Check signature
+                continue;
+            }
+            const auto sigs = tx.get_input_signatures(session.get_network_parameters(), input, index);
+            if (sigs.size() == 2) {
+                if (is_dummy_sig(sigs.at(0))) {
+                    server_signed = false;
+                }
+            }
+            if (is_dummy_sig(sigs.at(sigs.size() - 1))) {
+                user_signed = false;
+            }
+        }
+        return { user_signed, server_signed, sweep_signed, has_sweeps };
     }
 
     std::string validate_tx_addressee(

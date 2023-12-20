@@ -60,6 +60,10 @@ namespace sdk {
     void tx_set_user_signature(
         session_impl& session, const nlohmann::json& result, Tx& tx, size_t index, byte_span_t user_der);
 
+    // returns user_signed, server_signed, sweep_signed, has_sweep_inputs
+    std::tuple<bool, bool, bool, bool> tx_get_user_server_sweep_signed(
+        session_impl& session, const nlohmann::json& result, Tx& tx);
+
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 
