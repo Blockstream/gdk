@@ -26,6 +26,7 @@ class URDecoder {
 
 namespace ga {
 namespace sdk {
+#ifdef USE_REAL_BCUR
     namespace {
         // FIXME: this whole set of functions inside this anonymous namespace should be moved to ur-c library
 
@@ -302,6 +303,7 @@ namespace sdk {
             return { ur_type, std::move(cbor) };
         }
     } // namespace
+#endif
 
     bcur_encoder_call::bcur_encoder_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "bcur_encode", std::shared_ptr<signer>())

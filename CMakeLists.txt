@@ -60,6 +60,7 @@ if (ENABLE_BCUR)
     get_target_property(URC_INCLUDE_DIRS urc::urc INTERFACE_INCLUDE_DIRECTORIES)
     string(TOUPPER ${CMAKE_BUILD_TYPE} _upcase_build_type)
     get_target_property(URC_LINK_LIBRARIES urc::urc IMPORTED_LOCATION_${_upcase_build_type})
+    set_target_properties(urc::urc PROPERTIES INTERFACE_LINK_LIBRARIES "PkgConfig::TinyCBOR")
 endif()
 
 #### dependencies relying on pkg-config
