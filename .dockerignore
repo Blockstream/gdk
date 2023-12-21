@@ -1,5 +1,6 @@
 **
 !./tools/buildbcur.sh
+!./tools/bc-ur.patch
 !./tools/buildboost.sh
 !./tools/builddeps.sh
 !./tools/buildlibwally-core.sh

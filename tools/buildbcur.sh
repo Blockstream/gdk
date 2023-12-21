@@ -1,11 +1,11 @@
 #! /usr/bin/env bash
 set -e
 
-cd "${PRJ_SUBDIR}"
+cp tools/bc-ur.patch ${PRJ_SUBDIR}/bc-ur.patch
+cd ${PRJ_SUBDIR}
 
 # fixes to the src files
-${SED} -i '/#include <limits>/a #include <cstring>' src/xoshiro256.cpp
-${SED} -i 's/#include <Windows.h>/#include <windows.h>/g' src/memzero.c
+patch -p1 < bc-ur.patch
 
 CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT}/bc-ur/build "
 EXTRA_CFLAGS="-fPIC -DPIC"
@@ -46,10 +46,6 @@ export CFLAGS="$CFLAGS $EXTRA_CFLAGS"
 export CXXFLAGS="$CXXFLAGS $EXTRA_CXXFLAGS"
 export LDFLAGS="$LDFLAGS $EXTRA_LDFLAGS"
 ./configure ${CONFIGURE_ARGS}
-
-# fixes to the generated makefiles
-${SED} -i 's/-stdlib=libc++//g' src/Makefile
-${SED} -i 's/--debug -O0//g' src/Makefile
 
 make lib
 make install

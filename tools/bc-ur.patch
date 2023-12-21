@@ -1,0 +1,49 @@
+
+diff --git -ru a/src/cbor-lite.hpp b/src/cbor-lite.hpp
+--- a/src/cbor-lite.hpp	2021-01-20 00:19:17.000000000 +0100
++++ b/src/cbor-lite.hpp	2023-12-12 15:49:34.523285843 +0100
+@@ -8,6 +8,7 @@
+ // COPYRIGHT.md file in the top-level folder of the CBOR-lite software
+ // distribution.
+ 
++#include <cstdint>
+ #include <exception>
+ #include <iterator>
+ #include <string>
+diff --git -ru a/src/Makefile.in b/src/Makefile.in
+--- a/src/Makefile.in	2021-01-20 00:19:17.000000000 +0100
++++ b/src/Makefile.in	2023-12-12 15:48:42.308731733 +0100
+@@ -28,8 +28,8 @@
+ RESET=`tput sgr0`
+ 
+ COMPILER = g++
+-CFLAGS += --debug -O0
+-CXXFLAGS += -std=c++17 -stdlib=libc++ --debug -O0
++CFLAGS +=
++CXXFLAGS += -std=c++17
+ 
+ ARFLAGS = rcs
+ 
+diff --git -ru a/src/memzero.c b/src/memzero.c
+--- a/src/memzero.c	2021-01-20 00:19:17.000000000 +0100
++++ b/src/memzero.c	2023-12-12 15:47:38.457606865 +0100
+@@ -6,7 +6,7 @@
+ #include <string.h>
+ 
+ #ifdef _WIN32
+-#include <Windows.h>
++#include <windows.h>
+ #endif
+ 
+ #ifdef __unix__
+diff --git -ru a/src/xoshiro256.cpp b/src/xoshiro256.cpp
+--- a/src/xoshiro256.cpp	2021-01-20 00:19:17.000000000 +0100
++++ b/src/xoshiro256.cpp	2023-12-12 15:47:18.376623718 +0100
+@@ -7,6 +7,7 @@
+ 
+ #include "xoshiro256.hpp"
+ #include <limits>
++#include <cstring>
+ 
+ /*  Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
+ 
