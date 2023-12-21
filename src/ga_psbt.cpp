@@ -185,41 +185,39 @@ namespace sdk {
 
         auto inputs_and_assets = inputs_to_json(session, std::move(details.at("utxos")));
         auto outputs = outputs_to_json(session, tx, inputs_and_assets.second);
-        amount fee, fee_output;
+        amount sum, explicit_fee;
         bool use_error = false;
         std::string error;
         for (const auto& txin : inputs_and_assets.first) {
             auto txin_error = j_str_or_empty(txin, "error");
-            if (txin_error.empty()) {
-                const auto asset_id = j_asset(net_params, txin);
-                if (asset_id == policy_asset) {
-                    fee += j_amountref(txin);
-                }
-            } else {
+            if (!txin_error.empty()) {
                 error = std::move(txin_error);
                 if (!j_bool_or_false(txin, "skip_signing")) {
                     /* We aren't skipping this input while signing, so mark
                      * the overall tx as in error (results can't be trusted) */
                     use_error = true;
                 }
+                continue;
+            }
+            if (!m_is_liquid || j_asset(net_params, txin) == policy_asset) {
+                sum += j_amountref(txin);
             }
         }
         for (const auto& txout : outputs) {
-            const auto asset_id = j_asset(net_params, txout);
-            if (asset_id == policy_asset) {
+            if (!m_is_liquid || j_asset(net_params, txout) == policy_asset) {
                 if (m_is_liquid && j_str_is_empty(txout, "scriptpubkey")) {
-                    fee_output = j_amountref(txout);
-                } else {
-                    fee -= j_amountref(txout);
+                    explicit_fee += j_amountref(txout);
                 }
+                sum -= j_amountref(txout);
             }
         }
         // Calculated fee must match fee output for Liquid unless an error occurred
-        GDK_RUNTIME_ASSERT(!m_is_liquid || fee == fee_output || !error.empty());
+        GDK_RUNTIME_ASSERT(!m_is_liquid || sum == explicit_fee || !error.empty());
+
         nlohmann::json result
             = { { "transaction", tx.to_hex() }, { "transaction_inputs", std::move(inputs_and_assets.first) },
                   { "transaction_outputs", std::move(outputs) } };
-        result["fee"] = m_is_liquid ? fee_output.value() : fee.value();
+        result["fee"] = m_is_liquid ? explicit_fee.value() : sum.value();
         result["network_fee"] = 0;
         update_tx_info(session, tx, result);
         result["txhash"] = b2h_rev(tx.get_txid());
