@@ -22,19 +22,6 @@ namespace sdk {
         static const std::string LIQUIDEX_STR("liquidex_v1");
         static constexpr uint32_t LIQUIDEX_VERSION = 1;
 
-        static nlohmann::json get_tx_input_fields(const Tx& tx, size_t index)
-        {
-            const auto& in = tx.get_input(index);
-            nlohmann::json::array_t witness;
-            for (size_t i = 0; i < in.witness->num_items; ++i) {
-                const auto* item = in.witness->items + i;
-                witness.push_back(item->witness_len ? b2h({ item->witness, item->witness_len }) : "");
-            }
-            return { { "txhash", b2h_rev({ in.txhash, sizeof(in.txhash) }) }, { "pt_idx", in.index },
-                { "sequence", in.sequence }, { "script_sig", b2h({ in.script, in.script_len }) },
-                { "witness", std::move(witness) } };
-        }
-
         static void add_asset_utxos(
             const nlohmann::json& utxos, const std::string& asset_id, nlohmann::json::array_t& tx_inputs)
         {
@@ -86,7 +73,11 @@ namespace sdk {
 
         static nlohmann::json liquidex_get_maker_input(const Tx& tx, const nlohmann::json& proposal_input)
         {
-            auto maker_input = get_tx_input_fields(tx, 0);
+            auto maker_input = tx.input_to_json(0);
+            GDK_RUNTIME_ASSERT_MSG(maker_input.contains("witness"), "Maker input is not segwit");
+            if (!maker_input.contains("script_sig")) {
+                maker_input["script_sig"] = std::string_view{};
+            }
             maker_input["asset_id"] = proposal_input.at("asset");
             maker_input["assetblinder"] = proposal_input.at("asset_blinder");
             maker_input["satoshi"] = j_amountref(proposal_input).value();

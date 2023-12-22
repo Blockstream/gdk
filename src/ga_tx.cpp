@@ -848,6 +848,26 @@ namespace sdk {
         return m_tx->inputs[index];
     }
 
+    nlohmann::json Tx::input_to_json(size_t index) const
+    {
+        const auto& in = get_input(index);
+        nlohmann::json result = { { "txhash", b2h_rev({ in.txhash, sizeof(in.txhash) }) }, { "pt_idx", in.index },
+            { "sequence", in.sequence } };
+
+        const auto wit = in.witness;
+        if (wit && wit->num_items) {
+            auto& wit_array = result["witness"];
+            for (const auto& item : gsl::make_span(wit->items, wit->num_items)) {
+                const byte_span_t data{ item.witness, item.witness_len };
+                wit_array.emplace_back(data.size() ? b2h(data) : std::string());
+            }
+        }
+        if (in.script_len) {
+            result["script_sig"] = b2h({ in.script, in.script_len });
+        }
+        return result;
+    }
+
     std::optional<uint32_t> Tx::find_input_spending(byte_span_t txid, uint32_t vout) const
     {
         GDK_RUNTIME_ASSERT(txid.size() == WALLY_TXHASH_LEN);
