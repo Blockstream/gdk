@@ -51,7 +51,7 @@ namespace sdk {
 
     private:
         std::pair<nlohmann::json, std::set<std::string>> inputs_to_json(
-            session_impl& session, nlohmann::json utxos) const;
+            session_impl& session, Tx& tx, nlohmann::json utxos) const;
         nlohmann::json outputs_to_json(
             session_impl& session, const Tx& tx, const std::set<std::string>& wallet_assets) const;
 

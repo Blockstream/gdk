@@ -122,7 +122,9 @@ namespace sdk {
     Tx Psbt::extract() const
     {
         struct wally_tx* p;
-        GDK_VERIFY(wally_psbt_extract(m_psbt.get(), WALLY_PSBT_EXTRACT_NON_FINAL, &p));
+        /* Extract any finalized input data, but don't require it */
+        constexpr uint32_t flags = WALLY_PSBT_EXTRACT_OPT_FINAL;
+        GDK_VERIFY(wally_psbt_extract(m_psbt.get(), flags, &p));
         return Tx(p, m_is_liquid);
     }
 
@@ -181,9 +183,9 @@ namespace sdk {
     {
         const auto& net_params = session.get_network_parameters();
         const auto policy_asset = net_params.get_policy_asset();
-        const Tx tx(extract());
+        Tx tx(extract());
 
-        auto inputs_and_assets = inputs_to_json(session, std::move(details.at("utxos")));
+        auto inputs_and_assets = inputs_to_json(session, tx, std::move(details.at("utxos")));
         auto outputs = outputs_to_json(session, tx, inputs_and_assets.second);
         amount sum, explicit_fee;
         bool use_error = false;
@@ -228,7 +230,7 @@ namespace sdk {
     }
 
     std::pair<nlohmann::json, std::set<std::string>> Psbt::inputs_to_json(
-        session_impl& session, nlohmann::json utxos) const
+        session_impl& session, Tx& tx, nlohmann::json utxos) const
     {
         const auto& net_params = session.get_network_parameters();
         std::set<std::string> wallet_assets;
@@ -236,25 +238,42 @@ namespace sdk {
         inputs.resize(get_num_inputs());
         for (size_t i = 0; i < inputs.size(); ++i) {
             const auto& psbt_input = get_input(i);
-            const std::string txhash_hex = b2h_rev(psbt_input.txhash);
+            auto& txin = tx.get_input(i);
             auto& utxo = inputs[i];
+            utxo = tx.input_to_json(i);
+            const std::string txhash_hex = j_strref(utxo, "txhash"); // Note as-value
+
+            bool is_wallet_utxo = false;
             for (auto& u : utxos) {
-                if (!u.empty() && u.at("pt_idx") == psbt_input.index && u.at("txhash") == txhash_hex) {
+                if (!u.empty() && j_uint32ref(u, "pt_idx") == psbt_input.index && j_strref(u, "txhash") == txhash_hex) {
                     // Wallet UTXO
                     utxo = std::move(u);
+                    wallet_assets.insert(j_asset(net_params, utxo));
+                    is_wallet_utxo = true;
                     break;
                 }
             }
-            const bool is_wallet_utxo = !utxo.empty();
             if (is_wallet_utxo) {
                 // Wallet UTXO
                 utxo["user_sighash"] = psbt_input.sighash ? psbt_input.sighash : WALLY_SIGHASH_ALL;
-                utxo.erase("user_status");
+                for (const auto& key : { "user_status", "witness", "script_sig" }) {
+                    utxo.erase(key);
+                }
                 utxo_add_paths(session, utxo);
-                wallet_assets.insert(j_asset(net_params, utxo));
+                if (!txin.script || !txin.witness) {
+                    // FIXME: get the sigs from the PSBT, uses dummy sigs for now
+                    byte_span_t user_der, green_der;
+                    auto [scriptsig, witness] = get_scriptsig_and_witness(session, utxo, user_der, green_der);
+                    if (!txin.script) {
+                        GDK_VERIFY(wally_tx_input_set_script(&txin, scriptsig.data(), scriptsig.size()));
+                    }
+                    if (!txin.witness) {
+                        GDK_VERIFY(wally_tx_input_set_witness(&txin, witness.get()));
+                    }
+                }
             } else {
                 // Non-wallet UTXO
-                utxo = { { "txhash", txhash_hex }, { "pt_idx", psbt_input.index }, { "skip_signing", true } };
+                utxo["skip_signing"] = true;
                 const struct wally_tx_output* txin_utxo;
                 GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
                 if (!txin_utxo) {
@@ -276,10 +295,10 @@ namespace sdk {
                         utxo["error"] = "failed to unblind utxo";
                     }
                 }
-            }
-            auto redeem_script = psbt_field(psbt_input, in_redeem_script);
-            if (redeem_script.has_value()) {
-                utxo["redeem_script"] = b2h(redeem_script.value());
+                const auto redeem_script = psbt_field(psbt_input, in_redeem_script);
+                if (redeem_script.has_value()) {
+                    utxo["redeem_script"] = b2h(redeem_script.value());
+                }
             }
         }
         return std::make_pair(std::move(inputs), std::move(wallet_assets));
