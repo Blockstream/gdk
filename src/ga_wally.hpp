@@ -24,10 +24,6 @@ template <> struct default_delete<struct wally_tx_input> {
     void operator()(struct wally_tx_input* ptr) const { wally_tx_input_free(ptr); }
 };
 
-template <> struct default_delete<struct wally_tx_witness_stack> {
-    void operator()(struct wally_tx_witness_stack* ptr) const { wally_tx_witness_stack_free(ptr); }
-};
-
 template <> struct default_delete<struct wally_tx_output> {
     void operator()(struct wally_tx_output* ptr) const { wally_tx_output_free(ptr); }
 };

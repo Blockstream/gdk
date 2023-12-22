@@ -40,8 +40,6 @@ namespace sdk {
             return std::none_of(std::cbegin(s), std::cend(s), [](int c) { return std::isupper(c) != 0; });
         }
 
-        using witness_ptr = std::unique_ptr<struct wally_tx_witness_stack>;
-
         static void witness_stack_add(const witness_ptr& stack, std::initializer_list<byte_span_t> items)
         {
             for (const auto& item : items) {
@@ -53,7 +51,7 @@ namespace sdk {
         {
             struct wally_tx_witness_stack* p;
             GDK_VERIFY(wally_tx_witness_stack_init_alloc(num_expected ? num_expected : items.size(), &p));
-            auto wit = witness_ptr(p);
+            auto wit = witness_ptr(p, wally_tx_witness_stack_free);
             witness_stack_add(wit, items);
             return wit;
         }
@@ -416,12 +414,20 @@ namespace sdk {
         }
     }
 
-    static std::pair<std::vector<unsigned char>, witness_ptr> scriptsig_and_witness(
+    std::pair<std::vector<unsigned char>, witness_ptr> get_scriptsig_and_witness(
         session_impl& session, const nlohmann::json& utxo, byte_span_t user_der, byte_span_t green_der)
     {
         using namespace address_type;
         std::vector<unsigned char> scriptsig;
-        witness_ptr witness;
+        witness_ptr witness{ nullptr, wally_tx_witness_stack_free };
+
+        if (user_der.empty()) {
+            const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
+            user_der = dummy_sig_der(is_low_r);
+        }
+        if (green_der.empty()) {
+            green_der = dummy_sig_der(true);
+        }
 
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
@@ -489,14 +495,12 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(!tx.find_input_spending(txid, vout).has_value());
 
         const auto transaction_version = j_uint32ref(result, "transaction_version");
-        const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
-
         const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
         auto sequence = j_uint32(utxo, "sequence").value_or(seq_default);
         utxo["sequence"] = sequence;
 
         std::vector<unsigned char> scriptsig;
-        witness_ptr witness;
+        witness_ptr witness{ nullptr, wally_tx_witness_stack_free };
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
@@ -531,9 +535,7 @@ namespace sdk {
                 }
             }
 
-            const auto user_der = dummy_sig_der(is_low_r);
-            const auto green_der = dummy_sig_der(true);
-            std::tie(scriptsig, witness) = scriptsig_and_witness(session, utxo, user_der, green_der);
+            std::tie(scriptsig, witness) = get_scriptsig_and_witness(session, utxo, {}, {});
         }
         // Add the input to the tx
         tx.add_input(txid, vout, sequence, scriptsig, witness.get());
@@ -554,12 +556,8 @@ namespace sdk {
         byte_span_t green_der;
         if (sigs.size() == 2u) {
             green_der = sigs.front();
-            if (green_der.empty()) {
-                // No server sig found, use a dummy for fee estimation purposes.
-                green_der = dummy_sig_der(true);
-            }
         }
-        auto [scriptsig, witness] = scriptsig_and_witness(session, utxo, user_der, green_der);
+        auto [scriptsig, witness] = get_scriptsig_and_witness(session, utxo, user_der, green_der);
         tx.set_input_script(index, scriptsig);
         tx.set_input_witness(index, witness.get());
     }
