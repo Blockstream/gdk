@@ -188,27 +188,28 @@ namespace sdk {
         amount sum, explicit_fee;
         bool use_error = false;
         std::string error;
-        for (const auto& txin : inputs_and_assets.first) {
-            auto txin_error = j_str_or_empty(txin, "error");
+        for (const auto& input : inputs_and_assets.first) {
+            auto txin_error = j_str_or_empty(input, "error");
             if (!txin_error.empty()) {
                 error = std::move(txin_error);
-                if (!j_bool_or_false(txin, "skip_signing")) {
+                if (!j_bool_or_false(input, "skip_signing")) {
                     /* We aren't skipping this input while signing, so mark
                      * the overall tx as in error (results can't be trusted) */
                     use_error = true;
                 }
                 continue;
             }
-            if (!m_is_liquid || j_asset(net_params, txin) == policy_asset) {
-                sum += j_amountref(txin);
+            if (!m_is_liquid || j_asset(net_params, input) == policy_asset) {
+                sum += j_amountref(input);
             }
         }
         for (const auto& txout : outputs) {
             if (!m_is_liquid || j_asset(net_params, txout) == policy_asset) {
                 if (m_is_liquid && j_str_is_empty(txout, "scriptpubkey")) {
                     explicit_fee += j_amountref(txout);
+                } else {
+                    sum -= j_amountref(txout);
                 }
-                sum -= j_amountref(txout);
             }
         }
         // Calculated fee must match fee output for Liquid unless an error occurred
@@ -234,23 +235,26 @@ namespace sdk {
         nlohmann::json::array_t inputs;
         inputs.resize(get_num_inputs());
         for (size_t i = 0; i < inputs.size(); ++i) {
-            const auto& txin = get_input(i);
-            const std::string txhash_hex = b2h_rev(txin.txhash);
-            auto& input_utxo = inputs[i];
-            for (auto& utxo : utxos) {
-                if (!utxo.empty() && utxo.at("pt_idx") == txin.index && utxo.at("txhash") == txhash_hex) {
+            const auto& psbt_input = get_input(i);
+            const std::string txhash_hex = b2h_rev(psbt_input.txhash);
+            auto& utxo = inputs[i];
+            for (auto& u : utxos) {
+                if (!u.empty() && u.at("pt_idx") == psbt_input.index && u.at("txhash") == txhash_hex) {
                     // Wallet UTXO
-                    utxo["user_sighash"] = txin.sighash ? txin.sighash : WALLY_SIGHASH_ALL;
-                    utxo.erase("user_status");
-                    utxo_add_paths(session, utxo);
-                    input_utxo = std::move(utxo);
-                    wallet_assets.insert(j_asset(net_params, input_utxo));
+                    utxo = std::move(u);
                     break;
                 }
             }
-            if (input_utxo.empty()) {
+            const bool is_wallet_utxo = !utxo.empty();
+            if (is_wallet_utxo) {
+                // Wallet UTXO
+                utxo["user_sighash"] = psbt_input.sighash ? psbt_input.sighash : WALLY_SIGHASH_ALL;
+                utxo.erase("user_status");
+                utxo_add_paths(session, utxo);
+                wallet_assets.insert(j_asset(net_params, utxo));
+            } else {
                 // Non-wallet UTXO
-                input_utxo = { { "txhash", txhash_hex }, { "pt_idx", txin.index }, { "skip_signing", true } };
+                utxo = { { "txhash", txhash_hex }, { "pt_idx", psbt_input.index }, { "skip_signing", true } };
                 const struct wally_tx_output* txin_utxo;
                 GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
                 if (!txin_utxo) {
@@ -260,22 +264,22 @@ namespace sdk {
                 }
                 GDK_RUNTIME_ASSERT(txin_utxo);
                 if (!m_is_liquid) {
-                    input_utxo["satoshi"] = txin_utxo->satoshi;
+                    utxo["satoshi"] = txin_utxo->satoshi;
                 } else {
-                    if (txin.has_amount) {
+                    if (psbt_input.has_amount) {
                         // An explicit value/asset, along with its proofs
-                        input_utxo["satoshi"] = txin.amount;
-                        set_pset_field(txin, input_utxo, "asset_id", in_explicit_asset, true);
-                        set_pset_field(txin, input_utxo, "value_blind_proof", in_value_proof);
-                        set_pset_field(txin, input_utxo, "asset_blind_proof", in_asset_proof);
+                        utxo["satoshi"] = psbt_input.amount;
+                        set_pset_field(psbt_input, utxo, "asset_id", in_explicit_asset, true);
+                        set_pset_field(psbt_input, utxo, "value_blind_proof", in_value_proof);
+                        set_pset_field(psbt_input, utxo, "asset_blind_proof", in_asset_proof);
                     } else {
-                        input_utxo["error"] = "failed to unblind utxo";
+                        utxo["error"] = "failed to unblind utxo";
                     }
                 }
             }
-            auto redeem_script = psbt_field(txin, in_redeem_script);
+            auto redeem_script = psbt_field(psbt_input, in_redeem_script);
             if (redeem_script.has_value()) {
-                input_utxo["redeem_script"] = b2h(redeem_script.value());
+                utxo["redeem_script"] = b2h(redeem_script.value());
             }
         }
         return std::make_pair(std::move(inputs), std::move(wallet_assets));
