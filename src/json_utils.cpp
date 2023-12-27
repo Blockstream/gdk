@@ -13,7 +13,11 @@ static auto find(const nlohmann::json& src, std::string_view key)
     if (src.is_null()) {
         return src.end();
     }
-    return src.find(key);
+    auto it = src.find(key);
+    if (it == src.end() || it->is_null()) {
+        return src.end();
+    }
+    return it;
 }
 static auto get_or_throw(const nlohmann::json& src, std::string_view key)
 {
@@ -27,7 +31,7 @@ static auto get_or_throw(const nlohmann::json& src, std::string_view key)
 template <typename T> static std::optional<T> get_optional(const nlohmann::json& src, std::string_view key)
 {
     auto it = find(src, key);
-    if (it == src.end() || it->is_null()) {
+    if (it == src.end()) {
         return {};
     }
     return it->get<T>();
@@ -35,7 +39,7 @@ template <typename T> static std::optional<T> get_optional(const nlohmann::json&
 template <typename T> static T get_or_default(const nlohmann::json& src, std::string_view key)
 {
     auto it = find(src, key);
-    return it == src.end() || it->is_null() ? T() : it->get<T>();
+    return it == src.end() ? T() : it->get<T>();
 }
 } // namespace
 
