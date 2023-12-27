@@ -149,36 +149,55 @@ namespace sdk {
         return get_or_default<uint32_t>(src, key);
     }
 
+    static std::vector<unsigned char> bytes_impl(const nlohmann::json& src, std::string_view key, bool allow_empty,
+        bool do_reverse, std::optional<size_t> expected_size)
+    {
+        const auto hex = j_str_or_empty(src, key);
+        if (expected_size.has_value() && hex.size() != expected_size.value() * 2) {
+            auto num = std::to_string(expected_size.value() * 2);
+            throw user_error(std::string("key ") + std::string(key) + " is not " + num + " hex chars");
+        }
+        if (hex.empty()) {
+            if (!allow_empty) {
+                throw user_error(std::string("key ") + std::string(key) + " is empty hex");
+            }
+            return {};
+        }
+        try {
+            return do_reverse ? h2b_rev(hex) : h2b(hex);
+        } catch (const std::exception& e) {
+            throw user_error(std::string("key ") + std::string(key) + " is invalid hex");
+        }
+    }
+
     std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key)
     {
-        auto bytes = j_bytes_or_empty(src, key);
-        if (bytes.empty()) {
-            throw user_error(std::string("key ") + std::string(key) + " is empty hex");
-        }
-        return bytes;
+        return bytes_impl(src, key, false, false, {});
     }
 
     std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key, size_t expected_size)
     {
-        auto bytes = j_bytesref(src, key);
-        if (bytes.size() != expected_size) {
-            auto num = std::to_string(expected_size * 2);
-            throw user_error(std::string("key ") + std::string(key) + " is not " + num + " hex chars");
-        }
-        return bytes;
+        return bytes_impl(src, key, false, false, { expected_size });
     }
 
     std::vector<unsigned char> j_bytes_or_empty(const nlohmann::json& src, std::string_view key)
     {
-        const auto hex = j_str_or_empty(src, key);
-        if (hex.empty()) {
-            return {};
-        }
-        try {
-            return h2b(hex);
-        } catch (const std::exception& e) {
-            throw user_error(std::string("key ") + std::string(key) + " is invalid hex");
-        }
+        return bytes_impl(src, key, true, false, {});
+    }
+
+    std::vector<unsigned char> j_rbytesref(const nlohmann::json& src, std::string_view key)
+    {
+        return bytes_impl(src, key, false, true, {});
+    }
+
+    std::vector<unsigned char> j_rbytesref(const nlohmann::json& src, std::string_view key, size_t expected_size)
+    {
+        return bytes_impl(src, key, false, true, { expected_size });
+    }
+
+    std::vector<unsigned char> j_rbytes_or_empty(const nlohmann::json& src, std::string_view key)
+    {
+        return bytes_impl(src, key, true, true, {});
     }
 } // namespace sdk
 } // namespace ga

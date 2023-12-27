@@ -53,6 +53,11 @@ namespace sdk {
     std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key, size_t expected_size);
     std::vector<unsigned char> j_bytes_or_empty(const nlohmann::json& src, std::string_view key);
 
+    // reversed bytes
+    std::vector<unsigned char> j_rbytesref(const nlohmann::json& src, std::string_view key);
+    std::vector<unsigned char> j_rbytesref(const nlohmann::json& src, std::string_view key, size_t expected_size);
+    std::vector<unsigned char> j_rbytes_or_empty(const nlohmann::json& src, std::string_view key);
+
 } // namespace sdk
 } // namespace ga
 #endif
