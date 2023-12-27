@@ -47,6 +47,12 @@ namespace sdk {
     uint32_t j_uint32ref(const nlohmann::json& src, std::string_view key);
     std::optional<uint32_t> j_uint32(const nlohmann::json& src, std::string_view key);
     uint32_t j_uint32_or_zero(const nlohmann::json& src, std::string_view key);
+
+    // bytes
+    std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key);
+    std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key, size_t expected_size);
+    std::vector<unsigned char> j_bytes_or_empty(const nlohmann::json& src, std::string_view key);
+
 } // namespace sdk
 } // namespace ga
 #endif

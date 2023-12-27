@@ -148,5 +148,37 @@ namespace sdk {
     {
         return get_or_default<uint32_t>(src, key);
     }
+
+    std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key)
+    {
+        auto bytes = j_bytes_or_empty(src, key);
+        if (bytes.empty()) {
+            throw user_error(std::string("key ") + std::string(key) + " is empty hex");
+        }
+        return bytes;
+    }
+
+    std::vector<unsigned char> j_bytesref(const nlohmann::json& src, std::string_view key, size_t expected_size)
+    {
+        auto bytes = j_bytesref(src, key);
+        if (bytes.size() != expected_size) {
+            auto num = std::to_string(expected_size * 2);
+            throw user_error(std::string("key ") + std::string(key) + " is not " + num + " hex chars");
+        }
+        return bytes;
+    }
+
+    std::vector<unsigned char> j_bytes_or_empty(const nlohmann::json& src, std::string_view key)
+    {
+        const auto& hex = j_strref(src, key);
+        if (hex.empty()) {
+            return {};
+        }
+        try {
+            return h2b(hex);
+        } catch (const std::exception& e) {
+            throw user_error(std::string("key ") + std::string(key) + " is invalid hex");
+        }
+    }
 } // namespace sdk
 } // namespace ga
