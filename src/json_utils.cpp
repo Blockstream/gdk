@@ -6,6 +6,8 @@
 
 #include "amount.hpp"
 #include "exception.hpp"
+#include "ga_strings.hpp"
+#include "ga_wally.hpp"
 
 namespace {
 static auto find(const nlohmann::json& src, std::string_view key)
@@ -107,6 +109,23 @@ namespace sdk {
     amount j_amount_or_zero(const nlohmann::json& src, std::string_view key)
     {
         return amount(get_or_default<amount::value_type>(src, key));
+    }
+
+    std::string j_assetref(bool is_liquid, const nlohmann::json& src, std::string_view key)
+    {
+        auto asset_id_hex = j_str_or_empty(src, key);
+        const bool is_empty = asset_id_hex.empty();
+        if (is_liquid) {
+            if (is_empty || !validate_hex(asset_id_hex, 32)) {
+                // Must be a valid hex asset id
+                throw user_error(res::id_invalid_asset_id);
+            }
+            return asset_id_hex;
+        }
+        if (!is_empty) {
+            throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
+        }
+        return "btc";
     }
 
     bool j_boolref(const nlohmann::json& src, std::string_view key) { return get_or_throw(src, key)->get<bool>(); }

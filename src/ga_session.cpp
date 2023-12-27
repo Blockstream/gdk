@@ -2203,7 +2203,7 @@ namespace sdk {
                 const bool is_relevant = ep.at("is_relevant");
 
                 if (is_relevant && ep.find("error") == ep.end()) {
-                    const auto asset_id = j_asset(m_net_params, ep);
+                    const auto asset_id = j_assetref(is_liquid, ep);
                     unique_asset_ids.emplace(asset_id);
 
                     // Compute the effect of the input/output on the wallets balance
@@ -2545,7 +2545,8 @@ namespace sdk {
 
     void ga_session::process_unspent_outputs(nlohmann::json& utxos)
     {
-        if (m_net_params.is_liquid()) {
+        const bool is_liquid = m_net_params.is_liquid();
+        if (is_liquid) {
             // Reprocess to unblind any UTXOS we now have the nonces for
             unique_pubkeys_and_scripts_t missing;
             locker_t locker(m_mutex);
@@ -2561,7 +2562,7 @@ namespace sdk {
             if (utxo.contains("error")) {
                 asset_utxos["error"].emplace_back(utxo);
             } else {
-                const auto utxo_asset_id = j_asset(m_net_params, utxo);
+                const auto utxo_asset_id = j_assetref(is_liquid, utxo);
                 asset_utxos[utxo_asset_id].emplace_back(utxo);
             }
         }

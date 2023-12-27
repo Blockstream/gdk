@@ -662,7 +662,7 @@ namespace sdk {
             }
 
             // Validate the asset (or lack of it)
-            j_asset(net_params, addressee);
+            j_assetref(is_liquid, addressee);
 
             // Validate and convert the amount to satoshi, but only if we are
             // validating for the sessions network (i.e. we have the
@@ -698,6 +698,7 @@ namespace sdk {
     static amount add_tx_output(
         const network_parameters& net_params, nlohmann::json& result, Tx& tx, const nlohmann::json& output)
     {
+        const bool is_liquid = net_params.is_liquid();
         std::string old_error = json_get_value(result, "error");
         const auto satoshi = j_amountref(output);
         std::string script_hex = output.at("scriptpubkey");
@@ -705,7 +706,7 @@ namespace sdk {
         if (!script_hex.empty()) {
             script = h2b(script_hex);
         }
-        if (!net_params.is_liquid()) {
+        if (!is_liquid) {
             tx.add_output(satoshi.value(), script);
             return satoshi;
         }
@@ -715,7 +716,7 @@ namespace sdk {
             result["error"] = old_error;
         }
         const size_t index = tx.get_num_outputs(); // Append to outputs
-        const auto asset_id = j_asset(net_params, output);
+        const auto asset_id = j_assetref(is_liquid, output);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi.value());
         tx.add_elements_output_at(index, script, asset_bytes, ct_value, {}, {}, {});
@@ -725,9 +726,10 @@ namespace sdk {
     void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
         std::string address = addressee.at("address"); // Assume its a standard address
         const bool is_blinded = addressee.value("is_blinded", false);
-        const auto asset_id_hex = j_asset(net_params, addressee);
+        const auto asset_id_hex = j_assetref(is_liquid, addressee);
 
         if (is_blinded) {
             // The case of an existing blinded output
@@ -979,7 +981,7 @@ namespace sdk {
             for (const auto& input : *p) {
                 if (input.contains("address_type") && !input.contains("private_key")) {
                     // Wallet input
-                    const auto asset_id = j_asset(net_params, input);
+                    const auto asset_id = j_assetref(is_liquid, input);
                     update_summary(summary, asset_id, input, "satoshi", -1);
                     have_input_paying_fee |= asset_id == policy_asset;
                 }
@@ -988,7 +990,7 @@ namespace sdk {
         for (const auto& output : result.at("transaction_outputs")) {
             if (output.contains("address_type") && !j_str_is_empty(output, "scriptpubkey")) {
                 // Non-fee output to a wallet address
-                const auto asset_id = j_asset(net_params, output);
+                const auto asset_id = j_assetref(is_liquid, output);
                 update_summary(summary, asset_id, output, "satoshi");
             }
         }

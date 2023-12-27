@@ -201,12 +201,12 @@ namespace sdk {
                 }
                 continue;
             }
-            if (!m_is_liquid || j_asset(net_params, input) == policy_asset) {
+            if (!m_is_liquid || j_assetref(m_is_liquid, input) == policy_asset) {
                 sum += j_amountref(input);
             }
         }
         for (const auto& txout : outputs) {
-            if (!m_is_liquid || j_asset(net_params, txout) == policy_asset) {
+            if (!m_is_liquid || j_assetref(m_is_liquid, txout) == policy_asset) {
                 if (m_is_liquid && j_str_is_empty(txout, "scriptpubkey")) {
                     explicit_fee += j_amountref(txout);
                 } else {
@@ -232,7 +232,6 @@ namespace sdk {
     std::pair<nlohmann::json, std::set<std::string>> Psbt::inputs_to_json(
         session_impl& session, Tx& tx, nlohmann::json utxos) const
     {
-        const auto& net_params = session.get_network_parameters();
         std::set<std::string> wallet_assets;
         nlohmann::json::array_t inputs;
         inputs.resize(get_num_inputs());
@@ -248,7 +247,7 @@ namespace sdk {
                 if (!u.empty() && j_uint32ref(u, "pt_idx") == psbt_input.index && j_strref(u, "txhash") == txhash_hex) {
                     // Wallet UTXO
                     utxo = std::move(u);
-                    wallet_assets.insert(j_asset(net_params, utxo));
+                    wallet_assets.insert(j_assetref(m_is_liquid, utxo));
                     is_wallet_utxo = true;
                     break;
                 }
@@ -375,7 +374,7 @@ namespace sdk {
                 jsonout["address"] = std::move(unconf_addr.at("address"));
             }
             // Change detection
-            auto asset_id = j_asset(net_params, jsonout);
+            auto asset_id = j_assetref(m_is_liquid, jsonout);
             if (wallet_assets.count(asset_id)) {
                 if (!is_electrum) {
                     // Multisig: Collect info to compute change below

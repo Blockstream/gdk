@@ -406,23 +406,6 @@ namespace sdk {
         return encryption_key;
     }
 
-    std::string j_asset(const network_parameters& net_params, const nlohmann::json& json, std::string_view key)
-    {
-        const std::string asset_id_hex = j_str(json, key).value_or(std::string());
-        const bool is_empty = asset_id_hex.empty();
-        if (net_params.is_liquid()) {
-            if (is_empty || !validate_hex(asset_id_hex, ASSET_TAG_LEN)) {
-                // Must be a valid hex asset id
-                throw user_error(res::id_invalid_asset_id);
-            }
-            return asset_id_hex;
-        }
-        if (!is_empty) {
-            throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
-        }
-        return "btc";
-    }
-
     nlohmann::json parse_bitcoin_uri(const network_parameters& net_params, const std::string& uri)
     {
         // Split a string into a head and tail around the first (leftmost) occurrence
@@ -457,11 +440,12 @@ namespace sdk {
                 params.emplace(key, value);
             }
 
+            const bool is_liquid = net_params.is_liquid();
             if (params.contains("assetid")) {
                 // Lowercase and validate the asset id
                 params["assetid"] = boost::to_lower_copy(json_get_value(params, "assetid"));
-                j_asset(net_params, params, "assetid"); // Validate it
-            } else if (net_params.is_liquid() && params.contains("amount")) {
+                j_assetref(is_liquid, params, "assetid"); // Validate it
+            } else if (is_liquid && params.contains("amount")) {
                 // Asset id is mandatory if an amount is present
                 throw user_error(res::id_invalid_payment_request_assetid);
             }

@@ -35,6 +35,9 @@ namespace sdk {
     std::optional<amount> j_amount(const nlohmann::json& src, std::string_view key = "satoshi");
     amount j_amount_or_zero(const nlohmann::json& src, std::string_view key = "satoshi");
 
+    // hex asset id, or "btc" for bitcoin
+    std::string j_assetref(bool is_liquid, const nlohmann::json& src, std::string_view key = "asset_id");
+
     // bool
     bool j_boolref(const nlohmann::json& src, std::string_view key);
     std::optional<bool> j_bool(const nlohmann::json& src, std::string_view key);
