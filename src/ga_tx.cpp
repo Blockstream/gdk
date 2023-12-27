@@ -1131,7 +1131,7 @@ namespace sdk {
     {
         std::array<unsigned char, SHA256_LEN> ret;
         const auto satoshi = j_amountref(utxo).value();
-        const auto script = h2b(utxo.at("prevout_script"));
+        const auto script = j_bytesref(utxo, "prevout_script");
         const bool is_segwit = address_type_is_segwit(j_strref(utxo, "address_type"));
         const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
@@ -1144,10 +1144,8 @@ namespace sdk {
         }
 
         // Liquid case - has a value-commitment in place of a satoshi value
-        std::vector<unsigned char> ct_value;
-        if (!j_str_is_empty(utxo, "commitment")) {
-            ct_value = h2b(utxo.at("commitment"));
-        } else {
+        auto ct_value = j_bytes_or_empty(utxo, "commitment");
+        if (ct_value.empty()) {
             const auto value = tx_confidential_value_from_satoshi(satoshi);
             ct_value.assign(std::begin(value), std::end(value));
         }
@@ -1441,7 +1439,7 @@ namespace sdk {
                 std::copy(o.value, o.value + o.value_len, value_commitment.begin());
             }
 
-            const auto scriptpubkey = h2b(output.at("scriptpubkey"));
+            const auto scriptpubkey = j_bytesref(output, "scriptpubkey");
 
             std::vector<unsigned char> eph_public_key;
             std::vector<unsigned char> rangeproof;
@@ -1461,7 +1459,7 @@ namespace sdk {
                 priv_key_t eph_private_key;
                 std::tie(eph_private_key, eph_public_key) = get_ephemeral_keypair();
                 output["eph_public_key"] = b2h(eph_public_key);
-                const auto blinding_pubkey = h2b(output.at("blinding_key"));
+                const auto blinding_pubkey = j_bytesref(output, "blinding_key");
                 GDK_RUNTIME_ASSERT(!output.contains("blinding_nonce"));
                 if (blinding_nonces_required) {
                     // Generate the blinding nonce for the caller

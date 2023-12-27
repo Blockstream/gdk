@@ -170,7 +170,7 @@ namespace sdk {
 
     std::vector<unsigned char> j_bytes_or_empty(const nlohmann::json& src, std::string_view key)
     {
-        const auto& hex = j_strref(src, key);
+        const auto hex = j_str_or_empty(src, key);
         if (hex.empty()) {
             return {};
         }

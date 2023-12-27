@@ -43,7 +43,7 @@ namespace sdk {
                 data["ae_host_entropy"] = b2h(get_random_bytes<WALLY_S2C_DATA_LEN>());
             }
             // Regenerate the host commitment
-            const auto host_entropy = h2b(data["ae_host_entropy"]);
+            const auto host_entropy = j_bytesref(data, "ae_host_entropy");
             data["ae_host_commitment"] = b2h(ae_host_commit_from_bytes(host_entropy));
         }
 
@@ -84,11 +84,11 @@ namespace sdk {
         static void verify_ae_message(const nlohmann::json& twofactor_data, byte_span_t pubkey,
             byte_span_t signer_commitment, byte_span_t compact_sig)
         {
-            const std::string message = twofactor_data.at("message");
+            const auto& message = j_strref(twofactor_data, "message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
 
             verify_ae_signature(
-                pubkey, message_hash, h2b(twofactor_data.at("ae_host_entropy")), signer_commitment, compact_sig);
+                pubkey, message_hash, j_bytesref(twofactor_data, "ae_host_entropy"), signer_commitment, compact_sig);
         }
 
         static void verify_ae_message(const nlohmann::json& twofactor_data, const std::string& root_bip32_xpub,
@@ -106,8 +106,8 @@ namespace sdk {
             }
 
             constexpr bool has_sighash_byte = false;
-            const auto compact_sig = ec_sig_from_der(h2b(hw_reply.at("signature")), has_sighash_byte);
-            return verify_ae_message(twofactor_data, pubkey, h2b(hw_reply.at("signer_commitment")), compact_sig);
+            const auto compact_sig = ec_sig_from_der(j_bytesref(hw_reply, "signature"), has_sighash_byte);
+            return verify_ae_message(twofactor_data, pubkey, j_bytesref(hw_reply, "signer_commitment"), compact_sig);
         }
 
         static void set_blinding_nonce_request_data(const std::shared_ptr<signer>& signer,
@@ -557,7 +557,7 @@ namespace sdk {
                 verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
             }
 
-            m_details["recovery_key_sig"] = b2h(ec_sig_from_der(h2b(hw_reply.at("signature")), false));
+            m_details["recovery_key_sig"] = b2h(ec_sig_from_der(j_bytesref(hw_reply, "signature"), false));
             // Fall through to create the subaccount
         }
 
@@ -805,7 +805,7 @@ namespace sdk {
                 const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
                 verify_ae_signature(
-                    pubkey, tx_signature_hash, h2b(utxo.at("ae_host_entropy")), h2b(signer_commitments[i]), sig);
+                    pubkey, tx_signature_hash, j_bytesref(utxo, "ae_host_entropy"), h2b(signer_commitments[i]), sig);
             }
         }
 
@@ -2032,7 +2032,7 @@ namespace sdk {
                     const auto& txin = tx.get()->inputs[i];
                     if (utxo.contains("redeem_script")) {
                         old_scripts.push_back({ txin.script, txin.script + txin.script_len });
-                        auto redeem_script = h2b(j_strref(utxo, "redeem_script"));
+                        const auto redeem_script = j_bytesref(utxo, "redeem_script");
                         tx.set_input_script(i, script_push_from_bytes(redeem_script));
                         have_redeem_scripts = true;
                     } else {
@@ -2089,16 +2089,15 @@ namespace sdk {
         auto xpub_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
 
         // Get the compact and recoverable signatures from the DER/compact/recoverable signature
-        const auto sig = h2b(hw_reply["signature"]);
-        GDK_RUNTIME_ASSERT_MSG(sig.size(), "Invalid signature");
+        const auto sig = j_bytesref(hw_reply, "signature");
         ecdsa_sig_t compact_sig;
         ecdsa_sig_rec_t recoverable_sig;
-        if ((sig[0] == 48) || (sig.size() == 64)) {
+        if (sig[0] == 48 || sig.size() == 64) {
             if (sig[0] == 48) {
                 // DER format
                 constexpr bool has_sighash_byte = false;
                 compact_sig = ec_sig_from_der(sig, has_sighash_byte);
-            } else if (sig.size() == 64) {
+            } else {
                 // Compact format
                 std::copy(sig.begin(), sig.end(), compact_sig.begin());
             }
@@ -2113,7 +2112,7 @@ namespace sdk {
         }
 
         if (signer->use_ae_protocol()) {
-            const auto signer_commitment = h2b(hw_reply.at("signer_commitment"));
+            const auto signer_commitment = j_bytesref(hw_reply, "signer_commitment");
             verify_ae_message(m_twofactor_data, xpub_hdkey->pub_key, signer_commitment, compact_sig);
         }
 

@@ -64,8 +64,8 @@ namespace sdk {
             nlohmann::json::array_t& inputs, nlohmann::json::array_t& outputs)
         {
             GDK_RUNTIME_ASSERT(inputs.size() == 1 && outputs.size() == 1);
-            const auto input_scalar = h2b(std::move(inputs[0]["scalar"]));
-            const auto output_scalar = h2b(std::move(outputs[0]["scalar"]));
+            const auto input_scalar = j_bytesref(inputs[0], "scalar");
+            const auto output_scalar = j_bytesref(outputs[0], "scalar");
             outputs[0].erase("scalar");
             inputs[0].erase("scalar");
             return { b2h(ec_scalar_subtract(input_scalar, output_scalar)) };
@@ -127,7 +127,7 @@ namespace sdk {
             const auto output_asset = h2b_rev(proposal_output.at("asset"));
             const auto output_abf = h2b_rev(proposal_output.at("asset_blinder"));
             const auto output_value = j_amountref(proposal_output).value();
-            const auto value_blind_proof = h2b(proposal_output.at("value_blind_proof"));
+            const auto value_blind_proof = j_bytesref(proposal_output, "value_blind_proof");
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
             const auto& tx_output = tx->get_output(0);
             const auto output_value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);

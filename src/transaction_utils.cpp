@@ -360,9 +360,8 @@ namespace sdk {
             // Used to validate scripts returned by the Green backend.
             // Once all sessions can generate addresses, the backend will
             // be simplified to not provide them. Hence, check for that here.
-            if (auto script_hex = j_str(utxo, "script"); script_hex.has_value()) {
-                GDK_RUNTIME_ASSERT(h2b(script_hex.value()) == out_script);
-            }
+            const auto script = j_bytes_or_empty(utxo, "script");
+            GDK_RUNTIME_ASSERT(script.empty() || script == out_script);
         }
         if (addr_type == address_type::p2sh) {
             return base58_address(net_params.btc_p2sh_version(), out_script);
@@ -432,7 +431,7 @@ namespace sdk {
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
             // Singlesig
-            const auto pub_key = h2b(j_strref(utxo, "public_key"));
+            const auto pub_key = j_bytesref(utxo, "public_key");
             if (addr_type == p2pkh) {
                 // Singlesig or sweep p2pkh
                 scriptsig = scriptsig_p2pkh_from_der(pub_key, user_der);
@@ -446,7 +445,7 @@ namespace sdk {
             }
         } else {
             // Multisig
-            const auto prevout_script = h2b(j_strref(utxo, "prevout_script"));
+            const auto prevout_script = j_bytesref(utxo, "prevout_script");
 
             if (addr_type == csv || addr_type == p2wsh) {
                 // Multisig segwit
@@ -504,7 +503,7 @@ namespace sdk {
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
-            scriptsig = h2b(j_strref(utxo, "script_sig"));
+            scriptsig = j_bytesref(utxo, "script_sig");
             const auto& witness_items = j_arrayref(utxo, "witness");
             witness = witness_stack({}, witness_items.size());
             for (const auto& item : witness_items) {
@@ -701,13 +700,9 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
         std::string old_error = json_get_value(result, "error");
         const auto satoshi = j_amountref(output);
-        std::string script_hex = output.at("scriptpubkey");
-        std::vector<unsigned char> script;
-        if (!script_hex.empty()) {
-            script = h2b(script_hex);
-        }
+        const auto scriptpubkey = j_bytes_or_empty(output, "scriptpubkey");
         if (!is_liquid) {
-            tx.add_output(satoshi.value(), script);
+            tx.add_output(satoshi.value(), scriptpubkey);
             return satoshi;
         }
         if (output.value("is_change", false)
@@ -719,7 +714,7 @@ namespace sdk {
         const auto asset_id = j_assetref(is_liquid, output);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
         const auto ct_value = tx_confidential_value_from_satoshi(satoshi.value());
-        tx.add_elements_output_at(index, script, asset_bytes, ct_value, {}, {}, {});
+        tx.add_elements_output_at(index, scriptpubkey, asset_bytes, ct_value, {}, {}, {});
         return satoshi;
     }
 
@@ -733,7 +728,7 @@ namespace sdk {
 
         if (is_blinded) {
             // The case of an existing blinded output
-            auto scriptpubkey = h2b(addressee.at("scriptpubkey"));
+            const auto scriptpubkey = j_bytesref(addressee, "scriptpubkey");
             const auto asset_id = h2b_rev(asset_id_hex);
             const auto satoshi = j_amountref(addressee);
             const auto abf = h2b_rev(addressee.at("assetblinder"));
@@ -752,17 +747,9 @@ namespace sdk {
                 value_commitment = h2b<33>(addressee.at("commitment"));
             }
 
-            const auto nonce_commitment = h2b(addressee.at("nonce_commitment"));
-
-            std::vector<unsigned char> surjectionproof;
-            if (addressee.contains("surj_proof")) {
-                surjectionproof = h2b(addressee.at("surj_proof"));
-            }
-
-            std::vector<unsigned char> rangeproof;
-            if (addressee.contains("range_proof")) {
-                rangeproof = h2b(addressee.at("range_proof"));
-            }
+            const auto nonce_commitment = j_bytesref(addressee, "nonce_commitment");
+            const auto surjectionproof = j_bytes_or_empty(addressee, "surj_proof");
+            const auto rangeproof = j_bytes_or_empty(addressee, "range_proof");
 
             const uint32_t index = addressee.at("index");
             tx.add_elements_output_at(

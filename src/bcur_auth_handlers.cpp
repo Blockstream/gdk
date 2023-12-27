@@ -298,9 +298,7 @@ namespace sdk {
 
         static ur::UR prepare_generic_ur(const nlohmann::json& input)
         {
-            const auto& ur_type = j_strref(input, "ur_type");
-            auto cbor = h2b(j_strref(input, "data"));
-            return { ur_type, std::move(cbor) };
+            return { j_strref(input, "ur_type"), j_bytesref(input, "data") };
         }
     } // namespace
 #endif

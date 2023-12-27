@@ -468,7 +468,7 @@ namespace sdk {
 
         // Parse gait_path into a derivation path
         decltype(m_gait_path) gait_path;
-        const auto gait_path_bytes = h2b(m_login_data["gait_path"]);
+        const auto gait_path_bytes = j_bytesref(m_login_data, "gait_path");
         GDK_RUNTIME_ASSERT(gait_path_bytes.size() == gait_path.size() * 2);
         adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
             [](auto first, auto second) { return uint32_t((first << 8u) + second); });
@@ -501,9 +501,9 @@ namespace sdk {
             if (type == "simple") {
                 type = "2of2";
             }
-            const std::string recovery_chain_code = json_get_value(sa, "2of3_backup_chaincode");
-            const std::string recovery_pub_key = json_get_value(sa, "2of3_backup_pubkey");
-            const std::string recovery_xpub_sig = json_get_value(sa, "2of3_backup_xpub_sig");
+            const auto recovery_chain_code = j_str_or_empty(sa, "2of3_backup_chaincode");
+            const auto recovery_pub_key = j_str_or_empty(sa, "2of3_backup_pubkey");
+            const auto recovery_xpub_sig = j_bytes_or_empty(sa, "2of3_backup_xpub_sig");
             std::string recovery_xpub;
             // TODO: fail if *any* 2of3 subaccount has missing or invalid
             //       signature of the corresponding backup/recovery key.
@@ -516,7 +516,7 @@ namespace sdk {
                 ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
                 pub_key_t login_pubkey;
                 memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
-                GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, h2b(recovery_xpub_sig)));
+                GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, recovery_xpub_sig));
             }
 
             // Get the subaccount name. Use the server provided value if
@@ -1924,7 +1924,7 @@ namespace sdk {
             utxo["satoshi"] = value;
             utxo["assetblinder"] = ZEROS;
             utxo["amountblinder"] = ZEROS;
-            const auto asset_tag = h2b(utxo.at("asset_tag"));
+            const auto asset_tag = j_bytesref(utxo, "asset_tag");
             GDK_RUNTIME_ASSERT(asset_tag.at(0) == 0x1);
             utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
             utxo["is_blinded"] = false;
@@ -1949,7 +1949,7 @@ namespace sdk {
             txhash = for_txhash;
         }
 
-        const auto script = h2b(utxo.at("script"));
+        const auto script = j_bytesref(utxo, "script");
         const bool has_address = !j_str_is_empty(utxo, "address");
 
         if (!txhash.empty()) {
@@ -1968,10 +1968,10 @@ namespace sdk {
                 return false; // Cache not updated
             }
         }
-        const auto rangeproof = h2b(utxo.at("range_proof"));
-        const auto commitment = h2b(utxo.at("commitment"));
-        const auto nonce_commitment = h2b(utxo.at("nonce_commitment"));
-        const auto asset_tag = h2b(utxo.at("asset_tag"));
+        const auto rangeproof = j_bytesref(utxo, "range_proof");
+        const auto commitment = j_bytesref(utxo, "commitment");
+        const auto nonce_commitment = j_bytesref(utxo, "nonce_commitment");
+        const auto asset_tag = j_bytesref(utxo, "asset_tag");
 
         GDK_RUNTIME_ASSERT(asset_tag[0] == 0xa || asset_tag[0] == 0xb);
 
@@ -2627,7 +2627,7 @@ namespace sdk {
         address.erase("script_type");
 
         // Ensure the the server returned a script
-        const auto server_script = h2b(j_strref(address, "script"));
+        const auto server_script = j_bytesref(address, "script");
         // Verify the server returned script matches what we generate
         // locally from the UTXO details (and thus that the address
         // is valid). Skip this for old watch only sessions which don't
