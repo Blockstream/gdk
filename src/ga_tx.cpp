@@ -50,6 +50,7 @@ namespace sdk {
         // Return a DER encoded sig from a tx witness, including sighash byte
         static auto der_from_witness(const struct wally_tx_witness_stack* witness, size_t index)
         {
+            GDK_RUNTIME_ASSERT_MSG(index < witness->num_items, "Malformed witness");
             const auto& item = witness->items[index];
             return der_validate({ item.witness, item.witness_len });
         }
@@ -938,7 +939,7 @@ namespace sdk {
         // 2of2 expired csv: witness stack: <user_sig> <redeem_script> (Liquid, not optimized)
         // 2of3 p2wsh:       witness stack: <> <ga_sig> <user_sig> <redeem_script>
         // 2of2_no_recovery p2wsh: witness stack: <> <ga_sig> <user_sig> <redeem_script> (Liquid)
-        GDK_RUNTIME_ASSERT(num_items == 3 || num_items == 4);
+        GDK_RUNTIME_ASSERT(num_items >= 2 && num_items <= 4);
         size_t user_index = num_items - 2, green_index = num_items - 3;
         if (addr_type == csv) {
             const bool may_be_expired
