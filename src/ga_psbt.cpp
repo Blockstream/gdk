@@ -235,6 +235,20 @@ namespace sdk {
         return result;
     }
 
+    // If a UTXO matching txhash_hex:vout is found in utxos, move it into dst.
+    // Returns whether a match was found.
+    static bool take_matching_utxo(
+        const nlohmann::json& utxos, const std::string& txhash_hex, uint32_t vout, nlohmann::json& dst)
+    {
+        for (auto& u : utxos) {
+            if (!u.empty() && j_uint32ref(u, "pt_idx") == vout && j_strref(u, "txhash") == txhash_hex) {
+                dst = std::move(u);
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::pair<nlohmann::json, std::set<std::string>> Psbt::inputs_to_json(
         session_impl& session, Tx& tx, nlohmann::json utxos) const
     {
@@ -247,19 +261,26 @@ namespace sdk {
             auto& utxo = inputs[i];
             utxo = tx.input_to_json(i);
             const std::string txhash_hex = j_strref(utxo, "txhash"); // Note as-value
+            const auto vout = psbt_input.index;
 
             bool is_wallet_utxo = false;
-            for (auto& u : utxos) {
-                if (!u.empty() && j_uint32ref(u, "pt_idx") == psbt_input.index && j_strref(u, "txhash") == txhash_hex) {
-                    // Wallet UTXO
-                    utxo = std::move(u);
-                    wallet_assets.insert(j_assetref(m_is_liquid, utxo));
-                    is_wallet_utxo = true;
-                    break;
+            if (utxos.is_array()) {
+                // utxos in a flat array (deprecated)
+                // is_wallet_utxo = match(utxos); // utxos are a flat array
+                is_wallet_utxo = take_matching_utxo(utxos, txhash_hex, vout, utxo);
+            } else {
+                // utxos in the standard format "{ asset: [utxo, utxo. ,,,] }"
+                for (auto& it : utxos.items()) {
+                    is_wallet_utxo = take_matching_utxo(it.value(), txhash_hex, vout, utxo);
+                    if (is_wallet_utxo) {
+                        break;
+                    }
                 }
             }
+
             if (is_wallet_utxo) {
                 // Wallet UTXO
+                wallet_assets.insert(j_assetref(m_is_liquid, utxo));
                 utxo["user_sighash"] = psbt_input.sighash ? psbt_input.sighash : WALLY_SIGHASH_ALL;
                 for (const auto& key : { "user_status", "witness", "script_sig" }) {
                     utxo.erase(key);

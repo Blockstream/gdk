@@ -8,6 +8,9 @@
 
 - The deprecated ``"script_type"`` element has been removed from returned
   address, UTXO and transaction list JSON.
+- GA_psbt_sign/GA_psbt_get_details: The required "utxos" element for signing
+  can now be given in the format returned by GA_get_unspent_outputs directly,
+  in addition to the existing support for passing it as a flat JSON array.
 
 ### Fixed
 
