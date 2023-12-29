@@ -402,6 +402,10 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_psbt_get_details)
     }
 
+    public func PsbtFromJSON(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_psbt_from_json)
+    }
+
     public func sendTransaction(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_send_transaction)
     }

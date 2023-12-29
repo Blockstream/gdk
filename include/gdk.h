@@ -594,6 +594,9 @@ GDK_API int GA_complete_swap_transaction(
  */
 GDK_API int GA_psbt_sign(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
+/* Experimental API: not for public use */
+GDK_API int GA_psbt_from_json(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
+
 /**
  * Get wallet details of a PSBT or PSET.
  *

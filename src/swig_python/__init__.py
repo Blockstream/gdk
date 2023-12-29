@@ -247,6 +247,9 @@ class Session(object):
     def psbt_sign(self, details):
         return Call(psbt_sign(self.session_obj, self._to_json(details)))
 
+    def psbt_from_json(self, details):
+        return Call(psbt_from_json(self.session_obj, self._to_json(details)))
+
     def psbt_get_details(self, details):
         return Call(psbt_get_details(self.session_obj, self._to_json(details)))
 

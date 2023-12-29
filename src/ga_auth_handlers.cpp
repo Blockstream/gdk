@@ -906,6 +906,28 @@ namespace sdk {
     }
 
     //
+    // PSBT from JSON
+    //
+    psbt_from_json_call::psbt_from_json_call(session& session, nlohmann::json details)
+        : auth_handler_impl(session, "psbt_from_json")
+        , m_details(std::move(details))
+    {
+    }
+
+    psbt_from_json_call::~psbt_from_json_call() {}
+
+    auth_handler::state_type psbt_from_json_call::call_impl()
+    {
+        Psbt psbt(*m_session, m_details, m_net_params.is_liquid());
+        const bool include_redundant = j_bool_or_false(m_details, "is_partial");
+        m_result = { { "psbt", psbt.to_base64(include_redundant) } };
+        if (auto p = m_details.find("blinding_nonces"); p != m_details.end()) {
+            m_result.emplace("blinding_nonces", std::move(*p));
+        }
+        return state_type::done;
+    }
+
+    //
     // PSBT get details
     //
     psbt_get_details_call::psbt_get_details_call(session& session, nlohmann::json details)

@@ -99,6 +99,17 @@ namespace sdk {
         bool m_is_synced;
     };
 
+    class psbt_from_json_call : public auth_handler_impl {
+    public:
+        psbt_from_json_call(session& session, nlohmann::json details);
+        ~psbt_from_json_call();
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class psbt_get_details_call : public auth_handler_impl {
     public:
         psbt_get_details_call(session& session, nlohmann::json details);
