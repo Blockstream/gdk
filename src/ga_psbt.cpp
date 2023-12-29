@@ -110,6 +110,12 @@ namespace sdk {
         GDK_VERIFY(wally_psbt_set_version(m_psbt.get(), ver_flags, WALLY_PSBT_VERSION_2));
     }
 
+    Psbt::Psbt(session_impl& session, const nlohmann::json& details, bool is_liquid)
+        : m_is_liquid(is_liquid)
+    {
+        from_json(session, details);
+    }
+
     Psbt::~Psbt() {}
 
     void Psbt::swap(Psbt& rhs)
@@ -411,10 +417,108 @@ namespace sdk {
     nlohmann::json Psbt::to_json(session_impl& session, nlohmann::json utxos) const
     {
         auto result = get_details(session, { { "utxos", std::move(utxos) } });
-        const auto& inputs = result.at("transaction_inputs");
+        const auto& inputs = j_arrayref(result, "transaction_inputs");
         const size_t num_wallet_inputs = std::count_if(inputs.begin(), inputs.end(), is_wallet_utxo);
         result["is_partial"] = num_wallet_inputs != inputs.size();
         return result;
+    }
+
+    void Psbt::from_json(session_impl& session, const nlohmann::json& details)
+    {
+        GDK_RUNTIME_ASSERT(!m_psbt);
+        GDK_RUNTIME_ASSERT(j_str_is_empty(details, "error"));
+
+        const Tx tx(j_bytesref(details, "transaction"), m_is_liquid);
+        m_original_version = tx.get_version() < 2 ? 0 : 2;
+        {
+            // Create the base PSBT from the tx
+            const uint32_t flags = m_is_liquid ? WALLY_PSBT_INIT_PSET : 0;
+            struct wally_psbt* p;
+            GDK_VERIFY(wally_psbt_from_tx(tx.get(), m_original_version, flags, &p));
+            m_psbt.reset(p);
+            if (m_original_version == 0) {
+                // Upgrade to version 2 so our processing in gdk is identical
+                constexpr uint32_t ver_flags = 0;
+                GDK_VERIFY(wally_psbt_set_version(m_psbt.get(), ver_flags, 2));
+            }
+        }
+
+        const auto& inputs = j_arrayref(details, "transaction_inputs");
+        if (m_is_liquid) {
+            for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+                const auto& input = inputs.at(i);
+                const auto& psbt_input = get_input(i);
+
+                // Add the input asset and amount
+                const auto asset_id = j_rbytesref(input, "asset_id");
+                GDK_VERIFY(wally_psbt_set_input_asset(m_psbt.get(), i, asset_id.data(), asset_id.size()));
+                const auto satoshi = j_amountref(input).value();
+                GDK_VERIFY(wally_psbt_set_input_amount(m_psbt.get(), i, satoshi));
+
+                if (!psbt_input.utxo && !psbt_input.witness_utxo) {
+                    // Add the input UTXO
+                    const auto vout = j_uint32ref(input, "pt_idx");
+                    auto utxo_tx = session.get_raw_transaction_details(j_strref(input, "txhash"));
+                    GDK_VERIFY(wally_psbt_set_input_witness_utxo_from_tx(m_psbt.get(), i, utxo_tx.get(), vout));
+                }
+                // Create asset and value explicit proofs
+                const auto abf = j_rbytesref(input, "assetblinder");
+                const auto nonce = get_random_bytes<32>();
+                const auto vbf = j_rbytesref(input, "amountblinder");
+                GDK_VERIFY(wally_psbt_generate_input_explicit_proofs(m_psbt.get(), i, satoshi, asset_id.data(),
+                    asset_id.size(), abf.data(), abf.size(), vbf.data(), vbf.size(), nonce.data(), nonce.size()));
+            }
+        }
+
+        const auto& outputs = j_arrayref(details, "transaction_outputs");
+        if (m_is_liquid) {
+            for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+                const auto& output = outputs.at(i);
+                const auto& psbt_output = get_output(i);
+
+                // Add the output asset and amount
+                const auto asset_id = j_rbytesref(output, "asset_id");
+                GDK_VERIFY(wally_psbt_set_output_asset(m_psbt.get(), i, asset_id.data(), asset_id.size()));
+                const auto satoshi = j_amountref(output).value();
+                GDK_VERIFY(wally_psbt_set_output_amount(m_psbt.get(), i, satoshi));
+
+                if (j_str_is_empty(output, "scriptpubkey")) {
+                    continue; // Skip remaining fields for fee outputs
+                }
+
+                // Assume the blinder index is 1-1. FIXME: This isn't true for swaps
+                GDK_VERIFY(wally_psbt_set_output_blinder_index(m_psbt.get(), i, i));
+
+                const auto blinding_pubkey = j_bytesref(output, "blinding_key");
+                GDK_VERIFY(wally_psbt_set_output_blinding_public_key(
+                    m_psbt.get(), i, blinding_pubkey.data(), blinding_pubkey.size()));
+
+                // Create asset and value explicit proofs
+                const auto vbf = j_rbytesref(output, "amountblinder");
+                const byte_span_t asset_commitment
+                    = pset_field(psbt_output, out_asset_commitment).value_or(byte_span_t{});
+                const auto abf = j_rbytesref(output, "assetblinder");
+                GDK_RUNTIME_ASSERT(!asset_commitment.empty());
+                std::array<unsigned char, ASSET_EXPLICIT_SURJECTIONPROOF_LEN> sj_proof;
+                GDK_VERIFY(wally_explicit_surjectionproof(asset_id.data(), asset_id.size(), abf.data(), abf.size(),
+                    asset_commitment.data(), asset_commitment.size(), sj_proof.data(), sj_proof.size()));
+                GDK_VERIFY(wally_psbt_set_output_asset_blinding_surjectionproof(
+                    m_psbt.get(), i, sj_proof.data(), sj_proof.size()));
+
+                const auto nonce = get_random_bytes<32>();
+                const byte_span_t value_commitment
+                    = pset_field(psbt_output, out_value_commitment).value_or(byte_span_t{});
+                GDK_RUNTIME_ASSERT(!value_commitment.empty());
+                std::array<unsigned char, ASSET_EXPLICIT_RANGEPROOF_MAX_LEN> range_proof;
+                size_t written;
+                GDK_VERIFY(wally_explicit_rangeproof(satoshi, nonce.data(), nonce.size(), vbf.data(), vbf.size(),
+                    value_commitment.data(), value_commitment.size(), asset_commitment.data(), asset_commitment.size(),
+                    range_proof.data(), range_proof.size(), &written));
+                GDK_RUNTIME_ASSERT(written && written <= range_proof.size());
+                GDK_VERIFY(
+                    wally_psbt_set_output_value_blinding_rangeproof(m_psbt.get(), i, range_proof.data(), written));
+            }
+        }
     }
 
 } // namespace sdk

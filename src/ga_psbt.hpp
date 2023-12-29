@@ -20,6 +20,7 @@ namespace sdk {
     class Psbt {
     public:
         Psbt(const std::string& psbt_base64, bool is_liquid);
+        Psbt(session_impl& session, const nlohmann::json& details, bool is_liquid);
         ~Psbt();
 
         Psbt(Psbt&& rhs) = default;
@@ -54,6 +55,7 @@ namespace sdk {
             session_impl& session, Tx& tx, nlohmann::json utxos) const;
         nlohmann::json outputs_to_json(
             session_impl& session, const Tx& tx, const std::set<std::string>& wallet_assets) const;
+        void from_json(session_impl& session, const nlohmann::json& details);
 
         struct psbt_deleter {
             void operator()(struct wally_psbt* p);
