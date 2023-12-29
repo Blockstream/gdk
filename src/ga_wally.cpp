@@ -671,10 +671,10 @@ namespace sdk {
         return ret;
     }
 
-    std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
-        uint64_t value, byte_span_t vbf, byte_span_t generator)
+    std::vector<unsigned char> asset_value_commitment(uint64_t value, byte_span_t vbf, byte_span_t generator)
     {
-        std::array<unsigned char, ASSET_COMMITMENT_LEN> commitment;
+        std::vector<unsigned char> commitment;
+        commitment.resize(ASSET_COMMITMENT_LEN);
         GDK_VERIFY(wally_asset_value_commitment(
             value, vbf.data(), vbf.size(), generator.data(), generator.size(), commitment.data(), commitment.size()));
         return commitment;
@@ -703,13 +703,13 @@ namespace sdk {
     }
 
     std::vector<unsigned char> explicit_rangeproof(
-        uint64_t value, byte_span_t nonce_hash, byte_span_t vbf, byte_span_t commitment, byte_span_t generator)
+        uint64_t value, byte_span_t nonce, byte_span_t vbf, byte_span_t commitment, byte_span_t generator)
     {
         std::vector<unsigned char> rangeproof(ASSET_EXPLICIT_RANGEPROOF_MAX_LEN);
         size_t written;
-        GDK_VERIFY(wally_explicit_rangeproof(value, nonce_hash.data(), nonce_hash.size(), vbf.data(), vbf.size(),
-            commitment.data(), commitment.size(), generator.data(), generator.size(), rangeproof.data(),
-            rangeproof.size(), &written));
+        GDK_VERIFY(
+            wally_explicit_rangeproof(value, nonce.data(), nonce.size(), vbf.data(), vbf.size(), commitment.data(),
+                commitment.size(), generator.data(), generator.size(), rangeproof.data(), rangeproof.size(), &written));
         GDK_RUNTIME_ASSERT(written <= rangeproof.size());
         rangeproof.resize(written);
         return rangeproof;

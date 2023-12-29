@@ -273,8 +273,7 @@ namespace sdk {
 
     std::array<unsigned char, EC_SCALAR_LEN> asset_scalar_offset(uint64_t value, byte_span_t abf, byte_span_t vbf);
 
-    std::array<unsigned char, ASSET_COMMITMENT_LEN> asset_value_commitment(
-        uint64_t value, byte_span_t vbf, byte_span_t generator);
+    std::vector<unsigned char> asset_value_commitment(uint64_t value, byte_span_t vbf, byte_span_t generator);
 
     std::vector<unsigned char> asset_rangeproof(uint64_t value, byte_span_t public_key, byte_span_t private_key,
         byte_span_t asset, byte_span_t abf, byte_span_t vbf, byte_span_t commitment, byte_span_t extra,
@@ -283,7 +282,7 @@ namespace sdk {
     size_t asset_rangeproof_max_size(uint64_t value, int min_bits = 52);
 
     std::vector<unsigned char> explicit_rangeproof(
-        uint64_t value, byte_span_t nonce_hash, byte_span_t vbf, byte_span_t commitment, byte_span_t generator);
+        uint64_t value, byte_span_t nonce, byte_span_t vbf, byte_span_t commitment, byte_span_t generator);
 
     bool explicit_rangeproof_verify(
         byte_span_t rangeproof, uint64_t value, byte_span_t commitment, byte_span_t generator);

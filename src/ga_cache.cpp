@@ -5,6 +5,7 @@
 
 #include "assertion.hpp"
 #include "ga_cache.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
@@ -819,14 +820,14 @@ namespace sdk {
         bind_blob(m_stmt_liquid_output_insert, 1, txhash);
 
         bind_int(m_stmt_liquid_output_insert, 2, vout);
-        const auto assetid = h2b_rev(utxo["asset_id"]);
+        const auto assetid = j_rbytesref(utxo, "asset_id");
         bind_blob(m_stmt_liquid_output_insert, 3, assetid);
 
         bind_int(m_stmt_liquid_output_insert, 4, utxo.at("satoshi"));
 
-        const auto abf = h2b_rev(utxo["assetblinder"]);
+        const auto abf = j_rbytesref(utxo, "assetblinder");
         bind_blob(m_stmt_liquid_output_insert, 5, abf);
-        const auto vbf = h2b_rev(utxo["amountblinder"]);
+        const auto vbf = j_rbytesref(utxo, "amountblinder");
         bind_blob(m_stmt_liquid_output_insert, 6, vbf);
 
         step_final(m_stmt_liquid_output_insert);

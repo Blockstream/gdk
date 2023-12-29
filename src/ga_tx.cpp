@@ -1238,15 +1238,15 @@ namespace sdk {
 
     static std::array<unsigned char, SHA256_LEN> hash_prevouts_from_utxos(const nlohmann::json& details)
     {
-        const auto& tx_inputs = details.at("transaction_inputs");
+        const auto& tx_inputs = j_arrayref(details, "transaction_inputs");
         std::vector<unsigned char> txhashes;
         std::vector<uint32_t> output_indices;
         txhashes.reserve(tx_inputs.size() * WALLY_TXHASH_LEN);
         output_indices.reserve(tx_inputs.size());
         for (const auto& utxo : tx_inputs) {
-            const auto txhash_bin = h2b_rev(utxo.at("txhash"));
+            const auto txhash_bin = j_rbytesref(utxo, "txhash", WALLY_TXHASH_LEN);
             txhashes.insert(txhashes.end(), txhash_bin.begin(), txhash_bin.end());
-            output_indices.emplace_back(utxo.at("pt_idx"));
+            output_indices.emplace_back(j_uint32ref(utxo, "pt_idx"));
         }
         return get_hash_prevouts(txhashes, output_indices);
     }
@@ -1328,9 +1328,9 @@ namespace sdk {
         values.reserve(num_in_outs);
 
         for (const auto& utxo : tx_inputs) {
-            const auto asset_id = h2b_rev(utxo.at("asset_id"));
+            const auto asset_id = j_rbytesref(utxo, "asset_id");
             assets.insert(assets.end(), std::begin(asset_id), std::end(asset_id));
-            const auto abf = h2b_rev(utxo.at("assetblinder"));
+            const auto abf = j_rbytesref(utxo, "assetblinder");
             const auto generator = asset_generator_from_bytes(asset_id, abf);
             generators.insert(generators.end(), std::begin(generator), std::end(generator));
             all_abfs.insert(all_abfs.end(), std::begin(abf), std::end(abf));
@@ -1338,11 +1338,10 @@ namespace sdk {
             // If the input has a vbf, it contributes to the final vbf calculation.
             // If not, it has been previously blinded; its contribution is
             // captured with a scalar offset in the tx level element "scalars".
-            if (auto vbf_p = utxo.find("amountblinder"); vbf_p != utxo.end()) {
-                const auto vbf = h2b_rev(*vbf_p);
+            if (const auto vbf = j_rbytes_or_empty(utxo, "amountblinder"); !vbf.empty()) {
                 vbfs.insert(vbfs.end(), std::begin(vbf), std::end(vbf));
                 abfs.insert(abfs.end(), std::begin(abf), std::end(abf));
-                values.emplace_back(utxo.at("satoshi"));
+                values.emplace_back(j_amountref(utxo, "satoshi").value());
                 ++num_inputs;
             }
         }
@@ -1359,8 +1358,8 @@ namespace sdk {
             if (j_str_is_empty(output, "scriptpubkey")) {
                 continue; // Fee
             }
-            const auto asset_id = h2b_rev(output.at("asset_id"));
-            const uint64_t value = output.at("satoshi");
+            const auto asset_id = j_rbytesref(output, "asset_id");
+            const auto value = j_amountref(output, "satoshi");
 
             // If an output has a vbf, it contributes to the final vbf calculation.
             // If not, it either:
@@ -1379,22 +1378,19 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(is_partially_blinded);
             }
             if (for_final_vbf) {
-                values.emplace_back(value);
+                values.emplace_back(value.value());
             }
 
-            abf_t abf;
-            std::string abf_hex = json_get_value(output, "assetblinder");
+            auto abf = j_rbytes_or_empty(output, "assetblinder");
             if (for_final_vbf) {
-                if (abf_hex.empty()) {
-                    abf_hex = assetblinders.at(i);
+                if (abf.empty()) {
+                    const auto abf_hex = assetblinders.at(i);
                     output["assetblinder"] = abf_hex;
+                    abf = h2b_rev(abf_hex);
                 }
-                abf = h2b_rev<32>(abf_hex);
                 abfs.insert(abfs.end(), std::begin(abf), std::end(abf));
-            } else {
-                // Asset blinding factor must be provided
-                abf = h2b_rev<32>(abf_hex);
             }
+            GDK_RUNTIME_ASSERT_MSG(abf.size() == 32u, "Invalid tx output assetblinder");
 
             vbf_t vbf{ 0 };
             if (is_partial || i < transaction_outputs.size() - 2) {
@@ -1410,17 +1406,15 @@ namespace sdk {
 
                 // Add the scalar offsets from any pre-blinded outputs in
                 // order to capture their contribution to the final vbf.
-                std::vector<std::string> scalars;
-                scalars = json_get_value<decltype(scalars)>(details, "scalars");
-                if (scalars.size()) {
+                if (const auto scalars = j_array(details, "scalars"); scalars.has_value()) {
                     // TODO: Allow for multiple scalars as per e.g. PSET.
                     // Currently we only allow one scalar per pre-blinded
                     // input to avoid the potential for footguns.
                     const auto& a = details.at("addressees");
-                    const size_t num_blinded_addressees = std::count_if(
-                        a.begin(), a.end(), [](const auto& ad) { return ad.value("is_blinded", false); });
-                    GDK_RUNTIME_ASSERT(scalars.size() == num_blinded_addressees);
-                    for (const auto& scalar : scalars) {
+                    const size_t num_blinded = std::count_if(
+                        a.begin(), a.end(), [](const auto& ad) { return j_bool_or_false(ad, "is_blinded"); });
+                    GDK_RUNTIME_ASSERT(scalars.value().size() == num_blinded);
+                    for (const auto& scalar : scalars.value()) {
                         vbf = ec_scalar_add(vbf, h2b(scalar));
                     }
                 }
@@ -1432,11 +1426,11 @@ namespace sdk {
 
             const auto& o = tx.get_output(i);
             const auto generator = asset_generator_from_bytes(asset_id, abf);
-            std::array<unsigned char, 33> value_commitment;
+            std::vector<unsigned char> value_commitment;
             if (for_final_vbf) {
-                value_commitment = asset_value_commitment(value, vbf, generator);
+                value_commitment = asset_value_commitment(value.value(), vbf, generator);
             } else {
-                std::copy(o.value, o.value + o.value_len, value_commitment.begin());
+                value_commitment = { o.value, o.value + o.value_len };
             }
 
             const auto scriptpubkey = j_bytesref(output, "scriptpubkey");
@@ -1467,7 +1461,7 @@ namespace sdk {
                     blinding_nonces.emplace_back(b2h(nonce));
                 }
 
-                rangeproof = asset_rangeproof(value, blinding_pubkey, eph_private_key, asset_id, abf, vbf,
+                rangeproof = asset_rangeproof(value.value(), blinding_pubkey, eph_private_key, asset_id, abf, vbf,
                     value_commitment, scriptpubkey, generator);
             }
 

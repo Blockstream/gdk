@@ -39,18 +39,17 @@ namespace sdk {
             res.resize(in_out.size());
             for (size_t i = 0; i < in_out.size(); ++i) {
                 res[i]["asset"] = std::move(in_out[i]["asset_id"]);
-                const auto asset = h2b_rev(res[i]["asset"]);
+                const auto asset = j_rbytesref(res[i], "asset");
                 res[i]["satoshi"] = std::move(in_out[i]["satoshi"]);
                 const auto satoshi = j_amountref(res[i]).value();
                 res[i]["asset_blinder"] = std::move(in_out[i]["assetblinder"]);
-                const auto abf = h2b_rev(res[i]["asset_blinder"]);
-                const auto vbf = h2b_rev(in_out[i]["amountblinder"]);
+                const auto abf = j_rbytesref(res[i], "asset_blinder");
                 const auto generator = asset_generator_from_bytes(asset, abf);
+                const auto vbf = j_rbytesref(in_out[i], "amountblinder");
                 const auto commitment = asset_value_commitment(satoshi, vbf, generator);
-                const auto nonce_hash = get_random_bytes<32>();
+                const auto nonce = get_random_bytes<32>();
                 try {
-                    res[i]["value_blind_proof"]
-                        = b2h(explicit_rangeproof(satoshi, nonce_hash, vbf, commitment, generator));
+                    res[i]["value_blind_proof"] = b2h(explicit_rangeproof(satoshi, nonce, vbf, commitment, generator));
                 } catch (const std::exception&) {
                     throw user_error("zero value or unblinded utxos cannot be swapped");
                 }
@@ -124,8 +123,8 @@ namespace sdk {
 
             // Verify unblinded values match the transaction commitments
             // TODO: obtain the previous output and verify the input commitments
-            const auto output_asset = h2b_rev(proposal_output.at("asset"));
-            const auto output_abf = h2b_rev(proposal_output.at("asset_blinder"));
+            const auto output_asset = j_rbytesref(proposal_output, "asset");
+            const auto output_abf = j_rbytesref(proposal_output, "asset_blinder");
             const auto output_value = j_amountref(proposal_output).value();
             const auto value_blind_proof = j_bytesref(proposal_output, "value_blind_proof");
             const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);

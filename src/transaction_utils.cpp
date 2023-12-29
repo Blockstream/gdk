@@ -489,7 +489,7 @@ namespace sdk {
         session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& utxo, bool add_to_tx_inputs)
     {
         // Ensure this input hasn't been added before
-        const auto txid = h2b_rev(j_strref(utxo, "txhash"));
+        const auto txid = j_rbytesref(utxo, "txhash", WALLY_TXHASH_LEN);
         const auto vout = j_uint32ref(utxo, "pt_idx");
         GDK_RUNTIME_ASSERT(!tx.find_input_spending(txid, vout).has_value());
 
@@ -736,15 +736,14 @@ namespace sdk {
                 throw user_error("pre-blinded input asset is not blinded");
             }
             const auto asset_commitment = asset_generator_from_bytes(asset_id, abf);
-            std::array<unsigned char, 33> value_commitment;
-            if (addressee.contains("amountblinder")) {
-                const auto vbf = h2b_rev(addressee.at("amountblinder"));
+            std::vector<unsigned char> value_commitment;
+            if (const auto vbf = j_rbytes_or_empty(addressee, "amountblinder"); !vbf.empty()) {
                 if (std::all_of(vbf.begin(), vbf.end(), [](auto b) { return b == 0; })) {
                     throw user_error("pre-blinded input value is not blinded");
                 }
                 value_commitment = asset_value_commitment(satoshi.value(), vbf, asset_commitment);
             } else {
-                value_commitment = h2b<33>(addressee.at("commitment"));
+                value_commitment = j_bytesref(addressee, "commitment", ASSET_COMMITMENT_LEN);
             }
 
             const auto nonce_commitment = j_bytesref(addressee, "nonce_commitment");
