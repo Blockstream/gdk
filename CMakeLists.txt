@@ -18,6 +18,7 @@ option(ENABLE_SWIFT "enable build of swift bindings" FALSE)
 OPTION(ENABLE_RUSTCPP "enable dependency of C++ over Rust" TRUE)
 OPTION(ENABLE_BCUR "enable support QR code encoding/decoding" TRUE)
 set(PYTHON_REQUIRED_VERSION 3 CACHE STRING "required python version")
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
 
 ### avoiding in-build compilation, your local gdk folder would turn into a real mess
 ### WARNING. please refine this once cmake_path becomes available
@@ -56,11 +57,13 @@ find_package(Libevent REQUIRED CONFIG COMPONENTS core extra OPTIONAL_COMPONENTS 
 set(URC_INCLUDE_DIRS "")
 set(URC_LINK_LIBRARIES "")
 if (ENABLE_BCUR)
+    find_package(bcur REQUIRED MODULE)
     find_package(urc REQUIRED)
     get_target_property(URC_INCLUDE_DIRS urc::urc INTERFACE_INCLUDE_DIRECTORIES)
     string(TOUPPER ${CMAKE_BUILD_TYPE} _upcase_build_type)
     get_target_property(URC_LINK_LIBRARIES urc::urc IMPORTED_LOCATION_${_upcase_build_type})
     set_target_properties(urc::urc PROPERTIES INTERFACE_LINK_LIBRARIES "PkgConfig::TinyCBOR")
+    add_compile_definitions(USE_REAL_BCUR)
 endif()
 
 #### dependencies relying on pkg-config
@@ -76,15 +79,10 @@ if (ENABLE_BCUR)
     message(STATUS "TINYCBOR_INCLUDE_DIRS: ${TINYCBOR_INCLUDE_DIRS}")
 endif()
 
-#### weird beasts
-# autobahnn-cpp - cmake-based, yet really messed-up
-include(cmake/extern/autobahn.cmake)
-# tor - no package manager files whatsoever
-include(cmake/extern/tor.cmake)
-# bc-ur - no package manager files whatsoever
-include(cmake/extern/bcur.cmake)
-# sqlite3 -- avoiding the danger of importing system libraries
-include(cmake/extern/sqlite3.cmake)
+#### custom packages
+find_package(tor REQUIRED MODULE)
+find_package(sqlite3 REQUIRED MODULE)
+find_package(autobahn REQUIRED MODULE)
 
 
 ####################################################################
