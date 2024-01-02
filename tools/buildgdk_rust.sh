@@ -12,13 +12,13 @@ OUTPUT_DIR="$1"; shift
 ARTIFACT="$1"; shift
 export MACOSX_DEPLOYMENT_TARGET=$1; shift
 
-export CC_i686_linux_android=i686-linux-android19-clang
+export CC_i686_linux_android=i686-linux-android23-clang
 export CARGO_TARGET_I686_LINUX_ANDROID_LINKER=${CC_i686_linux_android}
-export CC_x86_64_linux_android=x86_64-linux-android21-clang
+export CC_x86_64_linux_android=x86_64-linux-android23-clang
 export CARGO_TARGET_X86_64_LINUX_ANDROID_LINKER=${CC_x86_64_linux_android}
-export CC_armv7_linux_androideabi=armv7a-linux-androideabi19-clang
+export CC_armv7_linux_androideabi=armv7a-linux-androideabi23-clang
 export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=${CC_armv7_linux_androideabi}
-export CC_aarch64_linux_android=aarch64-linux-android21-clang
+export CC_aarch64_linux_android=aarch64-linux-android23-clang
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${CC_aarch64_linux_android}
 export AR=${ARCHIVER}
 

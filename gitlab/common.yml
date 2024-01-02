@@ -5,7 +5,7 @@
   tags: [ ga ]
 
 .android-image:
-  image: blockstream/gdk-android-builder@sha256:00f36609e80397bb9f883868f832763730d5f010d38294d17a99068b566347ef
+  image: blockstream/gdk-android-builder@sha256:4a7df40d92cd1a38af531f76dfaad4d8d64fb2c7552f5689c4da79d798f112d5
   tags: [ ga ]
 
 .python-image:

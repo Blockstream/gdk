@@ -128,11 +128,7 @@ elif [ ${BUILD} == "--ndk" ]; then
     C_COMPILER="clang"
     CXX_COMPILER="clang++"
     set_cross_build_env android $NDK_ARCH
-    if [[ $SDK_ARCH = *"64"* ]]; then
-        export ANDROID_VERSION="21"
-    else
-        export ANDROID_VERSION="19"
-    fi
+    export ANDROID_VERSION="23"
     export clangarchname=$HOST_ARCH
     export archfilename=$SDK_ARCH
     case $archfilename in
@@ -274,7 +270,9 @@ source_name="zlib-1.3"
 source_filename="${source_name}.tar.gz"
 source_hash="b5b06d60ce49c8ba700e0ba517fa07de80b5d4628a037f4be8ad16955be7a7c0"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
+    # WARNING: https://github.com/madler/zlib/issues/856
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
+    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--undefined-version" \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
