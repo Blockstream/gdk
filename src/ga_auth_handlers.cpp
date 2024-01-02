@@ -638,6 +638,8 @@ namespace sdk {
             m_state = state_type::done;
             return;
         }
+        // Ensure we have an empty error element for the happy path
+        m_details["error"] = std::string();
 
         const bool is_liquid = m_net_params.is_liquid();
         const auto signer = get_signer();
