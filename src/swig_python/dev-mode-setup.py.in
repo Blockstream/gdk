@@ -11,7 +11,7 @@ setup(
         swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API= "],
         libraries=["greenaddress"],
         runtime_library_dirs=["${CMAKE_BINARY_DIR}"],
-        library_dirs=["${CMAKE_BINARY_DIR}"],
+        library_dirs=["${CMAKE_BINARY_DIR}/src"],
         extra_link_args=["-shared"],
         language="c++",
     )],

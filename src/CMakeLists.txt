@@ -1,11 +1,12 @@
 include(GenerateExportHeader)
+include(GNUInstallDirs)
 
-# version file 
-join_path(_versionFileIn ${CMAKE_SOURCE_DIR} "src" "version.h.in")
-join_path(_versionFileOut ${CMAKE_SOURCE_DIR} "src" "version.h")
-configure_file( ${_versionFileIn} ${_versionFileOut} @ONLY)
+# version file
+find_file(version_file version.h.in PATHS ${CMAKE_CURRENT_SOURCE_DIR})
+configure_file(${version_file} version.h @ONLY)
 
-add_library(greenaddress-objects OBJECT
+add_library(greenaddress)
+target_sources( greenaddress PRIVATE
     amount.cpp amount.hpp
     assertion.cpp assertion.hpp
     auth_handler.cpp auth_handler.hpp
@@ -39,25 +40,23 @@ add_library(greenaddress-objects OBJECT
     xpub_hdkey.cpp xpub_hdkey.hpp
 )
 
-generate_export_header(greenaddress-objects 
+generate_export_header(greenaddress
     BASE_NAME gdk 
     EXPORT_MACRO_NAME GDK_API
 )
-# TODO: rework the whole gdk CMakeFile to remove the intermediate
-# greenaddress-objects target, making this hacky stuff unnecessary
-target_compile_definitions(greenaddress-objects
+target_compile_definitions(greenaddress
     PRIVATE
-        greenaddress_objects_EXPORTS
+        greenaddress_EXPORTS
         _FORTIFY_SOURCE=2
 )
 if(Windows)
-    target_compile_definitions(greenaddress-objects PUBLIC
+    target_compile_definitions(greenaddress PUBLIC
         BOOST_ASIO_DISABLE_IOCP
         BOOST_ASIO_DISABLE_VISIBILITY
     )
 endif()
 
-target_compile_options(greenaddress-objects 
+target_compile_options(greenaddress
     PRIVATE
         ${COMPILE_OPTIONS}
         "-Wno-deprecated-declarations"
@@ -66,56 +65,120 @@ target_compile_options(greenaddress-objects
         "-fexceptions"
         "-fstack-protector-strong"
         "-fno-strict-aliasing"
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wextra>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wpedantic>
+        $<$<CXX_COMPILER_ID:GNU,Clang>:-Wshadow>
+        ##### should be un-commented and errors should be fixed
+        # -Werror
+        # -Wconversion
 )
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND MINGW)
     set_source_files_properties(ga_session.cpp PROPERTIES COMPILE_FLAGS "-O1")
     set_source_files_properties(http_client.cpp PROPERTIES COMPILE_FLAGS "-O1")
     set_source_files_properties(wamp_transport.cpp PROPERTIES COMPILE_FLAGS "-O1")
-    target_link_options(greenaddress-objects PRIVATE "-Wa,-mbig-obj")
+    target_link_options(greenaddress PRIVATE "-Wa,-mbig-obj")
 endif()
-target_compile_options(greenaddress-objects PRIVATE
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wall>
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wextra>
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wpedantic>
-    $<$<CXX_COMPILER_ID:GNU,Clang>:-Wshadow>
-    ##### should be un-commented and errors should be fixed
-    # -Werror
-    # -Wconversion
-)
-target_include_directories(greenaddress-objects
+
+target_include_directories(greenaddress
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
-        $<BUILD_INTERFACE:${wallycore_INCLUDE_DIRS}>
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/gdk>
-    PRIVATE
-        ${LIBEVENT_INCLUDE_DIRS}
 )
-target_include_directories(greenaddress-objects SYSTEM PRIVATE
-    $<TARGET_PROPERTY:gdk-rust,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:Microsoft.GSL::GSL,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:extern::autobahn-cpp,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:msgpackc-cxx,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:websocketpp::websocketpp,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:nlohmann_json::nlohmann_json,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:extern::tor,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:libevent::core,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:extern::sqlite3,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:Boost::boost,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:OpenSSL::SSL,INTERFACE_INCLUDE_DIRECTORIES>
-    $<TARGET_PROPERTY:ZLIB::ZLIB,INTERFACE_INCLUDE_DIRECTORIES>
-    ${BCUR_INCLUDE_DIRS}
-    ${URC_INCLUDE_DIRS}
-    ${TINYCBOR_INCLUDE_DIRS}
+
+### deps
+#### wallycore special
+#cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
+target_include_directories(
+    greenaddress SYSTEM PRIVATE $<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_INCLUDE_DIRECTORIES>
 )
+set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
+if(APPLE)
+    list(APPEND _gdkLinkOptions "-Wl,-force_load" "SHELL:$<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_LINK_LIBRARIES>")
+else()
+    list(APPEND _gdkLinkOptions "LINKER:SHELL:--whole-archive" "SHELL:$<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_LINK_LIBRARIES>"
+         "LINKER:SHELL:--no-whole-archive"
+    )
+endif()
+target_link_options(greenaddress PUBLIC $<BUILD_INTERFACE:${_gdkLinkOptions}>)
+#### rest
+target_link_libraries(
+    greenaddress
+    PRIVATE gdk-rust
+            extern::sqlite3
+            Microsoft.GSL::GSL
+            extern::autobahn-cpp
+            msgpackc-cxx
+            websocketpp::websocketpp
+            nlohmann_json::nlohmann_json
+            extern::tor
+            libevent::core
+            PkgConfig::wallycore
+            PkgConfig::libsecp256k1
+            Boost::boost
+            Boost::log
+            Boost::thread
+            OpenSSL::SSL
+            $<$<PLATFORM_ID:Android>:log>
+            ZLIB::ZLIB
+            $<TARGET_NAME_IF_EXISTS:extern::bc-ur>
+            $<TARGET_NAME_IF_EXISTS:urc::urc>
+)
+
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
     ${CMAKE_SOURCE_DIR}/include/module.modulemap
     ${CMAKE_SOURCE_DIR}/include/wally_wrapper.h
     ${CMAKE_CURRENT_BINARY_DIR}/gdk_export.h
 )
 
-set_target_properties(greenaddress-objects PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
-# with only purpose of sequencing rust and c++ builds and avoid CPU/RAM overload
-if(ENABLE_RUSTCPP)
-    add_dependencies(greenaddress-objects gdk-rust)
-endif()
+set_target_properties(greenaddress PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
+
+get_library_install_dir(_libInstallDir)
+install(
+    TARGETS greenaddress
+    EXPORT "greenaddress-target"
+    RUNTIME EXCLUDE_FROM_ALL
+    OBJECTS EXCLUDE_FROM_ALL
+    ARCHIVE EXCLUDE_FROM_ALL
+    LIBRARY DESTINATION ${_libInstallDir}
+            COMPONENT gdk-runtime
+            OPTIONAL
+    PUBLIC_HEADER
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk
+        COMPONENT gdk-dev
+        EXCLUDE_FROM_ALL
+)
+install(
+    FILES ${wallycore_INCLUDE_DIRS}/wally.hpp
+          ${wallycore_INCLUDE_DIRS}/wally_address.h
+          ${wallycore_INCLUDE_DIRS}/wally_anti_exfil.h
+          ${wallycore_INCLUDE_DIRS}/wally_bip32.h
+          ${wallycore_INCLUDE_DIRS}/wally_bip38.h
+          ${wallycore_INCLUDE_DIRS}/wally_bip39.h
+          ${wallycore_INCLUDE_DIRS}/wally_bip85.h
+          ${wallycore_INCLUDE_DIRS}/wally_core.h
+          ${wallycore_INCLUDE_DIRS}/wally_coinselection.h
+          ${wallycore_INCLUDE_DIRS}/wally_crypto.h
+          ${wallycore_INCLUDE_DIRS}/wally_descriptor.h
+          ${wallycore_INCLUDE_DIRS}/wally_elements.h
+          ${wallycore_INCLUDE_DIRS}/wally_map.h
+          ${wallycore_INCLUDE_DIRS}/wally_psbt.h
+          ${wallycore_INCLUDE_DIRS}/wally_psbt_members.h
+          ${wallycore_INCLUDE_DIRS}/wally_script.h
+          ${wallycore_INCLUDE_DIRS}/wally_symmetric.h
+          ${wallycore_INCLUDE_DIRS}/wally_transaction.h
+          ${wallycore_INCLUDE_DIRS}/wally_transaction_members.h
+    COMPONENT gdk-dev
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk/libwally-core/
+    EXCLUDE_FROM_ALL
+)
+get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
+install(
+    EXPORT "greenaddress-target"
+    COMPONENT gdk-dev
+    DESTINATION ${LIB_CMAKE_INSTALL_DIR}/cmake
+    NAMESPACE ${PROJECT_NAME}::
+    FILE "greenaddress-targets.cmake"
+    EXCLUDE_FROM_ALL
+)

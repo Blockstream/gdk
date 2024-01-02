@@ -12,10 +12,9 @@ cmake_policy(SET CMP0074 NEW)
 
 ### project options
 option(ENABLE_TESTS "enable building tests" FALSE)
-option(BUILD_SHARED_LIBS "build gdk as shared library" TRUE)
+option(BUILD_SHARED_LIBS "build gdk as shared library" FALSE)
 option(DEV_MODE "dev mode enables a faster developing-testing loop when working with the python-wheel" FALSE)
 option(ENABLE_SWIFT "enable build of swift bindings" FALSE)
-OPTION(ENABLE_RUSTCPP "enable dependency of C++ over Rust" TRUE)
 OPTION(ENABLE_BCUR "enable support QR code encoding/decoding" TRUE)
 set(PYTHON_REQUIRED_VERSION 3 CACHE STRING "required python version")
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake/modules)
@@ -86,23 +85,17 @@ find_package(autobahn REQUIRED MODULE)
 
 
 ####################################################################
-#### building gdk-rust
+create_gdkrust_target()
 add_subdirectory(src)
+create_greenaddressfull_target()
+
+## bindings
 find_package(SWIG)
 add_subdirectory(src/swig_java)
-
-#### building final greenaddress libraries
-create_gdkrust_target()
-create_greenaddress_target()
-create_greenaddressfull_target()
-create_greenaddressstatic_target()
-
-# build python wheel
 find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter)
 add_subdirectory(src/swig_python)
-
-# swift bindings
 add_subdirectory(src/swift)
+
 ### installation directives
 install_cmake_config()
 

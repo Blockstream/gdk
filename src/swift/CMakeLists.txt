@@ -15,9 +15,9 @@ if(SWIFT-NOTFOUND)
 endif()
 
 join_path(_packagePath ${CMAKE_CURRENT_LIST_DIR} "GreenAddress")
-get_target_property(_gdkSrcPath greenaddress-objects SOURCE_DIR)
+get_target_property(_gdkSrcPath greenaddress SOURCE_DIR)
 join_path(_gdkIncPath ${CMAKE_SOURCE_DIR} "include")
-get_target_property(_gdkBinPath greenaddress-objects BINARY_DIR)
+get_target_property(_gdkBinPath greenaddress BINARY_DIR)
 
 add_custom_command(OUTPUT GreenAddress.swiftmodule
     COMMAND ${SWIFT} build --package-path ${_packagePath} 

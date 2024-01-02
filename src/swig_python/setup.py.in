@@ -4,7 +4,7 @@ from setuptools import Extension, setup
 
 
 extra_objects = [
-    "${CMAKE_BINARY_DIR}/libgreenaddress-static.a",
+    "${CMAKE_BINARY_DIR}/src/libgreenaddress.a",
     "@_gdk_rust_LINK_LIBRARIES@",
     "@wallycore_LINK_LIBRARIES@",
     "@libsecp256k1_LINK_LIBRARIES@",

@@ -9,7 +9,11 @@ if(ENV{JAVA_HOME})
 endif()
 
 find_program(SED REQUIRED NAMES sed gsed)
-find_package(SWIG) 
+find_package(SWIG)
+if(NOT SWIG_FOUND)
+    message("swig not found: skipping swig java binding")
+    return()
+endif()
 find_package(Java COMPONENTS Development)
 
 ###  WARNING!!: workaround to fix issue when in Android
@@ -19,9 +23,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Android")
     set(JAVA_INCLUDE_PATH2 "not-needed")
 endif()
 find_package(JNI)
-
-if(NOT SWIG_FOUND OR NOT Java_FOUND OR NOT JNI_FOUND)
-    message("skipping swig java binding")
+if(NOT Java_FOUND OR NOT JNI_FOUND)
+    message("java not found: skipping swig java binding")
     return()
 endif()
 
@@ -48,10 +51,7 @@ target_include_directories(greenaddress-java
 )
 target_link_options(greenaddress-java PRIVATE ${GDK_LINK_OPTIONS})
 
-swig_link_libraries(greenaddress-java greenaddress-static)
-get_target_property(_wallycoreLib PkgConfig::wallycore INTERFACE_LINK_LIBRARIES)
-set(_gdkLinkOptions ${GDK_LINK_OPTIONS} "LINKER:SHELL:--whole-archive" "SHELL:${_wallycoreLib}" "LINKER:SHELL:--no-whole-archive")
-target_link_options(greenaddress-java PRIVATE "${_gdkLinkOptions}")
+swig_link_libraries(greenaddress-java PUBLIC greenaddress)
 
 add_custom_command(TARGET greenaddress-java
     POST_BUILD
@@ -62,23 +62,20 @@ add_custom_command(TARGET greenaddress-java
 )
 
 get_library_install_dir(_libInstallDir)
-find_program(OBJCOPY NAMES llvm-objcopy ${TOOLCHAIN_PREFIX}-objcopy objcopy HINTS ${ANDROID_TOOLCHAIN_ROOT})
-if(OBJCOPY)
-    add_custom_command(OUTPUT libgreenaddress.syms
-        COMMAND ${OBJCOPY} --only-keep-debug $<TARGET_FILE:greenaddress-java> libgreenaddress.syms
-        DEPENDS greenaddress-java
-        BYPRODUCTS libgreenaddress.syms
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-    add_custom_target(greenaddress-syms ALL
-        DEPENDS libgreenaddress.syms
-    )
-    install(FILES ${CMAKE_BINARY_DIR}/libgreenaddress.syms
-        DESTINATION ${_libInstallDir}
-        COMPONENT gdk-java
-        EXCLUDE_FROM_ALL
-    )
-endif()
+add_custom_command(
+    OUTPUT libgreenaddress.syms
+    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:greenaddress-java> libgreenaddress.syms
+    DEPENDS greenaddress-java
+    BYPRODUCTS libgreenaddress.syms
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+add_custom_target(greenaddress-syms ALL DEPENDS libgreenaddress.syms)
+install(
+    FILES ${CMAKE_BINARY_DIR}/libgreenaddress.syms
+    DESTINATION ${_libInstallDir}
+    COMPONENT gdk-java
+    EXCLUDE_FROM_ALL
+)
 
 install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/GDKJNI.java
@@ -86,8 +83,7 @@ install(
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL
 )
-join_path(_wallycore_java_dir ${wallycore_PREFIX} "share" "java" "com" "blockstream" "libwally")
-find_file(_wallycore_java Wally.java PATHS ${_wallycore_java_dir})
+find_file(_wallycore_java Wally.java PATHS ${wallycore_PREFIX}/share/java/com/blockstream/libwally REQUIRED)
 install(
     FILES ${_wallycore_java}
     DESTINATION ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libwally

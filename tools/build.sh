@@ -33,7 +33,7 @@ function build_dependencies() {
 
 EXTERNAL_DEPS_DIR=""
 BUILD=""
-LIBTYPE="shared"
+BUILD_SHARED_LIBS="undefined"
 BUILDTYPE="release"
 GETOPT='getopt'
 install_prefix="/"
@@ -134,16 +134,34 @@ cmake_options="-B $bld_root -S . \
     -DENABLE_BCUR:BOOL=$bcur"
 
 if $enable_python ; then
+    BUILD_SHARED_LIBS="FALSE"
     if [[ $python_version == "venv" ]]; then
         cmake_options="${cmake_options} -DPython_FIND_VIRTUALENV=ONLY"
     else
         cmake_options="${cmake_options} -DPYTHON_REQUIRED_VERSION=$python_version"
     fi
+    if [[ $devmode == "TRUE" ]]; then
+        BUILD_SHARED_LIBS="TRUE"
+    fi
 fi
 
 if [ "$BUILD" == "--iphone" ] || [ "$BUILD" == "--iphonesim" ]; then
     cmake_options="$cmake_options -DENABLE_SWIFT:BOOL=TRUE"
+    BUILD_SHARED_LIBS="FALSE"
 fi
+
+if [[ "${BUILD}" == "--ndk" ]]; then
+    BUILD_SHARED_LIBS="FALSE"
+fi
+
+if [[ "$enable_tests" == "TRUE" ]]; then
+    BUILD_SHARED_LIBS="FALSE"
+fi
+
+if [[ "${BUILD_SHARED_LIBS}" == "undefined" ]]; then
+    BUILD_SHARED_LIBS="TRUE"
+fi
+cmake_options="${cmake_options} -DBUILD_SHARED_LIBS:BOOL=${BUILD_SHARED_LIBS}"
 
 cmake_verbose=""
 if $verbose ; then
