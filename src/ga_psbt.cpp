@@ -232,6 +232,14 @@ namespace sdk {
         result["txhash"] = b2h_rev(tx.get_txid());
         if (use_error)
             result.emplace("error", std::move(error));
+        /* Make PSBT details more consistent with create_transaction */
+        result["fee_rate"] = j_uint32ref(result, "calculated_fee_rate");
+        if (m_is_liquid) {
+            // Only blinded PSBTs are currently supported, so we can hard
+            // code this. TODO: Update when we support unblinded txs.
+            result["is_blinded"] = true;
+        }
+        result["utxo_strategy"] = "manual";
         return result;
     }
 
@@ -281,7 +289,9 @@ namespace sdk {
             if (is_wallet_utxo) {
                 // Wallet UTXO
                 wallet_assets.insert(j_assetref(m_is_liquid, utxo));
-                utxo["user_sighash"] = psbt_input.sighash ? psbt_input.sighash : WALLY_SIGHASH_ALL;
+                if (psbt_input.sighash && psbt_input.sighash != WALLY_SIGHASH_ALL) {
+                    utxo["user_sighash"] = psbt_input.sighash;
+                }
                 for (const auto& key : { "user_status", "witness", "script_sig" }) {
                     utxo.erase(key);
                 }
