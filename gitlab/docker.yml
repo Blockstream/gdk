@@ -6,9 +6,9 @@
     DOCKER_HOST: tcp://localhost:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_BUILDKIT: 1
-  image: docker:20.10.12
+  image: docker:23
   services:
-    - docker:20.10.12-dind
+    - docker:23-dind
   tags:
     - cloud
   retry:
@@ -17,7 +17,7 @@
   rules:
     - if: $CI_COMMIT_BRANCH
       changes:
-        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE, cmake/profiles/*]
+        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE, cmake/profiles/*, gitlab/docker.yml]
         compare_to: master
   script:
     - mkdir downloads

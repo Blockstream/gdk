@@ -42,9 +42,6 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 
-ENV OPENSSL_DIR=/prebuild/gcc/openssl/build
-ENV OPENSSL_STATIC=True
-
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
 ENV RUST_VERSION=1.68.0

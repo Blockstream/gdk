@@ -49,7 +49,7 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 
-ENV OPENSSL_DIR=/prebuild/gcc/openssl/build
+ENV OPENSSL_DIR=/prebuild/clang
 ENV OPENSSL_STATIC=True
 ENV ELECTRS_EXEC=/root/bin/electrs_bitcoin
 ENV ELECTRS_LIQUID_EXEC=/root/bin/electrs_liquid
