@@ -12,6 +12,7 @@
 !./docker/debian/install_deps.sh
 !./docker/debian/install_rust_tools.sh
 !./docker/ubuntu/install_deps.sh
+!./docker/ubuntu-arm64/install_deps.sh
 !./docker/fedora/install_deps.sh
 !./docker/python/install_deps.sh
 !./docker/android/install_deps.sh

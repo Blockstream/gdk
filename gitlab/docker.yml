@@ -73,3 +73,19 @@ build_gdk-android-builder:
   variables:
     IMAGE: blockstream/gdk-android-builder
     DOCKER_BUILD_CONTEXT: docker/android
+
+build_gdk-ubuntu-arm64-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-ubuntu-builder
+    DOCKER_BUILD_CONTEXT: docker/ubuntu-arm64
+  script:
+    # - docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+    - docker context create builder
+    - docker buildx create builder --use
+    - mkdir -p downloads
+    - docker buildx build --platform linux/arm64 --load
+        -t ${IMAGE}:${CI_COMMIT_SHA} -t ${IMAGE}:latest
+        -f ${DOCKER_BUILD_CONTEXT}/Dockerfile . --progress=plain &>docker-build.log
+    - docker push ${IMAGE}:${CI_COMMIT_SHA}
+    - if [ ${CI_COMMIT_BRANCH} == "master" ]; then docker push ${IMAGE}:latest; fi

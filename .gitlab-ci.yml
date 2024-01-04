@@ -124,6 +124,23 @@ build_gcc_ubuntu20.04:
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
 
+build_gcc_ubuntu20.04-arm64:
+  extends: .ubuntu-arm64-image
+  stage: build
+  needs: [ test_format ]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  script:
+    - source /root/.cargo/env
+    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 4
+    - cmake --build build-gcc --target greenaddress-java --parallel 4
+    - cmake --install build-gcc --prefix install-java
+    - cmake --install build-gcc --prefix install-java --component gdk-java
+  artifacts:
+    expire_in: 2 hrs
+    paths:
+      - install-java
+
 
 
 build_mingw64_windows:
