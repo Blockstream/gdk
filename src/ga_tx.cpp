@@ -151,6 +151,22 @@ namespace sdk {
             }
             GDK_RUNTIME_ASSERT_MSG(subaccount_ok, "No suitable subaccount UTXOs found");
 
+            for (auto& output : result.at("previous_transaction").at("outputs")) {
+                if (j_str_is_empty(output, "address_type")) {
+                    // Remove wallet keys from non-wallet outputs
+                    // FIXME: Should be removed from the transaction itself before
+                    // it is returned from get_transactions
+                    for (const auto& key : { "branch", "subaccount", "pointer", "subtype" }) {
+                        output.erase(key);
+                    }
+                } else {
+                    // Add the branch which is missing from transaction outputs
+                    // FIXME: Should be added to get_transactions results or replaced
+                    // with a descriptor going forward
+                    output["branch"] = 1;
+                }
+            }
+
             const auto tx = session.get_raw_transaction_details(prev_tx.at("txhash"));
             const auto min_fee_rate = session.get_min_fee_rate();
 
