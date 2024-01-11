@@ -23,7 +23,7 @@ function build_dependencies() {
     fi
     rm -f ${LINKS_DIR}
     ln -fs ${EXTERNAL_DEPS_DIR} ${LINKS_DIR}
-    if [ -f "${EXTERNAL_DEPS_DIR}/boost/build/lib/libboost_thread.a" ]; then
+    if [ -f "${EXTERNAL_DEPS_DIR}/lib/liburc.a" ]; then # check for last built dependency
         echo "using external-deps-dir dependencies from ${EXTERNAL_DEPS_DIR}"
     else
         echo "building external dependencies in ${EXTERNAL_DEPS_DIR}"

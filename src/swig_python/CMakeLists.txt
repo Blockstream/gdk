@@ -32,17 +32,13 @@ if(TARGET libevent::pthreads)
     get_target_property(_libevent_pthreads_LINK_LIBRARIES libevent::pthreads IMPORTED_LOCATION_${_upper_build_type})
 endif()
 
-set(_gdk_library "")
 if(DEV_MODE)
     configure_file(dev-mode-setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
-    set(_gdk_library "greenaddress")
 elseif(APPLE)
     find_package(Python ${PYTHON_REQUIRED_VERSION} EXACT COMPONENTS Interpreter Development)
     configure_file(mac-setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
-    set(_gdk_library "greenaddress")
 else()
     configure_file(setup.py.in ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/setup.py)
-    set(_gdk_library "greenaddress")
 endif()
 
 add_custom_command(OUTPUT python-wheel-canary-file
@@ -55,7 +51,7 @@ add_custom_command(OUTPUT python-wheel-canary-file
     COMMAND touch python-wheel-canary-file
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/greenaddress
     DEPENDS
-        ${_gdk_library}
+        greenaddress
         ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/swig_gasdk.i
         ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/greenaddress/__init__.py
         ${CMAKE_CURRENT_BINARY_DIR}/greenaddress/README.md
