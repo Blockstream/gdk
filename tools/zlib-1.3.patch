@@ -1,0 +1,13 @@
+diff --color -ru a/zlib-1.3/gzlib.c b/zlib-1.3/gzlib.c
+--- a/zlib-1.3/gzlib.c	2023-08-18 10:45:36.000000000 +0200
++++ b/zlib-1.3/gzlib.c	2024-01-12 09:15:47.420050757 +0100
+@@ -579,4 +579,9 @@
+     } while (p > q);
+     return q >> 1;
+ }
++#else
++unsigned ZLIB_INTERNAL gz_intmax()
++{
++    return INT_MAX;
++}
+ #endif

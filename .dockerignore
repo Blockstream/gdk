@@ -8,6 +8,7 @@
 !./tools/buildopenssl.sh
 !./tools/buildtinycbor.sh
 !./tools/buildtor.sh
+!./tools/zlib-1.3.patch
 !./docker/debian/install_deps.sh
 !./docker/debian/install_rust_tools.sh
 !./docker/ubuntu/install_deps.sh

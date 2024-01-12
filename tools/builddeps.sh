@@ -270,9 +270,9 @@ source_name="zlib-1.3"
 source_filename="${source_name}.tar.gz"
 source_hash="b5b06d60ce49c8ba700e0ba517fa07de80b5d4628a037f4be8ad16955be7a7c0"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-    # WARNING: https://github.com/madler/zlib/issues/856
+# WARNING: https://github.com/madler/zlib/issues/856
+cd tmp && patch -p1 < ${GDK_SOURCE_ROOT}/tools/zlib-1.3.patch && cd -
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
-    -DCMAKE_SHARED_LINKER_FLAGS="-Wl,--undefined-version" \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type}
