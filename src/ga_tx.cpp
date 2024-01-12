@@ -159,11 +159,16 @@ namespace sdk {
                     for (const auto& key : { "branch", "subaccount", "pointer", "subtype" }) {
                         output.erase(key);
                     }
-                } else {
+                } else if (!is_electrum) {
                     // Add the branch which is missing from transaction outputs
                     // FIXME: Should be added to get_transactions results or replaced
                     // with a descriptor going forward
                     output["branch"] = 1;
+                } else {
+                    // Remove subtype which is not returned in transaction outputs
+                    // FIXME: Should be added to get_transactions results or replaced
+                    // with a descriptor going forward
+                    output.erase("subtype");
                 }
             }
 

@@ -763,6 +763,12 @@ namespace sdk {
                 throw user_error(res::id_invalid_amount);
             }
         }
+        if (!j_str_is_empty(addressee, "address_type")) {
+            // Using a wallet address as an addressee. Ensure it isn't
+            // an internal address, and mark it as non-change
+            GDK_RUNTIME_ASSERT(!j_bool_or_false(addressee, "is_internal"));
+            addressee["is_change"] = false;
+        }
         add_tx_output(net_params, result, tx, addressee);
     }
 

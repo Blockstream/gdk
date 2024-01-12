@@ -403,6 +403,13 @@ namespace sdk {
                 jsonout.update(output_data);
                 jsonout["address"] = get_address_from_utxo(session, jsonout);
                 utxo_add_paths(session, jsonout);
+                if (is_electrum) {
+                    // Singlesig: Outputs on the internal chain are change
+                    json_rename_key(jsonout, "is_internal", "is_change");
+                    for (const auto& key : { "branch", "subtype" }) {
+                        jsonout.erase(key);
+                    }
+                }
             }
             if (m_is_liquid) {
                 // Confidentialize the address
@@ -412,17 +419,12 @@ namespace sdk {
             }
             // Change detection
             auto asset_id = j_assetref(m_is_liquid, jsonout);
-            if (wallet_assets.count(asset_id)) {
-                if (!is_electrum) {
-                    // Multisig: Collect info to compute change below
-                    if (is_wallet_output) {
-                        asset_outputs[asset_id].push_back(i);
-                    } else {
-                        spent_assets.emplace(std::move(asset_id));
-                    }
-                } else if (is_wallet_output) {
-                    // Singlesig: Outputs on the internal chain are change
-                    jsonout["is_change"] = j_bool_or_false(jsonout, "is_internal");
+            if (!is_electrum && wallet_assets.count(asset_id)) {
+                // Multisig: Collect info to compute change below
+                if (is_wallet_output) {
+                    asset_outputs[asset_id].push_back(i);
+                } else {
+                    spent_assets.emplace(std::move(asset_id));
                 }
             }
         }
@@ -433,12 +435,14 @@ namespace sdk {
                     // This is an asset that we contributed an input to
                     const bool is_spent_externally = spent_assets.count(o.first) != 0;
                     const auto num_wallet_outputs = o.second.size();
+                    bool is_change = false;
                     if (is_spent_externally || num_wallet_outputs > 1) {
                         // We sent this asset elsewhere and also to the wallet, or
                         // we have multiple wallet outputs for the same asset.
                         // Mark the first (possibly only) wallet output as change.
-                        outputs[o.second.front()]["is_change"] = true;
+                        is_change = true;
                     }
+                    outputs[o.second.front()]["is_change"] = is_change;
                 }
             }
         }
