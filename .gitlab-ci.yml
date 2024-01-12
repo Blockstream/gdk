@@ -76,8 +76,8 @@ test_rust:
   needs: []
   stage: test
   variables:
-    OPENSSL_DIR: "/prebuild/clang/openssl/build/"
-    WALLY_DIR: "/prebuild/clang/libwally-core/build/lib"
+    OPENSSL_DIR: "/prebuild/clang"
+    WALLY_DIR: "/prebuild/clang/lib"
     RUSTFLAGS: "-C instrument-coverage"
     RUST_BACKTRACE: "1"
     LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
