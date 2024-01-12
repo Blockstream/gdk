@@ -378,7 +378,7 @@ namespace sdk {
                 set_pset_field(txout, jsonout, "range_proof", out_value_rangeproof);
                 set_pset_field(txout, jsonout, "surj_proof", out_asset_surjection_proof);
                 set_pset_field(txout, jsonout, "blinding_key", out_blinding_pubkey);
-                set_pset_field(txout, jsonout, "nonce_commitment", out_ecdh_pubkey);
+                set_pset_field(txout, jsonout, "eph_public_key", out_ecdh_pubkey);
                 set_pset_field(txout, jsonout, "value_blind_proof", out_blind_value_proof);
                 // out_blinder_index unused
                 set_pset_field(txout, jsonout, "asset_blind_proof", out_blind_asset_proof);
@@ -412,10 +412,18 @@ namespace sdk {
                 }
             }
             if (m_is_liquid) {
-                // Confidentialize the address
-                nlohmann::json unconf_addr = { { "address", jsonout.at("address") }, { "is_confidential", false } };
-                confidentialize_address(net_params, unconf_addr, jsonout.at("blinding_key"));
-                jsonout["address"] = std::move(unconf_addr.at("address"));
+                // Confidentialize the address if possible
+                jsonout["is_confidential"] = false;
+                const auto blinding_key = j_str(jsonout, "blinding_key");
+                if (blinding_key.has_value()) {
+                    confidentialize_address(net_params, jsonout, blinding_key.value());
+                }
+                if (!is_wallet_output) {
+                    // FIXME: wallet and non-wallet outputs are inconsistent
+                    for (const auto& key : { "is_confidential", "unconfidential_address" }) {
+                        jsonout.erase(key);
+                    }
+                }
             }
             // Change detection
             auto asset_id = j_assetref(m_is_liquid, jsonout);
