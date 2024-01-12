@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- Liquid: Fix "calculated_fee_rate" for Liquid transactions.
 - Multisig: Fixed the fee and fee rate becoming incorrect after signing
   only the users inputs.
 

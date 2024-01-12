@@ -808,14 +808,12 @@ namespace sdk {
         result["transaction_vsize"] = tx_vsize;
         result["transaction_version"] = tx.get_version();
         result["transaction_locktime"] = tx.get_locktime();
-        const auto fee_p = result.find("fee");
-        if (fee_p != result.end()) {
-            if (net_params.is_liquid()) {
-                result["calculated_fee_rate"] = *fee_p;
-            } else {
-                const amount::value_type fee = *fee_p;
-                result["calculated_fee_rate"] = valid ? (fee * 1000 / tx_vsize) : 0;
+        if (const auto fee = j_amount(result, "fee"); fee.has_value()) {
+            amount calculated_fee_rate;
+            if (valid) {
+                calculated_fee_rate = fee.value() * 1000 / tx_vsize;
             }
+            result["calculated_fee_rate"] = calculated_fee_rate.value();
         }
     }
 
