@@ -3,6 +3,26 @@
 ## Release 0.70.0
 
 ### Added
+- GA_sign_transaction: Added opt-in support for spending expired CSV outputs
+  using their recovery path (i.e. using only the users signature). This
+  results in lower fees and also does not require 2FA for spending.
+- GA_sign_transaction/GA_send_transaction: Allow signing/sending transactions
+  without requiring 2FA when eligible. Expired inputs, non-wallet inputs,
+  and sweep inputs for example will no longer trigger 2FA checks.
+- GA_sign_transaction/GA_send_transaction: Allow re-signing/re-sending
+  transactions that are already fully or partially signed. 2FA checks are
+  not required for re-signing/re-sending already signed inputs.
+- GA_send_transaction: Allow sending transactions that are not wallet-related
+  or contain inputs that are not wallet-related. This allows callers to
+  always use GA_send_transaction rather than introspecting transactions to
+  determine whether to use GA_broadcast_transaction.
+- Added a new, experimental API GA_psbt_from_json to create a PSBT/PSET from
+  the result of GA_create_transaction/GA_blind_transaction.
+- GA_psbt_get_details: Various fixes to returned data to more accurately
+  reflect the transaction details. In particular, the returned fee and fee
+  rate are now correct.
+- BC-UR: Added support for mapping CBOR to JSON for a subset of CBOR. This
+  allows decoding Jade-RPC calls into JSON, for example.
 
 ### Changed
 
@@ -11,12 +31,17 @@
 - GA_psbt_sign/GA_psbt_get_details: The required "utxos" element for signing
   can now be given in the format returned by GA_get_unspent_outputs directly,
   in addition to the existing support for passing it as a flat JSON array.
+- Build: Updated various third-party dependencies.
+- Android: Updated Android NDK to r26b LTS, and API level to 23.
 
 ### Fixed
 
+- Fees: Improve fee estimation accuracy, particularly for singlesig. Fees
+  will be lower for all transaction types in almost all cases.
 - Liquid: Fix "calculated_fee_rate" for Liquid transactions.
 - Multisig: Fixed the fee and fee rate becoming incorrect after signing
   only the users inputs.
+- Build: Various build process improvements and fixes.
 
 ### Removed
 
