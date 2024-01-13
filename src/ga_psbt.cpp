@@ -405,7 +405,7 @@ namespace sdk {
                 utxo_add_paths(session, jsonout);
                 if (is_electrum) {
                     // Singlesig: Outputs on the internal chain are change
-                    json_rename_key(jsonout, "is_internal", "is_change");
+                    j_rename(jsonout, "is_internal", "is_change");
                     for (const auto& key : { "branch", "subtype" }) {
                         jsonout.erase(key);
                     }

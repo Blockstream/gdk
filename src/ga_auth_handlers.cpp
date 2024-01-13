@@ -2023,11 +2023,11 @@ namespace sdk {
 
         if (!m_net_params.is_liquid()) {
             // The api requires the request and action data to differ, which is non-optimal
-            json_rename_key(m_twofactor_data, "fee", m_type + "_raw_tx_fee");
-            json_rename_key(m_twofactor_data, "change_idx", m_type + "_raw_tx_change_idx");
+            j_rename(m_twofactor_data, "fee", m_type + "_raw_tx_fee");
+            j_rename(m_twofactor_data, "change_idx", m_type + "_raw_tx_change_idx");
 
             std::string key = m_bump_amount ? "bump_fee_amount" : (m_type + "_raw_tx_amount");
-            json_rename_key(m_twofactor_data, "amount", key);
+            j_rename(m_twofactor_data, "amount", key);
         }
 
         // TODO: Add the recipient to twofactor_data for more server verification?

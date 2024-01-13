@@ -58,6 +58,11 @@ namespace sdk {
     std::vector<unsigned char> j_rbytesref(const nlohmann::json& src, std::string_view key, size_t expected_size);
     std::vector<unsigned char> j_rbytes_or_empty(const nlohmann::json& src, std::string_view key);
 
+    // JSON utilities:
+
+    // Rename from_key to to_key in the given JSON object
+    bool j_rename(nlohmann::json& data, std::string_view from_key, std::string_view to_key);
+
 } // namespace sdk
 } // namespace ga
 #endif

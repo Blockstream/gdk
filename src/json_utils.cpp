@@ -199,5 +199,16 @@ namespace sdk {
     {
         return bytes_impl(src, key, true, true, {});
     }
+
+    bool j_rename(nlohmann::json& data, std::string_view from_key, std::string_view to_key)
+    {
+        auto p = data.find(from_key);
+        if (p == data.end()) {
+            return false;
+        }
+        data[to_key] = std::move(*p);
+        data.erase(p);
+        return true;
+    }
 } // namespace sdk
 } // namespace ga

@@ -12,7 +12,7 @@ target_sources( greenaddress PRIVATE
     auth_handler.cpp auth_handler.hpp
     bcur_auth_handlers.cpp bcur_auth_handlers.hpp
     client_blob.cpp client_blob.hpp
-    containers.cpp containers.hpp
+    containers.hpp
     exception.cpp exception.hpp
     ffi_c.cpp
     ga_auth_handlers.cpp ga_auth_handlers.hpp

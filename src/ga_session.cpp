@@ -822,7 +822,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
 
             details["initial_timestamp"] = m_earliest_block_time;
-            json_rename_key(details, "count", "block_height");
+            j_rename(details, "count", "block_height");
             details.erase("diverged_count");
 
             auto& last = m_last_block_notification;
@@ -2621,9 +2621,9 @@ namespace sdk {
             csv_blocks = m_csv_blocks;
         }
 
-        json_rename_key(address, "ad", "address"); // Returned by wamp call get_my_addresses
+        j_rename(address, "ad", "address"); // Returned by wamp call get_my_addresses
         json_add_if_missing(address, "subtype", 0, true); // Convert null subtype to 0
-        json_rename_key(address, "addr_type", "address_type");
+        j_rename(address, "addr_type", "address_type");
         address.erase("script_type");
 
         // Ensure the the server returned a script
@@ -2683,7 +2683,7 @@ namespace sdk {
         for (auto& address : addresses) {
             address["subaccount"] = subaccount;
             update_address_info(address, true);
-            json_rename_key(address, "num_tx", "tx_count");
+            j_rename(address, "num_tx", "tx_count");
             seen_pointer = address["pointer"];
         }
 

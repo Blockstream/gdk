@@ -10,9 +10,6 @@ namespace sdk {
 
     class amount;
 
-    // Rename from_key to to_key in the given JSON object
-    bool json_rename_key(nlohmann::json& data, const std::string& from_key, const std::string& to_key);
-
     // Add a value to a JSON object if one is not already present under the given key
     template <typename T>
     T json_add_if_missing(nlohmann::json& data, const std::string& key, const T& value, bool or_null = false)
