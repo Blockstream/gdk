@@ -417,6 +417,7 @@ namespace sdk {
         extern const std::string id_insert_your_email_to_receive;
         extern const std::string id_install_version_s;
         extern const std::string id_insufficient_funds;
+        extern const std::string id_insufficient_funds_for_fees;
         extern const std::string id_insufficient_lbtc_for_fees;
         extern const std::string id_insufficient_lbtc_to_send_a;
         extern const std::string id_invalid_address;

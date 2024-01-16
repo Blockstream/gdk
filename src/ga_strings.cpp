@@ -735,6 +735,7 @@ namespace sdk {
         }; // Insert your email to receive 2FA codes to authorize transfers and other operations.
         const std::string id_install_version_s{ "id_install_version_s" }; // Install version: %s?
         const std::string id_insufficient_funds{ "id_insufficient_funds" }; // Insufficient funds
+        const std::string id_insufficient_funds_for_fees{ "id_insufficient_funds_for_fees" };
         const std::string id_insufficient_lbtc_for_fees{
             "id_insufficient_lbtc_for_fees"
         }; // Insufficient L-BTC for fees

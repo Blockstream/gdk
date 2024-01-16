@@ -530,14 +530,16 @@ namespace sdk {
                 }
             add_more_utxos:
                 if (no_more_utxos) {
-                    throw user_error(res::id_insufficient_funds);
+                    if (addressee.utxo_sum < addressee.required_total) {
+                        throw user_error(res::id_insufficient_funds);
+                    }
+                    throw user_error(res::id_insufficient_funds_for_fees);
                 }
                 // Add the next input
                 addressee.utxo_indices.push_back(i);
                 addressee.utxo_sum += add_tx_input(session, result, tx, utxos[i], true);
             }
         }
-
         static void pick_utxos(session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& src_utxos,
             addressee_details_t& addressee, bool manual_selection)
         {
@@ -715,8 +717,11 @@ namespace sdk {
                         // Compute the UTXOs to use and their sum
                         pick_utxos(session, tx, result, utxos, addressee, manual_selection);
                     }
-                    if (addressee.utxo_sum < addressee.required_total + addressee.fee) {
+                    if (addressee.utxo_sum < addressee.required_total) {
                         set_tx_error(result, res::id_insufficient_funds);
+                        return;
+                    } else if (addressee.utxo_sum < addressee.required_total + addressee.fee) {
+                        set_tx_error(result, res::id_insufficient_funds_for_fees);
                         return;
                     }
                     if (!is_policy_asset) {
