@@ -26,6 +26,9 @@
 
 ### Changed
 
+- GA_create_transaction: A new error `"Insufficient funds for fees"` is
+  returned when there are sufficient inputs to pay the sent amount(s), but
+  not enough to pay for fees.
 - The deprecated ``"script_type"`` element has been removed from returned
   address, UTXO and transaction list JSON.
 - GA_psbt_sign/GA_psbt_get_details: The required "utxos" element for signing
