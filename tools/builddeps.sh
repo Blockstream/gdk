@@ -324,10 +324,10 @@ build ${name} ${OPENSSL_SRCDIR}
 
 # building boost
 name="boost"
-source_url="https://boostorg.jfrog.io/artifactory/main/release/1.82.0/source/boost_1_82_0.tar.gz"
-source_name="boost_1_82_0"
-source_filename="boost_1_82_0.tar.gz"
-source_hash="66a469b6e608a51f8347236f4912e27dc5c60c60d7d53ae9bfe4683316c6f04c"
+source_url="https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.gz"
+source_name="boost_1_84_0"
+source_filename="boost_1_84_0.tar.gz"
+source_hash="a5800f405508f5df8114558ca9855d2640a2de8f0445f051fa1c7c3383045724"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BOOST_SRCDIR=`pwd`/tmp/${source_name}
 export PRJ_SUBDIR=${BOOST_SRCDIR}
