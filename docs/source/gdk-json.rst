@@ -158,17 +158,18 @@ obtained from `GA_get_subaccount`.
 
 .. _login-result:
 
-Login result JSON
------------------
+Register/Login result JSON
+--------------------------
 
-Contains wallet identifiers and any warnings resulting from logging in to a
-wallet with `GA_login_user`.
+Contains wallet identifiers and any warnings resulting from registering or
+logging in to a wallet with `GA_register_user`/`GA_login_user`. Also returned
+by `GA_get_wallet_identifier` to get identifiers without logging in.
 
 .. include:: examples/login_user.json
 
 :wallet_hash_id: A 32 byte, per-network unique identifier for the wallet, as a hex string.
 :xpub_hash_id: A 32 byte, cross-network unique identifier for the wallet, as a hex string.
-:warnings: An array of warnings strings if there are outstanding for the wallet/GDK version.
+:warnings: An array of warning strings for the wallet/GDK version, or empty if there are no warnings. Only returned when registering or logging in.
 
 
 .. _hw-device:

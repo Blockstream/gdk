@@ -312,7 +312,9 @@ namespace sdk {
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {
         // Default impl just returns the wallet hash; registration is only meaningful in multisig
-        return get_wallet_hash_ids(m_net_params, master_chain_code_hex, master_pub_key_hex);
+        auto ret = get_wallet_hash_ids(m_net_params, master_chain_code_hex, master_pub_key_hex);
+        ret["warnings"] = nlohmann::json::array();
+        return ret;
     }
 
     void session_impl::load_store(std::shared_ptr<signer> /*signer*/)

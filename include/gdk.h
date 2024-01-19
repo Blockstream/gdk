@@ -153,6 +153,7 @@ GDK_API int GA_get_proxy_settings(struct GA_session* session, GA_json** output);
  * :param net_params: The :ref:`net-params` of the network to compute an identifier for.
  * :param params: The :ref:`wallet-id-request` to compute an identifier for.
  * :param output: Destination for the output JSON.
+ *|     The call handlers result is :ref:`login-result`.
  *|     Returned GA_json should be freed using `GA_destroy_json`.
  */
 GDK_API int GA_get_wallet_identifier(const GA_json* net_params, const GA_json* params, GA_json** output);
@@ -222,6 +223,7 @@ GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet registration.
  * :param details: The :ref:`login-credentials` for software wallet registration.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
+ *|     The call handlers result is :ref:`login-result`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: When calling from C/C++, the parameters ``hw_device`` and ``details`` will be emptied when the call
