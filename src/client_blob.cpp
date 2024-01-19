@@ -77,8 +77,8 @@ namespace sdk {
 
         const std::string subaccount_str(std::to_string(subaccount));
         bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
-        if (!xpubs.empty() && m_data[WATCHONLY].contains("username")) {
-            // Client blob watch only is enabled, update the subaccount xpubs
+        if (!xpubs.empty()) {
+            // Update the subaccount xpubs
             json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
             changed = true;
         }
