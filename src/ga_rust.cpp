@@ -105,7 +105,11 @@ namespace sdk {
             locker_t locker(m_mutex);
             m_watch_only = false;
         }
-        return get_post_login_data();
+        auto master_xpub = get_nonnull_signer()->get_master_bip32_xpub();
+        auto post_login_data = get_wallet_hash_ids(
+            { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
+        post_login_data["warnings"] = nlohmann::json::array();
+        return post_login_data;
     }
 
     void ga_rust::register_subaccount_xpubs(
@@ -312,13 +316,6 @@ namespace sdk {
     }
 
     nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", nlohmann::json({}), m_session); }
-
-    nlohmann::json ga_rust::get_post_login_data()
-    {
-        auto master_xpub = get_nonnull_signer()->get_master_bip32_xpub();
-        return get_wallet_hash_ids(
-            { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
-    }
 
     void ga_rust::change_settings(const nlohmann::json& settings) { rust_call("change_settings", settings, m_session); }
 

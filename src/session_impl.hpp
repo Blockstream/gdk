@@ -131,7 +131,6 @@ namespace sdk {
         bool is_watch_only() const;
         void ensure_full_session();
         virtual nlohmann::json get_settings() const = 0;
-        virtual nlohmann::json get_post_login_data() = 0;
         virtual void change_settings(const nlohmann::json& settings) = 0;
 
         virtual nlohmann::json get_twofactor_config(bool reset_cached = false);

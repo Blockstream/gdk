@@ -617,7 +617,10 @@ namespace sdk {
             = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
 
-        auto post_login_data = get_post_login_data();
+        auto warnings = j_array(m_login_data, "warnings").value_or(nlohmann::json::array());
+        nlohmann::json post_login_data = { { "wallet_hash_id", j_strref(m_login_data, "wallet_hash_id") },
+            { "warnings", std::move(warnings) }, { "xpub_hash_id", j_strref(m_login_data, "xpub_hash_id") } };
+
         on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
         return post_login_data;
     }
@@ -1276,12 +1279,6 @@ namespace sdk {
         }
 
         return settings;
-    }
-
-    nlohmann::json ga_session::get_post_login_data()
-    {
-        return { { "wallet_hash_id", m_login_data["wallet_hash_id"] },
-            { "xpub_hash_id", m_login_data["xpub_hash_id"] } };
     }
 
     void ga_session::change_settings(const nlohmann::json& settings)

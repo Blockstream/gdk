@@ -68,7 +68,6 @@ namespace sdk {
 
         bool is_rbf_enabled() const;
         nlohmann::json get_settings() const;
-        nlohmann::json get_post_login_data();
         void change_settings(const nlohmann::json& settings);
 
         std::vector<std::string> get_enabled_twofactor_methods();

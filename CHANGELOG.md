@@ -31,6 +31,7 @@
 - GA_psbt_sign/GA_psbt_get_details: The required "utxos" element for signing
   can now be given in the format returned by GA_get_unspent_outputs directly,
   in addition to the existing support for passing it as a flat JSON array.
+- GA_login_user: Return a "warnings" array containing any login warnings.
 - Build: Updated various third-party dependencies.
 - Android: Updated Android NDK to r26b LTS, and API level to 23.
 
