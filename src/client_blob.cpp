@@ -146,6 +146,12 @@ namespace sdk {
     {
         auto& wo = m_data[WATCHONLY];
         json_add_non_default(wo, "username", username);
+        return set_xpubs(xpubs);
+    }
+
+    bool client_blob::set_xpubs(const nlohmann::json& xpubs)
+    {
+        auto& wo = m_data[WATCHONLY];
         json_add_non_default(wo, "xpubs", xpubs);
         return increment_version(m_data);
     }
