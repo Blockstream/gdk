@@ -84,7 +84,7 @@ def generate_twofactor_examples(user, session_type):
 def generate_examples(network, session_type, mnemonic):
     user = gdk.Session({'name': network})
     user.register_user({}, {'mnemonic': mnemonic}).resolve()
-    user.login_user({}, {'mnemonic': mnemonic}).resolve()
+    login_data = user.login_user({}, {'mnemonic': mnemonic}).resolve()
     # get_receive_address
     addr = user.get_receive_address({'subaccount': 0}).resolve()
     run(f'cli sendtoaddress {addr["address"]} 0.0001234') # Do early to give time to receive
@@ -133,6 +133,7 @@ def generate_examples(network, session_type, mnemonic):
         return
     # The following JSON is either multisig specific or the same for all
     # networks. Generate it only for multisig-BTC to avoid repeated work.
+    write_json(login_data, '', 'login_user')
     networks = gdk.get_networks()
     write_json(networks, '', 'get_networks')
     network = gdk.get_networks()['mainnet']

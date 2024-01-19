@@ -155,6 +155,22 @@ Or alternatively:
 The values to use for ``"core_descriptors"`` and ``"slip132_extended_pubkeys"`` can be
 obtained from `GA_get_subaccount`.
 
+
+.. _login-result:
+
+Login result JSON
+-----------------
+
+Contains wallet identifiers and any warnings resulting from logging in to a
+wallet with `GA_login_user`.
+
+.. include:: examples/login_user.json
+
+:wallet_hash_id: A 32 byte, per-network unique identifier for the wallet, as a hex string.
+:xpub_hash_id: A 32 byte, cross-network unique identifier for the wallet, as a hex string.
+:warnings: An array of warnings strings if there are outstanding for the wallet/GDK version.
+
+
 .. _hw-device:
 
 HW device JSON

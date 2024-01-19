@@ -237,6 +237,7 @@ GDK_API int GA_register_user(
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet login.
  * :param details: The :ref:`login-credentials` for authenticating the user.
  * :param call: Destination for the resulting GA_auth_handler to perform the login.
+ *|     The call handlers result is :ref:`login-result`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * If a sessions underlying network connection has disconnected and
