@@ -554,6 +554,16 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
+        if (m_blob_hmac_key.has_value() && m_blob.get_xpubs().empty()) {
+            // A full session with no blob xpubs. This can happen if we are
+            // upgrading/logging in from an earlier gdk version that didn't
+            // automatically save them. Add them to the client blob now.
+            GDK_LOG(info) << "adding missing client blob xpubs";
+            const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+            GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
+            update_blob(locker, std::bind(&client_blob::set_xpubs, &m_blob, signer_xpubs));
+        }
+
         // Compute wallet identifier for callers to use if they wish.
         const auto hash_ids = get_wallet_hash_ids(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
         auto& wallet_hash_id = hash_ids["wallet_hash_id"];
