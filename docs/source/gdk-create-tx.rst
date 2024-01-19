@@ -79,6 +79,7 @@ Returned metadata
 
 Some data returned when creating a transaction may be read by the user:
 
+:fee: The transaction fee in satoshis.
 :error: If not empty, the error description that prevented the transaction being
         created.
 :transaction: The hex-encoded resulting transaction. This may be partially
