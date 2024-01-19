@@ -1430,10 +1430,9 @@ namespace sdk {
 
         std::string root_bip32_xpub;
         if (!m_blob_hmac.empty()) {
-            // Load any locally cached xpubs, then from the client blob.
+            // Load any cached xpubs from the client blob.
             // If the client blob values differ from the cached values,
             // cache_bip32_xpub will throw.
-            load_signer_xpubs(locker, m_signer);
             const auto blob_xpubs = m_blob.get_xpubs();
             for (auto& item : blob_xpubs.items()) {
                 // Inverted: See encache_signer_xpubs()
