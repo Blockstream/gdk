@@ -982,9 +982,11 @@ namespace sdk {
 
         if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
-            // but only if the wallet isn't locked for a two factor reset.
+            // but only when the wallet isn't locked for a two factor reset.
+            // Subaccount xpubs
+            m_blob.set_xpubs(get_signer_xpubs_json(m_signer));
             // Subaccount names
-            const nlohmann::json empty;
+            const nlohmann::json empty; // Don't re-save xpubs
             for (const auto& sa : login_data["subaccounts"]) {
                 m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), empty);
             }
