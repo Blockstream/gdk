@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
+use bitcoin::secp256k1::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::PublicKey;
 use url::Url;
 
@@ -156,7 +156,7 @@ impl PinServerResponse {
             Hmac::from_engine(engine)
         };
 
-        if hmac == Hmac::from_str(&self.hmac)? {
+        if hmac == Hmac::from_str(&self.hmac).map_err(|_| crate::Error::InvalidHmac)? {
             Ok(())
         } else {
             Err(crate::Error::InvalidResponse)

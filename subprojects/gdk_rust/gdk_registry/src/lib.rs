@@ -195,7 +195,7 @@ mod tests {
     use crate::hard_coded;
     use crate::params::GetAssetsBuilder;
     use crate::params::{AssetCategory, ElementsNetwork};
-    use gdk_common::bitcoin::bip32::ExtendedPubKey;
+    use gdk_common::bitcoin::bip32::Xpub;
     use gdk_common::elements::AssetId;
     use gdk_common::log::info;
     use httptest::{matchers::*, responders::*, Expectation, Server};
@@ -287,7 +287,7 @@ mod tests {
         if emptify_icons {
             config.custom_headers.insert("emptify_icons".to_string(), "true".to_string());
         }
-        let xpub = ExtendedPubKey::from_str(DEFAULT_XPUB)?;
+        let xpub = Xpub::from_str(DEFAULT_XPUB)?;
         let params = RefreshAssetsParams::new(assets, icons, config, Some(xpub));
 
         super::refresh_assets(params)
@@ -308,7 +308,7 @@ mod tests {
         let assets_id =
             assets.unwrap_or(&DEFAULT_ASSETS).into_iter().flat_map(|s| AssetId::from_str(*s));
 
-        let xpub = ExtendedPubKey::from_str(xpub.unwrap_or(DEFAULT_XPUB))?;
+        let xpub = Xpub::from_str(xpub.unwrap_or(DEFAULT_XPUB))?;
 
         let params = GetAssetsBuilder::new().assets_id(assets_id, xpub).build();
 
@@ -553,7 +553,7 @@ mod tests {
             info!("{:?}", temp_dir);
             init(&temp_dir).unwrap();
 
-            let xpub = ExtendedPubKey::from_str(DEFAULT_XPUB).unwrap();
+            let xpub = Xpub::from_str(DEFAULT_XPUB).unwrap();
 
             let hard_coded_values =
                 match hard_coded::value(ElementsNetwork::Liquid, AssetsOrIcons::Assets) {

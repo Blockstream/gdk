@@ -1,7 +1,7 @@
 use std::convert::TryInto;
 
 use bitcoin::base58;
-use bitcoin::bip32::{ChildNumber, ExtendedPubKey};
+use bitcoin::bip32::{ChildNumber, Xpub};
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
@@ -36,7 +36,7 @@ fn decode_slip132_version(bytes: &[u8; 4]) -> Result<(bool, ScriptType), Error> 
     }
 }
 
-pub fn decode_from_slip132_string(s: &str) -> Result<(bool, ScriptType, ExtendedPubKey), Error> {
+pub fn decode_from_slip132_string(s: &str) -> Result<(bool, ScriptType, Xpub), Error> {
     let mut bytes = base58::decode_check(s)?;
     if bytes.len() < 4 {
         return Err(Error::InvalidSlip132Version);
@@ -48,12 +48,12 @@ pub fn decode_from_slip132_string(s: &str) -> Result<(bool, ScriptType, Extended
         VERSION_TPUB
     };
     bytes[0..4].copy_from_slice(&bip32_version);
-    let xpub = ExtendedPubKey::decode(&bytes)?;
+    let xpub = Xpub::decode(&bytes)?;
     Ok((is_mainnet, script_type, xpub))
 }
 
 /// We expect that the xpub child number is `bip32_account'`
-pub fn extract_bip32_account(xpub: &ExtendedPubKey) -> Result<u32, Error> {
+pub fn extract_bip32_account(xpub: &Xpub) -> Result<u32, Error> {
     match xpub.child_number {
         ChildNumber::Hardened {
             index: n,

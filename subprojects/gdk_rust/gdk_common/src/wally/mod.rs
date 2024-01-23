@@ -237,7 +237,7 @@ mod tests {
     fn test_pbkdf2() {
         // abandon abandon ... about
         // expected value got from a session with server_type green
-        let xpub = bitcoin::bip32::ExtendedPubKey::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
+        let xpub = bitcoin::bip32::Xpub::from_str("tpubD6NzVbkrYhZ4XYa9MoLt4BiMZ4gkt2faZ4BcmKu2a9te4LDpQmvEz2L2yDERivHxFPnxXXhqDRkUNnQCpZggCyEZLBktV7VaSmwayqMJy1s").unwrap();
         let password = xpub.encode().to_vec();
         let salt = "testnet".as_bytes().to_vec();
         let cost = 2048;

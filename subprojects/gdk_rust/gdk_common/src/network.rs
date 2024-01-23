@@ -2,7 +2,7 @@ use std::str::FromStr;
 use std::time::Duration;
 
 use crate::error::Error;
-use bitcoin::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
+use bitcoin::bip32::{ChildNumber, Fingerprint, Xpub};
 use bitcoin::PublicKey;
 use elements::hex::ToHex;
 use serde::{Deserialize, Serialize};
@@ -87,19 +87,11 @@ impl NetworkId {
     }
 }
 
-pub const LIQUID_TESTNET: elements::AddressParams = elements::AddressParams {
-    p2pkh_prefix: 36,
-    p2sh_prefix: 19,
-    blinded_prefix: 23,
-    bech_hrp: "tex",
-    blech_hrp: "tlq",
-};
-
 impl ElementsNetwork {
     pub fn address_params(self: ElementsNetwork) -> &'static elements::AddressParams {
         match self {
             ElementsNetwork::Liquid => &elements::AddressParams::LIQUID,
-            ElementsNetwork::LiquidTestnet => &LIQUID_TESTNET,
+            ElementsNetwork::LiquidTestnet => &elements::AddressParams::LIQUID_TESTNET,
             ElementsNetwork::ElementsRegtest => &elements::AddressParams::ELEMENTS,
         }
     }
@@ -168,7 +160,7 @@ impl NetworkParameters {
 
     // Unique wallet identifier for the given xpub on this network. Used as part of the database
     // root path, any changes will result in the creation of a new separate database.
-    pub fn wallet_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
+    pub fn wallet_hash_id(&self, master_xpub: &Xpub) -> String {
         assert_eq!(self.bip32_network(), master_xpub.network);
         // Only network, public_key and chain_code contribute to the hash
         let mut xpub = master_xpub.clone();
@@ -181,11 +173,11 @@ impl NetworkParameters {
         crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
-    pub fn xpub_hash_id(&self, master_xpub: &ExtendedPubKey) -> String {
+    pub fn xpub_hash_id(&self, master_xpub: &Xpub) -> String {
         assert_eq!(self.bip32_network(), master_xpub.network);
         // Only public_key and chain_code contribute to the xpub hash
         let mut xpub = master_xpub.clone();
-        xpub.network = bitcoin::network::constants::Network::Testnet;
+        xpub.network = bitcoin::network::Network::Testnet;
         xpub.depth = 0;
         xpub.parent_fingerprint = Fingerprint::default();
         xpub.child_number = ChildNumber::from_normal_idx(0).unwrap();
@@ -195,11 +187,11 @@ impl NetworkParameters {
         crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
-    pub fn bip32_network(&self) -> bitcoin::network::constants::Network {
+    pub fn bip32_network(&self) -> bitcoin::network::Network {
         if self.mainnet {
-            bitcoin::network::constants::Network::Bitcoin
+            bitcoin::network::Network::Bitcoin
         } else {
-            bitcoin::network::constants::Network::Testnet
+            bitcoin::network::Network::Testnet
         }
     }
 }
@@ -222,7 +214,7 @@ pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ure
 #[cfg(test)]
 mod tests {
     use crate::EC;
-    use bitcoin::bip32::{ExtendedPrivKey, ExtendedPubKey};
+    use bitcoin::bip32::{Xpriv, Xpub};
 
     #[test]
     fn test_wallet_hash_id() {
@@ -230,8 +222,8 @@ mod tests {
             "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
             "",
         ).unwrap();
-        let master_xprv = ExtendedPrivKey::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
-        let master_xpub = ExtendedPubKey::from_priv(&EC, &master_xprv);
+        let master_xprv = Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
+        let master_xpub = Xpub::from_priv(&EC, &master_xprv);
         let mut network = crate::NetworkParameters::default();
         network.network = "mainnet".to_string();
         network.mainnet = true;

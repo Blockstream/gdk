@@ -1,4 +1,4 @@
-use gdk_common::{bitcoin, elements, serde_cbor, ureq};
+use gdk_common::{bitcoin, serde_cbor, ureq};
 use std::sync::{MutexGuard, PoisonError, TryLockError};
 
 /// Result type alias of the `gdk_registry` crate.
@@ -35,10 +35,6 @@ pub enum Error {
     /// [`get_assets`](crate::get_assets).
     #[error("Specify either `assets_id` or one of more of the following fields when calling `get_assets`: `names`, `tickers`, `category`")]
     GetAssetsNoFields,
-
-    /// Wraps hex parsing error
-    #[error(transparent)]
-    Hex(#[from] elements::bitcoin::hashes::hex::Error),
 
     /// An invalid network as been specified
     #[error("InvalidNetwork({0})")]

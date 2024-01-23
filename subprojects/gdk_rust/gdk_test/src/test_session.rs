@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrsd::electrum_client::ElectrumApi;
-use gdk_common::bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey};
+use gdk_common::bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
 use gdk_common::log::{info, warn};
 use gdk_common::rand::Rng;
 use gdk_common::wally;
@@ -143,7 +143,7 @@ impl TestSession {
         let path: DerivationPath = "m/84'/1'/0'".parse().unwrap();
         let path: Vec<ChildNumber> = path.into();
         let xprv = master_xprv.derive_priv(&gdk_common::EC, &path).unwrap();
-        let xpub = ExtendedPubKey::from_priv(&gdk_common::EC, &xprv);
+        let xpub = Xpub::from_priv(&gdk_common::EC, &xprv);
         let opt = CreateAccountOpt {
             subaccount: 0,
             name: "".to_string(),
@@ -460,11 +460,11 @@ impl TestSession {
 fn keys_from_credentials(
     credentials: &Credentials,
     network: bitcoin::Network,
-) -> (ExtendedPrivKey, ExtendedPubKey, wally::MasterBlindingKey) {
+) -> (Xpriv, Xpub, wally::MasterBlindingKey) {
     let seed = wally::bip39_mnemonic_to_seed(&credentials.mnemonic, &credentials.bip39_passphrase)
         .unwrap();
-    let master_xprv = ExtendedPrivKey::new_master(network, &seed).unwrap();
-    let master_xpub = ExtendedPubKey::from_priv(&gdk_common::EC, &master_xprv);
+    let master_xprv = Xpriv::new_master(network, &seed).unwrap();
+    let master_xpub = Xpub::from_priv(&gdk_common::EC, &master_xprv);
     let master_blinding = wally::asset_blinding_key_from_seed(&seed);
     (master_xprv, master_xpub, master_blinding)
 }

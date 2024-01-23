@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
-use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
+use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::{bitcoin, elements};
@@ -38,9 +38,9 @@ pub struct Account {
     account_num: u32,
     script_type: ScriptType,
 
-    xpub: ExtendedPubKey,
+    xpub: Xpub,
     master_xpub_fingerprint: Fingerprint,
-    chains: [ExtendedPubKey; 2],
+    chains: [Xpub; 2],
     network: NetworkParameters,
     store: Store,
     // elements only
@@ -51,7 +51,7 @@ pub struct Account {
 
 /// Compare xpub ignoring the fingerprint (which computation might be skipped),
 /// depth and child_number (which might not be set correctly by some signers).
-pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> Result<(), Error> {
+pub fn xpubs_equivalent(xpub1: &Xpub, xpub2: &Xpub) -> Result<(), Error> {
     if !(xpub1.network == xpub2.network
         && xpub1.public_key == xpub2.public_key
         && xpub1.chain_code == xpub2.chain_code)
@@ -64,9 +64,9 @@ pub fn xpubs_equivalent(xpub1: &ExtendedPubKey, xpub2: &ExtendedPubKey) -> Resul
 impl Account {
     pub fn new(
         network: NetworkParameters,
-        master_xprv: &Option<ExtendedPrivKey>,
+        master_xprv: &Option<Xpriv>,
         master_xpub_fingerprint: Fingerprint,
-        account_xpub: &Option<ExtendedPubKey>,
+        account_xpub: &Option<Xpub>,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
         account_num: u32,
@@ -76,7 +76,7 @@ impl Account {
 
         let xpub = if let Some(master_xprv) = master_xprv {
             let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
-            let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
+            let xpub = Xpub::from_priv(&crate::EC, &xprv);
             if let Some(account_xpub) = account_xpub {
                 xpubs_equivalent(&xpub, account_xpub)?;
             };
@@ -867,7 +867,7 @@ fn get_coin_type(network_id: NetworkId) -> u32 {
 }
 
 fn derive_address(
-    xpub: &ExtendedPubKey,
+    xpub: &Xpub,
     index: u32,
     script_type: ScriptType,
     network_id: NetworkId,
@@ -925,7 +925,7 @@ fn elements_address(
 pub fn discover_account(
     electrum_url: &ElectrumUrl,
     proxy: Option<&str>,
-    account_xpub: &ExtendedPubKey,
+    account_xpub: &Xpub,
     script_type: ScriptType,
     gap_limit: u32,
 ) -> Result<bool, Error> {
@@ -1009,11 +1009,11 @@ mod test {
     #[test]
     fn xpubs_equivalence() {
         // equivalent xpubs from different signers
-        let j = ExtendedPubKey::from_str("xpub6BsYXth6AveJGNDT7LWSVPfjUuvsxfnBoNh4pLMxrqKvTLyKKzjfQb3nH5kQM7QiRM7ou9BH3Ff4thS7DE1fEKkijcFZJqvUSuoTHqw2hHb").unwrap();
-        let t = ExtendedPubKey::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap();
-        let l = ExtendedPubKey::from_str("xpub67tVq9TC3jGc6VXHGwpDsFaC382minnK3Us9gBC6XRpoxGMYLu8UpywPrmGQ5ZgrFEzMU8g93Ag9XBztNSfnvkqmQFt6jMUCn6NuZwucwf6").unwrap();
+        let j = Xpub::from_str("xpub6BsYXth6AveJGNDT7LWSVPfjUuvsxfnBoNh4pLMxrqKvTLyKKzjfQb3nH5kQM7QiRM7ou9BH3Ff4thS7DE1fEKkijcFZJqvUSuoTHqw2hHb").unwrap();
+        let t = Xpub::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap();
+        let l = Xpub::from_str("xpub67tVq9TC3jGc6VXHGwpDsFaC382minnK3Us9gBC6XRpoxGMYLu8UpywPrmGQ5ZgrFEzMU8g93Ag9XBztNSfnvkqmQFt6jMUCn6NuZwucwf6").unwrap();
         // another xpub
-        let o = ExtendedPubKey::from_str("xpub67tVq9TC3jGc6UecWK21xBDnB32fHpL3tStfyi5QaDsArWv66HnXg59wQ2LWPxrqsoagvoLfmwG8YGRzfu3gqRAvouknar2HM7egLuGZzTE").unwrap();
+        let o = Xpub::from_str("xpub67tVq9TC3jGc6UecWK21xBDnB32fHpL3tStfyi5QaDsArWv66HnXg59wQ2LWPxrqsoagvoLfmwG8YGRzfu3gqRAvouknar2HM7egLuGZzTE").unwrap();
 
         xpubs_equivalent(&j, &j).unwrap();
         xpubs_equivalent(&j, &t).unwrap();

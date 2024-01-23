@@ -6,7 +6,7 @@ use gdk_common::be::BETxidConvert;
 use gdk_common::be::{
     BEBlockHash, BEBlockHeader, BEScript, BETransactionEntry, BETransactions, BETxid,
 };
-use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPubKey};
+use gdk_common::bitcoin::bip32::{DerivationPath, Xpub};
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::bitcoin::Txid;
 use gdk_common::elements;
@@ -95,7 +95,7 @@ pub struct RawAccountCache {
     pub last_used: Indexes,
 
     /// the xpub of the account
-    pub xpub: ExtendedPubKey,
+    pub xpub: Xpub,
 
     /// Whether the subaccount was discovered through bip44 subaccount discovery
     ///
@@ -285,11 +285,7 @@ fn load_decrypt<P: AsRef<Path>>(
 }
 
 impl StoreMeta {
-    pub fn new<P: AsRef<Path>>(
-        path: P,
-        xpub: &ExtendedPubKey,
-        id: NetworkId,
-    ) -> Result<StoreMeta, Error> {
+    pub fn new<P: AsRef<Path>>(path: P, xpub: &Xpub, id: NetworkId) -> Result<StoreMeta, Error> {
         let cipher = xpub.to_cipher()?;
         let cache = RawCache::new(path.as_ref(), &cipher);
 
@@ -397,7 +393,7 @@ impl StoreMeta {
     pub fn make_account(
         &mut self,
         account_num: u32,
-        account_xpub: ExtendedPubKey,
+        account_xpub: Xpub,
         discovered: bool,
     ) -> Result<(), Error> {
         self.store
@@ -535,7 +531,7 @@ impl StoreMeta {
 }
 
 impl RawAccountCache {
-    pub fn new(xpub: ExtendedPubKey, bip44_discovered: bool) -> Self {
+    pub fn new(xpub: Xpub, bip44_discovered: bool) -> Self {
         RawAccountCache {
             all_txs: Default::default(),
             paths: Default::default(),
@@ -617,7 +613,7 @@ impl RawAccountCache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gdk_common::bitcoin::bip32::ExtendedPubKey;
+    use gdk_common::bitcoin::bip32::Xpub;
     use gdk_common::bitcoin::{Network, Txid};
     use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;
@@ -629,7 +625,7 @@ mod tests {
         let mut dir = TempDir::new().unwrap().into_path();
         dir.push(Kind::Store.to_string());
         // abandon ... M/49'/0'/0'
-        let xpub = ExtendedPubKey::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
+        let xpub = Xpub::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
         let txid = BETxid::from_hex(
             "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
             id,
@@ -654,7 +650,7 @@ mod tests {
     fn test_db_load_static() {
         let id = NetworkId::Bitcoin(Network::Testnet);
         // abandon ... M/49'/0'/0'
-        let xpub = ExtendedPubKey::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
+        let xpub = Xpub::from_str("tpubD97UxEEcrMpkE8yG3NQveraWveHzTAJx3KwPsUycx9ABfxRjMtiwfm6BtrY5yhF9yF2eyMg2hyDtGDYXx6gVLBox1m2Mq4u8zB2NXFhUZmm").unwrap();
         let txid = BETxid::from_hex(
             "f4184fc596403b9d638783cf57adfe4c75c605f6356fbc91338530e9831e9e16",
             id,
@@ -719,7 +715,7 @@ mod tests {
             pub heights: HashMap<BETxid, Option<u32>>,
             pub unblinded: HashMap<elements::OutPoint, TxOutSecrets>,
             pub indexes: Indexes,
-            pub xpub: ExtendedPubKey,
+            pub xpub: Xpub,
             pub bip44_discovered: bool,
         }
         type RawAccountCacheV1 = RawAccountCache;
@@ -731,7 +727,7 @@ mod tests {
             heights: Default::default(),
             unblinded: Default::default(),
             indexes: Default::default(),
-            xpub: ExtendedPubKey::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap(),
+            xpub: Xpub::from_str("xpub67tVq9TC3jGc93MFouaJsne9ysbJTgd2z283AhzbJnJBYLaSgd7eCneb917z4mCmt9NT1jrex9JwZnxSqMo683zUWgMvBXGFcep95TuSPo6").unwrap(),
             bip44_discovered: Default::default(),
         };
 
