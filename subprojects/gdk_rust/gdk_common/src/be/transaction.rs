@@ -3,6 +3,7 @@ use crate::error::Error;
 use crate::model::{Balances, TransactionType};
 use crate::scripts::{p2pkh_script, ScriptType};
 use crate::NetworkId;
+use bitcoin::amount::Amount;
 use bitcoin::blockdata::script::Instruction;
 use bitcoin::consensus::encode::deserialize as btc_des;
 use bitcoin::consensus::encode::serialize as btc_ser;
@@ -62,7 +63,7 @@ impl BETransaction {
 
     pub fn version(&self) -> u32 {
         match self {
-            Self::Bitcoin(tx) => tx.version as u32,
+            Self::Bitcoin(tx) => tx.version.0 as u32,
             Self::Elements(tx) => tx.version,
         }
     }
@@ -142,7 +143,7 @@ impl BETransaction {
         all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<u64> {
         match self {
-            Self::Bitcoin(tx) => Some(tx.output[vout as usize].value),
+            Self::Bitcoin(tx) => Some(tx.output[vout as usize].value.to_sat()),
             Self::Elements(tx) => {
                 let outpoint = elements::OutPoint {
                     txid: tx.txid(),
@@ -260,11 +261,11 @@ impl BETransaction {
     ) -> Result<u64, Error> {
         match self {
             Self::Bitcoin(tx) => {
-                if tx.is_coin_base() {
+                if tx.is_coinbase() {
                     Ok(0)
                 } else {
                     let sum_inputs = sum_inputs(tx, all_txs);
-                    let sum_outputs: u64 = tx.output.iter().map(|o| o.value).sum();
+                    let sum_outputs: u64 = tx.output.iter().map(|o| o.value.to_sat()).sum();
                     sum_inputs
                         .checked_sub(sum_outputs)
                         .ok_or_else(|| Error::Generic("unexpected tx balance".into()))
@@ -372,7 +373,7 @@ impl BETransaction {
                     .output
                     .iter()
                     .filter(|o| all_scripts.contains_key(&o.script_pubkey.clone().into()))
-                    .map(|o| o.value as i64)
+                    .map(|o| o.value.to_sat() as i64)
                     .sum();
                 result.insert("btc".to_string(), my_in - my_out);
                 result
@@ -472,17 +473,20 @@ impl BETransaction {
         let sighash = sig.pop().ok_or_else(|| Error::InputValidationFailed)?;
         let sighash = bitcoin::sighash::EcdsaSighashType::from_standard(sighash as u32)?;
 
-        let script_code = p2pkh_script(public_key);
         let hash = if script_type.is_segwit() {
+            let amount = Amount::from_sat(value);
+            let script_pubkey =
+                bitcoin::Address::p2wpkh(public_key, bitcoin::Network::Bitcoin)?.script_pubkey();
             let hashcache = hashcache.get_or_insert_with(|| SighashCache::new(tx));
-            hashcache.segwit_signature_hash(inv, &script_code, value, sighash)?.to_byte_array()
+            hashcache.p2wpkh_signature_hash(inv, &script_pubkey, amount, sighash)?.to_byte_array()
         } else {
+            let script_pubkey = p2pkh_script(public_key);
             let sighash_cache = SighashCache::new(tx);
             sighash_cache
-                .legacy_signature_hash(inv, &script_code, sighash.to_u32())?
+                .legacy_signature_hash(inv, &script_pubkey, sighash.to_u32())?
                 .to_byte_array()
         };
-        let message = Message::from_slice(&hash[..]).unwrap();
+        let message = Message::from_digest(hash);
 
         secp.verify_ecdsa(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
         Ok(())

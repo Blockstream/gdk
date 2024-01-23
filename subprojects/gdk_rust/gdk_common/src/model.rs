@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use crate::error::Error;
 use crate::scripts::ScriptType;
 use crate::wally::MasterBlindingKey;
-use bitcoin::bip32::{ChildNumber, DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
+use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpriv, Xpub};
 use bitcoin::hashes::{sha256, Hash};
 use std::convert::TryFrom;
 use std::fmt;
@@ -110,7 +110,7 @@ pub struct GetUnspentOpt {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadStoreOpt {
-    pub master_xpub: ExtendedPubKey,
+    pub master_xpub: Xpub,
     pub master_xpub_fingerprint: Option<Fingerprint>,
 }
 
@@ -143,7 +143,7 @@ pub struct CreateAccountOpt {
     pub subaccount: u32,
     pub name: String,
     // The account xpub if passed by the caller
-    pub xpub: Option<ExtendedPubKey>,
+    pub xpub: Option<Xpub>,
     #[serde(default)]
     pub discovered: bool,
     #[serde(default)]
@@ -156,7 +156,7 @@ pub struct CreateAccountOpt {
 pub struct DiscoverAccountOpt {
     #[serde(rename = "type")]
     pub script_type: ScriptType,
-    pub xpub: ExtendedPubKey,
+    pub xpub: Xpub,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -467,7 +467,7 @@ pub enum WatchOnlyCredentials {
 #[derive(Debug, Clone)]
 pub struct AccountData {
     pub account_num: u32,
-    pub xpub: ExtendedPubKey,
+    pub xpub: Xpub,
     pub master_xpub_fingerprint: Option<Fingerprint>,
 }
 
@@ -514,10 +514,7 @@ fn from_descriptor(s: &str, expected_is_mainnet: bool) -> Result<AccountData, Er
 
 impl WatchOnlyCredentials {
     // Derive an extended public key to use for the store
-    pub fn store_master_xpub(
-        &self,
-        net_params: &NetworkParameters,
-    ) -> Result<ExtendedPubKey, Error> {
+    pub fn store_master_xpub(&self, net_params: &NetworkParameters) -> Result<Xpub, Error> {
         let network = if net_params.mainnet {
             Network::Bitcoin
         } else {
@@ -525,8 +522,8 @@ impl WatchOnlyCredentials {
         };
         let b = serde_json::to_vec(self).unwrap();
         let seed = sha256::Hash::hash(&b);
-        let xprv = ExtendedPrivKey::new_master(network, seed.as_byte_array())?;
-        let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
+        let xprv = Xpriv::new_master(network, seed.as_byte_array())?;
+        let xpub = Xpub::from_priv(&crate::EC, &xprv);
         Ok(xpub)
     }
 
@@ -540,7 +537,7 @@ impl WatchOnlyCredentials {
             }
         };
         // Handle duplicates
-        let mut m = HashMap::<u32, ExtendedPubKey>::new();
+        let mut m = HashMap::<u32, Xpub>::new();
         let mut master_xpub_fingerprint = None;
         for a in r? {
             if let Some(old) = m.insert(a.account_num, a.xpub.clone()) {

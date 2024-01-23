@@ -1,6 +1,6 @@
 use std::string::ToString;
 
-use bitcoin::sighash::NonStandardSighashType;
+use bitcoin::sighash::NonStandardSighashTypeError;
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -19,16 +19,19 @@ pub enum Error {
     BtcEncodingError(#[from] bitcoin::consensus::encode::Error),
 
     #[error(transparent)]
-    BtcHashesError(#[from] bitcoin::hashes::error::Error),
+    BtcHashesError(#[from] bitcoin::hashes::FromSliceError),
 
     #[error(transparent)]
-    BtcHexDecodingError(#[from] bitcoin::hashes::hex::Error),
+    BtcHexToArrayError(#[from] bitcoin::hashes::hex::HexToArrayError),
+
+    #[error(transparent)]
+    BtcHexToBytesError(#[from] bitcoin::hashes::hex::HexToBytesError),
 
     #[error(transparent)]
     BtcKeyError(#[from] bitcoin::key::Error),
 
     #[error(transparent)]
-    BtcNonStandardSigHashType(#[from] NonStandardSighashType),
+    BtcNonStandardSigHashType(#[from] NonStandardSighashTypeError),
 
     #[error(transparent)]
     BtcSecp256k1Error(#[from] bitcoin::secp256k1::Error),

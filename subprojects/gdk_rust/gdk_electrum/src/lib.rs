@@ -27,8 +27,9 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use gdk_common::bitcoin::bip32::{DerivationPath, ExtendedPrivKey, ExtendedPubKey, Fingerprint};
+use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
 use gdk_common::bitcoin::hashes::hex::FromHex;
+use gdk_common::bitcoin::hex::DisplayHex;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::model::*;
@@ -55,7 +56,6 @@ use crate::headers::bitcoin::HeadersChain;
 use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use crate::spv::SpvCrossValidator;
-use bitcoin_private::hex::display::DisplayHex;
 use electrum_client::{Client, ElectrumApi};
 use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
@@ -150,7 +150,7 @@ pub struct ElectrumSession {
     /// Master xpub of the signer associated to the session
     ///
     /// It is Some after wallet initialization
-    pub master_xpub: Option<ExtendedPubKey>,
+    pub master_xpub: Option<Xpub>,
 
     /// The BIP32 fingerprint of the master xpub
     ///
@@ -172,7 +172,7 @@ pub struct ElectrumSession {
     /// Master xprv of the signer associated to the session
     ///
     /// FIXME: remove this once we have fully migrated to the hw signer interface
-    pub master_xprv: Option<ExtendedPrivKey>,
+    pub master_xprv: Option<Xpriv>,
 
     /// Spent utxos
     ///

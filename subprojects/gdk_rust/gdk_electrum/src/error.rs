@@ -1,5 +1,5 @@
 use crate::BETxid;
-use gdk_common::bitcoin::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::Xpub;
 use gdk_common::bitcoin::sighash;
 use gdk_common::error::Error as CommonError;
 use gdk_common::{bitcoin, electrum_client, elements, serde_cbor, ureq};
@@ -28,10 +28,10 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
 
     #[error(transparent)]
-    Bitcoin(#[from] bitcoin::Error),
+    BitcoinAddressError(#[from] bitcoin::address::Error),
 
     #[error(transparent)]
-    BitcoinAddressError(#[from] bitcoin::address::Error),
+    BitcoinAddressParseError(#[from] bitcoin::address::ParseError),
 
     #[error(transparent)]
     BitcoinBIP32Error(#[from] bitcoin::bip32::Error),
@@ -40,10 +40,7 @@ pub enum Error {
     BitcoinConsensus(#[from] bitcoin::consensus::encode::Error),
 
     #[error(transparent)]
-    BitcoinHashes(#[from] bitcoin::hashes::error::Error),
-
-    #[error(transparent)]
-    BitcoinHexError(#[from] bitcoin::hashes::hex::Error),
+    BitcoinHexToBytesError(#[from] bitcoin::hashes::hex::HexToBytesError),
 
     #[error(transparent)]
     BitcoinKeyError(#[from] bitcoin::key::Error),
@@ -124,7 +121,7 @@ pub enum Error {
     MiniscriptError(#[from] gdk_common::miniscript::Error),
 
     #[error("Xpubs mismatch ({0} vs {1})")]
-    MismatchingXpubs(ExtendedPubKey, ExtendedPubKey),
+    MismatchingXpubs(Xpub, Xpub),
 
     #[error("Master blinding key is missing but we need it")]
     MissingMasterBlindingKey,

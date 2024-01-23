@@ -6,7 +6,7 @@ use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
-use gdk_common::bitcoin::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::Xpub;
 use gdk_common::bitcoin::hashes::{sha256, Hash};
 use gdk_common::elements::AssetId;
 use gdk_common::log::{debug, warn};
@@ -87,7 +87,7 @@ pub(crate) struct Cache {
     missing_icons: Vec<AssetId>,
 
     #[serde(default, skip_serializing)]
-    xpub: Option<ExtendedPubKey>,
+    xpub: Option<Xpub>,
 }
 
 // Custom impl of `Debug` to avoid leaking `xpub` in log messages.
@@ -124,7 +124,7 @@ impl Cache {
         self.icons.retain(|id, _| ids.contains(id));
     }
 
-    pub(crate) fn from_xpub(xpub: ExtendedPubKey, cache_files: &mut CacheFiles) -> Self {
+    pub(crate) fn from_xpub(xpub: Xpub, cache_files: &mut CacheFiles) -> Self {
         let get_cache = |file: &mut File| -> Result<Self> {
             let cipher = xpub.to_cipher()?;
             let decrypted = file.decrypt(&cipher)?;
@@ -250,7 +250,7 @@ impl From<Cache> for RegistryInfos {
 
 /// Removes `assets` from the [`Cache::missing_assets`] section of the
 /// cache file associated to `xpub`.
-pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAssets) -> Result<()> {
+pub(crate) fn update_missing_assets(xpub: Xpub, assets: &RegistryAssets) -> Result<()> {
     let mut cache_files = CACHE_FILES.lock()?;
     let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
     cache.update_missing_or_updated_assets(assets);
@@ -259,7 +259,7 @@ pub(crate) fn update_missing_assets(xpub: ExtendedPubKey, assets: &RegistryAsset
 
 /// Removes `icons` from the [`Cache::missing_icons`] section of the
 /// cache file associated to `xpub`.
-pub(crate) fn update_missing_icons(xpub: ExtendedPubKey, icons: &RegistryIcons) -> Result<()> {
+pub(crate) fn update_missing_icons(xpub: Xpub, icons: &RegistryIcons) -> Result<()> {
     let mut cache_files = CACHE_FILES.lock()?;
     let mut cache = Cache::from_xpub(xpub, &mut *cache_files);
     cache.update_missing_or_updated_icons(icons);
@@ -267,6 +267,6 @@ pub(crate) fn update_missing_icons(xpub: ExtendedPubKey, icons: &RegistryIcons) 
 }
 
 /// Returns the string representation of sha256(xpub).
-fn hash_xpub(xpub: ExtendedPubKey) -> String {
+fn hash_xpub(xpub: Xpub) -> String {
     sha256::Hash::hash(xpub.to_string().as_bytes()).to_string()
 }

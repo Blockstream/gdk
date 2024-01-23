@@ -1,4 +1,4 @@
-use gdk_common::bitcoin::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::Xpub;
 use gdk_common::elements::AssetId;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ pub struct GetAssetsParams {
     assets_id: Option<Vec<AssetId>>,
 
     #[serde(default)]
-    xpub: Option<ExtendedPubKey>,
+    xpub: Option<Xpub>,
 
     #[serde(default)]
     names: Option<Vec<String>>,
@@ -45,7 +45,7 @@ pub enum AssetCategory {
 pub(crate) enum GetAssetsQuery {
     /// Fetch the assets metadata from the user's cache using a vec of
     /// [`AssetId`] and the wallet's xpub.
-    FromCache(Vec<AssetId>, ExtendedPubKey),
+    FromCache(Vec<AssetId>, Xpub),
 
     /// Query the local registry and filter it using a closure that takes two
     /// arguments: an `AssetEntry` representing an asset and an optional string
@@ -129,11 +129,7 @@ impl GetAssetsBuilder {
     }
 
     ///
-    pub fn assets_id<I: IntoIterator<Item = AssetId>>(
-        mut self,
-        ids: I,
-        xpub: ExtendedPubKey,
-    ) -> Self {
+    pub fn assets_id<I: IntoIterator<Item = AssetId>>(mut self, ids: I, xpub: Xpub) -> Self {
         self.0.assets_id = Some(ids.into_iter().collect());
         self.0.xpub = Some(xpub);
         self

@@ -4,7 +4,7 @@ use std::io::{Read, Seek, SeekFrom};
 use crate::error::fn_err;
 use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
-use bitcoin::bip32::ExtendedPubKey;
+use bitcoin::bip32::Xpub;
 use bitcoin::hashes::{sha256, Hash};
 use rand::Rng;
 
@@ -54,7 +54,7 @@ pub trait ToCipher {
     fn to_cipher(self) -> Result<Aes256GcmSiv>;
 }
 
-impl ToCipher for ExtendedPubKey {
+impl ToCipher for Xpub {
     fn to_cipher(self) -> Result<Aes256GcmSiv> {
         let mut enc_key_data = vec![];
         enc_key_data.extend(&self.to_pub().to_bytes());
@@ -81,7 +81,7 @@ mod tests {
         let mut data = [0u8; 64];
         rand::thread_rng().fill(&mut data);
 
-        let cipher = ExtendedPubKey::from_str(XPUB).unwrap().to_cipher().unwrap();
+        let cipher = Xpub::from_str(XPUB).unwrap().to_cipher().unwrap();
 
         (data.to_vec(), cipher)
     }
@@ -114,7 +114,7 @@ mod tests {
     #[test]
     fn test_hardcoded_decryption() {
         let encrypted = include_bytes!("./data/test/encrypted").to_vec();
-        let cipher = ExtendedPubKey::from_str(XPUB).unwrap().to_cipher().unwrap();
+        let cipher = Xpub::from_str(XPUB).unwrap().to_cipher().unwrap();
         let decrypted = encrypted.decrypt(&cipher).unwrap();
         assert_eq!(b"Chancellor on the Brink of Second Bailout for Banks".to_vec(), decrypted);
     }

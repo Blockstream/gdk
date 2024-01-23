@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::scripts::ScriptType;
-use bitcoin::bip32::{ChildNumber, ExtendedPubKey, Fingerprint};
+use bitcoin::bip32::{ChildNumber, Fingerprint, Xpub};
 use miniscript::descriptor::{Descriptor, DescriptorPublicKey, ShInner};
 
 /// Make sure the key origin is in the expected format
@@ -26,10 +26,10 @@ fn match_key_origin(v: &Vec<ChildNumber>, purpose: u32, coin_type: u32) -> Resul
 /// Check that the xpub child number matches the bip32 account number
 fn check_xpub_consitency(
     script_type: ScriptType,
-    xpub: ExtendedPubKey,
+    xpub: Xpub,
     bip32_account: u32,
     fingerprint: Fingerprint,
-) -> Result<(ScriptType, ExtendedPubKey, u32, Fingerprint), Error> {
+) -> Result<(ScriptType, Xpub, u32, Fingerprint), Error> {
     match xpub.child_number {
         ChildNumber::Hardened {
             index: n,
@@ -42,7 +42,7 @@ fn check_xpub_consitency(
 pub fn parse_single_sig_descriptor(
     s: &str,
     coin_type: u32,
-) -> Result<(ScriptType, ExtendedPubKey, u32, Fingerprint), Error> {
+) -> Result<(ScriptType, Xpub, u32, Fingerprint), Error> {
     let (desc, _) =
         Descriptor::parse_descriptor(&crate::EC, s).map_err(|_| Error::UnsupportedDescriptor)?;
     if !desc.has_wildcard() {

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt;
 
-use gdk_common::bitcoin::bip32::ExtendedPubKey;
+use gdk_common::bitcoin::bip32::Xpub;
 use gdk_common::ureq;
 use serde::{Deserialize, Serialize};
 
@@ -30,7 +30,7 @@ pub struct RefreshAssetsParams {
     /// will be updated to remove the newly downloaded assets from the
     /// `missing` section.
     #[serde(default)]
-    pub(crate) xpub: Option<ExtendedPubKey>,
+    pub(crate) xpub: Option<Xpub>,
 }
 
 impl RefreshAssetsParams {
@@ -43,7 +43,7 @@ impl RefreshAssetsParams {
     }
 
     /// Creates a new [`crate::RefreshAssetsParams`].
-    pub fn new(assets: bool, icons: bool, config: Config, xpub: Option<ExtendedPubKey>) -> Self {
+    pub fn new(assets: bool, icons: bool, config: Config, xpub: Option<Xpub>) -> Self {
         Self {
             assets,
             icons,

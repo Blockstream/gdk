@@ -2,8 +2,8 @@ use bitcoin::script::PushBytesBuf;
 use serde::{Deserialize, Serialize};
 
 use bitcoin::blockdata::script::Builder;
-use bitcoin::hash_types::PubkeyHash;
 use bitcoin::hashes::Hash;
+use bitcoin::PubkeyHash;
 use bitcoin::{Address, Network, PublicKey, ScriptBuf};
 
 use std::convert::TryFrom;

@@ -79,27 +79,20 @@ impl FromStr for ElectrumUrl {
 
 #[cfg(test)]
 mod test {
-    use bitcoin_private::hex::exts::DisplayHex;
-    use gdk_common::bitcoin::bip32::{ExtendedPrivKey, ExtendedPubKey};
+    use gdk_common::bitcoin::bip32::{Xpriv, Xpub};
     use gdk_common::bitcoin::consensus::deserialize;
     use gdk_common::bitcoin::hashes::hex::FromHex;
+    use gdk_common::bitcoin::hashes::Hash;
     use gdk_common::bitcoin::key::PrivateKey;
     use gdk_common::bitcoin::key::PublicKey;
     use gdk_common::bitcoin::secp256k1::{Message, SecretKey};
     use gdk_common::bitcoin::sighash::{EcdsaSighashType, SighashCache};
-    use gdk_common::bitcoin::ScriptBuf;
+    use gdk_common::bitcoin::Amount;
     use gdk_common::bitcoin::{Address, Network, Transaction};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
     use super::*;
-
-    fn p2pkh_hex(pk: &str) -> (PublicKey, ScriptBuf) {
-        let pk = Vec::<u8>::from_hex(pk).unwrap();
-        let pk = PublicKey::from_slice(pk.as_slice()).unwrap();
-        let witness_script = Address::p2pkh(&pk, Network::Bitcoin).script_pubkey();
-        (pk, witness_script)
-    }
 
     #[test]
     fn test_bip() {
@@ -118,15 +111,16 @@ mod test {
             inner,
         };
 
-        let (public_key, witness_script) =
-            p2pkh_hex("03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873");
-        assert_eq!(
-            witness_script.to_bytes().to_lower_hex_string(),
-            "76a91479091972186c449eb1ded22b78e40d009bdf008988ac"
-        );
-        let value = 1_000_000_000;
+        let public_key = Vec::<u8>::from_hex(
+            "03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873",
+        )
+        .unwrap();
+        let public_key = PublicKey::from_slice(public_key.as_slice()).unwrap();
+        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).unwrap().script_pubkey();
+        assert_eq!(script_pubkey.to_hex_string(), "001479091972186c449eb1ded22b78e40d009bdf0089");
+        let value = Amount::from_sat(1_000_000_000);
         let hash = SighashCache::new(&tx)
-            .segwit_signature_hash(0, &witness_script, value, EcdsaSighashType::All)
+            .p2wpkh_signature_hash(0, &script_pubkey, value, EcdsaSighashType::All)
             .unwrap();
 
         assert_eq!(
@@ -134,8 +128,10 @@ mod test {
             "64f3b0f4dd2bb3aa1ce8566d220cc74dda9df97d8490cc81d89d735c92e59fb6"
         );
 
-        let signature =
-            crate::EC.sign_ecdsa(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
+        let signature = crate::EC.sign_ecdsa(
+            &Message::from_digest(hash.to_raw_hash().to_byte_array()),
+            &private_key.inner,
+        );
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end
@@ -143,20 +139,17 @@ mod test {
 
         let script_sig = p2shwpkh_script_sig(&public_key);
 
-        assert_eq!(
-            script_sig.as_bytes().to_lower_hex_string(),
-            "16001479091972186c449eb1ded22b78e40d009bdf0089"
-        );
+        assert_eq!(script_sig.to_hex_string(), "16001479091972186c449eb1ded22b78e40d009bdf0089");
     }
 
     #[test]
     fn test_my_tx() {
-        let xprv = ExtendedPrivKey::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
-        let xpub = ExtendedPubKey::from_priv(&crate::EC, &xprv);
+        let xprv = Xpriv::from_str("tprv8jdzkeuCYeH5hi8k2JuZXJWV8sPNK62ashYyUVD9Euv5CPVr2xUbRFEM4yJBB1yBHZuRKWLeWuzH4ptmvSgjLj81AvPc9JhV4i8wEfZYfPb").unwrap();
+        let xpub = Xpub::from_priv(&crate::EC, &xprv);
         let private_key = xprv.to_priv();
         let public_key = xpub.to_pub();
         let public_key_bytes = public_key.to_bytes();
-        let public_key_str = public_key_bytes.to_lower_hex_string();
+        let public_key_str = format!("{}", public_key);
 
         let address = Address::p2shwpkh(&public_key, Network::Testnet).unwrap();
         assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
@@ -170,14 +163,10 @@ mod test {
         let tx_bytes = Vec::<u8>::from_hex(tx_hex).unwrap();
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
 
-        let (_, witness_script) = p2pkh_hex(&public_key_str);
-        assert_eq!(
-            witness_script.as_bytes().to_lower_hex_string(),
-            "76a9141790ee5e7710a06ce4a9250c8677c1ec2843844f88ac"
-        );
-        let value = 10_202;
+        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).unwrap().script_pubkey();
+        let value = Amount::from_sat(10_202);
         let hash = SighashCache::new(&tx)
-            .segwit_signature_hash(0, &witness_script, value, EcdsaSighashType::All)
+            .p2wpkh_signature_hash(0, &script_pubkey, value, EcdsaSighashType::All)
             .unwrap();
 
         assert_eq!(
@@ -185,8 +174,10 @@ mod test {
             "58b15613fc1701b2562430f861cdc5803531d08908df531082cf1828cd0b8995",
         );
 
-        let signature =
-            crate::EC.sign_ecdsa(&Message::from_slice(&hash[..]).unwrap(), &private_key.inner);
+        let signature = crate::EC.sign_ecdsa(
+            &Message::from_digest(hash.to_raw_hash().to_byte_array()),
+            &private_key.inner,
+        );
 
         //let mut signature = signature.serialize_der().to_vec();
         let signature_hex = format!("{:?}01", signature); // add sighash type at the end

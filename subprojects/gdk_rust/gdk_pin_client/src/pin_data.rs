@@ -1,5 +1,5 @@
 use bitcoin::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
-use bitcoin_private::hex::exts::DisplayHex;
+use bitcoin::hex::DisplayHex;
 use serde::{Deserialize, Serialize};
 
 use crate::crypto::{ClientKey, Salt, ServerKey};

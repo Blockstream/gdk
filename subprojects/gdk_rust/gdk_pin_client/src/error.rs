@@ -4,7 +4,10 @@ use thiserror::Error as ThisError;
 #[derive(Debug, ThisError)]
 pub enum Error {
     #[error(transparent)]
-    BitcoinHexError(#[from] bitcoin::hashes::hex::Error),
+    BitcoinHexToBytesError(#[from] bitcoin::hashes::hex::HexToBytesError),
+
+    #[error("Invalid HMAC")]
+    InvalidHmac,
 
     #[error("Couldn't decrypt data: {0}")]
     Decryption(#[from] block_modes::BlockModeError),
@@ -34,7 +37,7 @@ impl PartialEq for Error {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (Self::BitcoinHexError(a), Self::BitcoinHexError(b)) => a == b,
+            (Self::BitcoinHexToBytesError(a), Self::BitcoinHexToBytesError(b)) => a == b,
 
             (Self::Secp256k1(a), Self::Secp256k1(b)) => a == b,
 

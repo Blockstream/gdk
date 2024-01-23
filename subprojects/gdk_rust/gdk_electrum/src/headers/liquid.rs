@@ -133,8 +133,7 @@ impl Verifier {
                 signatures.push(Signature::from_der(&el).map_err(|_| Error::InvalidHeaders)?);
             }
 
-            let msg =
-                Message::from_slice(&hash.to_byte_array()).map_err(|_| Error::InvalidHeaders)?;
+            let msg = Message::from_digest(hash.to_byte_array());
             let mut verified = 0;
             let mut pubkey_index = 0usize;
             for signature in signatures.iter() {

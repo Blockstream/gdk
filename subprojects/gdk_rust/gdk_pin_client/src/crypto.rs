@@ -97,7 +97,7 @@ mod serde_impls {
     //! `Serialize` and `Deserialize` impls for `ClientKey` and `Salt`.
 
     use super::*;
-    use bitcoin_private::hex::exts::DisplayHex;
+    use bitcoin::hex::DisplayHex;
     use serde::{de, ser};
 
     impl<'de> de::Deserialize<'de> for ClientKey {
