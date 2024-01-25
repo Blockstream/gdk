@@ -15,8 +15,9 @@ else
     exit 1
 fi
 
+# FIXME: Change no-tests to no-apps when openssl is updated to 3.x
 OPENSSL_NAME="$(basename ${PRJ_SUBDIR})"
-OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp"
+OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp no-tests no-ui-console"
 OPENSSL_MOBILE="no-hw no-engine"
 
 
@@ -34,9 +35,6 @@ if [ \( "$1" = "--ndk" \) ]; then
     fi
     ./Configure android-$(echo $HOST_ARCH | tr '-' '\n' | head -1) --prefix="$openssl_prefix" $OPENSSL_OPTIONS $OPENSSL_MOBILE
     $SED -ie "s!-ldl!!" "Makefile"
-    make depend
-    make -j$NUM_JOBS 2> /dev/null
-    make install_sw
 elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
     . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
 
@@ -54,15 +52,9 @@ elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
         NOASM=
     fi
     KERNEL_BITS=64 ./Configure $CONFIG_TARGET $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
-    make depend
-    make -j $NUM_JOBS 2> /dev/null
-    make install_sw
 elif [ \( "$1" = "--windows" \) ]; then
     AR=ar RANLIB=ranlib ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- --prefix="$openssl_prefix" $OPENSSL_OPTIONS
     $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
-    make depend
-    make -j$NUM_JOBS 2> /dev/null
-    make install_sw
 else
     if [ "$(uname)" = "Darwin" ]; then
         ARCH=$(uname -m)
@@ -72,7 +64,6 @@ else
         $SED -ie "s!^CFLAG=!CFLAG=-fPIC -DPIC !" "Makefile"
     fi
     $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
-    make depend
-    make -j$NUM_JOBS 2> /dev/null
-    make install_sw
 fi
+make -j$NUM_JOBS 2> /dev/null
+make -j$NUM_JOBS install_sw
