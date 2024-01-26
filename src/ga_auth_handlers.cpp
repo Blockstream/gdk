@@ -628,7 +628,15 @@ namespace sdk {
 
     void sign_transaction_call::initialize()
     {
-        m_session->ensure_full_session();
+        const bool is_electrum = m_net_params.is_electrum();
+        bool have_checked_full_session = false;
+        if (is_electrum) {
+            // FIXME: Support watch-only signing for singlesig when rich
+            // watch-only is enabled.
+            m_session->ensure_full_session();
+            have_checked_full_session = true; // Avoid re-checking
+        }
+
         if (!m_details.empty()) {
             m_details.erase("utxos"); // Not needed anymore
         }
@@ -655,7 +663,7 @@ namespace sdk {
         request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         request["use_ae_protocol"] = use_ae_protocol;
         const bool is_partial = m_details.value("is_partial", false);
-        const bool is_partial_multisig = is_partial && !m_net_params.is_electrum();
+        const bool is_partial_multisig = is_partial && !is_electrum;
         if (is_partial_multisig) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
@@ -691,6 +699,11 @@ namespace sdk {
             } else if (!input.value("skip_signing", false)) {
                 // Wallet input we have been asked to sign. Must be spendable by us
                 GDK_RUNTIME_ASSERT(!j_strref(input, "address_type").empty());
+                if (!have_checked_full_session) {
+                    // Only full (i.e. non watch-only) sessions can sign wallet inputs
+                    m_session->ensure_full_session();
+                    have_checked_full_session = true; // Avoid re-checking
+                }
 
                 // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
                 if (use_ae_protocol) {
