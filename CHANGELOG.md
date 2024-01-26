@@ -12,6 +12,8 @@
 - GA_sign_transaction/GA_send_transaction: Allow re-signing/re-sending
   transactions that are already fully or partially signed. 2FA checks are
   not required for re-signing/re-sending already signed inputs.
+- GA_sign_transaction/GA_send_transaction: Allow watch-only sessions to sign
+  and send sweep transactions using the same flow as full sessions.
 - GA_send_transaction: Allow sending transactions that are not wallet-related
   or contain inputs that are not wallet-related. This allows callers to
   always use GA_send_transaction rather than introspecting transactions to
