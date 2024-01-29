@@ -1,7 +1,7 @@
 # Android (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-android-build -f docker/android/Dockerfile
 #
-FROM debian:bullseye@sha256:d0bf7d85ad1e61ab3520b1d22d1e2a136799defd4e0d1e3f998d3b9045f38551 as base
+FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de as base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
