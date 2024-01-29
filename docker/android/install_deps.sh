@@ -8,7 +8,7 @@ apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-co
 update-java-alternatives -s java-1.11.0-openjdk-amd64
 
 curl -L -o ndk.zip https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
-echo "fdf33d9f6c1b3f16e5459d53a82c7d2201edbcc4 ndk.zip" | sha1sum --check
+echo "ad73c0370f0b0a87d1671ed2fd5a9ac9acfd1eb5c43a7fbfbd330f85d19dd632  ndk.zip" | shasum -a 256 -c
 unzip ndk.zip
 rm ndk.zip
 
