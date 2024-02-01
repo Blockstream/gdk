@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.70.0
+## Release 0.70.1
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.70.0 - 24-02-01
 
 ### Added
 - GA_sign_transaction: Added opt-in support for spending expired CSV outputs
