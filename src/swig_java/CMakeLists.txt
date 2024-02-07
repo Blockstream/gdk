@@ -3,9 +3,12 @@ if (MINGW OR APPLE)
     return()
 endif()
 
-if(ENV{JAVA_HOME})
+if(DEFINED ENV{JAVA_HOME})
     message("using java in $ENV{JAVA_HOME}")
     set(JAVA_HOME $ENV{JAVA_HOME})
+else()
+    message(WARNING "JAVA_HOME not set, skipping java bindings")
+    return()
 endif()
 
 find_program(SED REQUIRED NAMES sed gsed)
