@@ -187,7 +187,7 @@ namespace sdk {
         nlohmann::json authenticate_wo(locker_t& locker, const std::string& username, const std::string& password,
             const std::string& user_agent, bool with_blob);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
-            bool watch_only, bool is_initial_login);
+            bool watch_only, bool is_relogin);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker) const;

@@ -450,13 +450,13 @@ namespace sdk {
     }
 
     nlohmann::json ga_session::on_post_login(locker_t& locker, nlohmann::json& login_data,
-        const std::string& root_bip32_xpub, bool watch_only, bool is_initial_login)
+        const std::string& root_bip32_xpub, bool watch_only, bool is_relogin)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         nlohmann::json old_settings;
-        if (!is_initial_login) {
+        if (is_relogin) {
             GDK_RUNTIME_ASSERT(m_watch_only == watch_only);
             old_settings = get_settings(locker);
         }
@@ -472,10 +472,10 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(gait_path_bytes.size() == gait_path.size() * 2);
         adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
             [](auto first, auto second) { return uint32_t((first << 8u) + second); });
-        if (is_initial_login) {
-            m_gait_path = gait_path;
-        } else {
+        if (is_relogin) {
             GDK_RUNTIME_ASSERT(m_gait_path == gait_path);
+        } else {
+            m_gait_path = gait_path;
         }
 
         if (!m_ga_pubkeys) {
@@ -568,7 +568,7 @@ namespace sdk {
         const auto hash_ids = get_wallet_hash_ids(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
         auto& wallet_hash_id = hash_ids["wallet_hash_id"];
         auto& xpub_hash_id = hash_ids["xpub_hash_id"];
-        if (!is_initial_login) {
+        if (is_relogin) {
             GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
             GDK_RUNTIME_ASSERT(login_data.at("xpub_hash_id") == xpub_hash_id);
         }
@@ -592,7 +592,7 @@ namespace sdk {
         const bool must_notify_settings = old_settings != settings;
 
         auto reset_status = get_twofactor_reset_status(locker, m_login_data);
-        const bool must_notify_reset = is_initial_login || old_reset_status != reset_status;
+        const bool must_notify_reset = !is_relogin || old_reset_status != reset_status;
 
         if (must_notify_settings || must_notify_reset) {
             unique_unlock unlocker(locker);
@@ -621,7 +621,7 @@ namespace sdk {
         nlohmann::json post_login_data = { { "wallet_hash_id", j_strref(m_login_data, "wallet_hash_id") },
             { "warnings", std::move(warnings) }, { "xpub_hash_id", j_strref(m_login_data, "xpub_hash_id") } };
 
-        on_new_block(locker, block_json, !is_initial_login); // Unlocks 'locker'
+        on_new_block(locker, block_json, is_relogin); // Unlocks 'locker'
         return post_login_data;
     }
 
@@ -968,7 +968,7 @@ namespace sdk {
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
-        const bool is_initial_login = set_signer(signer);
+        const bool is_relogin = set_signer(signer);
 
         locker_t locker(m_mutex);
 
@@ -984,7 +984,7 @@ namespace sdk {
             locker.unlock();
             reset_all_session_data(false);
             throw login_error(res::id_login_failed);
-        } else if (!is_initial_login) {
+        } else if (is_relogin) {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
@@ -1030,7 +1030,7 @@ namespace sdk {
         if (is_blob_on_server) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
-            if (!is_initial_login && m_blob_hmac != server_hmac) {
+            if (is_relogin && m_blob_hmac != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
                 m_blob_hmac.clear();
             }
@@ -1042,13 +1042,13 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
         }
 
-        if (is_initial_login) {
+        if (!is_relogin) {
             m_cache->update_to_latest_minor_version();
         }
         m_cache->save_db();
 
         constexpr bool watch_only = false;
-        return on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+        return on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_relogin);
     }
 
     void ga_session::subscribe_all(session_impl::locker_t& locker)
@@ -1378,7 +1378,7 @@ namespace sdk {
 
     nlohmann::json ga_session::login_wo(std::shared_ptr<signer> signer)
     {
-        const bool is_initial_login = set_signer(signer);
+        const bool is_relogin = set_signer(signer);
 
         locker_t locker(m_mutex);
 
@@ -1402,7 +1402,7 @@ namespace sdk {
             login_data = authenticate_wo(locker, username, password, user_agent, false);
         }
 
-        if (!is_initial_login) {
+        if (is_relogin) {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
@@ -1425,7 +1425,7 @@ namespace sdk {
         if (is_blob_on_server && m_blob_aes_key.has_value()) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
-            if (!is_initial_login && m_blob_hmac != server_hmac) {
+            if (is_relogin && m_blob_hmac != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
                 m_blob_hmac.clear();
             }
@@ -1460,7 +1460,7 @@ namespace sdk {
         }
 
         constexpr bool watch_only = true;
-        auto ret = on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_initial_login);
+        auto ret = on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_relogin);
 
         // Note that locker is unlocked at this point
         if (m_blob_aes_key.has_value()) {

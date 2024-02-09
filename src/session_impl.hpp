@@ -112,6 +112,7 @@ namespace sdk {
         virtual void postprocess_transactions(nlohmann::json& tx_list);
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);
+        /// Returns whether the signer was already set (i.e. true if this is a re-login)
         bool set_signer(std::shared_ptr<signer> signer);
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;

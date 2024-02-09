@@ -76,14 +76,14 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        const bool is_initial_login = m_signer == nullptr;
-        if (is_initial_login) {
-            m_signer = signer;
+        if (!m_signer.get()) {
+            // Initial login: set the signer for the session
+            m_signer = std::move(signer);
+            return false;
         } else {
-            // Re-login must use the same signer
             GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
+            return true;
         }
-        return is_initial_login;
     }
 
     void session_impl::disable_notifications() { m_notify = false; }
