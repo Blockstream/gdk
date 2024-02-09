@@ -630,12 +630,6 @@ namespace sdk {
     {
         const bool is_electrum = m_net_params.is_electrum();
         bool have_checked_full_session = false;
-        if (is_electrum) {
-            // FIXME: Support watch-only signing for singlesig when rich
-            // watch-only is enabled.
-            m_session->ensure_full_session();
-            have_checked_full_session = true; // Avoid re-checking
-        }
 
         if (!m_details.empty()) {
             m_details.erase("utxos"); // Not needed anymore

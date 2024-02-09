@@ -6,6 +6,8 @@
 - GA_get_subaccount: add core_descriptors for Liquid Electrum sessions.
 - GA_login_user: add support for Liquid Electrum watch only. It is now
   possible to login with a list of CT descriptors.
+- GA_sign_transaction/GA_send_transaction: Allow Electrum watch-only sessions
+  to sign and send sweep transactions using the same flow as full sessions.
 
 ### Changed
 
