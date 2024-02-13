@@ -2098,7 +2098,7 @@ namespace sdk {
 
     auth_handler::state_type sign_message_call::call_impl()
     {
-        GDK_RUNTIME_ASSERT_MSG(m_net_params.is_electrum() && !m_net_params.is_liquid(), "Invalid network");
+        GDK_RUNTIME_ASSERT_MSG(m_net_params.is_electrum(), "Invalid network");
         auto signer = get_signer();
 
         if (m_address_data.empty()) {
