@@ -564,17 +564,6 @@ namespace sdk {
             update_blob(locker, std::bind(&client_blob::set_xpubs, &m_blob, signer_xpubs));
         }
 
-        // Compute wallet identifier for callers to use if they wish.
-        const auto hash_ids = get_wallet_hash_ids(m_net_params, m_login_data["chain_code"], m_login_data["public_key"]);
-        auto& wallet_hash_id = hash_ids["wallet_hash_id"];
-        auto& xpub_hash_id = hash_ids["xpub_hash_id"];
-        if (is_relogin) {
-            GDK_RUNTIME_ASSERT(login_data.at("wallet_hash_id") == wallet_hash_id);
-            GDK_RUNTIME_ASSERT(login_data.at("xpub_hash_id") == xpub_hash_id);
-        }
-        m_login_data["wallet_hash_id"] = std::move(wallet_hash_id);
-        m_login_data["xpub_hash_id"] = std::move(xpub_hash_id);
-
         // Make sure our list of valid csv blocks values matches the server,
         // and that our current csv blocks setting is valid.
         GDK_RUNTIME_ASSERT(m_net_params.are_matching_csv_buckets(j_arrayref(m_login_data, "csv_times")));
@@ -965,6 +954,23 @@ namespace sdk {
         m_wamp->call(locker, "login.set_appearance", appearance.get());
     }
 
+    void ga_session::derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        auto hash_ids
+            = get_wallet_hash_ids(m_net_params, j_strref(login_data, "chain_code"), j_strref(login_data, "public_key"));
+        for (const auto& key : { "wallet_hash_id"sv, "xpub_hash_id"sv }) {
+            const auto& value = j_strref(hash_ids, key);
+            if (is_relogin) {
+                // Computed ID must match the one we originally logged on with
+                GDK_RUNTIME_ASSERT(j_strref(m_login_data, key) == value);
+            }
+            // Set the newly computed ID
+            login_data[key] = value;
+        }
+    }
+
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
         const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
     {
@@ -988,6 +994,9 @@ namespace sdk {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
+
+        // Compute wallet identifiers
+        derive_wallet_identifiers(locker, login_data, is_relogin);
 
         const bool reset_2fa_active = j_bool_or_false(login_data, "reset_2fa_active");
         const std::string server_hmac = login_data["client_blob_hmac"];
@@ -1406,6 +1415,9 @@ namespace sdk {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }
+
+        // Compute wallet identifiers
+        derive_wallet_identifiers(locker, login_data, is_relogin);
 
         const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 

@@ -12,6 +12,7 @@ namespace ga {
 namespace sdk {
     class amount;
     using json_array_t = std::vector<nlohmann::json>;
+    using namespace std::string_view_literals;
 
     // JSON fetch helpers:
     // j_fooref:      get a const reference to a foo (or by value for value types). Throw if not found.
