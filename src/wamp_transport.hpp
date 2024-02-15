@@ -91,9 +91,6 @@ namespace sdk {
             return call(method_name, std::forward<Args>(args)...);
         }
 
-        // Post a function to run on the asio executor thread
-        template <typename FN> void post(FN&& fn) { boost::asio::post(m_strand, fn); }
-
     private:
         using session_ptr = std::shared_ptr<autobahn::wamp_session>;
 

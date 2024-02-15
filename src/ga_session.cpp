@@ -323,7 +323,7 @@ namespace sdk {
     {
         if (m_notify) {
             if (async) {
-                m_wamp->post([this, details] { emit_notification(details, false); });
+                session_impl::m_strand->post([this, details] { emit_notification(details, false); });
             } else {
                 session_impl::emit_notification(details, false);
             }
@@ -732,7 +732,7 @@ namespace sdk {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            m_wamp->post([this, subaccounts, details] { on_new_transaction(subaccounts, details); });
+            session_impl::m_strand->post([this, subaccounts, details] { on_new_transaction(subaccounts, details); });
             return;
         }
 
@@ -812,7 +812,7 @@ namespace sdk {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            m_wamp->post([this, details, is_relogin] { on_new_block(details, is_relogin); });
+            session_impl::m_strand->post([this, details, is_relogin] { on_new_block(details, is_relogin); });
             return;
         }
         on_new_block(locker, details, is_relogin);
