@@ -1290,12 +1290,14 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        nlohmann::json appearance = m_login_data["appearance"];
-        remap_appearance_settings(locker, settings, appearance, true);
-        cleanup_appearance_settings(locker, appearance);
-        if (appearance != m_login_data["appearance"]) {
-            m_login_data["appearance"] = appearance;
-            push_appearance_to_server(locker);
+        if (!m_watch_only) {
+            nlohmann::json appearance = m_login_data["appearance"];
+            remap_appearance_settings(locker, settings, appearance, true);
+            cleanup_appearance_settings(locker, appearance);
+            if (appearance != m_login_data["appearance"]) {
+                m_login_data["appearance"] = appearance;
+                push_appearance_to_server(locker);
+            }
         }
 
         const auto pricing_p = settings.find("pricing");

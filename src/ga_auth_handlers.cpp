@@ -1605,13 +1605,12 @@ namespace sdk {
 
     void change_settings_call::initialize()
     {
-        m_session->ensure_full_session();
-
-        if (m_net_params.is_electrum()) {
-            return; // Ignore nlocktime for singlesig
+        if (m_net_params.is_electrum() || m_session->is_watch_only()) {
+            return; // Ignore nlocktime for singlesig/watch-only
         }
         const auto nlocktime_p = m_settings.find("nlocktime");
         if (nlocktime_p != m_settings.end()) {
+            m_session->ensure_full_session();
             const uint64_t new_nlocktime = nlocktime_p->get<uint64_t>();
             const uint64_t current_nlocktime = m_session->get_settings()["nlocktime"];
             if (new_nlocktime != current_nlocktime) {
