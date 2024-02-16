@@ -465,6 +465,7 @@ namespace sdk {
 
         // Swap current login data with new; for relogin 'login_data' holds the old values
         m_login_data.swap(login_data);
+        auto warnings = j_array(m_login_data, "warnings").value_or(nlohmann::json::array());
 
         // Parse gait_path into a derivation path
         decltype(m_gait_path) gait_path;
@@ -501,7 +502,19 @@ namespace sdk {
                 if (!exchange.empty() && (currency != m_fiat_currency || exchange != m_fiat_source)) {
                     GDK_LOG(info) << "Pricing source override " << currency << '/' << exchange;
                     constexpr bool is_login = true;
-                    set_pricing_source(locker, currency, exchange, is_login);
+                    try {
+                        set_pricing_source(locker, currency, exchange, is_login);
+                    } catch (const user_error& e) {
+                        // Add a warning that the pricing source is invalid,
+                        // but only if we don't already have one from login.
+                        auto&& match = [](const auto& warning) -> bool {
+                            const auto prefix = "Your previous pricing source is no longer available"sv;
+                            return boost::algorithm::starts_with(warning, prefix);
+                        };
+                        if (std::none_of(warnings.begin(), warnings.end(), match)) {
+                            warnings.push_back(e.what());
+                        }
+                    }
                 }
             }
         }
@@ -619,7 +632,6 @@ namespace sdk {
             = { { "block_height", m_login_data.at("block_height") }, { "block_hash", m_login_data.at("block_hash") },
                   { "diverged_count", 0 }, { "previous_hash", m_login_data.at("prev_block_hash") } };
 
-        auto warnings = j_array(m_login_data, "warnings").value_or(nlohmann::json::array());
         nlohmann::json post_login_data = { { "wallet_hash_id", j_strref(m_login_data, "wallet_hash_id") },
             { "warnings", std::move(warnings) }, { "xpub_hash_id", j_strref(m_login_data, "xpub_hash_id") } };
 
@@ -1937,18 +1949,19 @@ namespace sdk {
 
         if (!ok) {
             // The call to set the pricing source failed.
+            std::string error = "Pricing source unavailable";
             if (is_login) {
                 GDK_RUNTIME_ASSERT(m_watch_only);
                 // Watch-only session setting its override on login.
                 // The override is no longer valid, so remove it, leaving the
                 // full sessions pricing source in place.
-                // FIXME: Add a login warning
                 m_cache->clear_key_value("currency");
                 m_cache->clear_key_value("exchange");
                 m_cache->save_db();
-                return;
+                error = "Your previous pricing source is no longer available and has been updated to ";
+                error += m_fiat_source;
             }
-            throw user_error("Pricing source unavailable");
+            throw user_error(error);
         }
         m_fiat_source = exchange;
         m_fiat_currency = currency;
