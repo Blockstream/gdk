@@ -32,11 +32,12 @@ namespace sdk {
         bool insert_liquid_blinding_data(
             byte_span_t pubkey, byte_span_t script, byte_span_t nonce, byte_span_t blinding_pubkey);
 
+        std::string get_key_value_string(const std::string_view& key);
         typedef std::function<void(std::optional<byte_span_t>)> get_key_value_fn;
-        void get_key_value(const std::string& key, const get_key_value_fn& callback);
+        void get_key_value(const std::string_view& key, const get_key_value_fn& callback);
 
-        void upsert_key_value(const std::string& key, byte_span_t value);
-        void clear_key_value(const std::string& key);
+        void upsert_key_value(const std::string_view& key, byte_span_t value);
+        void clear_key_value(const std::string_view& key);
 
         void set_latest_block(uint32_t block);
         uint32_t get_latest_block();

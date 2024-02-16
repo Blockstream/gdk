@@ -544,7 +544,7 @@ namespace sdk {
         }
     }
 
-    void cache::clear_key_value(const std::string& key)
+    void cache::clear_key_value(const std::string_view& key)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
         const auto _{ stmt_clean(m_stmt_key_value_delete) };
@@ -554,7 +554,18 @@ namespace sdk {
         check_db_changed();
     }
 
-    void cache::get_key_value(const std::string& key, const cache::get_key_value_fn& callback)
+    std::string cache::get_key_value_string(const std::string_view& key)
+    {
+        std::string value;
+        get_key_value(key, { [&value](const auto& db_blob) {
+            if (db_blob.has_value()) {
+                value.assign(db_blob->begin(), db_blob->end());
+            }
+        } });
+        return value;
+    }
+
+    void cache::get_key_value(const std::string_view& key, const cache::get_key_value_fn& callback)
     {
         GDK_RUNTIME_ASSERT(!key.empty());
         const auto _{ stmt_clean(m_stmt_key_value_search) };
@@ -778,7 +789,7 @@ namespace sdk {
         return utxo;
     }
 
-    void cache::upsert_key_value(const std::string& key, byte_span_t value)
+    void cache::upsert_key_value(const std::string_view& key, byte_span_t value)
     {
         GDK_RUNTIME_ASSERT(!key.empty() && !value.empty());
         const auto _{ stmt_clean(m_stmt_key_value_upsert) };

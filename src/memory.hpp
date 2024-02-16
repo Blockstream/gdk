@@ -48,7 +48,7 @@ namespace sdk {
     }
 
     // Make a byte span out of string input
-    inline auto ustring_span(const std::string& str)
+    inline auto ustring_span(const std::string_view& str)
     {
         return gsl::make_span(reinterpret_cast<const unsigned char*>(str.data()), str.size());
     }

@@ -1102,11 +1102,7 @@ namespace sdk {
             // Load our client blob from from the cache if we have one
             std::string db_hmac;
             if (m_watch_only) {
-                m_cache->get_key_value("client_blob_hmac", { [&db_hmac](const auto& db_blob) {
-                    if (db_blob.has_value()) {
-                        db_hmac.assign(db_blob->begin(), db_blob->end());
-                    }
-                } });
+                db_hmac = m_cache->get_key_value_string("client_blob_hmac");
             }
             m_cache->get_key_value("client_blob", { [this, &db_hmac, &server_hmac](const auto& db_blob) {
                 if (db_blob.has_value()) {

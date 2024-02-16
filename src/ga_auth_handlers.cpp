@@ -2132,7 +2132,8 @@ namespace sdk {
                 // Compact format
                 std::copy(sig.begin(), sig.end(), compact_sig.begin());
             }
-            const auto message_hash = format_bitcoin_message_hash(ustring_span(m_twofactor_data["message"]));
+            const auto& message = j_strref(m_twofactor_data, "message");
+            const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
             recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, xpub_hdkey->pub_key);
         } else if (sig.size() == 65) {
             // Recoverable format
