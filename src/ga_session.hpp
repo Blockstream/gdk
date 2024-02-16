@@ -118,8 +118,6 @@ namespace sdk {
 
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& addresses);
 
-        void change_settings_pricing_source(const std::string& currency, const std::string& exchange);
-
         nlohmann::json get_fee_estimates();
 
         std::string get_system_message();
@@ -208,7 +206,8 @@ namespace sdk {
         void on_new_block(nlohmann::json details, bool is_relogin);
         void on_new_block(locker_t& locker, nlohmann::json details, bool is_relogin);
         void on_new_tickers(nlohmann::json details);
-        void change_settings_pricing_source(locker_t& locker, const std::string& currency, const std::string& exchange);
+        void set_pricing_source(
+            locker_t& locker, const std::string& currency, const std::string& exchange, bool is_login);
 
         void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
             nlohmann::json& dst_json, bool from_settings) const;

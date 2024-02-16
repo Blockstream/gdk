@@ -493,6 +493,19 @@ namespace sdk {
         m_fiat_currency = m_login_data["fiat_currency"];
         update_fiat_rate(locker, json_get_value(m_login_data, "fiat_exchange"));
 
+        if (watch_only) {
+            // Check whether the user has locally overriden their pricing source
+            const auto currency = m_cache->get_key_value_string("currency");
+            if (!currency.empty()) {
+                const auto exchange = m_cache->get_key_value_string("exchange");
+                if (!exchange.empty() && (currency != m_fiat_currency || exchange != m_fiat_source)) {
+                    GDK_LOG(info) << "Pricing source override " << currency << '/' << exchange;
+                    constexpr bool is_login = true;
+                    set_pricing_source(locker, currency, exchange, is_login);
+                }
+            }
+        }
+
         m_subaccounts.clear();
         m_next_subaccount = 0;
         for (const auto& sa : m_login_data["subaccounts"]) {
@@ -1300,12 +1313,18 @@ namespace sdk {
             }
         }
 
-        const auto pricing_p = settings.find("pricing");
-        if (pricing_p != settings.end()) {
-            const std::string currency = pricing_p->value("currency", m_fiat_currency);
-            const std::string exchange = pricing_p->value("exchange", m_fiat_source);
+        if (auto p = settings.find("pricing"); p != settings.end()) {
+            auto currency = j_str_or_empty(*p, "currency");
+            if (currency.empty()) {
+                currency = m_fiat_currency;
+            }
+            auto exchange = j_str_or_empty(*p, "exchange");
+            if (exchange.empty()) {
+                exchange = m_fiat_source;
+            }
             if (currency != m_fiat_currency || exchange != m_fiat_source) {
-                change_settings_pricing_source(locker, currency, exchange);
+                constexpr bool is_login = false;
+                set_pricing_source(locker, currency, exchange, is_login);
             }
         }
     }
@@ -1903,22 +1922,43 @@ namespace sdk {
         update_spending_limits(locker, details);
     }
 
-    void ga_session::change_settings_pricing_source(const std::string& currency, const std::string& exchange)
-    {
-        locker_t locker(m_mutex);
-        return change_settings_pricing_source(locker, currency, exchange);
-    }
-
-    void ga_session::change_settings_pricing_source(
-        session_impl::locker_t& locker, const std::string& currency, const std::string& exchange)
+    void ga_session::set_pricing_source(
+        session_impl::locker_t& locker, const std::string& currency, const std::string& exchange, bool is_login)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        std::optional<std::string> fiat_rate;
+        bool ok = false;
 
-        auto fiat_rate = wamp_cast_nil(m_wamp->call(locker, "login.set_pricing_source_v2", currency, exchange));
+        try {
+            fiat_rate = wamp_cast_nil(m_wamp->call(locker, "login.set_pricing_source_v2", currency, exchange));
+            ok = true;
+        } catch (const std::exception& e) {
+        }
 
+        if (!ok) {
+            // The call to set the pricing source failed.
+            if (is_login) {
+                GDK_RUNTIME_ASSERT(m_watch_only);
+                // Watch-only session setting its override on login.
+                // The override is no longer valid, so remove it, leaving the
+                // full sessions pricing source in place.
+                // FIXME: Add a login warning
+                m_cache->clear_key_value("currency");
+                m_cache->clear_key_value("exchange");
+                m_cache->save_db();
+                return;
+            }
+            throw user_error("Pricing source unavailable");
+        }
         m_fiat_source = exchange;
         m_fiat_currency = currency;
         update_fiat_rate(locker, fiat_rate.value_or(std::string()));
+        if (m_watch_only) {
+            // Watch-only session setting a new pricing source: cache it.
+            m_cache->upsert_key_value("currency", ustring_span(currency));
+            m_cache->upsert_key_value("exchange", ustring_span(exchange));
+            m_cache->save_db();
+        }
     }
 
     static void remove_utxo_proofs(nlohmann::json& utxo, bool mark_unconfidential)
