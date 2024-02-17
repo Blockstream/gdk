@@ -1,0 +1,97 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Multisig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "all": [
+      "AUD",
+      "BRL",
+      "CAD",
+      "CHF",
+      "CNY",
+      "CZK",
+      "DKK",
+      "EUR",
+      "GBP",
+      "HKD",
+      "IDR",
+      "ILS",
+      "INR",
+      "JPY",
+      "MXN",
+      "MYR",
+      "NGN",
+      "NOK",
+      "NZD",
+      "PLN",
+      "RUB",
+      "SEK",
+      "SGD",
+      "THB",
+      "TRY",
+      "USD",
+      "VND",
+      "ZAR"
+    ],
+    "per_exchange": {
+      "BITFINEX": [
+        "USD"
+      ],
+      "BITSTAMP": [
+        "USD"
+      ],
+      "BULLBITCOIN": [
+        "CAD"
+      ],
+      "COINGECKO": [
+        "AUD",
+        "BRL",
+        "CAD",
+        "CHF",
+        "CNY",
+        "CZK",
+        "DKK",
+        "EUR",
+        "GBP",
+        "HKD",
+        "IDR",
+        "ILS",
+        "INR",
+        "JPY",
+        "MXN",
+        "MYR",
+        "NGN",
+        "NOK",
+        "NZD",
+        "PLN",
+        "RUB",
+        "SEK",
+        "SGD",
+        "THB",
+        "TRY",
+        "USD",
+        "VND",
+        "ZAR"
+      ],
+      "KIWICOIN": [
+        "NZD"
+      ],
+      "KRAKEN": [
+        "EUR",
+        "USD"
+      ],
+      "LUNO": [
+        "IDR",
+        "MYR",
+        "NGN",
+        "ZAR"
+      ]
+    }
+  }
+
+.. raw:: html
+
+  </details>

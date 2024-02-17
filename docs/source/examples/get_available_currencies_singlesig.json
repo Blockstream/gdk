@@ -1,0 +1,97 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Singlesig example</a></summary>
+
+.. code-block:: json
+
+  {
+    "all": [
+      "CZK",
+      "EUR",
+      "AUD",
+      "HKD",
+      "MXN",
+      "NGN",
+      "CAD",
+      "THB",
+      "TRY",
+      "IDR",
+      "JPY",
+      "VND",
+      "SEK",
+      "CHF",
+      "INR",
+      "USD",
+      "BRL",
+      "DKK",
+      "GBP",
+      "RUB",
+      "NZD",
+      "SGD",
+      "ZAR",
+      "MYR",
+      "CNY",
+      "NOK",
+      "PLN",
+      "ILS"
+    ],
+    "per_exchange": {
+      "BITFINEX": [
+        "USD"
+      ],
+      "BITSTAMP": [
+        "USD"
+      ],
+      "BULLBITCOIN": [
+        "CAD"
+      ],
+      "COINGECKO": [
+        "AUD",
+        "BRL",
+        "CAD",
+        "CHF",
+        "CNY",
+        "CZK",
+        "DKK",
+        "EUR",
+        "GBP",
+        "HKD",
+        "IDR",
+        "ILS",
+        "INR",
+        "JPY",
+        "MXN",
+        "MYR",
+        "NGN",
+        "NOK",
+        "NZD",
+        "PLN",
+        "RUB",
+        "SEK",
+        "SGD",
+        "THB",
+        "TRY",
+        "USD",
+        "VND",
+        "ZAR"
+      ],
+      "KIWICOIN": [
+        "NZD"
+      ],
+      "KRAKEN": [
+        "EUR",
+        "USD"
+      ],
+      "LUNO": [
+        "IDR",
+        "MYR",
+        "NGN",
+        "ZAR"
+      ]
+    }
+  }
+
+.. raw:: html
+
+  </details>

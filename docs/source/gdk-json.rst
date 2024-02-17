@@ -1499,16 +1499,16 @@ Amount JSON
 Available currencies JSON
 -------------------------
 
-Lists the currencies and exchange pricing sources available to the session,
-returned by `GA_get_available_currencies`.
+Lists the currencies and pricing sources (exchanges) available to the session,
+returned by `GA_get_available_currencies`. Note that the available pricing
+sources and/or currencies available at each source may differ between singlesig
+multisig sessions.
 
-.. code-block:: json
+.. include:: examples/get_available_currencies_singlesig.json
+.. include:: examples/get_available_currencies_multisig.json
 
-   {
-     "all":["AUD","BRL","CAD","CHF","CNY","DKK","EUR","GBP","HKD","IDR","INR","JPY","MXN","MYR","NGN","NOK","NZD","PLN","RUB","SEK","SGD","THB","TRY","USD","ZAR"],
-     "per_exchange":{"BITFINEX":["USD"],"BITSTAMP":["USD"],"BTCAVG":[],"BTCCHINA":[],"HUOBI":[],"KIWICOIN":["NZD"],"KRAKEN":["EUR","USD"],"LOCALBTC":["AUD","BRL","CAD","CHF","CNY","DKK","EUR","GBP","HKD","IDR","INR","JPY","MXN","MYR","NGN","NOK","NZD","PLN","RUB","SEK","SGD","THB","TRY","USD","ZAR"],"LUNO":["IDR","MYR","NGN","ZAR"],"QUADRIGACX":["CAD","USD"],"TRT":["EUR"]}
-   }
-
+:all: An array of all currecies available across all pricing sources.
+:per_exchange: An array of pricing source keys, with the currencies available for each pricing source as the keys value.
 
 
 .. _http-params:
