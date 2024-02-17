@@ -168,7 +168,7 @@ Notified when the user's exchange rate changes.
 
 :ticker/currency: The user's chosen fiat currency.
 :ticker/exhange: The user's chosen exchange source.
-:ticker/rate: The price of 1 Bitcoin expressed in the user's fiat currency, expressed as a floating point string.
+:ticker/rate: The price of 1 Bitcoin in the user's chosen fiat currency, expressed as a floating point string.
 
 
 .. _ntf-subaccount:
