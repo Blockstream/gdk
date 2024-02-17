@@ -871,12 +871,30 @@ in the ``"bytes"`` ``ur_type`` section below.
 Settings JSON
 -------------
 
-Contains the users settings.
+Contains the users settings returned from `GA_get_settings`, or passed
+to `GA_change_settings` to update the users settings.
+
+If a given key is ommitted when changing settings, that setting will remain
+unchanged.
+
+.. note:: Multisig watch-only sessions can only change settings under the ``"pricing"`` key.
 
 .. include:: examples/get_settings_multisig.json
 .. include:: examples/get_settings_singlesig.json
 .. include:: examples/get_settings_multisig_liquid.json
 .. include:: examples/get_settings_singlesig_liquid.json
+
+:altimeout: The time in seconds before the wallet should time out and disconnect. Defaults to ``5``.
+:csvtime: Multisig Only. The number of blocks before CSV UTXOs expire. Defaults to the highest value in the ``"csv_buckets"`` list in the network's :ref:`network`.
+:nlocktime: Multisig Only. The number of blocks before P2SH UTXOs expire. Defaults to ``12960``, must be between ``144`` and ``200000``.
+:required_num_blocks: The number of blocks to use for the default transaction fee estimate. Defaults to ``12``.
+:sound: Whether the wallet should enable notification sounds if supported. Defaults to ``true``.
+:unit: The users preferred unit for displaying coin amounts. Defaults to ``"BTC"``, must be one of ``"btc"``, ``"mbtc"``, ``"ubtc"``, ``"bits"`` or ``"sats"``.
+:notifications/email_login: Multisig Only. Whether to email the user whenever a login is made. Defaults to ``false``.
+:notifications/email_incoming: Multisig Only. Whether to email notifications of incoming transactions. Defaults to ``false``.
+:notifications/email_outgoing: Multisig Only. Whether to email notifications of outgoing transactions. Defaults to ``false``.
+:pricing/currency: The users preferred fiat currency for displaying fiat amounts. Defaults to ``"USD"``, must be one of the values returned in :ref:`currencies` for the chosen ``"exchange"``.
+:pricing/exchange: The users preferred exchange source for fiat pricing. Defaults to ``"BITSTAMP"``, must be one of the ``"per_exchange"`` keys returned in :ref:`currencies`.
 
 
 .. _receive-address-request:
@@ -1480,6 +1498,9 @@ Amount JSON
 
 Available currencies JSON
 -------------------------
+
+Lists the currencies and exchange pricing sources available to the session,
+returned by `GA_get_available_currencies`.
 
 .. code-block:: json
 
