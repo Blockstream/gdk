@@ -10,7 +10,8 @@
       "email",
       "sms",
       "phone",
-      "gauth"
+      "gauth",
+      "telegram"
     ],
     "any_enabled": false,
     "email": {
@@ -43,6 +44,11 @@
       "enabled": false
     },
     "sms": {
+      "confirmed": false,
+      "data": "",
+      "enabled": false
+    },
+    "telegram": {
       "confirmed": false,
       "data": "",
       "enabled": false

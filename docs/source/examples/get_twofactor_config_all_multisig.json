@@ -22,7 +22,8 @@
       "email",
       "sms",
       "phone",
-      "gauth"
+      "gauth",
+      "telegram"
     ],
     "gauth": {
       "confirmed": true,

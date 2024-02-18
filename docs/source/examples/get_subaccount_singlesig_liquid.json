@@ -8,8 +8,8 @@
   {
     "bip44_discovered": false,
     "core_descriptors": [
-      "sh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/0/*))#fl5guxrs",
-      "sh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/1/*))#u767yek0"
+      "ct(slip77(55fa38cb2b21bcbb038260c045edbdad73d733114f44e598cadbf9d21599e959),elsh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/0/*)))#kqd9xf5d",
+      "ct(slip77(55fa38cb2b21bcbb038260c045edbdad73d733114f44e598cadbf9d21599e959),elsh(wpkh([386e8558/49'/1'/0']tpubDC2Q4xK4XH72GCMj4pLC95ZyDaset6YG6wtEpo6avjWg3uP25RskxXYt9WeNbCEWrd183N6hb5dGhsrsg9y8f9JFXx3VKTtxBmEpgLWMcHh/1/*)))#xx85kep5"
     ],
     "hidden": false,
     "name": "Example subaccount name",
