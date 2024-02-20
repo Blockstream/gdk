@@ -758,7 +758,7 @@ namespace sdk {
     std::string network_parameters::network() const { return m_details.at("network"); }
     std::string network_parameters::gait_wamp_url(const std::string& config_prefix) const
     {
-        return m_details.at(config_prefix + "wamp_url");
+        return m_details.at(config_prefix + "_url");
     }
     std::vector<std::string> network_parameters::gait_wamp_cert_pins() const
     {
@@ -802,7 +802,7 @@ namespace sdk {
     std::string network_parameters::pub_key() const { return m_details.at("service_pubkey"); }
     std::string network_parameters::gait_onion(const std::string& config_prefix) const
     {
-        return m_details.at(config_prefix + "wamp_onion_url");
+        return m_details.at(config_prefix + "_onion_url");
     }
     std::string network_parameters::get_policy_asset() const { return m_details.value("policy_asset", "btc"); }
     std::string network_parameters::bip21_prefix() const { return m_details.at("bip21_prefix"); }
