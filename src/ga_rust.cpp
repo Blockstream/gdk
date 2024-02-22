@@ -526,7 +526,7 @@ namespace sdk {
         throw std::runtime_error("upload_confidential_addresses not yet implemented");
     }
 
-    void ga_rust::disable_all_pin_logins() {}
+    void ga_rust::disable_all_pin_logins() { throw std::runtime_error("disable_all_pin_logins not implemented"); }
 
     nlohmann::json ga_rust::get_address_data(const nlohmann::json& details)
     {
