@@ -122,7 +122,7 @@ impl BEScriptConvert for &bitcoin::Script {
         self.to_owned().into_elements()
     }
     fn into_be(self) -> BEScript {
-        self.clone().into()
+        self.into()
     }
 }
 
@@ -148,7 +148,7 @@ impl From<elements::Script> for BEScript {
 }
 impl From<&bitcoin::Script> for BEScript {
     fn from(script: &bitcoin::Script) -> BEScript {
-        script.clone().into()
+        script.into()
     }
 }
 
