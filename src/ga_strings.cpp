@@ -101,6 +101,9 @@ namespace sdk {
            // watch-only mode.
         const std::string id_always{ "id_always" }; // Always
         const std::string id_amount{ "id_amount" }; // Amount
+        const std::string id_amount_above_maximum_allowed{ "id_amount_above_maximum_allowed" }; // Amount
+        const std::string id_amount_below_minimum_allowed{ "id_amount_below_minimum_allowed_allowed" }; // Amount
+        const std::string id_amount_below_the_dust_threshold{ "id_amount_below_the_dust_threshold" }; // Amount
         const std::string id_amount_in_s{ "id_amount_in_s" }; // Amount in %s
         const std::string id_amp_account{ "id_amp_account" }; // AMP Account
         const std::string id_amp_accounts_are_only_available{

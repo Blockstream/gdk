@@ -760,7 +760,7 @@ namespace sdk {
             const auto satoshi = j_amountref(addressee);
             if (satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
-                throw user_error(res::id_invalid_amount);
+                throw user_error(res::id_amount_below_the_dust_threshold);
             }
         }
         if (!j_str_is_empty(addressee, "address_type")) {

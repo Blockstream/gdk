@@ -72,6 +72,9 @@ namespace sdk {
         extern const std::string id_allows_you_to_quickly_check;
         extern const std::string id_always;
         extern const std::string id_amount;
+        extern const std::string id_amount_above_maximum_allowed;
+        extern const std::string id_amount_below_minimum_allowed;
+        extern const std::string id_amount_below_the_dust_threshold;
         extern const std::string id_amount_in_s;
         extern const std::string id_amp_account;
         extern const std::string id_amp_accounts_are_only_available;

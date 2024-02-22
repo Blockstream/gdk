@@ -108,8 +108,12 @@ namespace sdk {
 
         // Check upper limit for btc type (ie. non-asset) inputs
         // Note: an asset_info block indicating btc denomination would have failed key_count check above
-        if (asset_p == end_p && (satoshi > SATOSHI_MAX || satoshi < -SATOSHI_MAX)) {
-            throw user_error(res::id_invalid_amount);
+        if (asset_p == end_p) {
+            if (satoshi > SATOSHI_MAX) {
+                throw user_error(res::id_amount_above_maximum_allowed);
+            } else if (satoshi < -SATOSHI_MAX) {
+                throw user_error(res::id_amount_below_minimum_allowed);
+            }
         }
 
         // Then compute the other denominations and fiat amount

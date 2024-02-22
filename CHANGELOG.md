@@ -5,6 +5,10 @@
 ### Added
 
 ### Changed
+- GA_create_transaction/GA_convert_amount: In addition to id_invalid_amount returned
+  when an amount is malformed, the errors id_amount_above_maximum_allowed, id_amount_below_minimum_allowed,
+  and id_amount_below_the_dust_threshold are now returned if the amount is a valid number
+  but outside of the acceptable range of values for the amount in question.
 
 ### Fixed
 
