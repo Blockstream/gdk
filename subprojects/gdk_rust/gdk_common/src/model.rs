@@ -650,11 +650,15 @@ impl Settings {
         }
         if let Some(pricing) = json.get("pricing") {
             if let Some(currency) = pricing.get("currency").and_then(|v| v.as_str()) {
-                let currency = Currency::from_str(currency)?;
-                self.pricing.currency = currency.to_string();
+                if !currency.is_empty() {
+                    let currency = Currency::from_str(currency)?;
+                    self.pricing.currency = currency.to_string();
+                }
             }
             if let Some(exchange) = pricing.get("exchange").and_then(|v| v.as_str()) {
-                self.pricing.exchange = exchange.to_string();
+                if !exchange.is_empty() {
+                    self.pricing.exchange = exchange.to_string();
+                }
             }
         }
         if let Some(sound) = json.get("sound").and_then(|v| v.as_bool()) {
