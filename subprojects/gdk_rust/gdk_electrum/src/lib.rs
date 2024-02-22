@@ -45,7 +45,7 @@ use gdk_common::network;
 use gdk_common::NetworkId;
 use gdk_common::EC;
 use std::collections::hash_map::Entry;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::convert::{TryFrom, TryInto};
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -1166,7 +1166,7 @@ impl ElectrumSession {
             )?),
         };
 
-        let all = currencies.values().flatten().collect::<HashSet<_>>();
+        let all = currencies.values().flatten().collect::<BTreeSet<_>>();
 
         Ok(json!({ "all": all, "per_exchange": &currencies }))
     }

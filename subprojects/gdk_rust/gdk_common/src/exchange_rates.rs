@@ -32,7 +32,7 @@ pub trait ExchangeRatesCacher {
     }
 }
 
-#[derive(PartialEq, Eq, Debug, Copy, Clone, Hash)]
+#[derive(PartialEq, Eq, Debug, Copy, Clone, Hash, PartialOrd, Ord)]
 #[cfg_attr(test, derive(strum_macros::EnumIter))]
 pub enum Currency {
     BTC,
