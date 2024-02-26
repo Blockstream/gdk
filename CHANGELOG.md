@@ -16,6 +16,8 @@
   affect any associated full session or any other watch-only sessions.
 
 ### Fixed
+- Shared libraries for Android platforms now correctly export C API symbols
+  in addition to the Java JNI symbols (this was broken in release 0.69.0).
 
 ### Removed
 

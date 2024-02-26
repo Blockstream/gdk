@@ -1,4 +1,3 @@
-include(GenerateExportHeader)
 include(GNUInstallDirs)
 
 # version file
@@ -6,7 +5,7 @@ find_file(version_file version.h.in PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 configure_file(${version_file} version.h @ONLY)
 
 add_library(greenaddress)
-target_sources( greenaddress PRIVATE
+target_sources(greenaddress PRIVATE
     amount.cpp amount.hpp
     assertion.cpp assertion.hpp
     auth_handler.cpp auth_handler.hpp
@@ -40,13 +39,9 @@ target_sources( greenaddress PRIVATE
     xpub_hdkey.cpp xpub_hdkey.hpp
 )
 
-generate_export_header(greenaddress
-    BASE_NAME gdk 
-    EXPORT_MACRO_NAME GDK_API
-)
 target_compile_definitions(greenaddress
     PRIVATE
-        greenaddress_EXPORTS
+        GDK_BUILD
         _FORTIFY_SOURCE=2
 )
 if(Windows)
@@ -129,7 +124,6 @@ target_link_libraries(
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
     ${CMAKE_SOURCE_DIR}/include/module.modulemap
     ${CMAKE_SOURCE_DIR}/include/wally_wrapper.h
-    ${CMAKE_CURRENT_BINARY_DIR}/gdk_export.h
 )
 
 set_target_properties(greenaddress PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
