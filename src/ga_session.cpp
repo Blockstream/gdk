@@ -1037,7 +1037,7 @@ namespace sdk {
 
         const bool reset_2fa_active = j_bool_or_false(login_data, "reset_2fa_active");
         const std::string server_hmac = login_data["client_blob_hmac"];
-        bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+        bool is_blob_on_server = server_hmac != client_blob::get_zero_hmac();
 
         if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
@@ -1476,7 +1476,7 @@ namespace sdk {
         }
 
         const std::string server_hmac = login_data["client_blob_hmac"];
-        const bool is_blob_on_server = !client_blob::is_zero_hmac(server_hmac);
+        const bool is_blob_on_server = server_hmac != client_blob::get_zero_hmac();
         if (is_blob_on_server) {
             get_cached_client_blob(server_hmac);
         }

@@ -50,7 +50,7 @@ namespace sdk {
         void load(byte_span_t key, byte_span_t data);
         std::pair<std::vector<unsigned char>, std::string> save(byte_span_t key, byte_span_t hmac_key) const;
 
-        static bool is_zero_hmac(const std::string& hmac);
+        static const std::string& get_zero_hmac();
         static std::string compute_hmac(byte_span_t hmac_key, byte_span_t data);
 
     private:

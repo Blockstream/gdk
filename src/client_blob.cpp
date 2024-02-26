@@ -171,7 +171,7 @@ namespace sdk {
         return {};
     }
 
-    bool client_blob::is_zero_hmac(const std::string& hmac) { return hmac == ZERO_HMAC_BASE64; }
+    const std::string& client_blob::get_zero_hmac() { return ZERO_HMAC_BASE64; }
 
     std::string client_blob::compute_hmac(byte_span_t hmac_key, byte_span_t data)
     {
