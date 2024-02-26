@@ -1,0 +1,17 @@
+.. raw:: html
+
+  <details>
+  <summary><a>Example</a></summary>
+
+.. code-block:: json
+
+  {
+    "wallet_hash_id": "3cc371810dfa275a8654d4d70986c2d92ce229d611c9ab2da0ab40ea9a0da1bb",
+    "warnings": [],
+    "xpub_hash_id": "cd2474f9b6bffbbbac45179c6bce45436370264a1607880f5a56e70a016ba08a"
+  }
+
+.. raw:: html
+
+  </details>
+
