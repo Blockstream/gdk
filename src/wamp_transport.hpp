@@ -68,7 +68,7 @@ namespace sdk {
 
         // Subscribe to a topic. Use is_initial=true for the first
         // subscription after reconnecting
-        void subscribe(const std::string& topic, subscribe_fn_t fn, bool is_initial = false);
+        void subscribe(const std::string& topic, subscribe_fn_t cb, bool is_initial = false);
 
         // Make a background WAMP call and return its result to the current thread.
         // The session mutex must not be held when calling this function.

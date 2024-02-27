@@ -667,27 +667,48 @@ namespace sdk {
         m_condition.wait_for(locker, backoff_time, elapsed_fn);
     }
 
-    void wamp_transport::subscribe(const std::string& topic, wamp_transport::subscribe_fn_t fn, bool is_initial)
+    void wamp_transport::subscribe(const std::string& topic, wamp_transport::subscribe_fn_t cb, bool is_initial)
     {
-        decltype(m_subscriptions) subscriptions;
-
-        locker_t locker(m_mutex);
-        if (is_initial) {
-            m_subscriptions.swap(subscriptions);
-            m_subscriptions.reserve(4u);
+        const autobahn::wamp_subscribe_options options("exact");
+        auto st = get_session_and_transport();
+        if (!st.first || !st.second) {
+            throw reconnect_error{};
         }
-        decltype(m_session) s{ m_session };
-        GDK_RUNTIME_ASSERT(s.get());
-        autobahn::wamp_subscription sub;
+
+        decltype(m_subscriptions) subscriptions;
         {
-            // TODO: Set m_last_ping_ts whenever we receive a subscription
-            unique_unlock unlocker(locker);
-            const autobahn::wamp_subscribe_options options("exact");
-            sub = s->subscribe(
-                       topic, [fn](const autobahn::wamp_event& e) { fn(wamp_cast_json(e)); }, options)
-                      .get();
+            locker_t locker(m_mutex);
+            if (is_initial) {
+                m_subscriptions.swap(subscriptions);
+                m_subscriptions.reserve(4u);
+            }
+        }
+
+        autobahn::wamp_subscription sub;
+        // TODO: Set m_last_ping_ts whenever we receive a subscription
+        auto fn = st.first->subscribe(
+            topic, [cb](const autobahn::wamp_event& e) { cb(wamp_cast_json(e)); }, options);
+        for (;;) {
+            const auto status = fn.wait_for(boost::chrono::seconds(1));
+            if (status == boost::future_status::ready) {
+                break;
+            }
+            if (status == boost::future_status::timeout) {
+                locker_t locker(m_mutex);
+                if (m_transport.get() != st.second || !m_transport->is_connected()) {
+                    notify_failure(locker, "subscribe transport disconnected/changed");
+                    throw timeout_error{};
+                }
+            }
+        }
+        try {
+            sub = fn.get();
+        } catch (const boost::future_error& ex) {
+            notify_failure(std::string("wamp call exception: ") + ex.what());
+            throw reconnect_error{};
         }
         GDK_LOG(debug) << "subscribed to " << topic << ":" << sub.id();
+        locker_t locker(m_mutex);
         m_subscriptions.emplace_back(sub);
     }
 
