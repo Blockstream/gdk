@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.70.1
+## Release 0.70.2
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.70.1 - 24-02-28
 
 ### Added
 - GA_login_user: add support for Liquid Electrum watch only. It is now
