@@ -190,7 +190,10 @@ namespace sdk {
         // which in turn only happens if we're querying via asset ids.
         if (params.contains("assets_id")) {
             if (auto signer = get_signer(); signer) {
-                params["xpub"] = signer->get_master_bip32_xpub();
+                // Descriptor watch only does not have the master xpub
+                if (!(m_net_params.is_electrum() && signer->is_watch_only())) {
+                    params["xpub"] = signer->get_master_bip32_xpub();
+                }
             }
         }
         params["config"] = get_registry_config();
