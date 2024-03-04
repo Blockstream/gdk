@@ -972,13 +972,6 @@ namespace sdk {
         }
     }
 
-    void ga_session::push_appearance_to_server(session_impl::locker_t& locker) const
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto appearance = mp_cast(m_login_data["appearance"]);
-        m_wamp->call(locker, "login.set_appearance", appearance.get());
-    }
-
     void ga_session::derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1320,8 +1313,8 @@ namespace sdk {
             remap_appearance_settings(locker, settings, appearance, true);
             cleanup_appearance_settings(locker, appearance);
             if (appearance != m_login_data["appearance"]) {
-                m_login_data["appearance"] = appearance;
-                push_appearance_to_server(locker);
+                m_wamp->call(locker, "login.set_appearance", mp_cast(appearance).get());
+                m_login_data["appearance"] = std::move(appearance);
             }
         }
 
