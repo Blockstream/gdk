@@ -1630,10 +1630,12 @@ namespace sdk {
             return m_state;
         }
 
-        m_session->change_settings(m_settings);
-        if (!m_nlocktime_value.is_null()) {
+        if (!m_nlocktime_value.empty()) {
             m_session->set_nlocktime(m_nlocktime_value, m_twofactor_data);
+            m_nlocktime_value = {};
         }
+
+        m_session->change_settings(m_settings);
         return state_type::done;
     }
 
