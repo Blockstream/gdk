@@ -987,7 +987,7 @@ namespace sdk {
             = get_wallet_hash_ids(m_net_params, j_strref(login_data, "chain_code"), j_strref(login_data, "public_key"));
         for (const auto& key : { "wallet_hash_id"sv, "xpub_hash_id"sv }) {
             const auto& value = j_strref(hash_ids, key);
-            if (is_relogin) {
+            if (is_relogin && !m_login_data.empty() && m_login_data.contains(key)) {
                 // Computed ID must match the one we originally logged on with
                 GDK_RUNTIME_ASSERT(j_strref(m_login_data, key) == value);
             }
