@@ -51,8 +51,6 @@ namespace sdk {
         std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
-        template <typename T>
-        void change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data);
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
         nlohmann::json get_subaccounts();

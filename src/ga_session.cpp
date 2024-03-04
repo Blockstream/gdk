@@ -1919,17 +1919,11 @@ namespace sdk {
         } });
     }
 
-    // Idempotent
-    template <typename T>
-    void ga_session::change_settings(const std::string& key, const T& value, const nlohmann::json& twofactor_data)
-    {
-        auto result = m_wamp->call("login.change_settings", key, value, mp_cast(twofactor_data).get());
-        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
-    }
-
     void ga_session::change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data)
     {
-        change_settings("tx_limits", mp_cast(details).get(), twofactor_data);
+        auto result
+            = m_wamp->call("login.change_settings", "tx_limits", mp_cast(details).get(), mp_cast(twofactor_data).get());
+        GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
         locker_t locker(m_mutex);
         update_spending_limits(locker, details);
     }
