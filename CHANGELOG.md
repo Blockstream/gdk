@@ -1,12 +1,27 @@
 # Changelog
 
-## Release 0.70.2
+## Release 0.70.3
 
 ### Added
 
 ### Changed
 
 ### Fixed
+
+### Removed
+
+## Release 0.70.2 - 24-03-04
+
+### Added
+
+### Changed
+
+### Fixed
+
+- Singlesig: watch-only: make GA_get_assets and GA_refresh_assets work
+- Multisig: fix GA_login_user for sessions under 2FA reset
+- Multisig: fix for subscribe calls hanging indefinitely in some cases
+  under macos.
 
 ### Removed
 
