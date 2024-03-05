@@ -217,6 +217,20 @@ namespace sdk {
             appearance = clean;
         }
 
+        static auto get_wo_appearance_overrides(const session_impl::locker_t& locker, const nlohmann::json& appearance)
+        {
+            GDK_RUNTIME_ASSERT(locker.owns_lock());
+            nlohmann::json wo_appearance{};
+            for (const auto& key : { "unit"sv, "sound"sv, "altimeout"sv, "required_num_blocks"sv }) {
+                if (auto p = appearance.find(key); p != appearance.end()) {
+                    if (!p->is_string() || !p->get_ref<const std::string&>().empty()) {
+                        wo_appearance[key] = *p;
+                    }
+                }
+            }
+            return wo_appearance;
+        }
+
         std::string get_user_agent(bool supports_csv, const std::string& version)
         {
             constexpr auto max_len = 64;
@@ -575,8 +589,12 @@ namespace sdk {
         const auto p = m_login_data.find("limits");
         update_spending_limits(locker, p == m_login_data.end() ? nlohmann::json::object() : *p);
 
-        auto& appearance = m_login_data["appearance"];
-        cleanup_appearance_settings(locker, appearance);
+        cleanup_appearance_settings(locker, m_login_data["appearance"]);
+        if (watch_only) {
+            auto overrides_str = m_cache->get_key_value_string("appearance");
+            auto overrides = nlohmann::json::parse(overrides_str.empty() ? "{}" : overrides_str);
+            m_login_data["appearance"].update(overrides);
+        }
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
@@ -674,7 +692,7 @@ namespace sdk {
     amount ga_session::get_default_fee_rate() const
     {
         locker_t locker(m_mutex);
-        const uint32_t block = json_get_value(m_login_data["appearance"], "required_num_blocks", 0u);
+        const auto block = j_uint32_or_zero(m_login_data["appearance"], "required_num_blocks");
         GDK_RUNTIME_ASSERT(block < NUM_FEE_ESTIMATES);
         return amount(m_fee_estimates[block]);
     }
@@ -1308,13 +1326,19 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
 
-        if (!m_watch_only) {
-            nlohmann::json appearance = m_login_data["appearance"];
-            remap_appearance_settings(locker, settings, appearance, true);
-            cleanup_appearance_settings(locker, appearance);
-            if (appearance != m_login_data["appearance"]) {
-                m_wamp->call(locker, "login.set_appearance", mp_cast(appearance).get());
-                m_login_data["appearance"] = std::move(appearance);
+        auto& appearance = m_login_data["appearance"];
+        nlohmann::json new_appearance = appearance;
+        remap_appearance_settings(locker, settings, new_appearance, true);
+        cleanup_appearance_settings(locker, new_appearance);
+        if (new_appearance != appearance) {
+            if (m_watch_only) {
+                // Locally cache and apply any values we have overridden
+                auto overrides = get_wo_appearance_overrides(locker, new_appearance);
+                m_cache->upsert_key_value("appearance", ustring_span(overrides.dump()));
+                appearance.update(overrides);
+            } else {
+                m_wamp->call(locker, "login.set_appearance", mp_cast(new_appearance).get());
+                appearance = std::move(new_appearance);
             }
         }
 

@@ -5,6 +5,8 @@
 ### Added
 
 ### Changed
+- GA_change_settings: Allow watch-only sessions to override the ``"unit"``,
+  ``"sound"``, ``"altimeout"`` and ``"required_num_blocks"`` settings locally.
 
 ### Fixed
 

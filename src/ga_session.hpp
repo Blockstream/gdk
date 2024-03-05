@@ -176,7 +176,6 @@ namespace sdk {
         nlohmann::json get_appearance() const;
         bool subaccount_allows_csv(uint32_t subaccount) const;
         const std::string& get_default_address_type(uint32_t) const;
-        void push_appearance_to_server(locker_t& locker) const;
         void set_twofactor_config(locker_t& locker, const nlohmann::json& config);
         bool is_twofactor_reset_active(session_impl::locker_t& locker);
         nlohmann::json set_twofactor_reset_config(const nlohmann::json& config);
