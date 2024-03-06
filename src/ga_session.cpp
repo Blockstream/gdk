@@ -598,7 +598,7 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
-        if (m_blob_hmac_key.has_value() && m_blob.get_xpubs().empty()) {
+        if (m_blob_hmac_key.has_value() && m_blob.get_xpubs().empty() && !is_twofactor_reset_active(locker)) {
             // A full session with no blob xpubs. This can happen if we are
             // upgrading/logging in from an earlier gdk version that didn't
             // automatically save them. Add them to the client blob now.
