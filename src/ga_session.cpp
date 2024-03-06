@@ -286,6 +286,13 @@ namespace sdk {
             m_net_params, *session_impl::m_strand,
             [this](nlohmann::json details, bool async) { emit_notification(std::move(details), async); }, "wamp");
 
+        if (!m_net_params.get_blob_server_url().empty()) {
+            m_blobserver = std::make_unique<wamp_transport>(
+                m_net_params, *session_impl::m_strand,
+                [](nlohmann::json details, bool) { GDK_LOG(info) << "blob_server notification: " << details.dump(); },
+                "blob_server");
+        }
+
         m_fee_estimates.assign(NUM_FEE_ESTIMATES, m_min_fee_rate);
     }
 
@@ -298,21 +305,36 @@ namespace sdk {
             constexpr bool do_start = false;
             download_headers_ctl(locker, do_start);
         });
-        no_std_exception_escape(
-            [this] {
-                m_wamp->disconnect();
-                m_wamp.reset();
-            },
-            "ga_session wamp_transport");
+        for (auto connection : { &m_blobserver, &m_wamp }) {
+            if (*connection) {
+                no_std_exception_escape(
+                    [&connection] {
+                        (*connection)->disconnect();
+                        (*connection).reset();
+                    },
+                    "ga_session wamp_transport");
+            }
+        }
     }
 
     void ga_session::connect()
     {
         const auto proxy = session_impl::connect_tor();
-        m_wamp->connect(proxy);
+        for (auto connection : { &m_blobserver, &m_wamp }) {
+            if (*connection) {
+                (*connection)->connect(proxy);
+            }
+        }
     }
 
-    void ga_session::reconnect() { m_wamp->reconnect(); }
+    void ga_session::reconnect()
+    {
+        for (auto connection : { &m_blobserver, &m_wamp }) {
+            if (*connection) {
+                (*connection)->reconnect();
+            }
+        }
+    }
 
     void ga_session::reconnect_hint(const nlohmann::json& hint)
     {
@@ -329,10 +351,21 @@ namespace sdk {
             download_headers_ctl(locker, do_start);
         }
         locker.unlock();
-        m_wamp->reconnect_hint(hint, proxy);
+        for (auto connection : { &m_blobserver, &m_wamp }) {
+            if (*connection) {
+                (*connection)->reconnect_hint(hint, proxy);
+            }
+        }
     }
 
-    void ga_session::disconnect() { m_wamp->disconnect(); }
+    void ga_session::disconnect()
+    {
+        for (auto connection : { &m_blobserver, &m_wamp }) {
+            if (*connection) {
+                (*connection)->disconnect();
+            }
+        }
+    }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
     {
