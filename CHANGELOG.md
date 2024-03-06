@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.70.3
+## Release 0.70.4
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.70.3 - 24-03-06
 
 ### Added
 
