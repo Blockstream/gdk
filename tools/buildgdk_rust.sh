@@ -26,7 +26,7 @@ export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
 
 if [ "$(uname)" = "Darwin" ]; then
-    export CARGO_PROFILE_DEV_LTO=true
+    export CARGO_PROFILE_DEV_LTO=false
     SDK_CPU=$(uname -m)
     export SDKROOT=$(xcrun -sdk macosx --show-sdk-path)
     LD_ARCH="-arch ${SDK_CPU}"
