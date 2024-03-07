@@ -62,6 +62,7 @@
   variables:
     BUILD_IDX: "0"
     GDK_KEEP_DOWNLOADS: "1"
+    PYTHON_VERSION: "3.9"
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
     - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
