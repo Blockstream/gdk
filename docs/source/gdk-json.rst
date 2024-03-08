@@ -47,6 +47,8 @@ Connection parameters JSON
       "spv_enabled": false,
       "cert_expiry_threshold": 1
       "gap_limit": 20,
+      "electrum_url", "blockstream.info:993",
+      "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
@@ -59,6 +61,8 @@ Connection parameters JSON
 :spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
 :cert_expiry_threshold: Ignore certificates expiring within this many days from today. Used to pre-empt problems with expiring embedded certificates.
 :gap_limit: Optional, singlesig only. Number of consecutive empty scripts/addresses to monitor. Defaults to 20.
+:electrum_url: Optional. For singlesig the Electrum server used to fetch blockchain data. For multisig the Electrum server used for SPV verification. Default value depends on the network.
+:electrum_onion_url: Optional. If ``"use_tor"`` is ``true``, this value is used instead of ``"electrum_url"``. Default value depends on the network.
 
 
  .. _proxy-info:
