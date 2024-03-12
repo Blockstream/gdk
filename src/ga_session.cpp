@@ -388,7 +388,8 @@ namespace sdk {
         // ordered by block, with the minimum allowable fee at position 0
         std::map<uint32_t, uint32_t> ordered_estimates;
         for (const auto& e : fee_estimates) {
-            const auto& fee_rate = e["feerate"];
+            const bool is_min_fee = !e.is_object();
+            const auto& fee_rate = is_min_fee ? e : e["feerate"];
             double btc_per_k;
             if (fee_rate.is_string()) {
                 const std::string fee_rate_str = fee_rate;
@@ -397,11 +398,16 @@ namespace sdk {
                 btc_per_k = fee_rate;
             }
             if (btc_per_k > 0) {
-                const uint32_t actual_block = e["blocks"];
-                if (actual_block > 0 && actual_block <= NUM_FEE_ESTIMATES - 1) {
-                    const long long satoshi_per_k = std::lround(btc_per_k * amount::coin_value);
-                    const long long uint32_t_max = std::numeric_limits<uint32_t>::max();
-                    if (satoshi_per_k >= DEFAULT_MIN_FEE && satoshi_per_k <= uint32_t_max) {
+                const long long satoshi_per_k = std::lround(btc_per_k * amount::coin_value);
+                const long long uint32_t_max = std::numeric_limits<uint32_t>::max();
+                if (satoshi_per_k < DEFAULT_MIN_FEE || satoshi_per_k > uint32_t_max) {
+                    continue;
+                }
+                if (is_min_fee) {
+                    m_min_fee_rate = satoshi_per_k;
+                } else {
+                    const uint32_t actual_block = e["blocks"];
+                    if (actual_block > 0 && actual_block <= NUM_FEE_ESTIMATES - 1) {
                         ordered_estimates[actual_block] = static_cast<uint32_t>(satoshi_per_k);
                     }
                 }
@@ -413,7 +419,8 @@ namespace sdk {
         size_t i = 1;
         for (const auto& e : ordered_estimates) {
             while (i <= e.first) {
-                new_estimates[i] = e.second;
+                // Set the estimate not allowing it to be lower than the minimum rate
+                new_estimates[i] = e.second < m_min_fee_rate ? m_min_fee_rate : e.second;
                 ++i;
             }
         }
@@ -1569,7 +1576,8 @@ namespace sdk {
 
         if (now < m_fee_estimates_ts || now - m_fee_estimates_ts > 120s) {
             // Time adjusted or more than 2 minutes old: Update
-            auto fee_estimates = m_wamp->call(locker, "login.get_fee_estimates");
+            constexpr bool return_min = true;
+            auto fee_estimates = m_wamp->call(locker, "login.get_fee_estimates", return_min);
             set_fee_estimates(locker, wamp_cast_json(fee_estimates));
         }
 
