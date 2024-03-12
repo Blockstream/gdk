@@ -1,12 +1,16 @@
 # Changelog
 
-## Release 0.70.4
+## Release 0.71.0
 
 ### Added
 
 ### Changed
 
 ### Fixed
+
+- Multisig: Regularly update the minimum fee rate and prevent fee estimates
+  from falling below it. This prevents unexpected submission errors when the
+  mempool is full and the minimum required fee increases/decreases.
 
 ### Removed
 
