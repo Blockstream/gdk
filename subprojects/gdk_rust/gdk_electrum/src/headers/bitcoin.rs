@@ -222,14 +222,22 @@ impl HeadersChain {
         height: u32,
         merkle: GetMerkleRes,
     ) -> Result<(), Error> {
-        let calculated_merkle_root =
-            TxMerkleNode::from_byte_array(compute_merkle_root(txid.to_byte_array(), merkle)?);
+        let calculated_merkle_root = TxMerkleNode::from_byte_array(compute_merkle_root(
+            txid.to_byte_array(),
+            merkle.clone(),
+        )?);
 
         let header = self.get(height)?;
         if header.merkle_root == calculated_merkle_root {
             info!("proof for txid {}, block height {}, merkle root matches", txid, height);
             Ok(())
         } else {
+            warn!(
+                "failed to verify {txid} block height {height}, calculated_merkle_root: {calculated_merkle_root} header.hash:{} header.merkle_root:{}",
+                header.block_hash(),
+                header.merkle_root
+            );
+            warn!("failed proof: {:?}", merkle);
             Err(Error::InvalidHeaders)
         }
     }

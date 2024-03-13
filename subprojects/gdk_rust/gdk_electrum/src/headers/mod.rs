@@ -159,6 +159,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Err
                     cache.write(&txid, input.height)?;
                     Ok(SPVVerifyTxResult::Verified)
                 } else {
+                    warn!("1");
                     Ok(SPVVerifyTxResult::NotVerified)
                 }
             } else {
@@ -187,6 +188,7 @@ pub fn spv_verify_tx(input: &SPVVerifyTxParams) -> Result<SPVVerifyTxResult, Err
                 cache.write(&txid, input.height)?;
                 Ok(SPVVerifyTxResult::Verified)
             } else {
+                warn!("2");
                 Ok(SPVVerifyTxResult::NotVerified)
             }
         }
