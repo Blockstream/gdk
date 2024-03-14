@@ -13,7 +13,9 @@ namespace sdk {
         void reconnect_hint(const nlohmann::json& hint);
 
         void connect();
+        void connect_rust();
         void disconnect();
+        void disconnect_rust();
 
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
