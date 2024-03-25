@@ -290,10 +290,6 @@ impl ElectrumSession {
         network::build_request_agent(self.proxy.as_deref()).map_err(Into::into)
     }
 
-    pub fn poll_session(&self) -> Result<(), Error> {
-        Err(Error::Generic("implementme: ElectrumSession poll_session".into()))
-    }
-
     pub fn connect(&mut self, net_params: &Value) -> Result<(), Error> {
         // gdk tor session may change the proxy port after a restart, so we update the proxy here
         self.proxy = socksify(net_params.get("proxy").and_then(|p| p.as_str()));

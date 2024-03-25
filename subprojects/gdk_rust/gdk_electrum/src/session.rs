@@ -69,8 +69,6 @@ impl Session for ElectrumSession {
 
     fn handle_call(&mut self, method: &str, input: Value) -> Result<Value, JsonError> {
         match method {
-            "poll_session" => self.poll_session().to_json(),
-
             "connect" => self.connect(&input).to_json(),
 
             "disconnect" => self.disconnect().to_json(),
@@ -124,7 +122,6 @@ impl Session for ElectrumSession {
             }
 
             "get_transaction_hex" => get_transaction_hex(self, &input).to_json(),
-            "get_balance" => self.get_balance(&serde_json::from_value(input)?).to_json(),
             "set_transaction_memo" => set_transaction_memo(self, &input),
             "get_scriptpubkey_data" => self
                 .get_scriptpubkey_data(input.as_str().ok_or_else(|| {
@@ -167,7 +164,6 @@ impl Session for ElectrumSession {
                 self.set_master_blinding_key(&serde_json::from_value(input)?).to_json()
             }
             "start_threads" => self.start_threads().to_json(),
-            "get_wallet_hash_id" => self.get_wallet_hash_id().to_json(),
             "get_address_data" => self.get_address_data(serde_json::from_value(input)?).to_json(),
 
             "remove_account" => self.remove_account().to_json(),
