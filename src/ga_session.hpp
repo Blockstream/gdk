@@ -233,7 +233,6 @@ namespace sdk {
         void download_headers_thread_fn();
 
         const bool m_spv_enabled;
-        nlohmann::json m_login_data;
         std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         // Current client blob (if any)
         client_blob m_blob;

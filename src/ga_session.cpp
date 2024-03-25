@@ -1009,9 +1009,8 @@ namespace sdk {
 
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer)
     {
-        const bool is_relogin = set_signer(signer);
-
         locker_t locker(m_mutex);
+        const bool is_relogin = set_signer(locker, signer);
 
         constexpr bool minimal = true; // Don't return balance/nlocktime info
         const std::string id; // Device id, no longer used
@@ -1432,9 +1431,8 @@ namespace sdk {
 
     nlohmann::json ga_session::login_wo(std::shared_ptr<signer> signer)
     {
-        const bool is_relogin = set_signer(signer);
-
         locker_t locker(m_mutex);
+        const bool is_relogin = set_signer(locker, signer);
 
         const bool is_liquid = m_net_params.is_liquid();
         const auto& credentials = m_signer->get_credentials(false);

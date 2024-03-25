@@ -91,6 +91,11 @@ namespace sdk {
         // FIXME: Load subaccount paths and xpubs from the store and add them
         // with signer->cache_bip32_xpub() - see ga_session::load_signer_xpubs
         // (This avoids having to go to the HWW to fetch these xpubs)
+        if (signer->has_master_bip32_xpub()) {
+            m_login_data = get_wallet_hash_ids(
+                { { "name", m_net_params.network() } }, { { "master_xpub", signer->get_master_bip32_xpub() } });
+            m_login_data["warnings"] = nlohmann::json::array();
+        }
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
@@ -99,15 +104,10 @@ namespace sdk {
 
     nlohmann::json ga_rust::authenticate(const std::string& /*sig_der_hex*/, std::shared_ptr<signer> signer)
     {
-        set_signer(signer);
-        {
-            locker_t locker(m_mutex);
-            m_watch_only = false;
-        }
-        auto post_login_data = get_wallet_hash_ids(
-            { { "name", m_net_params.network() } }, { { "master_xpub", m_signer->get_master_bip32_xpub() } });
-        post_login_data["warnings"] = nlohmann::json::array();
-        return post_login_data;
+        locker_t locker(m_mutex);
+        set_signer(locker, signer);
+        m_watch_only = false;
+        return m_login_data;
     }
 
     void ga_rust::register_subaccount_xpubs(
@@ -131,9 +131,9 @@ namespace sdk {
     }
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
-        set_signer(signer);
         {
             locker_t locker(m_mutex);
+            set_signer(locker, signer);
             m_watch_only = true;
         }
         return rust_call("login_wo", signer->get_credentials(false), m_session);

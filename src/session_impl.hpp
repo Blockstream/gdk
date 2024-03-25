@@ -110,8 +110,6 @@ namespace sdk {
         virtual void postprocess_transactions(nlohmann::json& tx_list);
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);
-        /// Returns whether the signer was already set (i.e. true if this is a re-login)
-        bool set_signer(std::shared_ptr<signer> signer);
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(const nlohmann::json& details) = 0;
@@ -246,7 +244,10 @@ namespace sdk {
         // local state can be out of sync with the server, whether this is due
         // to multiple threads in a single process or actions in another
         // process (e.g. the user is logged in twice in different apps)
-        //
+
+        /// Returns whether the signer was already set (i.e. true if this is a re-login)
+        bool set_signer(locker_t& locker, std::shared_ptr<signer> signer);
+
         std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
 
@@ -269,6 +270,7 @@ namespace sdk {
         void* m_notification_context;
 
         // Immutable post-login
+        nlohmann::json m_login_data;
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
         bool m_watch_only;

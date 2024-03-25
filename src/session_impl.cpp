@@ -52,6 +52,7 @@ namespace sdk {
         , m_user_proxy(socksify(m_net_params.get_json().value("proxy", std::string())))
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
+        , m_login_data{}
         , m_watch_only(true)
         , m_notify(true)
     {
@@ -72,10 +73,9 @@ namespace sdk {
         m_notification_context = context;
     }
 
-    bool session_impl::set_signer(std::shared_ptr<signer> signer)
+    bool session_impl::set_signer(locker_t& locker, std::shared_ptr<signer> signer)
     {
-        locker_t locker(m_mutex);
-
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (!m_signer.get()) {
             // Initial login: set the signer for the session
             m_signer = std::move(signer);
