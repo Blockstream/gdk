@@ -33,9 +33,6 @@ pub enum Error {
         in_session: bool,
     },
 
-    #[error("Greenlight method not found {0}")]
-    GreenlightMethodNotFound(String),
-
     #[error("The {0} currency pair is not currently supported")]
     UnsupportedCurrencyPair(exchange_rates::Pair),
 

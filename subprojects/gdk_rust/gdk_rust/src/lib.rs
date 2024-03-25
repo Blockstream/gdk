@@ -11,17 +11,15 @@ use std::ffi::CString;
 use std::io::Write;
 use std::os::raw::c_char;
 use std::str::FromStr;
-use std::sync::{Arc, Once};
+use std::sync::Once;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
 
 use crate::error::Error;
-use gdk_common::exchange_rates::{ExchangeRatesCache, ExchangeRatesCacher};
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
-use gdk_common::ureq;
-use gdk_electrum::{headers, sweep, ElectrumSession, NativeNotif};
+use gdk_electrum::{headers, sweep, ElectrumSession};
 use serde::Serialize;
 
 pub const GA_OK: i32 = 0;
@@ -35,40 +33,6 @@ pub struct GdkSession {
 pub enum GdkBackend {
     // Rpc(RpcSession),
     Electrum(ElectrumSession),
-    Greenlight(GreenlightSession),
-}
-
-#[derive(Default)]
-pub struct GreenlightSession {
-    xr_cache: ExchangeRatesCache,
-}
-
-impl ExchangeRatesCacher for GreenlightSession {
-    fn xr_cache(&self) -> ExchangeRatesCache {
-        Arc::clone(&self.xr_cache)
-    }
-}
-
-impl Session for GreenlightSession {
-    fn new(_network_parameters: gdk_common::NetworkParameters) -> Result<Self, JsonError> {
-        todo!()
-    }
-
-    fn native_notification(&mut self) -> &mut NativeNotif {
-        todo!()
-    }
-
-    fn network_parameters(&self) -> &gdk_common::NetworkParameters {
-        todo!()
-    }
-
-    fn build_request_agent(&self) -> Result<ureq::Agent, ureq::Error> {
-        todo!()
-    }
-
-    fn handle_call(&mut self, method: &str, _input: Value) -> Result<Value, JsonError> {
-        Err(Error::GreenlightMethodNotFound(method.to_string()).into())
-    }
 }
 
 impl From<Error> for JsonError {
@@ -155,7 +119,6 @@ fn create_session(network: &Value) -> Result<GdkSession, Value> {
 
     let backend = match network["server_type"].as_str() {
         // Some("rpc") => GDKRUST_session::Rpc( GDKRPC_session::create_session(parsed_network.unwrap()).unwrap() ),
-        Some("greenlight") => GdkBackend::Greenlight(GreenlightSession::default()),
         Some("electrum") => {
             let session = ElectrumSession::new(parsed_network)?;
             GdkBackend::Electrum(session)
@@ -216,7 +179,6 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
 
         let ticker = match sess.backend {
             GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, &params),
-            GdkBackend::Greenlight(ref mut s) => exchange_rates::fetch_cached(s, &params),
         }?;
 
         let rate = ticker.map(|t| format!("{:.8}", t.rate)).unwrap_or_default();
@@ -249,7 +211,6 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
 
     let res = match sess.backend {
         GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input),
-        GdkBackend::Greenlight(ref mut s) => s.handle_call(&method, input),
     };
 
     let methods_to_redact_out =
@@ -279,7 +240,6 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 
     match backend {
         GdkBackend::Electrum(ref mut s) => s.notify.set_native((handler, self_context)),
-        GdkBackend::Greenlight(ref mut _s) => (), // TODO,
     };
 
     info!("set notification handler");
