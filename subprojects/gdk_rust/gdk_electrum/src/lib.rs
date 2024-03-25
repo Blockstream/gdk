@@ -875,8 +875,8 @@ impl ElectrumSession {
         Ok(account_nums)
     }
 
-    pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfoPruned>, Error> {
-        self.get_accounts()?.iter().map(|a| a.info().map(|i| i.into())).collect()
+    pub fn get_subaccounts(&mut self) -> Result<Vec<AccountInfo>, Error> {
+        self.get_accounts()?.iter().map(|a| a.info()).collect()
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
