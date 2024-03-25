@@ -318,7 +318,7 @@ namespace sdk {
         , m_server_prefix(std::move(server_prefix))
         , m_server(m_net_params.get_connection_string(m_server_prefix))
         , m_wamp_host_name(websocketpp::uri(m_net_params.gait_wamp_url(m_server_prefix)).get_host())
-        , m_wamp_call_prefix("com.greenaddress.")
+        , m_wamp_call_prefix(m_server_prefix == "wamp" ? "com.greenaddress." : "")
         , m_wamp_call_options()
         , m_notify_fn(fn)
         , m_desired_state(state_t::disconnected)
@@ -386,7 +386,7 @@ namespace sdk {
 
     void wamp_transport::change_state_to(wamp_transport::state_t new_state, const std::string& proxy, bool wait)
     {
-        GDK_LOG(info) << "change_state_to: requesting state " << state_str(new_state);
+        GDK_LOG(info) << "change_state_to: " << m_server_prefix << " requesting state " << state_str(new_state);
         locker_t locker(m_mutex);
         if (!proxy.empty()) {
             m_proxy = proxy;
@@ -411,16 +411,16 @@ namespace sdk {
             locker.unlock();
             if (current_state == new_state || current_state == state_t::exited) {
                 // We have achieved the state we asked for, or been asked to exit.
-                GDK_LOG(info) << "change_state_to: changed to " << state_str(current_state);
+                GDK_LOG(info) << "change_state_to: " << m_server_prefix << " changed to " << state_str(current_state);
                 return;
             }
             if (desired_state != new_state) {
                 // Another thread has asked for a different state via
                 // GA_reconnect_hint, e.g. has asked to disconnect while
                 // we are connecting.
-                GDK_LOG(info) << "change_state_to: " << state_str(new_state) << " target changed to "
-                              << state_str(desired_state) << " by another thread (current state "
-                              << state_str(current_state) << ')';
+                GDK_LOG(info) << "change_state_to: " << m_server_prefix << ' ' << state_str(new_state)
+                              << " target changed to " << state_str(desired_state)
+                              << " by another thread (current state " << state_str(current_state) << ')';
                 // We throw a timeout error for the original caller, so they can
                 // handle the error with the existing logic for a sync timeout
                 // failure. The caller knows that they changed the state

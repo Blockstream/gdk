@@ -46,7 +46,7 @@ namespace sdk {
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
         wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand, notify_fn_t fn,
-            std::string server_prefix = {});
+            std::string server_prefix);
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
