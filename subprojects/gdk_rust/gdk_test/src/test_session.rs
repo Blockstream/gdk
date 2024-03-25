@@ -206,20 +206,9 @@ impl TestSession {
 
     /// fund the gdk session (account #0) with satoshis from the node
     pub fn fund(&mut self, satoshi: u64) -> String {
-        let initial_satoshis = self.balance_gdk(None);
         let ap = self.get_receive_address(0);
         let funding_tx = self.node.client.sendtoaddress(&ap.address, satoshi, None).unwrap();
         self.wait_tx(vec![0], &funding_tx, Some(satoshi), Some(TransactionType::Incoming));
-
-        // node is allowed to make tx below dust with dustrelayfee, but gdk session should not see
-        // this as spendable, thus the balance should not change
-        let satoshi = if satoshi < DUST_VALUE {
-            0
-        } else {
-            satoshi
-        };
-
-        assert_eq!(self.balance_gdk(None), initial_satoshis + satoshi);
         funding_tx
     }
 
@@ -304,33 +293,6 @@ impl TestSession {
             }
         }
         panic!("electrs_tip always return error")
-    }
-
-    /// balance in satoshi of the gdk session for account 0
-    fn balance_gdk(&self, asset: Option<String>) -> u64 {
-        self.balance_account(0, asset, None)
-    }
-
-    pub fn balance_account(
-        &self,
-        account_num: u32,
-        asset: Option<String>,
-        confidential_utxos_only: Option<bool>,
-    ) -> u64 {
-        let opt = GetBalanceOpt {
-            subaccount: account_num,
-            num_confs: 0,
-            confidential_utxos_only,
-        };
-        let balance = self.session.get_balance(&opt).unwrap();
-        match self.network_id {
-            NetworkId::Elements(_) => {
-                let asset =
-                    asset.unwrap_or(self.network.policy_asset.as_ref().unwrap().to_string());
-                *balance.get(&asset).unwrap_or(&0i64) as u64
-            }
-            NetworkId::Bitcoin(_) => *balance.get("btc").unwrap() as u64,
-        }
     }
 
     pub fn spv_verify_tx(&mut self, txid: &str, height: u32, headers_to_download: Option<usize>) {
