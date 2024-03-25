@@ -567,13 +567,8 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, recovery_xpub_sig));
             }
 
-            // Get the subaccount name. Use the server provided value if
-            // its present (i.e. no client blob enabled yet, or watch-only)
-            const std::string svr_sa_name = json_get_value(sa, "name");
-            const std::string blob_sa_name = m_blob.get_subaccount_name(subaccount);
-            const std::string& sa_name = svr_sa_name.empty() ? blob_sa_name : svr_sa_name;
-            insert_subaccount(locker, subaccount, sa_name, sa["receiving_id"], recovery_pub_key, recovery_chain_code,
-                recovery_xpub, type, sa.value("required_ca", 0));
+            insert_subaccount(locker, subaccount, json_get_value(sa, "name"), sa["receiving_id"], recovery_pub_key,
+                recovery_chain_code, recovery_xpub, type, sa.value("required_ca", 0));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -582,10 +577,9 @@ namespace sdk {
         ++m_next_subaccount;
 
         // Insert the main account so callers can treat all accounts equally
-        const std::string sa_name = m_blob.get_subaccount_name(0);
         constexpr uint32_t required_ca = 0;
-        insert_subaccount(locker, 0, sa_name, m_login_data["receiving_id"], std::string(), std::string(), std::string(),
-            "2of2", required_ca);
+        insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(),
+            std::string(), "2of2", required_ca);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -1727,6 +1721,9 @@ namespace sdk {
 
         for (const auto& sa : m_subaccounts) {
             auto subaccount = sa.second;
+            if (auto name = m_blob.get_subaccount_name(sa.first); !name.empty()) {
+                subaccount["name"] = std::move(name);
+            }
             subaccount["is_hidden"] = m_blob.get_subaccount_hidden(sa.first);
             subaccounts.emplace_back(std::move(subaccount));
         }
@@ -1753,8 +1750,6 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         nlohmann::json empty;
         update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name, empty));
-        // Look up our subaccount again as iterators may have been invalidated
-        m_subaccounts.find(subaccount)->second["name"] = new_name;
     }
 
     void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
