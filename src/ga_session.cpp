@@ -572,9 +572,8 @@ namespace sdk {
             const std::string svr_sa_name = json_get_value(sa, "name");
             const std::string blob_sa_name = m_blob.get_subaccount_name(subaccount);
             const std::string& sa_name = svr_sa_name.empty() ? blob_sa_name : svr_sa_name;
-            const bool is_hidden = m_blob.get_subaccount_hidden(subaccount);
             insert_subaccount(locker, subaccount, sa_name, sa["receiving_id"], recovery_pub_key, recovery_chain_code,
-                recovery_xpub, type, sa.value("required_ca", 0), is_hidden);
+                recovery_xpub, type, sa.value("required_ca", 0));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -585,9 +584,8 @@ namespace sdk {
         // Insert the main account so callers can treat all accounts equally
         const std::string sa_name = m_blob.get_subaccount_name(0);
         constexpr uint32_t required_ca = 0;
-        const bool is_hidden = m_blob.get_subaccount_hidden(0);
         insert_subaccount(locker, 0, sa_name, m_login_data["receiving_id"], std::string(), std::string(), std::string(),
-            "2of2", required_ca, is_hidden);
+            "2of2", required_ca);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -1729,7 +1727,7 @@ namespace sdk {
 
         for (const auto& sa : m_subaccounts) {
             auto subaccount = sa.second;
-            subaccount.erase("user_path");
+            subaccount["is_hidden"] = m_blob.get_subaccount_hidden(sa.first);
             subaccounts.emplace_back(std::move(subaccount));
         }
         return nlohmann::json(std::move(subaccounts));
@@ -1767,14 +1765,12 @@ namespace sdk {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, &m_blob, subaccount, is_hidden));
-        // Look up our subaccount again as iterators may have been invalidated
-        m_subaccounts.find(subaccount)->second["hidden"] = is_hidden;
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
         const std::string& name, const std::string& receiving_id, const std::string& recovery_pub_key,
         const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
-        uint32_t required_ca, bool is_hidden)
+        uint32_t required_ca)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
@@ -1782,12 +1778,16 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_subaccounts.find(subaccount) == m_subaccounts.end());
         GDK_RUNTIME_ASSERT(type == "2of2" || type == "2of3" || type == "2of2_no_recovery");
 
-        // FIXME: replace "pointer" with "subaccount"; pointer should only be used
-        // for the final path element in a derivation
-        nlohmann::json sa = { { "name", name }, { "pointer", subaccount }, { "receiving_id", receiving_id },
-            { "type", type }, { "recovery_pub_key", recovery_pub_key }, { "recovery_chain_code", recovery_chain_code },
-            { "recovery_xpub", recovery_xpub }, { "required_ca", required_ca }, { "hidden", is_hidden },
-            { "user_path", ga_user_pubkeys::get_ga_subaccount_root_path(subaccount) } };
+        nlohmann::json sa = {
+            { "name", name },
+            { "pointer", subaccount },
+            { "receiving_id", receiving_id },
+            { "type", type },
+            { "recovery_pub_key", recovery_pub_key },
+            { "recovery_chain_code", recovery_chain_code },
+            { "recovery_xpub", recovery_xpub },
+            { "required_ca", required_ca },
+        };
         m_subaccounts[subaccount] = sa;
 
         if (subaccount != 0) {
@@ -1847,9 +1847,8 @@ namespace sdk {
         locker_t locker(m_mutex);
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
         constexpr uint32_t required_ca = 0;
-        constexpr bool is_hidden = false;
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
-            recovery_chain_code, recovery_bip32_xpub, type, required_ca, is_hidden);
+            recovery_chain_code, recovery_bip32_xpub, type, required_ca);
 
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;

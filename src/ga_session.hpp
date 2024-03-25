@@ -210,7 +210,7 @@ namespace sdk {
         nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& name,
             const std::string& receiving_id, const std::string& recovery_pub_key,
             const std::string& recovery_chain_code, const std::string& recovery_xpub, const std::string& type,
-            uint32_t required_ca, bool is_hidden);
+            uint32_t required_ca);
 
         std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge);
 
