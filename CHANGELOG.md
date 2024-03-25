@@ -9,12 +9,16 @@
   when an amount is malformed, the errors id_amount_above_maximum_allowed, id_amount_below_minimum_allowed,
   and id_amount_below_the_dust_threshold are now returned if the amount is a valid number
   but outside of the acceptable range of values for the amount in question.
+- GA_get_subaccounts: Now returns additional metadata such as the subaccount
+  descriptors, matching the output of `GA_get_subaccount`.
 
 ### Fixed
 
 - Multisig: Regularly update the minimum fee rate and prevent fee estimates
   from falling below it. This prevents unexpected submission errors when the
   mempool is full and the minimum required fee increases/decreases.
+- Multisig: Changes to subaccount metadata (``"name"`` and ``"is_hidden"``)
+  are now reflected in logged in sessions when changed by another session.
 
 ### Removed
 
