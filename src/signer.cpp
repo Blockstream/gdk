@@ -301,6 +301,7 @@ namespace sdk {
     }
 
     std::string signer::get_master_bip32_xpub() { return get_bip32_xpub({}); }
+    bool signer::has_master_bip32_xpub() { return has_bip32_xpub({}); }
 
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {

@@ -105,6 +105,8 @@ namespace sdk {
         // Get the master xpub. Equivalent to calling `get_bip32_xpub` with an
         // empty path.
         std::string get_master_bip32_xpub();
+        // Returns true if we have the master xpub
+        bool has_master_bip32_xpub();
 
         // Whether this signer has a pre-computed cached xpub for the given path
         bool has_bip32_xpub(const std::vector<uint32_t>& path);

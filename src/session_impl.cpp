@@ -172,7 +172,7 @@ namespace sdk {
         if (auto signer = get_signer(); signer) {
             GDK_RUNTIME_ASSERT(!params.contains("xpub"));
             // Descriptor watch only does not have the master xpub
-            if (!(m_net_params.is_electrum() && signer->is_watch_only())) {
+            if (signer->has_master_bip32_xpub()) {
                 params["xpub"] = signer->get_master_bip32_xpub();
             }
         }
@@ -194,7 +194,7 @@ namespace sdk {
         if (params.contains("assets_id")) {
             if (auto signer = get_signer(); signer) {
                 // Descriptor watch only does not have the master xpub
-                if (!(m_net_params.is_electrum() && signer->is_watch_only())) {
+                if (signer->has_master_bip32_xpub()) {
                     params["xpub"] = signer->get_master_bip32_xpub();
                 }
             }

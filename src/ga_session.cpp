@@ -1512,8 +1512,8 @@ namespace sdk {
                 // Inverted: See encache_signer_xpubs()
                 m_signer->cache_bip32_xpub(item.value(), item.key());
             }
+            GDK_RUNTIME_ASSERT(m_signer->has_master_bip32_xpub());
             root_bip32_xpub = m_signer->get_master_bip32_xpub();
-            GDK_RUNTIME_ASSERT(!root_bip32_xpub.empty());
         }
 
         if (is_liquid) {
