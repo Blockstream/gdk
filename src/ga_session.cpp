@@ -1015,8 +1015,8 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-        const std::string& root_bip32_xpub, std::shared_ptr<signer> signer)
+    nlohmann::json ga_session::authenticate(
+        const std::string& sig_der_hex, const std::string& path_hex, std::shared_ptr<signer> signer)
     {
         const bool is_relogin = set_signer(signer);
 
@@ -1101,7 +1101,7 @@ namespace sdk {
         m_cache->save_db();
 
         constexpr bool watch_only = false;
-        return on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_relogin);
+        return on_post_login(locker, login_data, m_signer->get_master_bip32_xpub(), watch_only, is_relogin);
     }
 
     void ga_session::subscribe_all(session_impl::locker_t& locker)

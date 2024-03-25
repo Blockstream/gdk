@@ -410,7 +410,7 @@ namespace sdk {
                 sig_der_hex = hw_reply.at("signature");
             }
             // Log in and set up the session
-            m_result = m_session->authenticate(sig_der_hex, "GA", m_master_bip32_xpub, m_signer);
+            m_result = m_session->authenticate(sig_der_hex, "GA", m_signer);
 
             if (m_signer->is_liquid()) {
                 if (m_signer->supports_host_unblinding()) {

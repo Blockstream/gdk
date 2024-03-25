@@ -97,17 +97,16 @@ namespace sdk {
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
 
-    nlohmann::json ga_rust::authenticate(const std::string& /*sig_der_hex*/, const std::string& /*path_hex*/,
-        const std::string& /*root_bip32_xpub*/, std::shared_ptr<signer> signer)
+    nlohmann::json ga_rust::authenticate(
+        const std::string& /*sig_der_hex*/, const std::string& /*path_hex*/, std::shared_ptr<signer> signer)
     {
         set_signer(signer);
         {
             locker_t locker(m_mutex);
             m_watch_only = false;
         }
-        auto master_xpub = get_nonnull_signer()->get_master_bip32_xpub();
         auto post_login_data = get_wallet_hash_ids(
-            { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
+            { { "name", m_net_params.network() } }, { { "master_xpub", m_signer->get_master_bip32_xpub() } });
         post_login_data["warnings"] = nlohmann::json::array();
         return post_login_data;
     }

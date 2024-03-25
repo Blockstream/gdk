@@ -16,8 +16,8 @@ namespace sdk {
         void disconnect();
 
         std::string get_challenge(const pub_key_t& public_key);
-        nlohmann::json authenticate(const std::string& sig_der_hex, const std::string& path_hex,
-            const std::string& root_bip32_xpub, std::shared_ptr<signer> signer);
+        nlohmann::json authenticate(
+            const std::string& sig_der_hex, const std::string& path_hex, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
         nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data);
