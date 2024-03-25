@@ -54,7 +54,6 @@ namespace sdk {
 
         nlohmann::json get_subaccounts();
         std::vector<uint32_t> get_subaccount_pointers();
-        nlohmann::json get_subaccount(uint32_t subaccount);
         void rename_subaccount(uint32_t subaccount, const std::string& new_name);
         void set_subaccount_hidden(uint32_t subaccount, bool is_hidden);
         uint32_t get_next_subaccount(const std::string& type);

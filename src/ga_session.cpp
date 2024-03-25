@@ -1746,14 +1746,6 @@ namespace sdk {
         return ret;
     }
 
-    nlohmann::json ga_session::get_subaccount(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        return p->second;
-    }
-
     void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
     {
         locker_t locker(m_mutex);

@@ -879,10 +879,6 @@ impl ElectrumSession {
         self.get_accounts()?.iter().map(|a| a.info().map(|i| i.into())).collect()
     }
 
-    pub fn get_subaccount(&self, account_num: u32) -> Result<AccountInfo, Error> {
-        self.get_account(account_num)?.info()
-    }
-
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let master_xprv = self.master_xprv.clone();
         let store = self.store()?.clone();

@@ -86,8 +86,6 @@ impl Session for ElectrumSession {
 
             "get_subaccounts" => self.get_subaccounts().to_json(),
 
-            "get_subaccount" => get_subaccount(self, &input).to_json(),
-
             "discover_subaccount" => {
                 self.discover_subaccount(serde_json::from_value(input)?).to_json()
             }
@@ -208,13 +206,6 @@ impl From<Error> for JsonError {
             error: e.to_gdk_code(),
         }
     }
-}
-pub fn get_subaccount(session: &mut ElectrumSession, input: &Value) -> Result<AccountInfo, Error> {
-    let index = input["subaccount"]
-        .as_u64()
-        .ok_or_else(|| Error::Generic("get_subaccount: index argument not found".into()))?;
-
-    session.get_subaccount(index as u32)
 }
 
 pub fn get_transaction_hex(session: &ElectrumSession, input: &Value) -> Result<String, Error> {

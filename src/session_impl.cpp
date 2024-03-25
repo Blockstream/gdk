@@ -333,6 +333,17 @@ namespace sdk {
         // Overriden for ga_rust
     }
 
+    nlohmann::json session_impl::get_subaccount(uint32_t subaccount)
+    {
+        auto subaccounts = get_subaccounts();
+        for (auto& sa : subaccounts) {
+            if (j_uint32ref(sa, "pointer") == subaccount) {
+                return std::move(sa);
+            }
+        }
+        throw user_error("Unknown subaccount");
+    }
+
     std::string session_impl::get_subaccount_type(uint32_t subaccount) { return get_subaccount(subaccount).at("type"); }
 
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
