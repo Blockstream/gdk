@@ -97,8 +97,7 @@ namespace sdk {
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
 
-    nlohmann::json ga_rust::authenticate(
-        const std::string& /*sig_der_hex*/, const std::string& /*path_hex*/, std::shared_ptr<signer> signer)
+    nlohmann::json ga_rust::authenticate(const std::string& /*sig_der_hex*/, std::shared_ptr<signer> signer)
     {
         set_signer(signer);
         {

@@ -1015,8 +1015,7 @@ namespace sdk {
         }
     }
 
-    nlohmann::json ga_session::authenticate(
-        const std::string& sig_der_hex, const std::string& path_hex, std::shared_ptr<signer> signer)
+    nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer)
     {
         const bool is_relogin = set_signer(signer);
 
@@ -1026,7 +1025,7 @@ namespace sdk {
         const std::string id; // Device id, no longer used
         const auto user_agent = get_user_agent(m_signer->supports_arbitrary_scripts(), m_user_agent);
 
-        auto result = m_wamp->call(locker, "login.authenticate", sig_der_hex, minimal, path_hex, id, user_agent);
+        auto result = m_wamp->call(locker, "login.authenticate", sig_der_hex, minimal, "GA", id, user_agent);
         nlohmann::json login_data = wamp_cast_json(result);
 
         if (login_data.is_boolean()) {
