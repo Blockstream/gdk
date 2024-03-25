@@ -1405,8 +1405,6 @@ namespace sdk {
 
     void get_unspent_outputs_call::filter_result(bool encache)
     {
-        const utxo_sorter sorter(get_sort_by());
-
         if (encache && !m_net_params.is_electrum()) {
             // Encache the unfiltered results, and set our result to a copy
             // for filtering.
@@ -1465,10 +1463,13 @@ namespace sdk {
         outputs.erase(std::remove_if(outputs.begin(), outputs.end(), filter), outputs.end());
 
         // Sort the results
-        for (auto& asset : outputs.items()) {
-            if (asset.key() != "error") {
-                auto& utxos = asset.value();
-                std::sort(utxos.begin(), utxos.end(), sorter);
+        if (!outputs.empty()) {
+            const utxo_sorter sorter(get_sort_by());
+            for (auto& asset : outputs.items()) {
+                if (asset.key() != "error") {
+                    auto& utxos = asset.value();
+                    std::sort(utxos.begin(), utxos.end(), sorter);
+                }
             }
         }
     }
@@ -1477,10 +1478,15 @@ namespace sdk {
     {
         auto sort_by = j_str_or_empty(m_details, "sort_by");
         if (sort_by.empty()) {
-            const auto sa_type = m_session->get_subaccount_type(m_details.at("subaccount"));
-            // For 2of2, spend older outputs first by default, to reduce redeposits.
-            // Otherwise, spend bigger outputs first by default to minimise fees.
-            sort_by = sa_type == "2of2" ? "oldest" : "largest";
+            sort_by = "largest"; // Default to largest-first
+            if (!m_net_params.is_electrum()) {
+                // For 2of2, spend older outputs first by default, to reduce redeposits.
+                // Otherwise, spend bigger outputs first by default to minimise fees.
+                auto subaccount = j_uint32ref(m_details, "subaccount");
+                if (subaccount == 0 || j_strref(m_session->get_subaccount(subaccount), "type") == "2of2") {
+                    sort_by = "oldest";
+                }
+            }
         }
         return sort_by;
     }
