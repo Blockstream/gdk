@@ -1716,6 +1716,9 @@ namespace sdk {
     {
         // TODO: implement refreshing for multisig
         locker_t locker(m_mutex);
+        if (m_blob_outdated) {
+            load_client_blob(locker, true);
+        }
         nlohmann::json::array_t subaccounts;
         subaccounts.reserve(m_subaccounts.size());
 
