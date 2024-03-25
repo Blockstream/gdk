@@ -373,13 +373,7 @@ namespace sdk {
 
             // We have a result from our first get_xpubs request.
             const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
-
             m_master_bip32_xpub = xpubs.at(0);
-            if (!is_electrum) {
-                // Compute the login challenge with the master pubkey
-                const auto public_key = make_xpub(m_master_bip32_xpub).second;
-                m_challenge = m_session->get_challenge(public_key);
-            }
 
             // Set the cache keys for the wallet, loading/creating the
             // local cache as needed.
@@ -392,6 +386,9 @@ namespace sdk {
                 goto do_authenticate;
             }
 
+            // Compute the login challenge with the master pubkey
+            const auto public_key = make_xpub(m_master_bip32_xpub).second;
+            m_challenge = m_session->get_challenge(public_key);
             // Ask the caller to sign the challenge
             auto& request = signal_hw_request(hw_request::sign_message);
             request["message"] = CHALLENGE_PREFIX + m_challenge;
