@@ -355,12 +355,14 @@ namespace sdk {
 
             m_signer = new_signer;
 
-            // We need master pubkey for the challenge, client secret pubkey for login
             try {
                 auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
-                paths.emplace_back(signer::EMPTY_PATH);
-                paths.emplace_back(signer::LOGIN_PATH);
-                paths.emplace_back(signer::CLIENT_SECRET_PATH);
+                paths.emplace_back(signer::EMPTY_PATH); // Master xpub
+                if (!is_electrum) {
+                    // Multisig: fetch the login and client secret xpubs for login
+                    paths.emplace_back(signer::LOGIN_PATH);
+                    paths.emplace_back(signer::CLIENT_SECRET_PATH);
+                }
             } catch (const std::exception&) {
                 m_signer.reset(); // Allow this code path to re-run if the above throws
                 throw;
@@ -376,8 +378,9 @@ namespace sdk {
             m_master_bip32_xpub = xpubs.at(0);
 
             // Set the cache keys for the wallet, loading/creating the
-            // local cache as needed.
-            const auto local_xpub = make_xpub(xpubs.at(2));
+            // local cache as needed. Note singlesig doesn't need the
+            // client secret pubkey.
+            const xpub_t local_xpub = is_electrum ? xpub_t{} : make_xpub(xpubs.at(2));
             m_session->set_local_encryption_keys(local_xpub.second, m_signer);
 
             if (is_electrum) {
