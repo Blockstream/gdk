@@ -1218,7 +1218,6 @@ namespace sdk {
     auth_handler::state_type get_subaccount_call::call_impl()
     {
         m_result = m_session->get_subaccount(m_subaccount);
-        m_result["user_path"] = m_session->get_subaccount_root_path(m_subaccount);
         return state_type::done;
     }
 

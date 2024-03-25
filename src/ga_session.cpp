@@ -1727,7 +1727,8 @@ namespace sdk {
             if (auto name = m_blob.get_subaccount_name(sa.first); !name.empty()) {
                 subaccount["name"] = std::move(name);
             }
-            subaccount["is_hidden"] = m_blob.get_subaccount_hidden(sa.first);
+            subaccount["hidden"] = m_blob.get_subaccount_hidden(sa.first);
+            subaccount["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(sa.first);
             subaccounts.emplace_back(std::move(subaccount));
         }
         return nlohmann::json(std::move(subaccounts));
@@ -1847,7 +1848,8 @@ namespace sdk {
         constexpr uint32_t required_ca = 0;
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
             recovery_chain_code, recovery_bip32_xpub, type, required_ca);
-
+        subaccount_details["hidden"] = false;
+        subaccount_details["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(subaccount);
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
