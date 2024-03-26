@@ -147,6 +147,19 @@ namespace sdk {
 
     // Check if str represents a valid utf-8 string
     bool is_valid_utf8(const std::string& str);
+
+    // Set an optional variable, which must be empty or have the same value
+    template <typename T> static bool set_optional_variable(std::optional<T>& var, T&& new_value)
+    {
+        // Allow changing the value only if it is not already set
+        GDK_RUNTIME_ASSERT(!var.has_value() || var == new_value);
+        if (!var.has_value()) {
+            var.emplace(std::move(new_value));
+            return true;
+        }
+        return false;
+    }
+
 } // namespace sdk
 } // namespace ga
 

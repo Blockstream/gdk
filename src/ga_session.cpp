@@ -1210,17 +1210,6 @@ namespace sdk {
         m_cache->save_db();
     }
 
-    template <typename T> static bool set_optional_member(std::optional<T>& member, T&& new_value)
-    {
-        // Allow changing the value only if it is not already set
-        GDK_RUNTIME_ASSERT(!member.has_value() || member == new_value);
-        if (!member.has_value()) {
-            member.emplace(std::move(new_value));
-            return true;
-        }
-        return false;
-    }
-
     void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
@@ -1232,7 +1221,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        if (!set_optional_member(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
+        if (!set_optional_variable(m_local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT))) {
             // Already set, we are re-logging in with the same credentials
             return;
         }
@@ -1242,8 +1231,9 @@ namespace sdk {
             // not save it to the server or produce a valid hmac for it).
             const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
             const auto tmp_span = gsl::make_span(tmp_key);
-            set_optional_member(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
-            set_optional_member(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+            set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
+            set_optional_variable(
+                m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
         }
         m_cache->load_db(m_local_encryption_key.value(), signer);
         // Save the cache in case we carried forward data from a previous version
@@ -1468,7 +1458,7 @@ namespace sdk {
         const std::string wo_blob_key_hex = json_get_value(login_data, "wo_blob_key");
         if (!wo_blob_key_hex.empty()) {
             auto decrypted_key = decrypt_wo_blob_key(entropy, wo_blob_key_hex);
-            set_optional_member(m_blob_aes_key, std::move(decrypted_key));
+            set_optional_variable(m_blob_aes_key, std::move(decrypted_key));
         }
 
         const std::string server_hmac = login_data["client_blob_hmac"];
