@@ -1029,21 +1029,24 @@ namespace sdk {
 
     uint32_t get_single_subaccount(const std::set<uint32_t>& subaccounts)
     {
-        if (subaccounts.size() > 1)
-            throw user_error("Cannot determine subaccount");
-        if (subaccounts.size() == 0)
+        if (subaccounts.size() != 1)
             throw user_error("Cannot determine subaccount");
         return *subaccounts.begin();
     }
 
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details)
     {
-        if (!session.get_network_parameters().is_electrum()) {
-            // Multisig: check if we have any AMP inputs
-            for (auto subaccount : get_tx_subaccounts(details)) {
-                // Subaccount 0 can never be amp so don't bother checking it
-                if (subaccount && session.get_subaccount_type(subaccount) == "2of2_no_recovery") {
-                    return true;
+        const auto& net_params = session.get_network_parameters();
+        if (net_params.is_liquid() && !net_params.is_electrum()) {
+            // Liquid Multisig: check if we have any AMP inputs
+            auto tx_subaccounts = get_tx_subaccounts(details);
+            tx_subaccounts.erase(0); // Subaccount 0 can't be AMP
+            if (!tx_subaccounts.empty()) {
+                for (const auto& subaccount : session.get_subaccounts()) {
+                    if (tx_subaccounts.count(j_uint32ref(subaccount, "pointer"))
+                        && j_strref(subaccount, "type") == "2of2_no_recovery") {
+                        return true;
+                    }
                 }
             }
         }
