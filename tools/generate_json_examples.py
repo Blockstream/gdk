@@ -98,7 +98,7 @@ def generate_examples(network, session_type, mnemonic):
     prev_addrs = user.get_previous_addresses({'subaccount': 0}).resolve()
     write_json(prev_addrs, session_type, 'get_previous_addresses')
     # get_subaccount
-    user.rename_subaccount(0, 'Example subaccount name')
+    user.update_subaccount({'subaccount': 0, 'name': 'Example subaccount name'})
     j = user.get_subaccount(0).resolve()
     write_json(j, session_type, 'get_subaccount')
     # get_transactions

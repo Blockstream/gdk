@@ -314,10 +314,6 @@ public class Session {
         return TwoFactorCall(optr: optr!)
     }
 
-    public func renameSubaccount(subaccount: UInt32, newName: String) throws -> Void {
-        try callWrapper(fun: GA_rename_subaccount(session, subaccount, newName));
-    }
-
     public func updateSubaccount(details: [String: Any]) throws -> TwoFactorCall {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_update_subaccount)
     }

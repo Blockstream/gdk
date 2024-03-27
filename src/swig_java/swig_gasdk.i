@@ -531,7 +531,6 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %returns_struct(GA_get_transaction_details, GA_json)
 %returns_struct(GA_get_subaccounts, GA_auth_handler)
 %returns_struct(GA_get_subaccount, GA_auth_handler)
-%returns_void__(GA_rename_subaccount)
 %returns_struct(GA_update_subaccount, GA_auth_handler)
 %returns_string(GA_get_system_message)
 %returns_struct(GA_get_transactions, GA_auth_handler)

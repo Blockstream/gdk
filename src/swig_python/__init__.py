@@ -185,9 +185,6 @@ class Session(object):
     def create_subaccount(self, details):
         return Call(create_subaccount(self.session_obj, self._to_json(details)))
 
-    def rename_subaccount(self, subaccount, new_name):
-        return rename_subaccount(self.session_obj, subaccount, new_name)
-
     def update_subaccount(self, details):
         return Call(update_subaccount(self.session_obj, self._to_json(details)))
 

@@ -46,8 +46,6 @@ namespace sdk {
 
         void set_notification_handler(GA_notification_handler handler, void* context);
 
-        void rename_subaccount(uint32_t subaccount, const std::string& new_name);
-
         nlohmann::json get_available_currencies();
 
         nlohmann::json get_settings();

@@ -11,6 +11,7 @@
   but outside of the acceptable range of values for the amount in question.
 - GA_get_subaccounts: Now returns additional metadata such as the subaccount
   descriptors, matching the output of `GA_get_subaccount`.
+- GA_rename_subaccount: Has been removed. Please use `GA_update_subaccount`.
 
 ### Fixed
 

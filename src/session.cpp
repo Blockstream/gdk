@@ -302,14 +302,6 @@ namespace sdk {
         });
     }
 
-    void session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
-    {
-        exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            p->rename_subaccount(subaccount, new_name);
-        });
-    }
-
     nlohmann::json session::get_settings()
     {
         return exception_wrapper([&] {

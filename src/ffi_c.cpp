@@ -391,9 +391,6 @@ GDK_DEFINE_C_FUNCTION_3(GA_get_subaccounts, struct GA_session*, session, const G
 GDK_DEFINE_C_FUNCTION_3(GA_get_subaccount, struct GA_session*, session, uint32_t, subaccount, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::get_subaccount_call(*session, subaccount)); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_rename_subaccount, struct GA_session*, session, uint32_t, subaccount, const char*, new_name,
-    { session->rename_subaccount(subaccount, new_name); })
-
 GDK_DEFINE_C_FUNCTION_3(GA_update_subaccount, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
     call, { *call = make_call(new ga::sdk::update_subaccount_call(*session, json_move(details))); })
 
