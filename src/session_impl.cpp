@@ -323,11 +323,6 @@ namespace sdk {
         return ret;
     }
 
-    void session_impl::load_store(std::shared_ptr<signer> /*signer*/)
-    {
-        // Overriden for ga_rust
-    }
-
     void session_impl::start_sync_threads()
     {
         // Overriden for ga_rust

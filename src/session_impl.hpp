@@ -80,7 +80,6 @@ namespace sdk {
         nlohmann::json get_assets(nlohmann::json params);
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        virtual void load_store(std::shared_ptr<signer> signer);
         virtual void start_sync_threads();
         virtual std::vector<uint32_t> get_subaccount_pointers() = 0;
         virtual std::string get_challenge(const pub_key_t& public_key) = 0;
