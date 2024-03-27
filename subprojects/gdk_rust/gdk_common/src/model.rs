@@ -178,12 +178,6 @@ pub struct GetAvailableCurrenciesParams {
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RenameAccountOpt {
-    pub subaccount: u32,
-    pub new_name: String,
-}
-
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct SPVCommonParams {
     /// In which network we are verifying the transaction
@@ -653,12 +647,6 @@ pub struct UpdateAccountOpt {
     pub subaccount: u32,
     pub name: Option<String>,
     pub hidden: Option<bool>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SetAccountHiddenOpt {
-    pub subaccount: u32,
-    pub hidden: bool,
 }
 
 /// see comment for struct Settings

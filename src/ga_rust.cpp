@@ -264,9 +264,9 @@ namespace sdk {
     {
         auto details = nlohmann::json({
             { "subaccount", subaccount },
-            { "new_name", new_name },
+            { "name", new_name },
         });
-        rust_call("rename_subaccount", details, m_session);
+        rust_call("update_subaccount", details, m_session);
     }
 
     void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
@@ -275,7 +275,7 @@ namespace sdk {
             { "subaccount", subaccount },
             { "hidden", is_hidden },
         });
-        rust_call("set_subaccount_hidden", details, m_session);
+        rust_call("update_subaccount", details, m_session);
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)

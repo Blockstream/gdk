@@ -979,22 +979,6 @@ impl ElectrumSession {
         Ok(self.store()?.read()?.cache.tip_height())
     }
 
-    pub fn rename_subaccount(&mut self, opt: RenameAccountOpt) -> Result<bool, Error> {
-        self.get_account(opt.subaccount)?.set_settings(UpdateAccountOpt {
-            subaccount: opt.subaccount,
-            name: Some(opt.new_name),
-            hidden: None,
-        })
-    }
-
-    pub fn set_subaccount_hidden(&mut self, opt: SetAccountHiddenOpt) -> Result<bool, Error> {
-        self.get_account(opt.subaccount)?.set_settings(UpdateAccountOpt {
-            subaccount: opt.subaccount,
-            hidden: Some(opt.hidden),
-            name: None,
-        })
-    }
-
     pub fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<bool, Error> {
         self.get_account(opt.subaccount)?.set_settings(opt)
     }

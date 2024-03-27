@@ -101,14 +101,6 @@ impl Session for ElectrumSession {
                 let opt: GetLastEmptyAccountOpt = serde_json::from_value(input)?;
                 self.get_last_empty_subaccount(opt).to_json()
             }
-            "rename_subaccount" => {
-                let opt: RenameAccountOpt = serde_json::from_value(input)?;
-                self.rename_subaccount(opt).to_json()
-            }
-            "set_subaccount_hidden" => {
-                let opt: SetAccountHiddenOpt = serde_json::from_value(input)?;
-                self.set_subaccount_hidden(opt).to_json()
-            }
             "update_subaccount" => {
                 let opt: UpdateAccountOpt = serde_json::from_value(input)?;
                 self.update_subaccount(opt).to_json()
