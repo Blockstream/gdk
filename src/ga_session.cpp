@@ -2814,12 +2814,6 @@ namespace sdk {
         return address_type::p2sh;
     }
 
-    bool ga_session::is_twofactor_reset_active(session_impl::locker_t& locker)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        return j_bool_or_false(m_login_data, "reset_2fa_active");
-    }
-
     nlohmann::json ga_session::get_twofactor_config(bool reset_cached)
     {
         ensure_full_session();

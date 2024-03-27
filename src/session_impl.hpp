@@ -252,6 +252,8 @@ namespace sdk {
         nlohmann::json get_proxy_settings(locker_t& locker);
         nlohmann::json get_net_call_params(locker_t& locker, uint32_t timeout_secs);
 
+        bool is_twofactor_reset_active(locker_t& locker) const;
+
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;
 

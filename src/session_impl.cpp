@@ -486,6 +486,14 @@ namespace sdk {
         };
     }
 
+    bool session_impl::is_twofactor_reset_active(locker_t& locker) const
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        // Singlesig does not support 2fa, so this always returns false.
+        // Multisig sets this value to true when a 2fa reset is active.
+        return j_bool_or_false(m_login_data, "reset_2fa_active");
+    }
+
     nlohmann::json session_impl::get_spending_limits() const
     {
         // Singlesig does not support spending limits. Overridden for multisig.
