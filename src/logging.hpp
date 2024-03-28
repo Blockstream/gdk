@@ -14,6 +14,7 @@
 #include <boost/log/sources/global_logger_storage.hpp>
 #include <boost/log/sources/logger.hpp>
 #include <boost/log/trivial.hpp>
+#include <thread>
 
 namespace ga {
 namespace sdk {

@@ -205,6 +205,7 @@ function prepare_sources {
     source_url=$1
     source_filename=$2
     source_hash=$3
+    patchfile=$4
     rm_downloaded=""
     downloads_folder="downloads"
 
@@ -226,6 +227,12 @@ function prepare_sources {
     tar -xf ${downloads_folder}/${source_filename} -C ${tmp_folder}
     if [ -n "${rm_downloaded}" -a -z "${GDK_KEEP_DOWNLOADS}" ]; then
         rm ${downloads_folder}/${source_filename}
+    fi
+    if [ -n "${patchfile}" ]; then
+        echo "patching source files with " ${patchfile}
+        cd ${tmp_folder}/
+        patch -p1 < ${GDK_SOURCE_ROOT}/${patchfile}
+        cd -
     fi
 }
 
@@ -295,7 +302,7 @@ source_url="https://github.com/libevent/libevent/archive/release-2.1.12-stable.t
 source_name="libevent-release-2.1.12-stable"
 source_filename="${source_name}.tar.gz"
 source_hash="7180a979aaa7000e1264da484f712d403fcf7679b1e9212c4e3d09f5c93efc24"
-prepare_sources ${source_url} ${source_filename} ${source_hash}
+prepare_sources ${source_url} ${source_filename} ${source_hash} tools/libevent-2.1.12.patch
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \

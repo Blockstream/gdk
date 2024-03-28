@@ -33,7 +33,7 @@ endif()
 
 include(UseSWIG)
 
-set(_swig_package_option -package com.blockstream.libgreenaddress -DGDK_API)
+set(_swig_package_option -package com.blockstream.libgreenaddress -DGDK_BUILD)
 set_source_files_properties(swig_gasdk.i PROPERTIES
     COMPILE_OPTIONS "${_swig_package_option}"
     USE_SWIG_DEPENDENCIES TRUE
