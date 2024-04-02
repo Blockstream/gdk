@@ -1,0 +1,56 @@
+diff --git -ru a/libevent-release-2.1.12-stable/CMakeLists.txt b/libevent-release-2.1.12-stable/CMakeLists.txt
+--- a/libevent-release-2.1.12-stable/CMakeLists.txt	2020-07-05 14:02:46.000000000 +0200
++++ b/libevent-release-2.1.12-stable/CMakeLists.txt	2024-03-28 11:23:45.190750519 +0100
+@@ -508,6 +508,30 @@
+     endif()
+ endif()
+ 
++if (NOT EVENT__DISABLE_THREAD_SUPPORT)
++    if (WIN32)
++        list(APPEND SRC_CORE evthread_win32.c)
++    elseif(ANDROID)
++        # pthreads is built in to bionic
++        set(EVENT__HAVE_PTHREADS 1)
++        CHECK_TYPE_SIZE(pthread_t EVENT__SIZEOF_PTHREAD_T)
++        list(APPEND SYMBOLS_TO_CHECK pthread_mutexattr_setprotocol)
++        set(PTHREADS_AVAILABLE ON)
++    else()
++        find_package(Threads REQUIRED)
++        if (NOT CMAKE_USE_PTHREADS_INIT)
++            message(FATAL_ERROR
++                    "Failed to find Pthreads, set EVENT__DISABLE_THREAD_SUPPORT to disable")
++        endif()
++
++        set(EVENT__HAVE_PTHREADS 1)
++        list(APPEND LIB_APPS ${CMAKE_THREAD_LIBS_INIT})
++
++        CHECK_TYPE_SIZE(pthread_t EVENT__SIZEOF_PTHREAD_T)
++        list(APPEND SYMBOLS_TO_CHECK pthread_mutexattr_setprotocol)
++    endif()
++endif()
++
+ # Add stdio.h for vasprintf
+ set(EVENT_INCLUDES ${EVENT_INCLUDES} stdio.h)
+ CHECK_SYMBOLS_EXIST("${SYMBOLS_TO_CHECK}" "${EVENT_INCLUDES}" "EVENT")
+@@ -855,21 +879,6 @@
+     list(APPEND LIB_APPS ${OPENSSL_LIBRARIES})
+ endif()
+ 
+-if (NOT EVENT__DISABLE_THREAD_SUPPORT)
+-    if (WIN32)
+-        list(APPEND SRC_CORE evthread_win32.c)
+-    else()
+-        find_package(Threads REQUIRED)
+-        if (NOT CMAKE_USE_PTHREADS_INIT)
+-            message(FATAL_ERROR
+-                    "Failed to find Pthreads, set EVENT__DISABLE_THREAD_SUPPORT to disable")
+-        endif()
+-
+-        set(EVENT__HAVE_PTHREADS 1)
+-        list(APPEND LIB_APPS ${CMAKE_THREAD_LIBS_INIT})
+-    endif()
+-endif()
+-
+ if (NOT EVENT__DISABLE_TESTS)
+     # Zlib is only used for testing.
+     find_package(ZLIB)

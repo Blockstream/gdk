@@ -17,7 +17,7 @@
   rules:
     - if: $CI_COMMIT_BRANCH
       changes:
-        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, $ENV_FILE, cmake/profiles/*, gitlab/docker.yml]
+        paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, cmake/profiles/*, gitlab/docker.yml]
         compare_to: master
   script:
     - mkdir downloads
@@ -48,7 +48,6 @@ build_gdk-debian-ci:
   variables:
     IMAGE: blockstream/gdk-debian-ci
     DOCKER_BUILD_CONTEXT: docker/debian
-    ENV_FILE: tools/env.sh
 
 build_gdk-ubuntu-builder:
   extends: .build_setup
@@ -73,6 +72,12 @@ build_gdk-android-builder:
   variables:
     IMAGE: blockstream/gdk-android-builder
     DOCKER_BUILD_CONTEXT: docker/android
+
+# build_gdk-android-bookworm-builder:
+#   extends: .build_setup
+#   variables:
+#     IMAGE: blockstream/gdk-android-builder
+#     DOCKER_BUILD_CONTEXT: docker/android-bookworm
 
 build_gdk-ubuntu-arm64-builder:
   extends: .build_setup
