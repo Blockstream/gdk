@@ -5,46 +5,6 @@ have_cmd()
 {
     command -v "$1" >/dev/null 2>&1
 }
-
-function set_cross_build_env() {
-    export HOST_ARCH=$2
-    case $2 in
-        armeabi-v7a)
-            export SDK_ARCH=arm
-            export SDK_CPU=armv7
-            export SDK_CFLAGS="-march=armv7-a -mfloat-abi=softfp -mfpu=neon -mthumb"
-            export CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/android-armeabi-v7a.cmake
-            ;;
-        arm64-v8a)
-            export SDK_ARCH=aarch64
-            export SDK_CPU=arm64-v8a
-            export SDK_CFLAGS="-march=armv8-a -flax-vector-conversions"
-            export CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/android-arm64-v8a.cmake
-            ;;
-        iphone)
-            export SDK_ARCH=aarch64
-            export SDK_CPU=arm64
-            ;;
-        iphonesim)
-            export SDK_ARCH="$(uname -m)"
-            export SDK_CPU="$(uname -m)"
-            if [ "$SDK_ARCH" = "arm64" ]; then
-                export SDK_ARCH="aarch64"
-            fi
-            ;;
-        x86_64)
-            export SDK_ARCH=$HOST_ARCH
-            export SDK_CPU=$HOST_ARCH
-            export CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/android-x86_64.cmake
-            ;;
-        *)
-            export SDK_ARCH=$2
-            export SDK_CPU=i686
-            export CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/android-x86.cmake
-            ;;
-    esac
-}
-
 if have_cmd gsed; then
     export SED=$(command -v gsed)
 elif have_cmd sed; then
@@ -54,31 +14,14 @@ else
     exit 1
 fi
 
-export HOST_OS="i686-linux-gnu"
-if [ "$(uname)" = "Darwin" ]; then
-    if [ "$(uname -m)" = "arm64" ]; then
-        export HOST_OS="aarch64-apple-darwin"
-        export SDK_ARCH="aarch64"
-        export SDK_CPU="arm64"
-    else
-        export SDK_ARCH="x86_64"
-        export SDK_CPU="x86_64"
-        export HOST_OS="x86_64-apple-darwin"
-    fi
-fi
 BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
 COMPILER_VERSION=""
 export GDK_BUILD_ROOT=""
-export PATH_BASE=$PATH
 
 
-export NDK_TOOLSDIR="$ANDROID_NDK/toolchains/llvm/prebuilt/linux-x86_64"
 export GDK_SOURCE_ROOT=$(pwd)
-export CFLAGS="$CFLAGS"
-export CPPFLAGS="$CFLAGS"
-export PATH_BASE=$PATH
 export BUILDTYPE
 
 
@@ -110,90 +53,28 @@ fi
 export NUM_JOBS
 
 
-C_COMPILER=""
-CXX_COMPILER=""
-if [ ${BUILD} == "--gcc" ]; then
-    C_COMPILER="gcc"
-    CXX_COMPILER="g++"
-    CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/gcc.cmake
-elif [ ${BUILD} == "--clang" ]; then
-    C_COMPILER="clang"
-    CXX_COMPILER="clang++"
-    CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/clang.cmake
-    if [ "$(uname)" = "Darwin" ]; then
-        source tools/macos_env.sh
-        CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/macOS.cmake
-    fi
-elif [ ${BUILD} == "--ndk" ]; then
-    C_COMPILER="clang"
-    CXX_COMPILER="clang++"
-    set_cross_build_env android $NDK_ARCH
-    export ANDROID_VERSION="23"
-    export clangarchname=$HOST_ARCH
-    export archfilename=$SDK_ARCH
-    case $archfilename in
-        armeabi-v7a) archfilename=arm;;
-        arm64-v8a) archfilename=aarch64;;
-        x86) archfilename=i686;;
-    esac
-    case $clangarchname in
-        armeabi-v7a) clangarchname=armv7a;;
-        arm64-v8a) clangarchname=aarch64;;
-        x86) clangarchname=i686;;
-    esac
-    export AR="$NDK_TOOLSDIR/bin/llvm-ar"
-    export RANLIB="$NDK_TOOLSDIR/bin/llvm-ranlib"
-elif [ ${BUILD} == "--iphone" ]; then
-    set_cross_build_env ios iphone
-    . tools/ios_env.sh $BUILD
-    export AR=ar
-    C_COMPILER=${XCODE_DEFAULT_PATH}/clang
-    CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++
-    export CFLAGS="${IOS_CFLAGS} ${EXTRA_FLAGS}"
-    export LDFLAGS="${IOS_LDFLAGS} ${EXTRA_FLAGS}"
-    CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/iphoneos.cmake
-elif [ ${BUILD} == "--iphonesim" ]; then
-    set_cross_build_env ios iphonesim
-    . tools/ios_env.sh $BUILD
-    export AR=ar
-    C_COMPILER=${XCODE_DEFAULT_PATH}/clang
-    CXX_COMPILER=${XCODE_DEFAULT_PATH}/clang++
-    export CFLAGS="${IOS_CFLAGS} ${EXTRA_FLAGS}"
-    export LDFLAGS="${IOS_LDFLAGS} ${EXTRA_FLAGS}"
-    CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/iphonesimulator.cmake
-elif [ ${BUILD} == "--mingw-w64" ]; then
-    BUILD="--windows"
-    C_COMPILER=gcc-posix
-    CXX_COMPILER=g++-posix
-    CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/windows-mingw-w64.cmake
-else
-    echo "BUILD \"${BUILD}\" not recognized, exiting"
-    exit 0
-fi
+source ./tools/environment_setup.sh ${BUILD} ${NDK_ARCH}
 
+export BUILDTYPE=${BUILDTYPE}
 if [ ${BUILDTYPE} == "debug" ]; then
     if [ ${BUILD} == "--mingw-w64" ]; then
         # when debugging in windows try dwarf-2 or stabs formats
         export CFLAGS="-g -gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
         export CXXFLAGS="-gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
         export CPPFLAGS="-g -gdwarf-2 -O0 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
-        export BUILDTYPE=${BUILDTYPE}
     else
         export CFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
         export CXXFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
         export CPPFLAGS="-ggdb3 -fno-omit-frame-pointer -D_GLIBCXX_ASSERTIONS -D_GLIBCXX_DEBUG -D_GLIBCXX_DEBUG_PEDANTIC"
-        export BUILDTYPE=${BUILDTYPE}
     fi
 else
-    export CFLAGS="$CFLAGS -O2 -DNDEBUG"
-    export CXXFLAGS="$CXXFLAGS -O2 -DNDEBUG"
-    # export CPPFLAGS="$CPPFLAGS -O2 -DNDEBUG" # tor seems to be annoyed by this variable ¯\_(ツ)_/¯
+    export CFLAGS="$SDK_CFLAGS -O2 -DNDEBUG"
+    export CXXFLAGS="$SDK_CXXFLAGS -O2 -DNDEBUG"
+    export LDFLAGS="$SDK_LDFLAGS -O2 -DNDEBUG"
 fi
 
-export CXX=$CXX_COMPILER
-export CCC_CXX=$CXX_COMPILER
-export CC=$C_COMPILER
-export CCC_CC=$C_COMPILER
+export CFLAGS="${CFLAGS} -fPIC -DPIC"
+export CXXFLAGS="${CXXFLAGS} -fPIC -DPIC"
 
 
 mkdir -p ${GDK_BUILD_ROOT}
@@ -253,6 +134,26 @@ mkdir tmp
 cmake_build_type=${BUILDTYPE^}
 
 
+# resume of build information
+echo ""
+echo "*********************************"
+echo "Build information:"
+echo "Build type: ${BUILDTYPE}"
+echo "Build: ${BUILD}"
+echo "Build root: ${GDK_BUILD_ROOT}"
+echo "target triple ${target_triple}"
+echo "host triple ${host_triple}"
+echo "sysroot ${SDK_SYSROOT}"
+echo "C COMPILER: ${CC}"
+echo "CXX COMPILER: ${CXX}"
+echo "CFLAGS: ${CFLAGS}"
+echo "CXXFLAGS: ${CXXFLAGS}"
+echo "LDFLAGS: ${LDFLAGS}"
+echo "cmake toolchain file: ${CMAKE_TOOLCHAIN_FILE}"
+echo "*********************************"
+echo ""
+
+
 # building wally-core
 name="libwally-core"
 source_url="https://github.com/ElementsProject/libwally-core/tarball/bd91b76183ba69a5b815cfbf529b9234e6ea4b4c/ElementsProject-libwally-core-bd91b76.tar.gz"
@@ -270,7 +171,7 @@ export SECP_COMMIT=${secpcommit}
 build ${name} ${WALLYCORE_SRCDIR}
 
 
-# building  zlib
+# building zlib
 name="zlib"
 source_url="https://github.com/madler/zlib/archive/v1.3.tar.gz"
 source_name="zlib-1.3"
@@ -291,7 +192,7 @@ find ${GDK_BUILD_ROOT}/lib -name "libz.so*" -type f -delete
 find ${GDK_BUILD_ROOT}/lib -name "libz*.dylib" -type f -delete
 find ${GDK_BUILD_ROOT}/lib -name "libz.dll*" -type f -delete
 # https://github.com/madler/zlib/issues/652
-if [ ${BUILD} == "--windows" ]; then
+if [ ${BUILD} == "--mingw-w64" ]; then
     mv ${GDK_BUILD_ROOT}/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/lib/libz.a
 fi
 
@@ -326,7 +227,7 @@ source_filename="${source_name}.tar.gz"
 source_hash="cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
-build ${name} ${OPENSSL_SRCDIR}
+(build ${name} ${OPENSSL_SRCDIR})
 
 
 # building boost
@@ -338,7 +239,7 @@ source_hash="a5800f405508f5df8114558ca9855d2640a2de8f0445f051fa1c7c3383045724"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BOOST_SRCDIR=`pwd`/tmp/${source_name}
 export PRJ_SUBDIR=${BOOST_SRCDIR}
-${GDK_SOURCE_ROOT}/tools/build${name}.sh $C_COMPILER $BUILD ${CXXFLAGS}
+${GDK_SOURCE_ROOT}/tools/build${name}.sh $CC $BUILD ${CXXFLAGS}
 
 
 # building tor

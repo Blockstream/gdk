@@ -18,7 +18,7 @@
 !./docker/python/install_deps.sh
 !./docker/android/install_deps.sh
 !./docker/android-bookworm/install_deps.sh
-!./tools/env.sh
+!./tools/environment_setup.sh
 !./tools/requirements.txt
 !./cmake/profiles/
 !./downloads/**

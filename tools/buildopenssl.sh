@@ -1,69 +1,76 @@
 #! /usr/bin/env bash
 set -e
 
-have_cmd()
-{
-    command -v "$1" >/dev/null 2>&1
-}
-
-if have_cmd gsed; then
-    SED=$(command -v gsed)
-elif have_cmd tar; then
-    SED=$(command -v sed)
-else
-    echo "Could not find sed or gsed. Please install sed and try again."
-    exit 1
-fi
 
 # FIXME: Change no-tests to no-apps when openssl is updated to 3.x
 OPENSSL_NAME="$(basename ${PRJ_SUBDIR})"
-OPENSSL_OPTIONS="enable-ec_nistp_64_gcc_128 no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp no-tests no-ui-console"
-OPENSSL_MOBILE="no-hw no-engine"
+CONFIGURE_ARGS="no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp no-tests no-ui-console"
 
+case $target_triple in
+    *-pc-linux-gnu)
+        CONFIGURE_ARGS+=" enable-ec_nistp_64_gcc_128"
+        openssl_triple="linux-${HOST_ARCH}"
+        if [ "${CC}" == "clang" ]; then
+            openssl_triple+="-clang"
+        fi
+        ;;
 
-cd "${PRJ_SUBDIR}"
+    *-apple-darwin)
+        CONFIGURE_ARGS+=""
+        openssl_triple="darwin64-${HOST_ARCH}-cc"
+        ;;
+
+    armv7a-linux-android)
+        CONFIGURE_ARGS+=" no-asm no-hw no-engine -D__ANDROID_API__=${ANDROID_VERSION}"
+        openssl_triple="android-arm"
+        export ANDROID_NDK_HOME=${ANDROID_NDK}
+        export PATH="${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${HOST_ARCH}/bin:$PATH"
+        ;;
+
+    aarch64-linux-android)
+        CONFIGURE_ARGS+=" enable-ec_nistp_64_gcc_128 no-hw no-engine -D__ANDROID_API__=${ANDROID_VERSION}"
+        openssl_triple="android-arm64"
+        export ANDROID_NDK_HOME=${ANDROID_NDK}
+        export PATH="${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${HOST_ARCH}/bin:$PATH"
+        ;;
+
+    x86_64-linux-android)
+        CONFIGURE_ARGS+=" enable-ec_nistp_64_gcc_128 no-hw no-engine -D__ANDROID_API__=${ANDROID_VERSION}"
+        openssl_triple="android-x86_64"
+        export ANDROID_NDK_HOME=${ANDROID_NDK}
+        export PATH="${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${HOST_ARCH}/bin:$PATH"
+        ;;
+
+    i686-linux-android)
+        CONFIGURE_ARGS+=" no-hw no-engine -D__ANDROID_API__=${ANDROID_VERSION}"
+        openssl_triple="android-x86"
+        export ANDROID_NDK_HOME=${ANDROID_NDK}
+        export PATH="${ANDROID_NDK}/toolchains/llvm/prebuilt/linux-${HOST_ARCH}/bin:$PATH"
+        ;;
+
+    arm-apple-ios)
+        CONFIGURE_ARGS+=" no-hw no-engine"
+        openssl_triple="ios64-cross"
+        export CROSS_TOP=${IOS_SDK_PLATFORM_PATH}/Developer
+        export CROSS_SDK=${SDK_SYSROOT}
+        ;;
+
+    *-apple-iossimulator)
+        CONFIGURE_ARGS+=" no-asm no-hw no-engine"
+        openssl_triple="iossimulator-xcrun"
+        export CROSS_TOP=${IOS_SDK_PLATFORM_PATH}/Developer
+        export CROSS_SDK=${SDK_SYSROOT}
+        ;;
+
+    *-w64-mingw32)
+        openssl_triple="mingw64"
+        ;;
+
+esac
+
 openssl_prefix="${GDK_BUILD_ROOT}"
-if [ \( "$1" = "--ndk" \) ]; then
-    if [ \( "$SDK_CPU" = "i686" \) -o \( "$SDK_CPU" = "armv7" \) ]; then
-            OPENSSL_OPTIONS=$(echo $OPENSSL_OPTIONS | $SED -e "s/enable-ec_nistp_64_gcc_128//g")
-    fi
-    . ${GDK_SOURCE_ROOT}/tools/env.sh
-    $SED -ie "133s!\$triarch\-!!" "Configurations/15-android.conf"
-    $SED -ie "137s!\$triarch\-!!" "Configurations/15-android.conf"
-    if [ $HOST_ARCH = "armeabi-v7a" ]; then
-        OPENSSL_OPTIONS="$OPENSSL_OPTIONS no-asm"
-    fi
-    ./Configure android-$(echo $HOST_ARCH | tr '-' '\n' | head -1) --prefix="$openssl_prefix" $OPENSSL_OPTIONS $OPENSSL_MOBILE
-    $SED -ie "s!-ldl!!" "Makefile"
-elif [ \( "$1" = "--iphone" \) -o \( "$1" = "--iphonesim" \) ]; then
-    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
+cd "${PRJ_SUBDIR}"
 
-    export CC=${XCODE_DEFAULT_PATH}/clang
-    export CROSS_TOP="${IOS_SDK_PLATFORM}/Developer"
-    export CROSS_SDK="${IOS_PLATFORM}.sdk"
-    export PATH="${XCODE_DEFAULT_PATH}:$PATH"
-     export ARCH=$(uname -m)
-    if test "x$1" == "x--iphonesim"; then
-        CONFIG_TARGET="iossimulator-xcrun"
-        NOASM=no-asm
-        $SED -i "33a cflags           => add(\"${IOS_CFLAGS} -fno-common\")," Configurations/15-ios.conf
-    else
-        CONFIG_TARGET="ios64-cross"
-        NOASM=
-    fi
-    KERNEL_BITS=64 ./Configure $CONFIG_TARGET $NOASM --prefix=$openssl_prefix $OPENSSL_OPTIONS $OPENSSL_MOBILE
-elif [ \( "$1" = "--windows" \) ]; then
-    AR=ar RANLIB=ranlib ./Configure mingw64 --cross-compile-prefix=x86_64-w64-mingw32- --prefix="$openssl_prefix" $OPENSSL_OPTIONS
-    $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
-else
-    if [ "$(uname)" = "Darwin" ]; then
-        ARCH=$(uname -m)
-        ./Configure darwin64-$ARCH-cc --prefix="$openssl_prefix" $OPENSSL_OPTIONS -mmacosx-version-min=10.13
-    else
-        ./config --prefix="$openssl_prefix" $OPENSSL_OPTIONS
-        $SED -ie "s!^CFLAG=!CFLAG=-fPIC -DPIC !" "Makefile"
-    fi
-    $SED -ie "s!^DIRS=.*!DIRS=crypto ssl!" "Makefile"
-fi
-make -j$NUM_JOBS 2> /dev/null
-make -j$NUM_JOBS install_sw
+./Configure $openssl_triple --prefix=${openssl_prefix} ${CONFIGURE_ARGS}
+make -j${NUM_JOBS} 2>/dev/null
+make -j${NUM_JOBS} install_sw

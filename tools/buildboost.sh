@@ -29,23 +29,21 @@ boost_bld_home="${GDK_BUILD_ROOT}"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
-    . ${GDK_SOURCE_ROOT}/tools/env.sh
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
 using clang : :
 ${CXX}
 :
 <compileflags>-std=c++17
-<compileflags>"${SDK_CPPFLAGS}"
-$EXTRA_COMPILE_FLAGS
-<compileflags>"--sysroot=${SYSROOT}"
+<compileflags>"${CXXFLAGS}"
+<compileflags>"--sysroot=${SDK_SYSROOT}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
 <archiver>$AR
 <ranlib>$RANLIB
-<linkflags>"--sysroot=${SYSROOT}"
-$EXTRA_LINK_FLAGS
+<linkflags>"--sysroot=${SDK_SYSROOT}"
+$LDFLAGS
 <architecture>${SDK_ARCH}
 <target-os>android
 ;
@@ -58,41 +56,37 @@ EOF
 elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
     gsed -i "s!B2_CXXFLAGS_RELEASE=.*!B2_CXXFLAGS_RELEASE=\"-O2 -s -isysroot $(xcrun --show-sdk-path)\"!" \
           ${boost_src_home}/tools/build/src/engine/build.sh
-    gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
+              gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
           ${boost_src_home}/tools/build/src/engine/build.sh
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
-    . ${GDK_SOURCE_ROOT}/tools/ios_env.sh $BUILD
 
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
 using darwin : arm :
-${XCODE_DEFAULT_PATH}/clang++
+${CXX}
 :
-<root>${IOS_SDK_PATH}
+<root>${SDK_SYSROOT}
 <compileflags>-std=c++17
-<compileflags>"${SDK_CFLAGS}"
-$EXTRA_COMPILE_FLAGS
-<compileflags>"${IOS_MIN_VERSION}"
-<compileflags>"-isysroot ${IOS_SDK_PATH}"
+<compileflags>"${CXXFLAGS}"
+<compileflags>"-isysroot ${SDK_SYSROOT}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
 $(compile_flags $@)
-<linkflags>"${IOS_MIN_VERSION}"
-$EXTRA_LINK_FLAGS
-<linkflags>"-isysroot ${IOS_SDK_PATH}"
+<linkflags>"${LDFLAGS}"
+<linkflags>"-isysroot ${SDK_SYSROOT}"
 <target-os>iphone
 ;
 EOF
     ./b2 --clean
     ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system toolset=darwin-arm target-os=iphone link=static release install
-elif [ \( "$BUILD" = "--windows" \) ]; then
+elif [ \( "$BUILD" = "--mingw-w64" \) ]; then
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
 using gcc : :
 x86_64-w64-mingw32-g++-posix
 :
 <compileflags>-std=c++17
-<compileflags>"${SDK_CFLAGS}"
+<compileflags>"${CXXFLAGS}"
 <compileflags>"-fvisibility=hidden"
 $(compile_flags $@)
 <target-os>windows
@@ -112,7 +106,7 @@ else
     EXTRAFLAGS=""
     LINKFLAGS=""
 
-    cxxflags="$SDK_CFLAGS $EXTRAFLAGS -DPIC -fPIC -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
+    cxxflags="$CXXFLAGS -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}
     ./b2 --clean
     ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install

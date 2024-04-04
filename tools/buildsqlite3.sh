@@ -51,41 +51,26 @@ else
     CONFIGURE_ARGS="${CONFIGURE_ARGS} --disable-debug"
 fi
 
-if [[ "$1" == "--ndk" ]]; then
+case $target_triple in
+    *-linux-android)
+        CONFIGURE_ARGS+=" --host=${target_triple} --build=${host_triple}"
+        ;;
 
-    source ${GDK_SOURCE_ROOT}/tools/env.sh
-    export CFLAGS="$CFLAGS $EXTRA_FLAGS"
-    export LDFLAGS="$LDFLAGS $EXTRA_FLAGS"
-    ./configure --host=${NDK_TARGET_HOST} ${CONFIGURE_ARGS}
+    *-apple-ios | *-apple-iossimulator)
+        CONFIGURE_ARGS+=" --host=${target_triple} --build=${host_triple}"
+        ;;
 
-elif [[ "$1" == "--windows" ]]; then
+    *-w64-mingw32)
+        CONFIGURE_ARGS+=" --host=${target_triple} --build=${host_triple}"
+        ;;
 
-    export CC=x86_64-w64-mingw32-gcc-posix
-    export CXX=x86_64-w64-mingw32-g++-posix
-    ./configure --host=x86_64-w64-mingw32 --build=${HOST_OS} ${CONFIGURE_ARGS}
+esac
 
-elif [[ "$1" == "--iphone" ]] || [[ "$1" == "--iphonesim" ]]; then
 
-    source ${GDK_SOURCE_ROOT}/tools/ios_env.sh $1
-    export CFLAGS="$IOS_CFLAGS $EXTRA_FLAGS"
-    export LDFLAGS="$IOS_LDFLAGS $EXTRA_FLAGS"
-    export CC=${XCODE_DEFAULT_PATH}/clang
-    export CXX=${XCODE_DEFAULT_PATH}/clang++
-    ./configure --host=arm-apple-darwin --with-sysroot=${IOS_SDK_PATH} ${CONFIGURE_ARGS}
+CFLAGS+=" ${EXTRA_FLAGS}"
+LDFLAGS+=" ${EXTRA_FLAGS}"
 
-elif [[ "$1" == "--clang" ]]; then
-
-    export CFLAGS="$SDK_CFLAGS $EXTRA_FLAGS -DSQLITE_USE_ALLOCA=1"
-    export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
-    ./configure ${CONFIGURE_ARGS}
-
-else
-    export CFLAGS="$SDK_CFLAGS $EXTRA_FLAGS"
-    export LDFLAGS="$SDK_LDFLAGS $EXTRA_FLAGS"
-    ./configure ${CONFIGURE_ARGS}
-
-fi
-
+./configure ${CONFIGURE_ARGS}
 make libsqlite3.la -j${NUM_JOBS}
 make install-data
 make install-libLTLIBRARIES
