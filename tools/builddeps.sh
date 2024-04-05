@@ -329,10 +329,10 @@ cmake --install tmp/${source_name}/build
 
 # building ms-gsl
 name="ms-gsl"
-source_url="https://github.com/microsoft/GSL/archive/a3534567187d2edc428efd3f13466ff75fe5805c.tar.gz"
-source_name="GSL-a3534567187d2edc428efd3f13466ff75fe5805c"
-source_filename="GSL-a3534567187d2edc428efd3f13466ff75fe5805c.tar.gz"
-source_hash="c0379cff645543d5076216bc5b22a3426de57796fc043527a24a6e494628d8a6"
+source_url="https://github.com/microsoft/GSL/archive/refs/tags/v4.0.0.tar.gz"
+source_name="GSL-4.0.0"
+source_filename="GSL-4.0.0.tar.gz"
+source_hash="f0e32cb10654fea91ad56bde89170d78cfbf4363ee0b01d8f097de2ba49f6ce9"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
