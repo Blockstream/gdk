@@ -1,5 +1,5 @@
 # Android (main build) image. Build with:
-# DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-android-build -f docker/android/Dockerfile
+# DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-android-builder -f docker/android/Dockerfile
 #
 FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de as base
 WORKDIR /root
@@ -28,6 +28,8 @@ RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-a
 
 
 FROM base as final
+# Remove copied/downloaded dependency sources
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 
 COPY --from=builderandroid /prebuild/android-armeabi-v7a /prebuild/android-armeabi-v7a
@@ -38,9 +40,6 @@ COPY --from=builderandroid /prebuild/android-x86_64 /prebuild/android-x86_64
 
 COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup
-
-# Remove copied/downloaded dependency sources
-RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup

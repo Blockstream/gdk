@@ -1,5 +1,5 @@
 # Debian (main build) image. Build with:
-# DOCKER_BUILDKIT=1 docker build . -t greenaddress/ci -f tools/Dockerfile
+# DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-debian-ci -f docker/debian/Dockerfile
 #
 FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de as base
 WORKDIR /root
@@ -32,6 +32,8 @@ FROM blockstream/esplora@sha256:dabc2501137dea9db6107e6c5c4d6d575616b2274dc27864
 
 
 FROM base as final
+# Remove copied/downloaded dependency sources
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 COPY --from=esplora-base-image /srv/explorer/electrs_bitcoin/bin/electrs /root/bin/electrs_bitcoin
 COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bin/electrs_liquid
@@ -45,9 +47,6 @@ COPY --from=buildermingw /prebuild/mingw-w64 /prebuild/mingw-w64
 
 COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup
-
-# Remove copied/downloaded dependency sources
-RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 ENV OPENSSL_DIR=/prebuild/clang
 ENV OPENSSL_STATIC=True

@@ -1,3 +1,6 @@
+# Ubuntu for arm64 image. Build with:
+# DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-ubuntu-builder -f docker/ubuntu/Dockerfile
+#
 FROM ubuntu:20.04@sha256:71201a4c55f72ec33671cfcbf007689df61a13a35f028f94f8c510967dfb52e1 as base
 WORKDIR /root
 COPY ./tools ./tools
@@ -14,9 +17,10 @@ RUN mkdir -p /prebuild/gcc
 RUN ./tools/builddeps.sh --gcc --prefix /prebuild/gcc
 
 FROM base
-COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
+
+COPY --from=buildergcc /prebuild/gcc /prebuild/gcc
 
 RUN chmod +xr /root
 WORKDIR /root/gdk

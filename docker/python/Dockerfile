@@ -1,5 +1,5 @@
 # Manylinux (main build) image. Build with:
-# DOCKER_BUILDKIT=1 docker build . -t greenaddress/gdk-manylinux-builder -f docker/manylinux/Dockerfile
+# DOCKER_BUILDKIT=1 docker build . -t greenaddress/gdk-python-builder -f docker/python/Dockerfile
 #
 FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:9b66019db1656866ed7353b4f6ade7260bb4e74e8205bce63dac3d6fc076c7e6 as base
 WORKDIR /root
@@ -19,13 +19,13 @@ RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --clang --pr
 FROM rust:1.68-bullseye as builderrust
 
 FROM base as final
+# Remove copied/downloaded dependency sources
+RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 COPY --from=builderlinux /prebuild/clang /prebuild/clang
 
 COPY --from=builderrust /usr/local/cargo /usr/local/cargo
 COPY --from=builderrust /usr/local/rustup /usr/local/rustup
-
-RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
