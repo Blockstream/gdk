@@ -209,6 +209,8 @@ namespace sdk {
             locker_t locker(m_mutex);
             set_signer(locker, signer);
             m_watch_only = true;
+            // FIXME: Enable blobserver for rich watch only sessions
+            m_blobserver.reset();
         }
         return rust_call("login_wo", signer->get_credentials(false), m_session);
     }
