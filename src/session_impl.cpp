@@ -542,6 +542,14 @@ namespace sdk {
         throw user_error("Unknown subaccount");
     }
 
+    void session_impl::update_subaccount(uint32_t subaccount, const nlohmann::json& details)
+    {
+        locker_t locker(m_mutex);
+        nlohmann::json empty;
+        update_client_blob(
+            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, details, empty));
+    }
+
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
     {
         // Overriden for ga_rust

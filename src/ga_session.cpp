@@ -1712,16 +1712,16 @@ namespace sdk {
 
     void ga_session::update_subaccount(uint32_t subaccount, const nlohmann::json& details)
     {
-        locker_t locker(m_mutex);
+        {
+            locker_t locker(m_mutex);
 
-        const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        if (!have_writable_client_blob(locker)) {
-            throw user_error(res::id_2fa_reset_in_progress);
+            const auto p = m_subaccounts.find(subaccount);
+            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+            if (!have_writable_client_blob(locker)) {
+                throw user_error(res::id_2fa_reset_in_progress);
+            }
         }
-        nlohmann::json empty;
-        update_client_blob(
-            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, details, empty));
+        session_impl::update_subaccount(subaccount, details);
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
