@@ -508,7 +508,8 @@ namespace sdk {
                 return;
             }
             // Save the blob to the server
-            if (save_client_blob(locker, client_id, m_blob_hmac)) {
+            auto prev_hmac = m_blob_hmac.empty() ? client_blob::get_zero_hmac() : m_blob_hmac;
+            if (save_client_blob(locker, client_id, prev_hmac)) {
                 return; // Saved successfully
             }
             // Our update raced with another session.
