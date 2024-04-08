@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "amount.hpp"
-#include "client_blob.hpp"
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
 
@@ -230,16 +229,6 @@ namespace sdk {
 
         const bool m_spv_enabled;
         std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
-        // Current client blob (if any)
-        client_blob m_blob;
-        // HMAC of the current blobs contents
-        std::string m_blob_hmac;
-        // Key for encrypting the client blob contents
-        std::optional<pbkdf2_hmac256_t> m_blob_aes_key;
-        // Key for generating blob HMAC. Only set if the
-        // client blob is writable.
-        std::optional<pbkdf2_hmac256_t> m_blob_hmac_key;
-        bool m_blob_outdated;
         std::array<uint32_t, 32> m_gait_path;
         nlohmann::json m_limits_data;
         nlohmann::json m_twofactor_config;

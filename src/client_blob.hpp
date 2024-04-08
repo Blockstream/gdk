@@ -15,7 +15,7 @@
 namespace ga {
 namespace sdk {
 
-    // Client-only data, stored on the server as a server-unreadable blob
+    // Client-only data, stored on a server as a server-unreadable blob
     class client_blob final {
     public:
         client_blob();

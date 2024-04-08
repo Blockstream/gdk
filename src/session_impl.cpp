@@ -3,6 +3,7 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/strand.hpp>
 
+#include "client_blob.hpp"
 #include "exception.hpp"
 #include "ga_psbt.hpp"
 #include "ga_rust.hpp"
@@ -56,6 +57,11 @@ namespace sdk {
         , m_login_data{}
         , m_watch_only(true)
         , m_notify(true)
+        , m_blob(std::make_unique<client_blob>())
+        , m_blob_hmac()
+        , m_blob_aes_key()
+        , m_blob_hmac_key()
+        , m_blob_outdated(false)
         , m_utxo_cache_mutex()
         , m_utxo_cache()
         , m_wamp_connections()

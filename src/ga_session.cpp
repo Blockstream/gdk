@@ -21,6 +21,7 @@
 #include <nlohmann/json.hpp>
 
 #include "autobahn_wrapper.hpp"
+#include "client_blob.hpp"
 #include "exception.hpp"
 #include "ga_cache.hpp"
 #include "ga_session.hpp"
@@ -265,9 +266,6 @@ namespace sdk {
     ga_session::ga_session(network_parameters&& net_params)
         : session_impl(std::move(net_params))
         , m_spv_enabled(m_net_params.is_spv_enabled())
-        , m_blob()
-        , m_blob_hmac()
-        , m_blob_outdated(false)
         , m_min_fee_rate(m_net_params.is_liquid() ? DEFAULT_MIN_FEE_LIQUID : DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
@@ -549,8 +547,8 @@ namespace sdk {
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, recovery_xpub_sig));
             }
 
-            insert_subaccount(locker, subaccount, json_get_value(sa, "name"), sa["receiving_id"], recovery_pub_key,
-                recovery_chain_code, recovery_xpub, type, sa.value("required_ca", 0));
+            insert_subaccount(locker, subaccount, j_str_or_empty(sa, "name"), j_str_or_empty(sa, "receiving_id"),
+                recovery_pub_key, recovery_chain_code, recovery_xpub, type, j_uint32_or_zero(sa, "required_ca"));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -560,8 +558,8 @@ namespace sdk {
 
         // Insert the main account so callers can treat all accounts equally
         constexpr uint32_t required_ca = 0;
-        insert_subaccount(locker, 0, std::string(), m_login_data["receiving_id"], std::string(), std::string(),
-            std::string(), "2of2", required_ca);
+        insert_subaccount(locker, 0, std::string(), j_str_or_empty(m_login_data, "receiving_id"), std::string(),
+            std::string(), std::string(), "2of2", required_ca);
 
         m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
         m_system_message_ack_id = 0;
@@ -580,14 +578,14 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
-        if (m_blob_hmac_key.has_value() && m_blob.get_xpubs().empty() && !is_twofactor_reset_active(locker)) {
+        if (m_blob_hmac_key.has_value() && m_blob->get_xpubs().empty() && !is_twofactor_reset_active(locker)) {
             // A full session with no blob xpubs. This can happen if we are
             // upgrading/logging in from an earlier gdk version that didn't
             // automatically save them. Add them to the client blob now.
             GDK_LOG(info) << "adding missing client blob xpubs";
             const auto signer_xpubs = get_signer_xpubs_json(m_signer);
             GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
-            update_blob(locker, std::bind(&client_blob::set_xpubs, &m_blob, signer_xpubs));
+            update_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
         }
 
         // Make sure our list of valid csv blocks values matches the server,
@@ -1028,22 +1026,22 @@ namespace sdk {
             // No client blob: create one, save it to the server and cache it,
             // but only when the wallet isn't locked for a two factor reset.
             // Subaccount xpubs
-            m_blob.set_xpubs(get_signer_xpubs_json(m_signer));
+            m_blob->set_xpubs(get_signer_xpubs_json(m_signer));
             // Subaccount names
             const nlohmann::json empty; // Don't re-save xpubs
             for (const auto& sa : login_data["subaccounts"]) {
-                m_blob.set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), empty);
+                m_blob->set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), empty);
             }
             // Tx memos
             nlohmann::json tx_memos = wamp_cast_json(m_wamp->call(locker, "txs.get_memos"));
             for (const auto& m : tx_memos["bip70"].items()) {
-                m_blob.set_tx_memo(m.key(), m.value());
+                m_blob->set_tx_memo(m.key(), m.value());
             }
             for (const auto& m : tx_memos["memos"].items()) {
-                m_blob.set_tx_memo(m.key(), m.value());
+                m_blob->set_tx_memo(m.key(), m.value());
             }
 
-            m_blob.set_user_version(1); // Initial version
+            m_blob->set_user_version(1); // Initial version
 
             // If this save fails due to a race, m_blob_hmac will be empty below
             save_client_blob(locker, client_id, server_hmac);
@@ -1141,7 +1139,7 @@ namespace sdk {
                     }
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
-                        m_blob.load(*m_blob_aes_key, *db_blob);
+                        m_blob->load(*m_blob_aes_key, *db_blob);
                         m_blob_hmac = server_hmac;
                     }
                 }
@@ -1179,7 +1177,7 @@ namespace sdk {
             const auto hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
             GDK_RUNTIME_ASSERT_MSG(hmac == server_hmac, "Bad server client blob");
         }
-        m_blob.load(*m_blob_aes_key, server_blob);
+        m_blob->load(*m_blob_aes_key, server_blob);
 
         if (encache) {
             encache_client_blob(locker, server_blob, server_hmac);
@@ -1196,7 +1194,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value());
         GDK_RUNTIME_ASSERT(m_blob_hmac_key.has_value());
 
-        const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
+        const auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
 
         nlohmann::json server_data;
@@ -1299,7 +1297,7 @@ namespace sdk {
             remove_cached_utxos(std::vector<uint32_t>());
             swap_with_default(m_login_data);
             m_local_encryption_key.reset();
-            m_blob.reset();
+            m_blob->reset();
             m_blob_hmac.clear();
             m_blob_aes_key.reset();
             m_blob_hmac_key.reset();
@@ -1527,7 +1525,7 @@ namespace sdk {
             // Load any cached xpubs from the client blob.
             // If the client blob values differ from the cached values,
             // cache_bip32_xpub will throw.
-            const auto blob_xpubs = m_blob.get_xpubs();
+            const auto blob_xpubs = m_blob->get_xpubs();
             for (auto& item : blob_xpubs.items()) {
                 // Inverted: See encache_signer_xpubs()
                 m_signer->cache_bip32_xpub(item.value(), item.key());
@@ -1699,7 +1697,7 @@ namespace sdk {
 
         // Set watch only data in the client blob. Blanks the username if disabling.
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
-        update_blob(locker, std::bind(&client_blob::set_wo_data, &m_blob, username, signer_xpubs));
+        update_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
 
         std::pair<std::string, std::string> u_p{ username, password };
         std::string wo_blob_key_hex;
@@ -1721,7 +1719,7 @@ namespace sdk {
         if (m_blob_aes_key.has_value()) {
             // Client blob watch only; return from the client blob,
             // since the server doesn't know our real username.
-            const auto username = m_blob.get_wo_username();
+            const auto username = m_blob->get_wo_username();
             if (m_watch_only || m_net_params.is_liquid() || !username.empty()) {
                 return username;
             }
@@ -1745,17 +1743,18 @@ namespace sdk {
         // TODO: implement refreshing for multisig
         locker_t locker(m_mutex);
         if (m_blob_outdated) {
-            load_client_blob(locker, true);
+            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+            load_client_blob(locker, client_id, true);
         }
         nlohmann::json::array_t subaccounts;
         subaccounts.reserve(m_subaccounts.size());
 
         for (const auto& sa : m_subaccounts) {
             auto subaccount = sa.second;
-            if (auto name = m_blob.get_subaccount_name(sa.first); !name.empty()) {
+            if (auto name = m_blob->get_subaccount_name(sa.first); !name.empty()) {
                 subaccount["name"] = std::move(name);
             }
-            subaccount["hidden"] = m_blob.get_subaccount_hidden(sa.first);
+            subaccount["hidden"] = m_blob->get_subaccount_hidden(sa.first);
             subaccount["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(sa.first);
             subaccounts.emplace_back(std::move(subaccount));
         }
@@ -1781,7 +1780,7 @@ namespace sdk {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         nlohmann::json empty;
-        update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, new_name, empty));
+        update_blob(locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, new_name, empty));
     }
 
     void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
@@ -1791,7 +1790,7 @@ namespace sdk {
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, &m_blob, subaccount, is_hidden));
+        update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, m_blob.get(), subaccount, is_hidden));
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
@@ -1882,7 +1881,7 @@ namespace sdk {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
-        update_blob(locker, std::bind(&client_blob::set_subaccount_name, &m_blob, subaccount, name, signer_xpubs));
+        update_blob(locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, name, signer_xpubs));
         nlohmann::json ntf
             = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };
         for (const auto event_type : { "new", "synced" }) {
@@ -1921,8 +1920,8 @@ namespace sdk {
 
     std::pair<std::string, bool> ga_session::get_cached_master_blinding_key()
     {
-        const bool denied = m_blob.is_master_blinding_key_denied();
-        const auto blinding_key_hex = denied ? std::string() : m_blob.get_master_blinding_key();
+        const bool denied = m_blob->is_master_blinding_key_denied();
+        const auto blinding_key_hex = denied ? std::string() : m_blob->get_master_blinding_key();
         return std::make_pair(blinding_key_hex, denied);
     }
 
@@ -1931,7 +1930,7 @@ namespace sdk {
         session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
         // Note: this update is a no-op if the key is already cached
         locker_t locker(m_mutex);
-        update_blob(locker, std::bind(&client_blob::set_master_blinding_key, &m_blob, master_blinding_key_hex));
+        update_blob(locker, std::bind(&client_blob::set_master_blinding_key, m_blob.get(), master_blinding_key_hex));
     }
 
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
@@ -2442,7 +2441,7 @@ namespace sdk {
             // Get the tx memo. Use the server provided value if
             // its present (i.e. no client blob enabled yet, or watch-only)
             const std::string svr_memo = json_get_value(tx_details, "memo");
-            const std::string blob_memo = m_blob.get_tx_memo(tx_details["txhash"]);
+            const std::string blob_memo = m_blob->get_tx_memo(tx_details["txhash"]);
             tx_details["memo"] = svr_memo.empty() ? blob_memo : svr_memo;
         }
 
@@ -3268,7 +3267,7 @@ namespace sdk {
             m_cache->insert_transaction_data(txhash_hex, tx.to_bytes());
 
             if (!memo.empty()) {
-                update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+                update_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
             }
         }
 
@@ -3323,7 +3322,7 @@ namespace sdk {
         check_tx_memo(memo);
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
-        update_blob(locker, std::bind(&client_blob::set_tx_memo, &m_blob, txhash_hex, memo));
+        update_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 
     void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)

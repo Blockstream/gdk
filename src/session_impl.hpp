@@ -17,6 +17,7 @@ namespace sdk {
     using pubkey_and_script_t = std::pair<std::vector<unsigned char>, std::vector<unsigned char>>;
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
+    class client_blob;
     class ga_pubkeys;
     class user_pubkeys;
     class signer;
@@ -282,6 +283,18 @@ namespace sdk {
         // Mutable
         std::string m_tor_proxy; // Updated on connect(), protected by m_mutex
         std::atomic_bool m_notify; // Whether to emit notifications
+
+        // Client blob
+        // Current client blob (if any)
+        std::unique_ptr<client_blob> m_blob;
+        // HMAC of the current blobs contents
+        std::string m_blob_hmac;
+        // Key for encrypting the client blob contents
+        std::optional<pbkdf2_hmac256_t> m_blob_aes_key;
+        // Key for generating blob HMAC. Only set if the
+        // client blob is writable.
+        std::optional<pbkdf2_hmac256_t> m_blob_hmac_key;
+        bool m_blob_outdated;
 
         // UTXOs
         // Cached UTXOs are unfiltered; if using the cached values you
