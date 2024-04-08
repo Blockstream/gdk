@@ -1205,18 +1205,26 @@ namespace sdk {
         // Load the latest blob from the server
         GDK_LOG(info) << "Fetching client blob from server";
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        nlohmann::json ret;
+        nlohmann::json server_data;
         if (m_blobserver) {
             nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" } };
-            ret = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
-            if (ret.contains("error")) {
+            server_data = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
+            if (server_data.contains("error")) {
                 return false;
             }
         } else {
-            ret = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
+            server_data = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
         }
-        const auto server_blob = base64_to_bytes(j_strref(ret, "blob"));
-        const auto server_hmac = j_strref(ret, "hmac");
+        update_client_blob(locker, server_data, encache);
+        return true;
+    }
+
+    void ga_session::update_client_blob(session_impl::locker_t& locker, nlohmann::json& server_data, bool encache)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        const auto server_blob = base64_to_bytes(j_strref(server_data, "blob"));
+        const auto server_hmac = j_strref(server_data, "hmac");
         if (!m_watch_only) {
             // Verify the servers hmac
             const auto hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
@@ -1229,7 +1237,6 @@ namespace sdk {
         }
         m_blob_hmac = server_hmac;
         m_blob_outdated = false; // Blob is now current with the servers view
-        return true;
     }
 
     bool ga_session::save_client_blob(
