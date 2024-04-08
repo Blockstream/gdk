@@ -133,7 +133,7 @@ pub struct RawStore {
     settings: Option<Settings>,
 
     /// transaction memos (account_num -> txid -> memo)
-    memos: HashMap<Txid, String>,
+    pub memos: HashMap<Txid, String>,
 
     // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
     /// account settings

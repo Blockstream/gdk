@@ -151,6 +151,7 @@ impl Session for ElectrumSession {
             "load_store" => self.load_store(&serde_json::from_value(input)?).to_json(),
             "load_blob" => self.load_blob().to_json(),
             "save_blob" => self.save_blob(serde_json::from_value(input)?).to_json(),
+            "get_memos" => self.get_memos().to_json(),
             "get_master_blinding_key" => self.get_master_blinding_key().to_json(),
             "set_master_blinding_key" => {
                 self.set_master_blinding_key(&serde_json::from_value(input)?).to_json()

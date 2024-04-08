@@ -30,6 +30,7 @@ use crate::store::*;
 use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hex::DisplayHex;
+use gdk_common::bitcoin::Txid;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::model::*;
@@ -419,6 +420,10 @@ impl ElectrumSession {
                 ..Default::default()
             }),
         }
+    }
+
+    pub fn get_memos(&self) -> Result<HashMap<Txid, String>, Error> {
+        Ok(self.store()?.read()?.store.memos.clone())
     }
 
     /// Remove the persisted cache and store
