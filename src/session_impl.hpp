@@ -22,6 +22,7 @@ namespace sdk {
     class signer;
     class Tx;
     struct tor_controller;
+    class wamp_transport;
 
     class session_impl {
     public:
@@ -64,15 +65,15 @@ namespace sdk {
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         std::string connect_tor();
-        virtual void reconnect() = 0;
+        virtual void reconnect();
         virtual void reconnect_hint(const nlohmann::json& hint);
         // Get the tor or user connection proxy address
         nlohmann::json get_proxy_settings();
         nlohmann::json get_net_call_params(uint32_t timeout_secs);
         nlohmann::json get_registry_config();
 
-        virtual void connect() = 0;
-        virtual void disconnect() = 0;
+        virtual void connect();
+        virtual void disconnect();
 
         // Make an http request to an arbitrary host governed by 'params'.
         virtual nlohmann::json http_request(nlohmann::json params);
@@ -286,6 +287,9 @@ namespace sdk {
         using utxo_cache_t = std::map<utxo_cache_key_t, utxo_cache_value_t>;
         mutable std::mutex m_utxo_cache_mutex;
         utxo_cache_t m_utxo_cache;
+
+        std::vector<std::shared_ptr<wamp_transport>> m_wamp_connections;
+        std::shared_ptr<wamp_transport> m_blobserver;
     };
 
 } // namespace sdk

@@ -18,6 +18,7 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
+#include "wamp_transport.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -55,16 +56,58 @@ namespace sdk {
         , m_login_data{}
         , m_watch_only(true)
         , m_notify(true)
+        , m_utxo_cache_mutex()
+        , m_utxo_cache()
+        , m_wamp_connections()
+        , m_blobserver()
     {
         if (m_net_params.use_tor() && m_user_proxy.empty()) {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();
         }
+        m_wamp_connections.reserve(2u);
+        if (!m_net_params.get_blob_server_url().empty()) {
+            m_blobserver = std::make_unique<wamp_transport>(
+                m_net_params, *m_strand,
+                [](nlohmann::json details, bool) { GDK_LOG(info) << "blob_server notification: " << details.dump(); },
+                "blob_server");
+            m_wamp_connections.push_back(m_blobserver);
+        }
     }
 
     session_impl::~session_impl()
     {
+        m_blobserver.reset();
+        for (auto& connection : m_wamp_connections) {
+            no_std_exception_escape(
+                [&connection] {
+                    connection->disconnect();
+                    connection.reset();
+                },
+                "ga_session wamp_transport");
+        };
         no_std_exception_escape([this] { m_strand.reset(); }, "session_impl m_strand");
+    }
+
+    void session_impl::connect()
+    {
+        const auto proxy = session_impl::connect_tor();
+        std::for_each(m_wamp_connections.rbegin(), m_wamp_connections.rend(),
+            [&proxy](auto& connection) { connection->connect(proxy); });
+    }
+
+    void session_impl::reconnect()
+    {
+        for (auto& connection : m_wamp_connections) {
+            connection->reconnect();
+        }
+    }
+
+    void session_impl::disconnect()
+    {
+        for (auto& connection : m_wamp_connections) {
+            connection->disconnect();
+        }
     }
 
     void session_impl::set_notification_handler(GA_notification_handler handler, void* context)
@@ -284,6 +327,8 @@ namespace sdk {
                 m_tor_ctrl->sleep(); // no-op if already sleeping
             }
         }
+        // FIXME: Rework derived sessions hint handling so we can hint
+        // m_wamp_connections here.
     }
 
     nlohmann::json session_impl::get_proxy_settings()

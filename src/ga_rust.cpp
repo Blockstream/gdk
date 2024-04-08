@@ -17,6 +17,8 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
+// FIXME: remove wamp_transport when reconnect_hint is refactored
+#include "wamp_transport.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -40,6 +42,12 @@ namespace sdk {
 
     void ga_rust::connect()
     {
+        session_impl::connect();
+        connect_session();
+    }
+
+    void ga_rust::connect_session()
+    {
         nlohmann::json net_params = m_net_params.get_json();
         net_params["proxy"] = session_impl::connect_tor();
         rust_call("connect", net_params, m_session);
@@ -49,8 +57,9 @@ namespace sdk {
     {
         // Called by the top level session handler in reponse to
         // reconnect and timeout errors.
-        disconnect();
-        connect();
+        session_impl::reconnect();
+        disconnect_session();
+        connect_session();
     }
 
     void ga_rust::reconnect_hint(const nlohmann::json& hint)
@@ -58,20 +67,30 @@ namespace sdk {
         // Called by the user to indicate they want to connect or disconnect
         // the sessions underlying transport
         session_impl::reconnect_hint(hint);
+        const auto proxy_settings = get_proxy_settings();
+        const auto& proxy = proxy_settings.at("proxy");
 
-        const auto hint_p = hint.find("hint");
-        if (hint_p != hint.end()) {
+        if (const auto hint_p = hint.find("hint"); hint_p != hint.end()) {
             if (*hint_p == "connect") {
-                connect();
+                connect_session();
             } else {
-                disconnect();
+                disconnect_session();
             }
+        }
+        for (auto& connection : m_wamp_connections) {
+            connection->reconnect_hint(hint, proxy);
         }
     }
 
     void ga_rust::disconnect()
     {
-        GDK_LOG(debug) << "ga_rust::disconnect";
+        session_impl::disconnect();
+        disconnect_session();
+    }
+
+    void ga_rust::disconnect_session()
+    {
+        GDK_LOG(debug) << "ga_rust::disconnect_session";
         rust_call("disconnect", {}, m_session);
     }
 

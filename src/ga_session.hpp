@@ -18,7 +18,6 @@ namespace ga {
 namespace sdk {
     struct cache;
     class ga_user_pubkeys;
-    class wamp_transport;
 
     class ga_session final : public session_impl {
     public:
@@ -27,10 +26,7 @@ namespace sdk {
         explicit ga_session(network_parameters&& net_params);
         ~ga_session();
 
-        void connect();
-        void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
-        void disconnect();
 
         void emit_notification(nlohmann::json details, bool async);
 
@@ -277,8 +273,7 @@ namespace sdk {
         std::shared_ptr<cache> m_cache;
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
-        std::unique_ptr<wamp_transport> m_wamp;
-        std::unique_ptr<wamp_transport> m_blobserver;
+        std::shared_ptr<wamp_transport> m_wamp;
 
         // SPV header downloading
         std::shared_ptr<std::thread> m_spv_thread; // Header download thread
