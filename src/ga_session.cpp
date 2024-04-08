@@ -1136,14 +1136,21 @@ namespace sdk {
     void ga_session::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const std::string receiving_id = m_login_data["receiving_id"];
+        const auto& receiving_id = j_strref(m_login_data, "receiving_id");
 
         unique_unlock unlocker(locker);
         const bool is_initial = true;
         m_wamp->subscribe(
             "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
 
-        m_wamp->subscribe("com.greenaddress.cbs.wallet_" + receiving_id, [this](nlohmann::json event) {
+        auto blob_feed = "com.greenaddress.cbs.wallet_" + receiving_id;
+        auto* blob_wamp = &m_wamp;
+        if (m_blobserver) {
+            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+            blob_feed = "blob.update." + client_id;
+            blob_wamp = &m_blobserver;
+        }
+        (*blob_wamp)->subscribe(blob_feed, [this](nlohmann::json event) {
             const uint64_t seq = event.at("sequence");
             if (seq != 0) {
                 // Ignore client blobs whose sequence numbers we don't understand
