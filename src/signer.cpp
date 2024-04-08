@@ -349,6 +349,18 @@ namespace sdk {
         return m_cached_bip32_xpubs;
     }
 
+    nlohmann::json signer::get_cached_bip32_xpubs_json()
+    {
+        auto paths_and_xpubs = get_cached_bip32_xpubs();
+        nlohmann::json xpubs_json;
+        for (auto& item : paths_and_xpubs) {
+            // We cache the values inverted, i.e. xpub: path
+            // because the master key path is empty JSON keys can't be empty
+            xpubs_json.emplace(std::move(item.second), std::move(item.first));
+        }
+        return xpubs_json;
+    }
+
     ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
         GDK_RUNTIME_ASSERT(m_master_key.get());

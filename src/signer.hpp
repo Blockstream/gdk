@@ -105,6 +105,7 @@ namespace sdk {
         // Get the master xpub. Equivalent to calling `get_bip32_xpub` with an
         // empty path.
         std::string get_master_bip32_xpub();
+
         // Returns true if we have the master xpub
         bool has_master_bip32_xpub();
 
@@ -114,8 +115,8 @@ namespace sdk {
         // Cache an xpub for a given path
         bool cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub);
 
-        // Get all cached xpubs and their paths
-        cache_t get_cached_bip32_xpubs();
+        // Get cached xpubs and paths from a signer as a cacheable json format
+        nlohmann::json get_cached_bip32_xpubs_json();
 
         // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
         ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
@@ -134,6 +135,9 @@ namespace sdk {
     private:
         // Compute the xpub from an hdkey and encache it
         std::string cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey);
+
+        // Get all cached xpubs and their paths
+        cache_t get_cached_bip32_xpubs();
 
         // Immutable
         const bool m_is_main_net;

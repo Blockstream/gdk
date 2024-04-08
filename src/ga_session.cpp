@@ -243,18 +243,6 @@ namespace sdk {
             }
             return user_agent;
         }
-
-        // Get cached xpubs from a signer as a cacheable json format
-        static nlohmann::json get_signer_xpubs_json(std::shared_ptr<signer> signer)
-        {
-            const auto paths_and_xpubs = signer->get_cached_bip32_xpubs();
-            nlohmann::json xpubs_json;
-            for (auto& item : paths_and_xpubs) {
-                // Note that we cache the values inverted as the master key is empty
-                xpubs_json.emplace(item.second, item.first);
-            }
-            return xpubs_json;
-        }
     } // namespace
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -577,7 +565,7 @@ namespace sdk {
             // upgrading/logging in from an earlier gdk version that didn't
             // automatically save them. Add them to the client blob now.
             GDK_LOG(info) << "adding missing client blob xpubs";
-            const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+            const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
             GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
             update_client_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
         }
@@ -1020,7 +1008,7 @@ namespace sdk {
             // No client blob: create one, save it to the server and cache it,
             // but only when the wallet isn't locked for a two factor reset.
             // Subaccount xpubs
-            m_blob->set_xpubs(get_signer_xpubs_json(m_signer));
+            m_blob->set_xpubs(m_signer->get_cached_bip32_xpubs_json());
             // Subaccount names
             const nlohmann::json empty; // Don't re-save xpubs
             for (const auto& sa : login_data["subaccounts"]) {
@@ -1631,7 +1619,7 @@ namespace sdk {
         }
 
         // Set watch only data in the client blob. Blanks the username if disabling.
-        const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
         update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
 
         std::pair<std::string, std::string> u_p{ username, password };
@@ -1796,7 +1784,7 @@ namespace sdk {
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
-        const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
         const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
         if (have_writable_client_blob(locker)) {
             update_client_blob(locker,
@@ -1832,7 +1820,7 @@ namespace sdk {
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
     {
         locker_t locker(m_mutex);
-        const auto signer_xpubs = get_signer_xpubs_json(signer);
+        const auto signer_xpubs = signer->get_cached_bip32_xpubs_json();
         m_cache->upsert_key_value("xpubs", nlohmann::json::to_msgpack(signer_xpubs));
         m_cache->save_db();
     }
