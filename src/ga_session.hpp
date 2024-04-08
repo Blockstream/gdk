@@ -160,7 +160,7 @@ namespace sdk {
 
         void derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin);
         void get_cached_client_blob(const std::string& server_hmac);
-        void load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
+        bool load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
         bool save_client_blob(locker_t& locker, const std::string& client_id, const std::string& old_hmac);
         void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac);
         void update_blob(locker_t& locker, std::function<bool()> update_fn);
