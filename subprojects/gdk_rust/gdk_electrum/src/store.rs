@@ -118,6 +118,13 @@ pub struct RawAccountCache {
     pub count_given: Option<Indexes>,
 }
 
+#[derive(Default, Clone, Serialize, Deserialize)]
+pub struct ClientBlob {
+    pub blob: String,
+    pub client_id: String,
+    pub hmac: String,
+}
+
 /// RawStore contains data that are not extractable from xpub+blockchain
 /// like wallet settings and memos
 #[derive(Default, Serialize, Deserialize)]
@@ -131,6 +138,8 @@ pub struct RawStore {
     // additional fields should always be appended at the end as an `Option` to retain db backwards compatibility
     /// account settings
     accounts_settings: Option<HashMap<u32, AccountSettings>>,
+
+    pub client_blob: Option<ClientBlob>,
 }
 
 pub struct StoreMeta {

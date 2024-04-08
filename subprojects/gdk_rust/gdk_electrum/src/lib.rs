@@ -407,6 +407,20 @@ impl ElectrumSession {
         Ok(())
     }
 
+    pub fn save_blob(&mut self, blob: ClientBlob) -> Result<(), Error> {
+        self.store()?.write()?.store.client_blob = Some(blob);
+        Ok(())
+    }
+
+    pub fn load_blob(&self) -> Result<ClientBlob, Error> {
+        match self.store()?.read()?.store.client_blob.as_ref() {
+            Some(blob) => Ok(blob.clone()),
+            None => Ok(ClientBlob {
+                ..Default::default()
+            }),
+        }
+    }
+
     /// Remove the persisted cache and store
     ///
     /// The actual file removal will happen when the session will be dropped.
