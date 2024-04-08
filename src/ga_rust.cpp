@@ -180,6 +180,7 @@ namespace sdk {
         }
         // TODO: If we have the client blob locally and not on the server,
         //       push it to the server.
+        subscribe_all(locker);
         return m_login_data;
     }
 

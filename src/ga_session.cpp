@@ -1067,21 +1067,23 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto receiving_id = j_strref(m_login_data, "receiving_id");
-        const auto client_id = j_strref(m_login_data, "wallet_hash_id");
+
+        {
+            unique_unlock unlocker(locker);
+            const bool is_initial = true;
+            m_wamp->subscribe(
+                "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
+        }
+
+        if (m_blobserver) {
+            session_impl::subscribe_all(locker);
+        } else {
+            unique_unlock unlocker(locker);
+            auto blob_feed = "com.greenaddress.cbs.wallet_" + receiving_id;
+            m_wamp->subscribe(blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
+        }
 
         unique_unlock unlocker(locker);
-        const bool is_initial = true;
-        m_wamp->subscribe(
-            "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
-
-        auto blob_feed = "com.greenaddress.cbs.wallet_" + receiving_id;
-        auto* blob_wamp = &m_wamp;
-        if (m_blobserver) {
-            blob_feed = "blob.update." + client_id;
-            blob_wamp = &m_blobserver;
-        }
-        (*blob_wamp)->subscribe(blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
-
         m_wamp->subscribe("com.greenaddress.txs.wallet_" + receiving_id, [this](nlohmann::json event) {
             if (!ignore_tx_notification(event)) {
                 std::vector<uint32_t> subaccounts = cleanup_tx_notification(event);

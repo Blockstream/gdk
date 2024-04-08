@@ -537,6 +537,17 @@ namespace sdk {
         }
     }
 
+    void session_impl::subscribe_all(session_impl::locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (m_blobserver) {
+            const auto client_id = j_strref(m_login_data, "wallet_hash_id");
+            const auto blob_feed = "blob.update." + client_id;
+            m_blobserver->subscribe(
+                blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
+        }
+    }
+
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {

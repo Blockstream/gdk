@@ -282,6 +282,8 @@ namespace sdk {
         // Called when we are notified of a client blob update
         void on_client_blob_updated(nlohmann::json event);
 
+        void subscribe_all(locker_t& locker);
+
         std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
 
