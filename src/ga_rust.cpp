@@ -17,8 +17,6 @@
 #include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
-// FIXME: remove wamp_transport when reconnect_hint is refactored
-#include "wamp_transport.hpp"
 #include "xpub_hdkey.hpp"
 
 namespace ga {
@@ -47,23 +45,14 @@ namespace sdk {
         rust_call("connect", net_params, m_session);
     }
 
-    void ga_rust::reconnect_hint(const nlohmann::json& hint)
+    void ga_rust::reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& proxy)
     {
-        // Called by the user to indicate they want to connect or disconnect
-        // the sessions underlying transport
-        session_impl::reconnect_hint(hint);
-        const auto proxy_settings = get_proxy_settings();
-        const auto& proxy = proxy_settings.at("proxy");
-
         if (const auto hint_p = hint.find("hint"); hint_p != hint.end()) {
             if (*hint_p == "connect") {
                 connect_session();
             } else {
                 disconnect_session();
             }
-        }
-        for (auto& connection : m_wamp_connections) {
-            connection->reconnect_hint(hint, proxy);
         }
     }
 

@@ -26,7 +26,7 @@ namespace sdk {
         explicit ga_session(network_parameters&& net_params);
         ~ga_session();
 
-        void reconnect_hint(const nlohmann::json& hint);
+        void reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& proxy);
 
         void emit_notification(nlohmann::json details, bool async);
 

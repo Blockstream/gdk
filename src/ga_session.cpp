@@ -302,23 +302,17 @@ namespace sdk {
         });
     }
 
-    void ga_session::reconnect_hint(const nlohmann::json& hint)
+    void ga_session::reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& /*proxy*/)
     {
-        session_impl::reconnect_hint(hint);
-        locker_t locker(m_mutex);
-        const auto proxy_settings = get_proxy_settings(locker);
-        const auto& proxy = proxy_settings.at("proxy");
-        const auto hint_p = proxy.find("hint");
-        if (hint_p != proxy.end() && *hint_p != "connect") {
-            // Stop any outstanding header sync when disconnecting. Leave
-            // resuming until after the session is authed and we know what
-            // the current block is.
-            constexpr bool do_start = false;
-            download_headers_ctl(locker, do_start);
-        }
-        locker.unlock();
-        for (auto& connection : m_wamp_connections) {
-            connection->reconnect_hint(hint, proxy);
+        if (const auto hint_p = hint.find("hint"); hint_p != hint.end()) {
+            if (*hint_p != "connect") {
+                // Stop any outstanding header sync when disconnecting. Leave
+                // resuming until after the session is authed and we know what
+                // the current block is.
+                locker_t locker(m_mutex);
+                constexpr bool do_start = false;
+                download_headers_ctl(locker, do_start);
+            }
         }
     }
 

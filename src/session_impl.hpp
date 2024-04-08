@@ -66,7 +66,8 @@ namespace sdk {
         virtual void emit_notification(nlohmann::json details, bool async);
         std::string connect_tor();
         void reconnect();
-        virtual void reconnect_hint(const nlohmann::json& hint);
+        void reconnect_hint(const nlohmann::json& hint);
+        virtual void reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& proxy) = 0;
         // Get the tor or user connection proxy address
         nlohmann::json get_proxy_settings();
         nlohmann::json get_net_call_params(uint32_t timeout_secs);

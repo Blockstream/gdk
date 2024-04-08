@@ -9,7 +9,7 @@ namespace sdk {
         explicit ga_rust(network_parameters&& net_params);
         ~ga_rust();
 
-        void reconnect_hint(const nlohmann::json& hint);
+        void reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& proxy);
 
         void connect_session();
         void disconnect_session();

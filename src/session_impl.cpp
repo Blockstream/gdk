@@ -97,7 +97,7 @@ namespace sdk {
         connect_session();
     }
 
-    void session_impl::connect_session() { }
+    void session_impl::connect_session() {}
 
     void session_impl::reconnect()
     {
@@ -335,8 +335,14 @@ namespace sdk {
                 m_tor_ctrl->sleep(); // no-op if already sleeping
             }
         }
-        // FIXME: Rework derived sessions hint handling so we can hint
-        // m_wamp_connections here.
+        const auto proxy_settings = get_proxy_settings();
+        const auto& proxy = proxy_settings.at("proxy");
+
+        reconnect_hint_session(hint, proxy);
+
+        for (auto& connection : m_wamp_connections) {
+            connection->reconnect_hint(hint, proxy);
+        }
     }
 
     nlohmann::json session_impl::get_proxy_settings()
