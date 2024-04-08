@@ -68,16 +68,27 @@ namespace sdk {
 
     uint64_t client_blob::get_user_version() const { return m_data[USER_VERSION]; }
 
-    bool client_blob::set_subaccount_name(uint32_t subaccount, const std::string& name, const nlohmann::json& xpubs)
+    bool client_blob::update_subaccount_data(
+        uint32_t subaccount, const nlohmann::json& details, const nlohmann::json& xpubs)
     {
-        if (is_key_encrypted(SA_NAMES)) {
-            // This gdk version does not support encrypted subaccount names
-            throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
+        const auto subaccount_str(std::to_string(subaccount));
+        bool changed = false;
+        // name
+        auto name = j_str(details, "name");
+        if (name.has_value()) {
+            if (is_key_encrypted(SA_NAMES)) {
+                // This gdk version does not support encrypted subaccount names
+                throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
+            }
+            GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(name.value()), "Subaccount name is not a valid utf-8 string");
+            changed |= json_add_non_default(m_data[SA_NAMES], subaccount_str, name.value());
         }
-        GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(name), "Subaccount name is not a valid utf-8 string");
-
-        const std::string subaccount_str(std::to_string(subaccount));
-        bool changed = json_add_non_default(m_data[SA_NAMES], subaccount_str, name);
+        // hidden
+        auto is_hidden = j_bool(details, "hidden");
+        if (is_hidden.has_value()) {
+            changed |= json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden.value());
+        }
+        // xpubs
         if (!xpubs.empty()) {
             // Update the subaccount xpubs
             json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
@@ -86,24 +97,22 @@ namespace sdk {
         return changed ? increment_version(m_data) : changed;
     }
 
-    std::string client_blob::get_subaccount_name(uint32_t subaccount) const
+    nlohmann::json client_blob::get_subaccount_data(uint32_t subaccount) const
     {
-        if (is_key_encrypted(SA_NAMES)) {
-            return std::string(); // Has been made unavailable to watch only sessions
+        const auto subaccount_str(std::to_string(subaccount));
+        auto is_hidden = j_bool(m_data[SA_HIDDEN], subaccount_str);
+        std::optional<std::string> name;
+        if (!is_key_encrypted(SA_NAMES)) {
+            name = j_str(m_data[SA_NAMES], subaccount_str);
         }
-        return json_get_value(m_data[SA_NAMES], std::to_string(subaccount));
-    }
-
-    bool client_blob::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
-    {
-        const std::string subaccount_str(std::to_string(subaccount));
-        const bool changed = json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden);
-        return changed ? increment_version(m_data) : changed;
-    }
-
-    bool client_blob::get_subaccount_hidden(uint32_t subaccount) const
-    {
-        return j_bool_or_false(m_data[SA_HIDDEN], std::to_string(subaccount));
+        nlohmann::json ret({});
+        if (name.has_value()) {
+            ret["name"] = std::move(name.value());
+        }
+        if (is_hidden.has_value()) {
+            ret["hidden"] = is_hidden.value();
+        }
+        return ret;
     }
 
     bool client_blob::set_tx_memo(const std::string& txhash_hex, const std::string& memo)

@@ -1819,14 +1819,8 @@ namespace sdk {
     {
         m_session->ensure_full_session();
 
-        nlohmann::json::const_iterator p;
-        const uint32_t subaccount = m_details.value("subaccount", 0);
-        if ((p = m_details.find("name")) != m_details.end()) {
-            m_session->rename_subaccount(subaccount, p.value());
-        }
-        if ((p = m_details.find("hidden")) != m_details.end()) {
-            m_session->set_subaccount_hidden(subaccount, p.value());
-        }
+        const auto subaccount = j_uint32ref(m_details, "subaccount");
+        m_session->update_subaccount(subaccount, m_details);
         return state_type::done;
     }
 

@@ -1030,7 +1030,8 @@ namespace sdk {
             // Subaccount names
             const nlohmann::json empty; // Don't re-save xpubs
             for (const auto& sa : login_data["subaccounts"]) {
-                m_blob->set_subaccount_name(sa["pointer"], json_get_value(sa, "name"), empty);
+                const nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
+                m_blob->update_subaccount_data(j_uint32ref(sa, "pointer"), sa_data, empty);
             }
             // Tx memos
             nlohmann::json tx_memos = wamp_cast_json(m_wamp->call(locker, "txs.get_memos"));
@@ -1691,10 +1692,7 @@ namespace sdk {
 
         for (const auto& sa : m_subaccounts) {
             auto subaccount = sa.second;
-            if (auto name = m_blob->get_subaccount_name(sa.first); !name.empty()) {
-                subaccount["name"] = std::move(name);
-            }
-            subaccount["hidden"] = m_blob->get_subaccount_hidden(sa.first);
+            subaccount.update(m_blob->get_subaccount_data(sa.first));
             subaccount["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(sa.first);
             subaccounts.emplace_back(std::move(subaccount));
         }
@@ -1712,7 +1710,7 @@ namespace sdk {
         return ret;
     }
 
-    void ga_session::rename_subaccount(uint32_t subaccount, const std::string& new_name)
+    void ga_session::update_subaccount(uint32_t subaccount, const nlohmann::json& details)
     {
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
@@ -1721,17 +1719,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         nlohmann::json empty;
         update_client_blob(
-            locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, new_name, empty));
-    }
-
-    void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
-    {
-        locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
-
-        const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        update_client_blob(locker, std::bind(&client_blob::set_subaccount_hidden, m_blob.get(), subaccount, is_hidden));
+            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, details, empty));
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
@@ -1822,8 +1810,9 @@ namespace sdk {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
+        const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
         update_client_blob(
-            locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, name, signer_xpubs));
+            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
         nlohmann::json ntf
             = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };
         for (const auto event_type : { "new", "synced" }) {

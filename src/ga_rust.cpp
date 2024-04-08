@@ -295,21 +295,9 @@ namespace sdk {
         return ret;
     }
 
-    void ga_rust::rename_subaccount(uint32_t subaccount, const std::string& new_name)
+    void ga_rust::update_subaccount(uint32_t subaccount, const nlohmann::json& details)
     {
-        auto details = nlohmann::json({
-            { "subaccount", subaccount },
-            { "name", new_name },
-        });
-        rust_call("update_subaccount", details, m_session);
-    }
-
-    void ga_rust::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
-    {
-        auto details = nlohmann::json({
-            { "subaccount", subaccount },
-            { "hidden", is_hidden },
-        });
+        GDK_RUNTIME_ASSERT(j_uint32ref(details, "subaccount") == subaccount);
         rust_call("update_subaccount", details, m_session);
     }
 
