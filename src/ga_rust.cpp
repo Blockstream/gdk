@@ -40,26 +40,11 @@ namespace sdk {
         // gdk_rust cleanup
     }
 
-    void ga_rust::connect()
-    {
-        session_impl::connect();
-        connect_session();
-    }
-
     void ga_rust::connect_session()
     {
         nlohmann::json net_params = m_net_params.get_json();
         net_params["proxy"] = session_impl::connect_tor();
         rust_call("connect", net_params, m_session);
-    }
-
-    void ga_rust::reconnect()
-    {
-        // Called by the top level session handler in reponse to
-        // reconnect and timeout errors.
-        session_impl::reconnect();
-        disconnect_session();
-        connect_session();
     }
 
     void ga_rust::reconnect_hint(const nlohmann::json& hint)
@@ -80,12 +65,6 @@ namespace sdk {
         for (auto& connection : m_wamp_connections) {
             connection->reconnect_hint(hint, proxy);
         }
-    }
-
-    void ga_rust::disconnect()
-    {
-        session_impl::disconnect();
-        disconnect_session();
     }
 
     void ga_rust::disconnect_session()

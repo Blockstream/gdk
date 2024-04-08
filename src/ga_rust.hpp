@@ -9,12 +9,9 @@ namespace sdk {
         explicit ga_rust(network_parameters&& net_params);
         ~ga_rust();
 
-        void reconnect();
         void reconnect_hint(const nlohmann::json& hint);
 
-        void connect();
         void connect_session();
-        void disconnect();
         void disconnect_session();
 
         std::string get_challenge(const pub_key_t& public_key);

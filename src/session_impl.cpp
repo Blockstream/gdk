@@ -94,10 +94,16 @@ namespace sdk {
         const auto proxy = session_impl::connect_tor();
         std::for_each(m_wamp_connections.rbegin(), m_wamp_connections.rend(),
             [&proxy](auto& connection) { connection->connect(proxy); });
+        connect_session();
     }
+
+    void session_impl::connect_session() { }
 
     void session_impl::reconnect()
     {
+        // Called by the session class in reponse to reconnect and timeout errors.
+        disconnect_session();
+        connect_session();
         for (auto& connection : m_wamp_connections) {
             connection->reconnect();
         }
@@ -105,10 +111,12 @@ namespace sdk {
 
     void session_impl::disconnect()
     {
+        disconnect_session();
         for (auto& connection : m_wamp_connections) {
             connection->disconnect();
         }
     }
+    void session_impl::disconnect_session() {}
 
     void session_impl::set_notification_handler(GA_notification_handler handler, void* context)
     {

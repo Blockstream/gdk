@@ -65,15 +65,17 @@ namespace sdk {
         // Call the users registered notification handler. Must be called without any locks held.
         virtual void emit_notification(nlohmann::json details, bool async);
         std::string connect_tor();
-        virtual void reconnect();
+        void reconnect();
         virtual void reconnect_hint(const nlohmann::json& hint);
         // Get the tor or user connection proxy address
         nlohmann::json get_proxy_settings();
         nlohmann::json get_net_call_params(uint32_t timeout_secs);
         nlohmann::json get_registry_config();
 
-        virtual void connect();
-        virtual void disconnect();
+        void connect();
+        virtual void connect_session();
+        void disconnect();
+        virtual void disconnect_session();
 
         // Make an http request to an arbitrary host governed by 'params'.
         virtual nlohmann::json http_request(nlohmann::json params);
