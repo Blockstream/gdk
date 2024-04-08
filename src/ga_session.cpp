@@ -1174,8 +1174,8 @@ namespace sdk {
         return wamp_cast_json(m_wamp->call(locker, "login.set_client_blob", blob_b64, 0, hmac, old_hmac));
     }
 
-    void ga_session::encache_local_client_blob(
-        session_impl::locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
+    void ga_session::encache_local_client_blob(session_impl::locker_t& locker, const char* /*data_b64*/,
+        const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         m_cache->upsert_key_value("client_blob", data);

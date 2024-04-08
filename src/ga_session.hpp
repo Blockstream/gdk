@@ -159,7 +159,7 @@ namespace sdk {
         nlohmann::json save_client_blob_impl(locker_t& locker, const std::string& client_id,
             const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
         void encache_local_client_blob(
-            locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac);
+            locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
 
         void load_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
 

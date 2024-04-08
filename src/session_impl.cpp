@@ -417,7 +417,6 @@ namespace sdk {
         auto blob_b64{ base64_string_from_bytes(saved.first) };
 
         auto server_data = save_client_blob_impl(locker, client_id, old_hmac, blob_b64.get(), saved.second);
-        blob_b64.reset(); // Free used memory for the base64 representation
 
         if (!j_str_is_empty(server_data, "blob")) {
             // Raced with another update on the server.
@@ -429,7 +428,7 @@ namespace sdk {
             return false; // Save failed, the caller should retry
         }
         // Blob has been saved on the server, cache it locally
-        encache_local_client_blob(locker, saved.first, saved.second);
+        encache_local_client_blob(locker, blob_b64.get(), saved.first, saved.second);
         m_blob_hmac = saved.second;
         m_blob_outdated = false; // Blob is now current with the servers view
         return true; // Saved successfully
@@ -449,8 +448,9 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        const auto server_blob = base64_to_bytes(j_strref(server_data, "blob"));
-        const auto server_hmac = j_strref(server_data, "hmac");
+        const auto& server_blob_b64 = j_strref(server_data, "blob");
+        const auto server_blob = base64_to_bytes(server_blob_b64);
+        const auto& server_hmac = j_strref(server_data, "hmac");
         if (!m_watch_only) {
             // Verify the servers hmac
             const auto hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
@@ -459,7 +459,7 @@ namespace sdk {
         m_blob->load(*m_blob_aes_key, server_blob);
 
         if (encache) {
-            encache_local_client_blob(locker, server_blob, server_hmac);
+            encache_local_client_blob(locker, server_blob_b64.c_str(), server_blob, server_hmac);
         }
         m_blob_hmac = server_hmac;
         m_blob_outdated = false; // Blob is now current with the servers view

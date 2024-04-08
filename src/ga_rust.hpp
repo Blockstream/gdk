@@ -129,7 +129,7 @@ namespace sdk {
 
         nlohmann::json get_address_data(const nlohmann::json& details);
         void encache_local_client_blob(
-            locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac);
+            locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
 
     private:
         static void GDKRUST_notif_handler(void* self_context, char* json);

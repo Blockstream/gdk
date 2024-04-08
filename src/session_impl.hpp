@@ -261,9 +261,11 @@ namespace sdk {
             const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
 
         // Set our local copy of the client blob, then encache it
+        // We pass the blob data as both base64 and raw bytes to account
+        // for differences in derived session caches.
         void set_local_client_blob(locker_t& locker, const nlohmann::json& server_data, bool encache);
         virtual void encache_local_client_blob(
-            locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
+            locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac)
             = 0;
 
         // Apply an update to our local copy of the client blob. If this

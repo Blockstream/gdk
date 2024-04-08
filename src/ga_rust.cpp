@@ -85,8 +85,8 @@ namespace sdk {
         }
     }
 
-    void ga_rust::encache_local_client_blob(
-        session_impl::locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
+    void ga_rust::encache_local_client_blob(session_impl::locker_t& locker, const char* data_b64,
+        const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         // FIXME
