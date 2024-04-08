@@ -358,10 +358,10 @@ namespace sdk {
             try {
                 auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
                 paths.emplace_back(signer::EMPTY_PATH); // Master xpub
+                paths.emplace_back(signer::CLIENT_SECRET_PATH);
                 if (!is_electrum) {
-                    // Multisig: fetch the login and client secret xpubs for login
+                    // Multisig: fetch the xpubs for login authentication
                     paths.emplace_back(signer::LOGIN_PATH);
-                    paths.emplace_back(signer::CLIENT_SECRET_PATH);
                 }
             } catch (const std::exception&) {
                 m_signer.reset(); // Allow this code path to re-run if the above throws
@@ -380,8 +380,7 @@ namespace sdk {
             // Set the cache keys for the wallet, loading/creating the
             // local cache as needed. Note singlesig doesn't need the
             // client secret pubkey.
-            const xpub_t local_xpub = is_electrum ? xpub_t{} : make_xpub(xpubs.at(2));
-            m_session->set_local_encryption_keys(local_xpub.second, m_signer);
+            m_session->set_local_encryption_keys(make_xpub(xpubs.at(1)).second, m_signer);
 
             if (is_electrum) {
                 // Skip the challenge/response steps since we have no server
