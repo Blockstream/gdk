@@ -284,7 +284,10 @@ namespace sdk {
         return rust_call("get_previous_addresses", actual_details, m_session);
     }
 
-    nlohmann::json ga_rust::get_subaccounts() { return rust_call("get_subaccounts", {}, m_session); }
+    nlohmann::json ga_rust::get_subaccounts_impl(session_impl::locker_t& /*locker*/)
+    {
+        return rust_call("get_subaccounts", {}, m_session);
+    }
 
     std::vector<uint32_t> ga_rust::get_subaccount_pointers()
     {

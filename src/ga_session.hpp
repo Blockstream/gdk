@@ -47,7 +47,7 @@ namespace sdk {
 
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
-        nlohmann::json get_subaccounts();
+        nlohmann::json get_subaccounts_impl(locker_t& locker);
         std::vector<uint32_t> get_subaccount_pointers();
         void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
         uint32_t get_next_subaccount(const std::string& type);

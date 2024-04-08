@@ -117,7 +117,7 @@ namespace sdk {
 
         virtual nlohmann::json get_receive_address(const nlohmann::json& details) = 0;
         virtual nlohmann::json get_previous_addresses(const nlohmann::json& details) = 0;
-        virtual nlohmann::json get_subaccounts() = 0;
+        virtual nlohmann::json get_subaccounts();
         nlohmann::json get_subaccount(uint32_t subaccount);
         virtual void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) = 0;
@@ -285,6 +285,8 @@ namespace sdk {
         nlohmann::json get_net_call_params(locker_t& locker, uint32_t timeout_secs);
 
         bool is_twofactor_reset_active(locker_t& locker) const;
+
+        virtual nlohmann::json get_subaccounts_impl(locker_t& locker) = 0;
 
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;

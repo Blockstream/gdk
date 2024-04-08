@@ -531,6 +531,35 @@ namespace sdk {
         // Overriden for ga_rust
     }
 
+    nlohmann::json session_impl::get_subaccounts()
+    {
+        // TODO: implement refreshing for multisig
+        locker_t locker(m_mutex);
+        const bool is_electrum = m_net_params.is_electrum();
+
+        if (m_blob_outdated) {
+            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+            load_client_blob(locker, client_id, true);
+        }
+        auto subaccounts = get_subaccounts_impl(locker);
+        for (auto& sa : subaccounts) {
+            const auto pointer = j_uint32ref(sa, "pointer");
+            sa.update(m_blob->get_subaccount_data(pointer));
+            if (!is_electrum) {
+                sa["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(pointer);
+            }
+            // Make sure we supply metdadata elements in the event they
+            // weren't provided (e.g. not present in the client blob)
+            if (!sa.contains("name")) {
+                sa["name"] = std::string();
+            }
+            if (!sa.contains("hidden")) {
+                sa["hidden"] = false;
+            }
+        }
+        return subaccounts;
+    }
+
     nlohmann::json session_impl::get_subaccount(uint32_t subaccount)
     {
         auto subaccounts = get_subaccounts();

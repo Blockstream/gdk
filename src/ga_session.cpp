@@ -1679,22 +1679,13 @@ namespace sdk {
         return wamp_cast<bool>(m_wamp->call("login.remove_account", mp_cast(twofactor_data).get()));
     }
 
-    nlohmann::json ga_session::get_subaccounts()
+    nlohmann::json ga_session::get_subaccounts_impl(session_impl::locker_t& locker)
     {
-        // TODO: implement refreshing for multisig
-        locker_t locker(m_mutex);
-        if (m_blob_outdated) {
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-            load_client_blob(locker, client_id, true);
-        }
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         nlohmann::json::array_t subaccounts;
         subaccounts.reserve(m_subaccounts.size());
-
         for (const auto& sa : m_subaccounts) {
-            auto subaccount = sa.second;
-            subaccount.update(m_blob->get_subaccount_data(sa.first));
-            subaccount["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(sa.first);
-            subaccounts.emplace_back(std::move(subaccount));
+            subaccounts.emplace_back(sa.second);
         }
         return nlohmann::json(std::move(subaccounts));
     }
