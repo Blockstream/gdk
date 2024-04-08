@@ -1207,7 +1207,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         nlohmann::json server_data;
         if (m_blobserver) {
-            nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" } };
+            nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
             server_data = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
             if (server_data.contains("error")) {
                 return false;
@@ -1250,38 +1250,41 @@ namespace sdk {
         const auto saved{ m_blob.save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
 
-        bool saved_ok;
+        nlohmann::json server_data;
         if (m_blobserver) {
-            saved_ok = true;
             if (old_hmac == client_blob::get_zero_hmac()) {
                 // First time saving a blob. Let the server know we
                 // are storing our blob elsewhere using the one-HMAC.
                 const auto one_hmac = client_blob::get_one_hmac();
-                auto result = m_wamp->call(locker, "login.set_client_blob", one_hmac, 0, one_hmac, old_hmac);
-                saved_ok = wamp_cast<bool>(result);
+                server_data
+                    = wamp_cast_json(m_wamp->call(locker, "login.set_client_blob", one_hmac, 0, one_hmac, old_hmac));
             }
-            if (saved_ok) {
+            if (!server_data.contains("error")) {
                 // Store to the blobserver
                 nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "blob", blob_b64.get() },
                     { "hmac", saved.second }, { "previous_hmac", old_hmac } };
-                auto result = m_blobserver->call(locker, "set_client_blob", mp_cast(args).get());
-                saved_ok = !wamp_cast_json(result).contains("error");
+                server_data = wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
             }
         } else {
-            auto result = m_wamp->call(locker, "login.set_client_blob", blob_b64.get(), 0, saved.second, old_hmac);
-            saved_ok = wamp_cast<bool>(result);
+            server_data = wamp_cast_json(
+                m_wamp->call(locker, "login.set_client_blob", blob_b64.get(), 0, saved.second, old_hmac));
         }
-        blob_b64.reset();
-        if (!saved_ok) {
-            // Raced with another update on the server, caller should try again
+        blob_b64.reset(); // Free used memory for the base64 representation
+
+        if (!j_str_is_empty(server_data, "blob")) {
+            // Raced with another update on the server.
+            // Update the blob and tell the caller to retry their update on top.
             GDK_LOG(info) << "Save client blob race, retrying";
-            return false;
+            // Don't encache the latest blob, the caller will retry to update it
+            constexpr bool encache = false; // Don't encache; caller will retry-update it
+            update_client_blob(locker, server_data, encache);
+            return false; // Save failed, the caller should retry
         }
         // Blob has been saved on the server, cache it locally
         encache_client_blob(locker, saved.first, saved.second);
         m_blob_hmac = saved.second;
         m_blob_outdated = false; // Blob is now current with the servers view
-        return true;
+        return true; // Saved successfully
     }
 
     void ga_session::encache_client_blob(
@@ -1947,19 +1950,23 @@ namespace sdk {
         const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
 
         while (true) {
-            if (!m_blob_outdated) {
-                // Our blob is current with the server; try to update
-                if (!update_fn()) {
-                    // The update was a no-op; nothing to do
-                    return;
-                }
-                if (save_client_blob(locker, client_id, m_blob_hmac)) {
-                    break;
-                }
+            if (m_blob_outdated) {
+                // Our blob is known to be outdated.
+                // Re-load the up-to-date blob from the server.
+                load_client_blob(locker, client_id, false);
             }
-            // Our blob was known to be outdated, or saving to the server failed:
-            // Re-load the up-to-date blob from the server and re-try
-            load_client_blob(locker, client_id, false);
+            // Our blob is current with the server; try to update
+            if (!update_fn()) {
+                // The update was a no-op; nothing to do
+                return;
+            }
+            // Save the blob to the server
+            if (save_client_blob(locker, client_id, m_blob_hmac)) {
+                return; // Saved successfully
+            }
+            // Our update raced with another session.
+            // We have already loaded the latest blob, so
+            // loop to retry the update.
         }
     }
 
