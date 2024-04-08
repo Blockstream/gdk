@@ -1080,21 +1080,7 @@ namespace sdk {
             blob_feed = "blob.update." + client_id;
             blob_wamp = &m_blobserver;
         }
-        (*blob_wamp)->subscribe(blob_feed, [this](nlohmann::json event) {
-            const uint64_t seq = event.at("sequence");
-            if (seq != 0) {
-                // Ignore client blobs whose sequence numbers we don't understand
-                GDK_LOG(warning) << "Unexpected client blob sequence " << seq;
-                return;
-            }
-            locker_t notify_locker(m_mutex);
-            // Check the hmac as we will be notified of our own changes
-            // when more than one session is logged in at a time.
-            if (m_blob_hmac != json_get_value(event, "hmac")) {
-                // Another session has updated our client blob, mark it dirty.
-                m_blob_outdated = true;
-            }
-        });
+        (*blob_wamp)->subscribe(blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
 
         m_wamp->subscribe("com.greenaddress.txs.wallet_" + receiving_id, [this](nlohmann::json event) {
             if (!ignore_tx_notification(event)) {

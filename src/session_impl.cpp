@@ -518,6 +518,25 @@ namespace sdk {
         }
     }
 
+    void session_impl::on_client_blob_updated(nlohmann::json event)
+    {
+        if (auto seq = j_uint32ref(event, "sequence"); seq != 0) {
+            // Ignore client blobs whose sequence numbers we don't understand
+            GDK_LOG(warning) << "Unexpected client blob sequence " << seq;
+            return;
+        }
+        // Check the hmac as we will be notified of our own changes
+        // when more than one session is logged in at a time.
+        const auto new_hmac = j_strref(event, "hmac");
+        locker_t locker(m_mutex);
+        if (m_blob_hmac != new_hmac) {
+            // Another session has updated our client blob, mark it dirty.
+            m_blob_outdated = true;
+            locker.unlock();
+            GDK_LOG(info) << "client blob updated, new HMAC " << new_hmac;
+        }
+    }
+
     nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
         const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
     {

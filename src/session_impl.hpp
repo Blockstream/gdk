@@ -279,6 +279,9 @@ namespace sdk {
         // Repeatedly re-tries the update if the blob was altered elsewhere.
         void update_client_blob(locker_t& locker, std::function<bool()> update_fn);
 
+        // Called when we are notified of a client blob update
+        void on_client_blob_updated(nlohmann::json event);
+
         std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
 
