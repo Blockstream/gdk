@@ -585,7 +585,7 @@ namespace sdk {
             GDK_LOG(info) << "adding missing client blob xpubs";
             const auto signer_xpubs = get_signer_xpubs_json(m_signer);
             GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
-            update_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
+            update_client_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
         }
 
         // Make sure our list of valid csv blocks values matches the server,
@@ -1083,7 +1083,8 @@ namespace sdk {
     void ga_session::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto& receiving_id = j_strref(m_login_data, "receiving_id");
+        const auto receiving_id = j_strref(m_login_data, "receiving_id");
+        const auto client_id = j_strref(m_login_data, "wallet_hash_id");
 
         unique_unlock unlocker(locker);
         const bool is_initial = true;
@@ -1093,7 +1094,6 @@ namespace sdk {
         auto blob_feed = "com.greenaddress.cbs.wallet_" + receiving_id;
         auto* blob_wamp = &m_wamp;
         if (m_blobserver) {
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
             blob_feed = "blob.update." + client_id;
             blob_wamp = &m_blobserver;
         }
@@ -1147,94 +1147,34 @@ namespace sdk {
         }
     }
 
-    bool ga_session::load_client_blob(session_impl::locker_t& locker, const std::string& client_id, bool encache)
+    nlohmann::json ga_session::load_client_blob_impl(session_impl::locker_t& locker, const std::string& client_id)
     {
-        // Load the latest blob from the server
-        GDK_LOG(info) << "Fetching client blob from server";
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        nlohmann::json server_data;
         if (m_blobserver) {
-            nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
-            server_data = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
-            if (server_data.contains("error")) {
-                return false;
-            }
-        } else {
-            server_data = wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
+            return session_impl::load_client_blob_impl(locker, client_id);
         }
-        update_client_blob(locker, server_data, encache);
-        return true;
+        return wamp_cast_json(m_wamp->call(locker, "login.get_client_blob", 0));
     }
 
-    void ga_session::update_client_blob(session_impl::locker_t& locker, nlohmann::json& server_data, bool encache)
+    nlohmann::json ga_session::save_client_blob_impl(locker_t& locker, const std::string& client_id,
+        const std::string& old_hmac, const char* blob_b64, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-
-        const auto server_blob = base64_to_bytes(j_strref(server_data, "blob"));
-        const auto server_hmac = j_strref(server_data, "hmac");
-        if (!m_watch_only) {
-            // Verify the servers hmac
-            const auto hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
-            GDK_RUNTIME_ASSERT_MSG(hmac == server_hmac, "Bad server client blob");
-        }
-        m_blob->load(*m_blob_aes_key, server_blob);
-
-        if (encache) {
-            encache_client_blob(locker, server_blob, server_hmac);
-        }
-        m_blob_hmac = server_hmac;
-        m_blob_outdated = false; // Blob is now current with the servers view
-    }
-
-    bool ga_session::save_client_blob(
-        session_impl::locker_t& locker, const std::string& client_id, const std::string& old_hmac)
-    {
-        // Generate our encrypted blob + hmac, store on the server, cache locally
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value());
-        GDK_RUNTIME_ASSERT(m_blob_hmac_key.has_value());
-
-        const auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
-        auto blob_b64{ base64_string_from_bytes(saved.first) };
-
-        nlohmann::json server_data;
         if (m_blobserver) {
             if (old_hmac == client_blob::get_zero_hmac()) {
-                // First time saving a blob. Let the server know we
-                // are storing our blob elsewhere using the one-HMAC.
+                // First time saving a blob. Let the Green backend know we
+                // are storing our blob elsewhere (via the one-HMAC sentinel value).
                 const auto one_hmac = client_blob::get_one_hmac();
-                server_data
+                auto ret
                     = wamp_cast_json(m_wamp->call(locker, "login.set_client_blob", one_hmac, 0, one_hmac, old_hmac));
+                GDK_RUNTIME_ASSERT(!ret.contains("error")); // FIXME: get rid of "error" keys
             }
-            if (!server_data.contains("error")) {
-                // Store to the blobserver
-                nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "blob", blob_b64.get() },
-                    { "hmac", saved.second }, { "previous_hmac", old_hmac } };
-                server_data = wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
-            }
-        } else {
-            server_data = wamp_cast_json(
-                m_wamp->call(locker, "login.set_client_blob", blob_b64.get(), 0, saved.second, old_hmac));
+            return session_impl::save_client_blob_impl(locker, client_id, old_hmac, blob_b64, hmac);
         }
-        blob_b64.reset(); // Free used memory for the base64 representation
-
-        if (!j_str_is_empty(server_data, "blob")) {
-            // Raced with another update on the server.
-            // Update the blob and tell the caller to retry their update on top.
-            GDK_LOG(info) << "Save client blob race, retrying";
-            // Don't encache the latest blob, the caller will retry to update it
-            constexpr bool encache = false; // Don't encache; caller will retry-update it
-            update_client_blob(locker, server_data, encache);
-            return false; // Save failed, the caller should retry
-        }
-        // Blob has been saved on the server, cache it locally
-        encache_client_blob(locker, saved.first, saved.second);
-        m_blob_hmac = saved.second;
-        m_blob_outdated = false; // Blob is now current with the servers view
-        return true; // Saved successfully
+        return wamp_cast_json(m_wamp->call(locker, "login.set_client_blob", blob_b64, 0, hmac, old_hmac));
     }
 
-    void ga_session::encache_client_blob(
+    void ga_session::encache_local_client_blob(
         session_impl::locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -1697,7 +1637,7 @@ namespace sdk {
 
         // Set watch only data in the client blob. Blanks the username if disabling.
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
-        update_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
+        update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
 
         std::pair<std::string, std::string> u_p{ username, password };
         std::string wo_blob_key_hex;
@@ -1780,7 +1720,8 @@ namespace sdk {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
         nlohmann::json empty;
-        update_blob(locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, new_name, empty));
+        update_client_blob(
+            locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, new_name, empty));
     }
 
     void ga_session::set_subaccount_hidden(uint32_t subaccount, bool is_hidden)
@@ -1790,7 +1731,7 @@ namespace sdk {
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
-        update_blob(locker, std::bind(&client_blob::set_subaccount_hidden, m_blob.get(), subaccount, is_hidden));
+        update_client_blob(locker, std::bind(&client_blob::set_subaccount_hidden, m_blob.get(), subaccount, is_hidden));
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
@@ -1881,7 +1822,8 @@ namespace sdk {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
-        update_blob(locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, name, signer_xpubs));
+        update_client_blob(
+            locker, std::bind(&client_blob::set_subaccount_name, m_blob.get(), subaccount, name, signer_xpubs));
         nlohmann::json ntf
             = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };
         for (const auto event_type : { "new", "synced" }) {
@@ -1889,33 +1831,6 @@ namespace sdk {
             emit_notification(ntf, false);
         }
         return subaccount_details;
-    }
-
-    void ga_session::update_blob(locker_t& locker, std::function<bool()> update_fn)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(!m_watch_only);
-        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-
-        while (true) {
-            if (m_blob_outdated) {
-                // Our blob is known to be outdated.
-                // Re-load the up-to-date blob from the server.
-                load_client_blob(locker, client_id, false);
-            }
-            // Our blob is current with the server; try to update
-            if (!update_fn()) {
-                // The update was a no-op; nothing to do
-                return;
-            }
-            // Save the blob to the server
-            if (save_client_blob(locker, client_id, m_blob_hmac)) {
-                return; // Saved successfully
-            }
-            // Our update raced with another session.
-            // We have already loaded the latest blob, so
-            // loop to retry the update.
-        }
     }
 
     std::pair<std::string, bool> ga_session::get_cached_master_blinding_key()
@@ -1930,7 +1845,8 @@ namespace sdk {
         session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
         // Note: this update is a no-op if the key is already cached
         locker_t locker(m_mutex);
-        update_blob(locker, std::bind(&client_blob::set_master_blinding_key, m_blob.get(), master_blinding_key_hex));
+        update_client_blob(
+            locker, std::bind(&client_blob::set_master_blinding_key, m_blob.get(), master_blinding_key_hex));
     }
 
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
@@ -3267,7 +3183,7 @@ namespace sdk {
             m_cache->insert_transaction_data(txhash_hex, tx.to_bytes());
 
             if (!memo.empty()) {
-                update_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
+                update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
             }
         }
 
@@ -3322,7 +3238,7 @@ namespace sdk {
         check_tx_memo(memo);
         locker_t locker(m_mutex);
         GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
-        update_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
+        update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 
     void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)

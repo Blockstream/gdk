@@ -155,11 +155,11 @@ namespace sdk {
 
         void derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin);
         void get_cached_client_blob(const std::string& server_hmac);
-        bool load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
-        void update_client_blob(locker_t& locker, nlohmann::json& server_data, bool encache);
-        bool save_client_blob(locker_t& locker, const std::string& client_id, const std::string& old_hmac);
-        void encache_client_blob(locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac);
-        void update_blob(locker_t& locker, std::function<bool()> update_fn);
+        nlohmann::json load_client_blob_impl(locker_t& locker, const std::string& client_id);
+        nlohmann::json save_client_blob_impl(locker_t& locker, const std::string& client_id,
+            const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+        void encache_local_client_blob(
+            locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac);
 
         void load_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
 

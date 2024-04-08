@@ -251,6 +251,26 @@ namespace sdk {
         /// Returns whether the signer was already set (i.e. true if this is a re-login)
         bool set_signer(locker_t& locker, std::shared_ptr<signer> signer);
 
+        // Load the latest blob from the server & update our local/cached copy
+        bool load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
+        virtual nlohmann::json load_client_blob_impl(locker_t& locker, const std::string& client_id);
+
+        // Save our local copy of the client blob to the server, then encache it
+        bool save_client_blob(locker_t& locker, const std::string& client_id, const std::string& old_hmac);
+        virtual nlohmann::json save_client_blob_impl(locker_t& locker, const std::string& client_id,
+            const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+
+        // Set our local copy of the client blob, then encache it
+        void set_local_client_blob(locker_t& locker, const nlohmann::json& server_data, bool encache);
+        virtual void encache_local_client_blob(
+            locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
+            = 0;
+
+        // Apply an update to our local copy of the client blob. If this
+        // changes the blob contents then save it to the server and encache it.
+        // Repeatedly re-tries the update if the blob was altered elsewhere.
+        void update_client_blob(locker_t& locker, std::function<bool()> update_fn);
+
         std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
         std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
 

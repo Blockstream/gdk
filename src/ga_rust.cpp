@@ -85,6 +85,13 @@ namespace sdk {
         }
     }
 
+    void ga_rust::encache_local_client_blob(
+        session_impl::locker_t& locker, const std::vector<unsigned char>& data, const std::string& hmac)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        // FIXME
+    }
+
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
