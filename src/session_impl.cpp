@@ -15,6 +15,7 @@
 #include "io_runner.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
+#include "session.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -79,6 +80,8 @@ namespace sdk {
         if (m_net_params.use_tor() && m_user_proxy.empty()) {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();
+            // Keep the tor singleton alive until GA_shutdown is called
+            set_tor_controller(m_tor_ctrl);
         }
         m_wamp_connections.reserve(2u);
         if (!m_net_params.get_blob_server_url().empty()) {

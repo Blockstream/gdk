@@ -14,9 +14,12 @@ namespace ga {
 namespace sdk {
     class network_parameters;
     class session_impl;
+    struct tor_controller;
 
     int init(nlohmann::json config);
     const nlohmann::json& gdk_config();
+    void set_tor_controller(std::shared_ptr<struct tor_controller> controller);
+    int shutdown();
 
     class session {
     public:

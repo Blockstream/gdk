@@ -60,6 +60,12 @@ typedef void (*GA_notification_handler)(void* context, GA_json* details);
  */
 GDK_API int GA_init(const GA_json* config);
 
+/**
+ * Completely shut down the library, releasing all resources.
+ * No further GDK calls should be made after this call.
+ */
+GDK_API int GA_shutdown(void);
+
 #ifndef SWIG
 /**
  * Get any error details associated with the last error on the current thread.

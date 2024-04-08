@@ -219,6 +219,17 @@ int GA_init(const GA_json* config)
     }
 }
 
+int GA_shutdown()
+{
+    try {
+        return ga::sdk::shutdown();
+    } catch (const std::exception& e) {
+        using namespace ga::sdk;
+        GDK_LOG(warning) << "GA_shutdown: " << e.what();
+    }
+    return GA_OK;
+}
+
 int GA_get_thread_error_details(GA_json** output)
 {
     try {

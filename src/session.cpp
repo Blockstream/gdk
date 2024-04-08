@@ -27,10 +27,11 @@ using namespace std::literals;
 
 namespace ga {
 namespace sdk {
-    namespace {
 
+    namespace {
         static std::atomic_bool init_done{ false };
         static nlohmann::json global_config;
+        static std::shared_ptr<tor_controller> global_tor_ctrl;
         static auto global_log_level = log_level::severity_level::fatal;
 
         static void log_exception(const char* preamble, const std::exception& e)
@@ -121,6 +122,22 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(init_done);
         return global_config;
+    }
+
+    void set_tor_controller(std::shared_ptr<struct tor_controller> controller)
+    {
+        GDK_RUNTIME_ASSERT(init_done);
+        GDK_RUNTIME_ASSERT(controller);
+        if (!global_tor_ctrl && j_bool_or_false(global_config, "with_shutdown")) {
+            global_tor_ctrl = std::move(controller);
+        }
+    }
+
+    int shutdown()
+    {
+        GDK_RUNTIME_ASSERT(init_done);
+        global_tor_ctrl.reset();
+        return GA_OK;
     }
 
     void session::exception_handler(std::exception_ptr ex_p)
