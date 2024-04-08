@@ -109,6 +109,38 @@ namespace sdk {
         }
     }
 
+    void ga_rust::populate_initial_client_blob(session_impl::locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(have_writable_client_blob(locker));
+        GDK_LOG(info) << "Populating initial client blob";
+        // Subaccount xpubs
+        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+        GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
+        update_client_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
+        // Subaccount names
+        const nlohmann::json empty; // Don't re-save xpubs
+        for (const auto& sa : get_subaccounts_impl(locker)) {
+            nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
+            if (j_bool_or_false(sa, "hidden")) {
+                sa_data["hidden"] = true;
+            }
+            m_blob->update_subaccount_data(j_uint32ref(sa, "pointer"), sa_data, empty);
+        }
+        // Tx memos
+        for (const auto& m : rust_call("get_memos", {}, m_session).items()) {
+            m_blob->set_tx_memo(m.key(), m.value());
+        }
+        m_blob->set_user_version(1); // Initial version
+        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+        if (!save_client_blob(locker, client_id, client_blob::get_zero_hmac())) {
+            // We raced and lost with another session creating the initial blob.
+            // Load the blob the other session saved and use its metadata.
+            // (Note that this will probably never happen in practice).
+            load_client_blob(locker, client_id, true);
+        }
+    }
+
     void ga_rust::get_cached_local_client_blob(const std::string& /*server_hmac*/)
     {
         // Load our client blob from from the cache if we have one
@@ -142,6 +174,12 @@ namespace sdk {
         locker_t locker(m_mutex);
         set_signer(locker, signer);
         m_watch_only = false;
+        if (m_blobserver && m_blob_hmac.empty()) {
+            // No client blob locally or on the blobserver: create it
+            populate_initial_client_blob(locker);
+        }
+        // TODO: If we have the client blob locally and not on the server,
+        //       push it to the server.
         return m_login_data;
     }
 

@@ -120,6 +120,7 @@ namespace sdk {
         uint32_t get_block_height() const;
         bool is_spending_limits_decrease(const nlohmann::json& limit_details);
         void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
+        void populate_initial_client_blob(locker_t& locker);
 
         ga_pubkeys& get_ga_pubkeys();
         user_pubkeys& get_recovery_pubkeys();
