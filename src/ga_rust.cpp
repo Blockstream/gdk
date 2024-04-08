@@ -15,6 +15,7 @@
 #include "ga_tx.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "session.hpp"
 #include "signer.hpp"
 #include "transaction_utils.hpp"
@@ -64,10 +65,14 @@ namespace sdk {
         rust_call("disconnect", {}, m_session);
     }
 
-    void ga_rust::set_local_encryption_keys(const pub_key_t& /*public_key*/, std::shared_ptr<signer> signer)
+    void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
+        GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
         auto master_xpub = signer->get_master_bip32_xpub();
-        rust_call("load_store", { { "master_xpub", std::move(master_xpub) } }, m_session);
+
+        // Load the cache on the rust side
+        rust_call("load_store", { { "master_xpub", master_xpub } }, m_session);
+
         if (!signer->has_master_blinding_key()) {
             // Load the cached master blinding key, if we have it
             std::string blinding_key_hex;
@@ -77,13 +82,30 @@ namespace sdk {
                 signer->set_master_blinding_key(blinding_key_hex);
             }
         }
+
+        locker_t locker(m_mutex);
         // FIXME: Load subaccount paths and xpubs from the store and add them
         // with signer->cache_bip32_xpub() - see ga_session::load_signer_xpubs
         // (This avoids having to go to the HWW to fetch these xpubs)
-        if (signer->has_master_bip32_xpub()) {
-            m_login_data = get_wallet_hash_ids(
-                { { "name", m_net_params.network() } }, { { "master_xpub", signer->get_master_bip32_xpub() } });
-            m_login_data["warnings"] = nlohmann::json::array();
+        m_login_data = get_wallet_hash_ids({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
+        m_login_data["warnings"] = nlohmann::json::array();
+
+        if (m_blobserver) {
+            // FIXME: enable blob for watch-only sessions
+            if (!signer->is_watch_only()) {
+                // Compute the client blob HMAC key
+                const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+                const auto tmp_span = gsl::make_span(tmp_key);
+                set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
+                set_optional_variable(
+                    m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+            }
+            // Load any cached blob data
+            get_cached_local_client_blob(std::string());
+            // Load the latest blob from the server. If the server blob is
+            // newer, this updates our locally cached blob data to it
+            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+            load_client_blob(locker, client_id, true);
         }
     }
 

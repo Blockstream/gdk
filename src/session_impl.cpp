@@ -392,8 +392,12 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_LOG(info) << "Fetching client blob from server";
-        set_local_client_blob(locker, load_client_blob_impl(locker, client_id), encache);
-        return true;
+        auto server_data = load_client_blob_impl(locker, client_id);
+        if (!j_str_is_empty(server_data, "blob")) {
+            set_local_client_blob(locker, server_data, encache);
+            return true;
+        }
+        return false;
     }
 
     nlohmann::json session_impl::load_client_blob_impl(locker_t& locker, const std::string& client_id)
