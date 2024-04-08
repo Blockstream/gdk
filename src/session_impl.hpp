@@ -264,6 +264,8 @@ namespace sdk {
         // We pass the blob data as both base64 and raw bytes to account
         // for differences in derived session caches.
         void set_local_client_blob(locker_t& locker, const nlohmann::json& server_data, bool encache);
+
+        virtual void get_cached_local_client_blob(const std::string& server_hmac) = 0;
         virtual void encache_local_client_blob(
             locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac)
             = 0;

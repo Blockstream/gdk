@@ -154,10 +154,10 @@ namespace sdk {
             locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
         void derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin);
-        void get_cached_client_blob(const std::string& server_hmac);
         nlohmann::json load_client_blob_impl(locker_t& locker, const std::string& client_id);
         nlohmann::json save_client_blob_impl(locker_t& locker, const std::string& client_id,
             const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+        void get_cached_local_client_blob(const std::string& server_hmac);
         void encache_local_client_blob(
             locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
 

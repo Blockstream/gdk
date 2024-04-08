@@ -1054,7 +1054,7 @@ namespace sdk {
             }
         }
 
-        get_cached_client_blob(server_hmac);
+        get_cached_local_client_blob(server_hmac);
 
         if (is_blob_on_server) {
             // The server has a blob for this wallet. If we haven't got an
@@ -1123,7 +1123,7 @@ namespace sdk {
         m_wamp->subscribe("com.greenaddress.blocks", [this](nlohmann::json event) { on_new_block(event, false); });
     }
 
-    void ga_session::get_cached_client_blob(const std::string& server_hmac)
+    void ga_session::get_cached_local_client_blob(const std::string& server_hmac)
     {
         if (m_blob_hmac.empty()) {
             // Load our client blob from from the cache if we have one
@@ -1442,7 +1442,7 @@ namespace sdk {
         if (m_blobserver) {
             is_blob_on_server = load_client_blob(locker, client_id, true);
         } else if (is_blob_on_server) {
-            get_cached_client_blob(server_hmac);
+            get_cached_local_client_blob(server_hmac);
         }
 
         if (is_blob_on_server && m_blob_aes_key.has_value()) {

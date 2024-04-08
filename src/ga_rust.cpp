@@ -8,10 +8,12 @@
 
 #include "gdk_rust.h"
 
+#include "client_blob.hpp"
 #include "exception.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
+#include "json_utils.hpp"
 #include "logging.hpp"
 #include "session.hpp"
 #include "signer.hpp"
@@ -85,11 +87,28 @@ namespace sdk {
         }
     }
 
+    void ga_rust::get_cached_local_client_blob(const std::string& /*server_hmac*/)
+    {
+        // Load our client blob from from the cache if we have one
+        if (!m_blob_hmac.empty()) {
+            return; // Already loaded
+        }
+        nlohmann::json local_blob;
+        local_blob = rust_call("load_blob", {}, m_session);
+        if (!j_str_is_empty(local_blob, "blob")) {
+            // We have a local blob, load it into our in-memory blob
+            GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key.has_value());
+            m_blob->load(*m_blob_aes_key, base64_to_bytes(j_strref(local_blob, "blob")));
+            m_blob_hmac = j_strref(local_blob, "hmac");
+        }
+    }
+
     void ga_rust::encache_local_client_blob(session_impl::locker_t& locker, const char* data_b64,
         const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        // FIXME
+        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+        rust_call("save_blob", { { "blob", data_b64 }, { "client_id", client_id }, { "hmac", hmac } }, m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }

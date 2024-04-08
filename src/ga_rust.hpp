@@ -128,6 +128,7 @@ namespace sdk {
         void disable_all_pin_logins();
 
         nlohmann::json get_address_data(const nlohmann::json& details);
+        void get_cached_local_client_blob(const std::string& server_hmac);
         void encache_local_client_blob(
             locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
 
