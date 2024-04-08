@@ -578,7 +578,7 @@ namespace sdk {
 
         m_earliest_block_time = m_login_data["earliest_key_creation_time"];
 
-        if (m_blob_hmac_key.has_value() && m_blob->get_xpubs().empty() && !is_twofactor_reset_active(locker)) {
+        if (have_writable_client_blob(locker) && m_blob->get_xpubs().empty()) {
             // A full session with no blob xpubs. This can happen if we are
             // upgrading/logging in from an earlier gdk version that didn't
             // automatically save them. Add them to the client blob now.
@@ -1624,7 +1624,7 @@ namespace sdk {
         }
 
         locker_t locker(m_mutex);
-        if (!m_blob_aes_key.has_value()) {
+        if (!have_writable_client_blob(locker)) {
             // The wallet doesn't have a client blob: can only happen
             // when a 2FA reset is in progress and the wallet was
             // created before client blobs were enabled.
@@ -1713,10 +1713,12 @@ namespace sdk {
     void ga_session::update_subaccount(uint32_t subaccount, const nlohmann::json& details)
     {
         locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
 
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        if (!have_writable_client_blob(locker)) {
+            throw user_error(res::id_2fa_reset_in_progress);
+        }
         nlohmann::json empty;
         update_client_blob(
             locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, details, empty));
@@ -1811,8 +1813,10 @@ namespace sdk {
         }
         const auto signer_xpubs = get_signer_xpubs_json(m_signer);
         const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
-        update_client_blob(
-            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
+        if (have_writable_client_blob(locker)) {
+            update_client_blob(locker,
+                std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
+        }
         nlohmann::json ntf
             = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };
         for (const auto event_type : { "new", "synced" }) {
@@ -1832,10 +1836,12 @@ namespace sdk {
     void ga_session::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
     {
         session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
-        // Note: this update is a no-op if the key is already cached
         locker_t locker(m_mutex);
-        update_client_blob(
-            locker, std::bind(&client_blob::set_master_blinding_key, m_blob.get(), master_blinding_key_hex));
+        if (have_writable_client_blob(locker)) {
+            // Note: this update is a no-op if the key is already cached
+            update_client_blob(
+                locker, std::bind(&client_blob::set_master_blinding_key, m_blob.get(), master_blinding_key_hex));
+        }
     }
 
     void ga_session::encache_signer_xpubs(std::shared_ptr<signer> signer)
@@ -3171,7 +3177,7 @@ namespace sdk {
             // Cache the raw tx data
             m_cache->insert_transaction_data(txhash_hex, tx.to_bytes());
 
-            if (!memo.empty()) {
+            if (!memo.empty() && have_writable_client_blob(locker)) {
                 update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
             }
         }
@@ -3226,7 +3232,9 @@ namespace sdk {
         ensure_full_session();
         check_tx_memo(memo);
         locker_t locker(m_mutex);
-        GDK_RUNTIME_ASSERT_MSG(!is_twofactor_reset_active(locker), "Wallet is locked");
+        if (!have_writable_client_blob(locker)) {
+            throw user_error(res::id_2fa_reset_in_progress);
+        }
         update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 

@@ -250,6 +250,10 @@ namespace sdk {
         /// Returns whether the signer was already set (i.e. true if this is a re-login)
         bool set_signer(locker_t& locker, std::shared_ptr<signer> signer);
 
+        /// Returns true if we have a client blob we can write to
+        bool have_writable_client_blob() const;
+        bool have_writable_client_blob(locker_t& locker) const;
+
         // Load the latest blob from the server & update our local/cached copy
         bool load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
         virtual nlohmann::json load_client_blob_impl(locker_t& locker, const std::string& client_id);

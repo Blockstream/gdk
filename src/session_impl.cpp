@@ -469,6 +469,27 @@ namespace sdk {
         m_blob_outdated = false; // Blob is now current with the servers view
     }
 
+    bool session_impl::have_writable_client_blob() const
+    {
+        locker_t locker(m_mutex);
+        return have_writable_client_blob(locker);
+    }
+
+    bool session_impl::have_writable_client_blob(locker_t& locker) const
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        if (!m_blob_hmac_key.has_value() || is_twofactor_reset_active(locker)) {
+            // Can't create blob HMACs, or we are in a 2FA reset
+            return false;
+        }
+        if (m_net_params.is_electrum() && !m_blobserver) {
+            // Singlesig, and no blobserver configured
+            return false;
+        }
+        return true;
+    }
+
     void session_impl::update_client_blob(locker_t& locker, std::function<bool()> update_fn)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
