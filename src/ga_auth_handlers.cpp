@@ -1237,7 +1237,9 @@ namespace sdk {
     {
         if (m_net_params.is_electrum()) {
             // FIXME: Move rust to ga_session interface
-            m_result = { { "transactions", m_session->get_transactions(m_details) } };
+            auto txs = m_session->get_transactions(m_details);
+            m_session->postprocess_transactions(txs);
+            m_result = { { "transactions", std::move(txs) } };
             return state_type::done;
         }
 

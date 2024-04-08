@@ -470,8 +470,8 @@ namespace sdk {
             { "txid", txhash_hex },
             { "memo", memo },
         });
-
         rust_call("set_transaction_memo", details, m_session);
+        session_impl::set_transaction_memo(txhash_hex, memo);
     }
 
     nlohmann::json ga_rust::get_fee_estimates()

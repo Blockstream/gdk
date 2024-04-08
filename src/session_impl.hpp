@@ -112,6 +112,7 @@ namespace sdk {
         virtual nlohmann::json sync_transactions(uint32_t subaccount, unique_pubkeys_and_scripts_t& missing);
         virtual void store_transactions(uint32_t subaccount, nlohmann::json& txs);
         virtual void postprocess_transactions(nlohmann::json& tx_list);
+        void check_tx_memo(const std::string& memo) const;
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);
 
@@ -186,7 +187,7 @@ namespace sdk {
         virtual void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data) = 0;
         virtual void set_nlocktime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data) = 0;
 
-        virtual void set_transaction_memo(const std::string& txhash_hex, const std::string& memo) = 0;
+        virtual void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);
 
         virtual nlohmann::json get_fee_estimates() = 0;
 

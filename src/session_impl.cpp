@@ -789,9 +789,42 @@ namespace sdk {
         // Overriden for multisig
     }
 
-    void session_impl::postprocess_transactions(nlohmann::json& /*tx_list*/)
+    void session_impl::postprocess_transactions(nlohmann::json& tx_list)
     {
-        // Overriden for multisig
+        // Set tx memos in the returned txs from the blob cache
+        locker_t locker(m_mutex);
+        if (m_blob_outdated) {
+            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
+            load_client_blob(locker, client_id, true);
+        }
+        for (auto& tx_details : tx_list) {
+            // Augment the tx with its memo if present
+            auto memo = j_str(tx_details, "memo");
+            if (memo.value_or(std::string{}).empty()) {
+                memo.reset();
+            }
+            auto blob_memo = m_blob->get_tx_memo(j_strref(tx_details, "txhash"));
+            tx_details["memo"] = memo.value_or(blob_memo);
+        }
+    }
+
+    void session_impl::check_tx_memo(const std::string& memo) const
+    {
+        GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
+        GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(memo), "Transaction memo not a valid utf-8 string");
+    }
+
+    void session_impl::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
+    {
+        check_tx_memo(memo);
+        locker_t locker(m_mutex);
+        if (!have_writable_client_blob(locker)) {
+            if (m_net_params.is_electrum()) {
+                return; // Singlesig watch-only or no client blob
+            }
+            throw user_error(m_watch_only ? "Authentication required" : res::id_2fa_reset_in_progress);
+        }
+        update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 
     bool session_impl::has_recovery_pubkeys_subaccount(uint32_t /*subaccount*/) { return false; }

@@ -244,12 +244,6 @@ namespace sdk {
             return user_agent;
         }
 
-        static inline void check_tx_memo(const std::string& memo)
-        {
-            GDK_RUNTIME_ASSERT_MSG(memo.size() <= 1024, "Transaction memo too long");
-            GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(memo), "Transaction memo not a valid utf-8 string");
-        }
-
         // Get cached xpubs from a signer as a cacheable json format
         static nlohmann::json get_signer_xpubs_json(std::shared_ptr<signer> signer)
         {
@@ -2334,20 +2328,10 @@ namespace sdk {
     void ga_session::postprocess_transactions(nlohmann::json& tx_list)
     {
         // Set tx memos in the returned txs from the blob cache
-        locker_t locker(m_mutex);
-        if (m_blob_outdated) {
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-            load_client_blob(locker, client_id, true);
-        }
-        for (auto& tx_details : tx_list) {
-            // Get the tx memo. Use the server provided value if
-            // its present (i.e. no client blob enabled yet, or watch-only)
-            const std::string svr_memo = json_get_value(tx_details, "memo");
-            const std::string blob_memo = m_blob->get_tx_memo(tx_details["txhash"]);
-            tx_details["memo"] = svr_memo.empty() ? blob_memo : svr_memo;
-        }
+        session_impl::postprocess_transactions(tx_list);
 
         // Update SPV status
+        locker_t locker(m_mutex);
         const uint32_t current_block = m_last_block_notification["block_height"];
         const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), current_block);
         const uint32_t reorg_block = current_block - num_reorg_blocks;
@@ -3216,17 +3200,6 @@ namespace sdk {
 
         locker_t locker(m_mutex);
         m_nlocktime = nlocktime;
-    }
-
-    void ga_session::set_transaction_memo(const std::string& txhash_hex, const std::string& memo)
-    {
-        ensure_full_session();
-        check_tx_memo(memo);
-        locker_t locker(m_mutex);
-        if (!have_writable_client_blob(locker)) {
-            throw user_error(res::id_2fa_reset_in_progress);
-        }
-        update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 
     void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)
