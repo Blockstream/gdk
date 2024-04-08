@@ -250,6 +250,16 @@ namespace sdk {
         details_c["xpub"] = xpub;
         auto ret = rust_call("create_subaccount", details_c, m_session);
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        if (!j_bool_or_false(details, "is_already_created")) {
+            // Creating a new subaccount, set its metadata
+            locker_t locker(m_mutex);
+            if (have_writable_client_blob(locker)) {
+                const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+                const nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
+                update_client_blob(locker,
+                    std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
+            }
+        }
         return ret;
     }
 
