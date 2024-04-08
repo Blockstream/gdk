@@ -1784,9 +1784,9 @@ namespace sdk {
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
-        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-        const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
         if (have_writable_client_blob(locker)) {
+            const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+            const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
             update_client_blob(locker,
                 std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
         }
