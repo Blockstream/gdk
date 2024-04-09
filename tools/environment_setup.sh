@@ -31,9 +31,9 @@ case $BUILD in
             export target_triple="${HOST_ARCH}-apple-darwin"
             CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/macOS.cmake
             export SDK_SYSROOT=$(xcrun --show-sdk-path)
-            SDK_CFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.13"
-            SDK_CXXFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.13"
-            SDK_LDFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.13"
+            SDK_CFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
+            SDK_CXXFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
+            SDK_LDFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
         fi
         ;;
 
