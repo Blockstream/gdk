@@ -1,6 +1,16 @@
 # Changelog
 
-## Release 0.71.0
+## Release 0.72.0
+
+### Added
+
+### Changed
+
+### Fixed
+
+### Removed
+
+## Release 0.71.0 - 24-04-10
 
 ### Added
 
@@ -11,7 +21,6 @@
   but outside of the acceptable range of values for the amount in question.
 - GA_get_subaccounts: Now returns additional metadata such as the subaccount
   descriptors, matching the output of `GA_get_subaccount`.
-- GA_rename_subaccount: Has been removed. Please use `GA_update_subaccount`.
 
 ### Fixed
 
@@ -20,8 +29,10 @@
   mempool is full and the minimum required fee increases/decreases.
 - Multisig: Changes to subaccount metadata (``"name"`` and ``"is_hidden"``)
   are now reflected in logged in sessions when changed by another session.
+- Build fixes and security updates
 
 ### Removed
+- GA_rename_subaccount: Has been removed. Please use `GA_update_subaccount`.
 
 ## Release 0.70.3 - 24-03-06
 
