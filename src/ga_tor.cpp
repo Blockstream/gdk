@@ -15,6 +15,8 @@
 
 #include <condition_variable>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <set>
 #include <stdlib.h>
 #include <string>
@@ -42,24 +44,11 @@ namespace sdk {
     std::mutex tor_controller::s_inst_mutex;
     std::weak_ptr<tor_controller> tor_controller::s_inst;
 
-    static std::string read_file(std::string fname)
+    static std::string read_file(const std::filesystem::path& file)
     {
-        std::FILE* fp = std::fopen(fname.c_str(), "rb");
-        std::string res;
-        if (fp) {
-            std::fseek(fp, 0, SEEK_END);
-
-            size_t size = std::ftell(fp);
-            res.resize(size);
-
-            std::rewind(fp);
-
-            size_t read = std::fread(&res[0], 1, res.size(), fp);
-            GDK_RUNTIME_ASSERT(read == size);
-
-            std::fclose(fp);
-        }
-        return res;
+        std::ifstream ifs(file);
+        GDK_RUNTIME_ASSERT_MSG(ifs.good() && ifs.is_open(), "Could not read file " + file.string());
+        return { std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() };
     }
 
     static void clear_file(std::string fname)
