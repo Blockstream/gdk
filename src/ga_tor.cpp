@@ -195,7 +195,9 @@ namespace sdk {
         ConnectionCB m_disconnected;
 
         struct event_base* m_base;
-        struct bufferevent* m_b_conn;
+        using bufferevent_ptr = std::unique_ptr<struct bufferevent, decltype(&bufferevent_free)>;
+        bufferevent_ptr m_b_conn;
+
         const std::string& m_tor_control_port;
 
         tor_control_reply m_message;
@@ -287,16 +289,12 @@ namespace sdk {
 
     tor_control_connection::tor_control_connection(struct event_base* _base, const std::string& _tor_control_port)
         : m_base(_base)
-        , m_b_conn(nullptr)
+        , m_b_conn(nullptr, nullptr)
         , m_tor_control_port(_tor_control_port)
     {
     }
 
-    tor_control_connection::~tor_control_connection()
-    {
-        if (m_b_conn)
-            bufferevent_free(m_b_conn);
-    }
+    tor_control_connection::~tor_control_connection() {}
 
     void tor_control_connection::readcb(struct bufferevent* bev, void* ctx)
     {
@@ -380,16 +378,17 @@ namespace sdk {
         GDK_LOG(info) << "tor: connecting to controller " << m_tor_control_port;
 
         // Create a new socket, set up callbacks and enable notification bits
-        m_b_conn = bufferevent_socket_new(m_base, -1, BEV_OPT_CLOSE_ON_FREE);
+        m_b_conn = bufferevent_ptr(bufferevent_socket_new(m_base, -1, BEV_OPT_CLOSE_ON_FREE), bufferevent_free);
         if (!m_b_conn)
             return false;
-        bufferevent_setcb(m_b_conn, tor_control_connection::readcb, nullptr, tor_control_connection::eventcb, this);
-        bufferevent_enable(m_b_conn, EV_READ | EV_WRITE);
+        bufferevent_setcb(
+            m_b_conn.get(), tor_control_connection::readcb, nullptr, tor_control_connection::eventcb, this);
+        bufferevent_enable(m_b_conn.get(), EV_READ | EV_WRITE);
         this->m_connected = _connected;
         this->m_disconnected = _disconnected;
 
         // Finally, connect to target
-        if (bufferevent_socket_connect(m_b_conn, (struct sockaddr*)&connect_to_addr, connect_to_addrlen) < 0) {
+        if (bufferevent_socket_connect(m_b_conn.get(), (struct sockaddr*)&connect_to_addr, connect_to_addrlen) < 0) {
             GDK_LOG(info) << "tor: Error connecting to address " << m_tor_control_port;
             return false;
         }
@@ -398,19 +397,16 @@ namespace sdk {
 
     void tor_control_connection::disconnect()
     {
-        if (m_b_conn)
-            bufferevent_free(m_b_conn);
+        m_b_conn.reset();
         if (m_disconnected)
             m_disconnected(*this);
-
-        m_b_conn = nullptr;
     }
 
     bool tor_control_connection::command(const std::string& cmd, const ReplyHandlerCB& reply_handler)
     {
         if (!m_b_conn)
             return false;
-        struct evbuffer* buf = bufferevent_get_output(m_b_conn);
+        struct evbuffer* buf = bufferevent_get_output(m_b_conn.get());
         if (!buf)
             return false;
         evbuffer_add(buf, cmd.data(), cmd.size());
