@@ -58,17 +58,14 @@ namespace sdk {
         ofs.close();
     }
 
-    static std::pair<std::string, std::string> split_tor_reply_line(const std::string& s)
+    static std::pair<std::string, std::string> split_tor_reply_line(std::string s)
     {
-        size_t ptr = 0;
-        std::string type;
-        while (ptr < s.size() && s[ptr] != ' ') {
-            type.push_back(s[ptr]);
-            ++ptr;
+        const size_t split_point = s.find_first_of(' ');
+        std::string rest{};
+        if (split_point != std::string::npos) {
+            rest = s.substr(split_point + 1);
         }
-        if (ptr < s.size())
-            ++ptr; // skip ' '
-        return make_pair(type, s.substr(ptr));
+        return { s.substr(0, split_point), rest };
     }
 
     static std::map<std::string, std::string> parse_tor_reply_mapping(const std::string& s)
