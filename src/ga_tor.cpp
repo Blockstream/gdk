@@ -51,12 +51,11 @@ namespace sdk {
         return { std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() };
     }
 
-    static void clear_file(std::string fname)
+    static void clear_file(const std::filesystem::path& file)
     {
-        std::FILE* fp = std::fopen(fname.c_str(), "wb");
-        if (fp) {
-            std::fclose(fp);
-        }
+        std::ofstream ofs(file, std::ios::trunc);
+        GDK_RUNTIME_ASSERT_MSG(ofs.is_open(), "Could not clear file " + file.string());
+        ofs.close();
     }
 
     static std::pair<std::string, std::string> split_tor_reply_line(const std::string& s)
