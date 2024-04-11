@@ -15,10 +15,10 @@
 
 #include <condition_variable>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <set>
-#include <stdlib.h>
 #include <string>
 #include <vector>
 
