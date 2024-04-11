@@ -2,7 +2,6 @@ pub mod be;
 pub mod descriptor;
 pub mod error;
 pub mod exchange_rates;
-pub mod mnemonic;
 pub mod model;
 pub mod network;
 pub mod notification;

@@ -214,15 +214,15 @@ pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ure
 #[cfg(test)]
 mod tests {
     use crate::EC;
+    use bip39;
     use bitcoin::bip32::{Xpriv, Xpub};
 
     #[test]
     fn test_wallet_hash_id() {
-        let seed = crate::wally::bip39_mnemonic_to_seed(
-            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
-            "",
-        ).unwrap();
-        let master_xprv = Xpriv::new_master(bitcoin::Network::Bitcoin, &seed).unwrap();
+        let mnemonic = bip39::Mnemonic::parse(
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about").unwrap();
+        let master_xprv =
+            Xpriv::new_master(bitcoin::Network::Bitcoin, &mnemonic.to_seed("")).unwrap();
         let master_xpub = Xpub::from_priv(&EC, &master_xprv);
         let mut network = crate::NetworkParameters::default();
         network.network = "mainnet".to_string();

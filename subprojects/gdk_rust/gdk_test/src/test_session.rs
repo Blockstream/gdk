@@ -11,6 +11,7 @@ use gdk_common::wally;
 use gdk_common::{bitcoin, rand};
 use serde_json::{json, Value};
 use tempfile::TempDir;
+use bip39::Mnemonic;
 
 use gdk_common::be::*;
 use gdk_common::model::*;
@@ -120,7 +121,7 @@ impl TestSession {
 
         let mut entropy = [0u8; 32];
         rand::thread_rng().fill(&mut entropy);
-        let mnemonic_str = wally::bip39_mnemonic_from_entropy(&entropy);
+        let mnemonic_str = Mnemonic::from_entropy(&entropy).unwrap().to_string();
 
         let credentials = Credentials {
             mnemonic: mnemonic_str.clone(),
@@ -423,8 +424,8 @@ fn keys_from_credentials(
     credentials: &Credentials,
     network: bitcoin::Network,
 ) -> (Xpriv, Xpub, wally::MasterBlindingKey) {
-    let seed = wally::bip39_mnemonic_to_seed(&credentials.mnemonic, &credentials.bip39_passphrase)
-        .unwrap();
+    let mnemonic = Mnemonic::parse(&credentials.mnemonic).unwrap();
+    let seed = mnemonic.to_seed(&credentials.bip39_passphrase);
     let master_xprv = Xpriv::new_master(network, &seed).unwrap();
     let master_xpub = Xpub::from_priv(&gdk_common::EC, &master_xprv);
     let master_blinding = wally::asset_blinding_key_from_seed(&seed);
