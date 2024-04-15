@@ -81,7 +81,7 @@ namespace sdk {
             // Enable internal tor controller
             m_tor_ctrl = tor_controller::get_shared_ref();
             // Keep the tor singleton alive until GA_shutdown is called
-            set_tor_controller(m_tor_ctrl);
+            gdk_set_tor_controller(m_tor_ctrl);
         }
         m_wamp_connections.reserve(2u);
         if (!m_net_params.get_blob_server_url().empty()) {

@@ -44,7 +44,7 @@ namespace sdk {
         }
     } // namespace
 
-    int init(nlohmann::json config)
+    int gdk_init(nlohmann::json config)
     {
         GDK_RUNTIME_ASSERT(config.is_object());
         GDK_RUNTIME_ASSERT(!j_str_is_empty(config, "datadir"));
@@ -124,7 +124,7 @@ namespace sdk {
         return global_config;
     }
 
-    void set_tor_controller(std::shared_ptr<struct tor_controller> controller)
+    void gdk_set_tor_controller(std::shared_ptr<struct tor_controller> controller)
     {
         GDK_RUNTIME_ASSERT(init_done);
         GDK_RUNTIME_ASSERT(controller);
@@ -133,7 +133,7 @@ namespace sdk {
         }
     }
 
-    int shutdown()
+    int gdk_shutdown()
     {
         GDK_RUNTIME_ASSERT(init_done);
         global_tor_ctrl.reset();

@@ -13,7 +13,7 @@ int main()
 
     nlohmann::json init_config;
     init_config["datadir"] = ".";
-    init(init_config);
+    gdk_init(init_config);
 
     bool failed = false;
     const nlohmann::json all_networks = network_parameters::get_all();

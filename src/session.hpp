@@ -16,10 +16,10 @@ namespace sdk {
     class session_impl;
     struct tor_controller;
 
-    int init(nlohmann::json config);
+    int gdk_init(nlohmann::json config);
     const nlohmann::json& gdk_config();
-    void set_tor_controller(std::shared_ptr<struct tor_controller> controller);
-    int shutdown();
+    void gdk_set_tor_controller(std::shared_ptr<struct tor_controller> controller);
+    int gdk_shutdown();
 
     class session {
     public:

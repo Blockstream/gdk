@@ -213,7 +213,7 @@ int GA_init(const GA_json* config)
 {
     try {
         GDK_RUNTIME_ASSERT(config);
-        return ga::sdk::init(*json_cast(config));
+        return ga::sdk::gdk_init(*json_cast(config));
     } catch (const std::exception& e) {
         return GA_ERROR;
     }
@@ -222,7 +222,7 @@ int GA_init(const GA_json* config)
 int GA_shutdown()
 {
     try {
-        return ga::sdk::shutdown();
+        return ga::sdk::gdk_shutdown();
     } catch (const std::exception& e) {
         using namespace ga::sdk;
         GDK_LOG(warning) << "GA_shutdown: " << e.what();

@@ -126,7 +126,7 @@ int main()
     nlohmann::json init_config;
     init_config["datadir"] = ".";
     init_config["log_level"] = "info";
-    sdk::init(init_config);
+    sdk::gdk_init(init_config);
 
     nlohmann::json net_params;
     net_params["use_tor"] = false; // Set to true to test tor
