@@ -91,8 +91,7 @@ namespace sdk {
         // xpubs
         if (!xpubs.empty()) {
             // Update the subaccount xpubs
-            json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
-            changed = true;
+            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
         }
         return changed ? increment_version(m_data) : changed;
     }
@@ -122,7 +121,7 @@ namespace sdk {
             throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
         }
         const std::string trimmed = boost::algorithm::trim_copy(memo);
-        const bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, trimmed);
+        bool changed = json_add_non_default(m_data[TX_MEMOS], txhash_hex, trimmed);
         return changed ? increment_version(m_data) : changed;
     }
 
@@ -155,15 +154,22 @@ namespace sdk {
     bool client_blob::set_wo_data(const std::string& username, const nlohmann::json& xpubs)
     {
         auto& wo = m_data[WATCHONLY];
-        json_add_non_default(wo, "username", username);
-        return set_xpubs(xpubs);
+        bool changed = json_add_non_default(wo, "username", username);
+        if (!xpubs.empty()) {
+            // Update the subaccount xpubs
+            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
+        }
+        return changed ? increment_version(m_data) : changed;
     }
 
     bool client_blob::set_xpubs(const nlohmann::json& xpubs)
     {
-        auto& wo = m_data[WATCHONLY];
-        json_add_non_default(wo, "xpubs", xpubs);
-        return increment_version(m_data);
+        bool changed = false;
+        if (!xpubs.empty()) {
+            auto& wo = m_data[WATCHONLY];
+            changed = json_add_non_default(wo, "xpubs", xpubs);
+        }
+        return changed ? increment_version(m_data) : changed;
     }
 
     std::string client_blob::get_wo_username() const
