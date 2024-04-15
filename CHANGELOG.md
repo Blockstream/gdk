@@ -3,6 +3,11 @@
 ## Release 0.72.0
 
 ### Added
+- Added GA_shutdown for explicit shutdown of library resources. When callers
+  opt-in to calling this function by passing ``"with_shutdown"`` as ``true``
+  to GA_init, tor sessions can be created and destroyed repeatedly without error.
+  Prior to this change, once a tor session was destroyed, no further tor
+  connections could be made.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller

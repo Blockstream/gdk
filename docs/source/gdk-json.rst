@@ -12,25 +12,30 @@ Passed to `GA_init` when initializing the library.
 
 .. code-block:: json
 
-    {
-        "datadir": "/path/to/store/data"
-        "tordir": "/path/to/store/tor/data"
-        "registrydir": "/path/to/store/registry/data"
-        "log_level": "info",
-    }
+   {
+      "datadir": "/path/to/store/data",
+      "tordir": "/path/to/store/tor/data",
+      "registrydir": "/path/to/store/registry/data",
+      "log_level": "info",
+      "with_shutdown": true
+   }
 
 :datadir: Mandatory. A directory which gdk will use to store encrypted data
           relating to sessions.
-:tordir: An optional directory for tor state data, used when the internal tor
+:tordir: Optional. The directory for tor state data, used when the internal tor
          implementation is enabled in :ref:`net-params`. Note that each process
          using the library at the same time requires its own distinct directory.
          If not given, a sub-directory ``"tor"`` inside ``"datadir"`` is used.
-:registrydir: An optional directory for the registry data, used when the network
+:registrydir: Optional. The directory for the registry data, used when the network
          is liquid based. Note that each process using the library at the same
-         time requires its own distinct directory.
-         If not given, a sub-directory ``"registry"`` inside ``"datadir"`` is used.
-:log_level: Library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
-           ``"error"``, or ``"none"``.
+         time requires its own distinct directory. If not given, a
+         sub-directory ``"registry"`` inside ``"datadir"`` is used.
+:log_level: Optional. The library logging level, one of ``"debug"``, ``"info"``, ``"warn"``,
+           ``"error"``, or ``"none"``. Default: ``"none"``.
+:with_shutdown: Optional. If ``true``, the caller will call `GA_shutdown` before
+                the application exits. This enables sessions that use tor to be closed
+                and re-opened repeatedly. If ``false``, `GA_shutdown` has no
+                effect and does not need to be called. Default: ``false``.
 
 .. _net-params:
 
@@ -64,6 +69,9 @@ Connection parameters JSON
 :electrum_url: Optional. For singlesig the Electrum server used to fetch blockchain data. For multisig the Electrum server used for SPV verification. Default value depends on the network.
 :electrum_onion_url: Optional. If ``"use_tor"`` is ``true``, this value is used instead of ``"electrum_url"``. Default value depends on the network.
 
+.. note:: When ``"use_tor"`` is ``true``, the caller should pass ``"with_shutdown"`` as ``true`` in
+   the :ref:`init-config-arg` passed to `GA_init`, and call `GA_shutdown` on application
+   exit if more than one session will be created, or if sessions may be created/destroyed repeatedly.
 
  .. _proxy-info:
 

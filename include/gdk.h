@@ -62,6 +62,7 @@ GDK_API int GA_init(const GA_json* config);
 
 /**
  * Completely shut down the library, releasing all resources.
+ *
  * No further GDK calls should be made after this call.
  */
 GDK_API int GA_shutdown(void);
