@@ -65,6 +65,7 @@ namespace sdk {
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_login_data{}
+        , m_blob_client_id{}
         , m_watch_only(true)
         , m_notify(true)
         , m_blob(std::make_unique<client_blob>())
@@ -391,11 +392,11 @@ namespace sdk {
         return { { "network", std::move(np) }, { "timeout", timeout_secs } };
     }
 
-    bool session_impl::load_client_blob(locker_t& locker, const std::string& client_id, bool encache)
+    bool session_impl::load_client_blob(locker_t& locker, bool encache)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_LOG(info) << "Fetching client blob from server";
-        auto server_data = load_client_blob_impl(locker, client_id);
+        auto server_data = load_client_blob_impl(locker);
         if (!j_str_is_empty(server_data, "blob")) {
             set_local_client_blob(locker, server_data, encache);
             return true;
@@ -403,17 +404,17 @@ namespace sdk {
         return false;
     }
 
-    nlohmann::json session_impl::load_client_blob_impl(locker_t& locker, const std::string& client_id)
+    nlohmann::json session_impl::load_client_blob_impl(locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
-        nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
+        nlohmann::json args = { { "client_id", m_blob_client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
         auto ret = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
         GDK_RUNTIME_ASSERT(!ret.contains("error")); // FIXME: Remove any error keys from blobserver
         return ret;
     }
 
-    bool session_impl::save_client_blob(locker_t& locker, const std::string& client_id, const std::string& old_hmac)
+    bool session_impl::save_client_blob(locker_t& locker, const std::string& old_hmac)
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -423,7 +424,7 @@ namespace sdk {
         const auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
         auto blob_b64{ base64_string_from_bytes(saved.first) };
 
-        auto server_data = save_client_blob_impl(locker, client_id, old_hmac, blob_b64.get(), saved.second);
+        auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64.get(), saved.second);
 
         if (!j_str_is_empty(server_data, "blob")) {
             // Raced with another update on the server.
@@ -441,13 +442,13 @@ namespace sdk {
         return true; // Saved successfully
     }
 
-    nlohmann::json session_impl::save_client_blob_impl(locker_t& locker, const std::string& client_id,
-        const std::string& old_hmac, const char* blob_b64, const std::string& hmac)
+    nlohmann::json session_impl::save_client_blob_impl(
+        locker_t& locker, const std::string& old_hmac, const char* blob_b64, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
-        nlohmann::json args = { { "client_id", client_id }, { "sequence", "0" }, { "blob", blob_b64 }, { "hmac", hmac },
-            { "previous_hmac", old_hmac } };
+        nlohmann::json args = { { "client_id", m_blob_client_id }, { "sequence", "0" }, { "blob", blob_b64 },
+            { "hmac", hmac }, { "previous_hmac", old_hmac } };
         return wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
     }
 
@@ -497,13 +498,12 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(!m_watch_only);
-        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
 
         while (true) {
             if (m_blob_outdated) {
                 // Our blob is known to be outdated.
                 // Re-load the up-to-date blob from the server.
-                load_client_blob(locker, client_id, false);
+                load_client_blob(locker, false);
             }
             // Our blob is current with the server; try to update
             if (!update_fn()) {
@@ -512,7 +512,7 @@ namespace sdk {
             }
             // Save the blob to the server
             auto prev_hmac = m_blob_hmac.empty() ? client_blob::get_zero_hmac() : m_blob_hmac;
-            if (save_client_blob(locker, client_id, prev_hmac)) {
+            if (save_client_blob(locker, prev_hmac)) {
                 return; // Saved successfully
             }
             // Our update raced with another session.
@@ -544,8 +544,7 @@ namespace sdk {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (m_blobserver) {
-            const auto client_id = j_strref(m_login_data, "wallet_hash_id");
-            const auto blob_feed = "blob.update." + client_id;
+            const auto blob_feed = "blob.update." + m_blob_client_id;
             m_blobserver->subscribe(
                 blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
         }
@@ -572,8 +571,7 @@ namespace sdk {
         const bool is_electrum = m_net_params.is_electrum();
 
         if (m_blob_outdated) {
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-            load_client_blob(locker, client_id, true);
+            load_client_blob(locker, true);
         }
         auto subaccounts = get_subaccounts_impl(locker);
         for (auto& sa : subaccounts) {
@@ -828,8 +826,7 @@ namespace sdk {
         // Set tx memos in the returned txs from the blob cache
         locker_t locker(m_mutex);
         if (m_blob_outdated) {
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-            load_client_blob(locker, client_id, true);
+            load_client_blob(locker, true);
         }
         for (auto& tx_details : tx_list) {
             // Augment the tx with its memo if present

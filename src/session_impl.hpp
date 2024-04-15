@@ -256,13 +256,13 @@ namespace sdk {
         bool have_writable_client_blob(locker_t& locker) const;
 
         // Load the latest blob from the server & update our local/cached copy
-        bool load_client_blob(locker_t& locker, const std::string& client_id, bool encache);
-        virtual nlohmann::json load_client_blob_impl(locker_t& locker, const std::string& client_id);
+        bool load_client_blob(locker_t& locker, bool encache);
+        virtual nlohmann::json load_client_blob_impl(locker_t& locker);
 
         // Save our local copy of the client blob to the server, then encache it
-        bool save_client_blob(locker_t& locker, const std::string& client_id, const std::string& old_hmac);
-        virtual nlohmann::json save_client_blob_impl(locker_t& locker, const std::string& client_id,
-            const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+        bool save_client_blob(locker_t& locker, const std::string& old_hmac);
+        virtual nlohmann::json save_client_blob_impl(
+            locker_t& locker, const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
 
         // Set our local copy of the client blob, then encache it
         // We pass the blob data as both base64 and raw bytes to account
@@ -313,6 +313,7 @@ namespace sdk {
         nlohmann::json m_login_data;
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
+        std::string m_blob_client_id;
         bool m_watch_only;
 
         // Mutable

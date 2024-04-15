@@ -104,8 +104,8 @@ namespace sdk {
             get_cached_local_client_blob(std::string());
             // Load the latest blob from the server. If the server blob is
             // newer, this updates our locally cached blob data to it
-            const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-            load_client_blob(locker, client_id, true);
+            m_blob_client_id = j_strref(m_login_data, "wallet_hash_id");
+            load_client_blob(locker, true);
         }
     }
 
@@ -132,12 +132,11 @@ namespace sdk {
             m_blob->set_tx_memo(m.key(), m.value());
         }
         m_blob->set_user_version(1); // Initial version
-        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-        if (!save_client_blob(locker, client_id, client_blob::get_zero_hmac())) {
+        if (!save_client_blob(locker, client_blob::get_zero_hmac())) {
             // We raced and lost with another session creating the initial blob.
             // Load the blob the other session saved and use its metadata.
             // (Note that this will probably never happen in practice).
-            load_client_blob(locker, client_id, true);
+            load_client_blob(locker, true);
         }
     }
 
@@ -161,8 +160,8 @@ namespace sdk {
         const std::vector<unsigned char>& data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        const auto& client_id = j_strref(m_login_data, "wallet_hash_id");
-        rust_call("save_blob", { { "blob", data_b64 }, { "client_id", client_id }, { "hmac", hmac } }, m_session);
+        rust_call(
+            "save_blob", { { "blob", data_b64 }, { "client_id", m_blob_client_id }, { "hmac", hmac } }, m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
