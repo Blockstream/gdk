@@ -172,9 +172,8 @@ namespace sdk {
     private:
         state_type call_impl() override;
 
-        std::string m_subaccount_type;
-        uint32_t m_subaccount;
         nlohmann::json m_details;
+        std::vector<std::string> m_found;
     };
 
     class get_subaccount_call : public auth_handler_impl {

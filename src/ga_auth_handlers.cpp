@@ -1157,55 +1157,64 @@ namespace sdk {
     //
     get_subaccounts_call::get_subaccounts_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_subaccounts")
-        , m_subaccount_type(address_type::p2sh_p2wpkh)
-        , m_subaccount(0)
         , m_details(std::move(details))
+        , m_found{}
     {
     }
 
     auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        if (!m_net_params.is_electrum() || !j_bool_or_false(m_details, "refresh") || m_subaccount_type.empty()) {
+        constexpr size_t NUM_ACCT_TYPES = 3u;
+        if (m_found.size() == NUM_ACCT_TYPES || !m_net_params.is_electrum() || !j_bool_or_false(m_details, "refresh")) {
             m_result = { { "subaccounts", m_session->get_subaccounts() } };
             return state_type::done;
         }
 
+        // Singlesig: We have been requested to perform BIP44 account discovery
         // Singlesig watch only sessions cannot derive xpubs for finding accounts
         m_session->ensure_full_session();
 
-        // TODO: consider batching requests for xpubs.
-        // The current implementation asks for one xpub at the time.
-        // Depending on network connection speed and hardware signer response time,
-        // this might affect performance negatively.
-
-        // BIP44 account discovery
-        // Performed only for Electrum sessions and if the client requests it.
-        if (m_hw_request == hw_request::get_xpubs) {
-            // Caller has provided the xpub for the subaccount
-            const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
-            const std::string xpub = xpubs.at(0);
-            if (m_session->discover_subaccount(xpub, m_subaccount_type)) {
-                m_session->create_subaccount({ { "name", std::string() }, { "discovered", true } }, m_subaccount, xpub);
-            } else {
-                // Found an empty subaccount for the current subaccount type,
-                // step to the next subaccount type.
-                using namespace address_type;
-                if (m_subaccount_type == p2sh_p2wpkh) {
-                    m_subaccount_type = p2wpkh;
-                } else if (m_subaccount_type == p2wpkh) {
-                    m_subaccount_type = p2pkh;
-                } else if (m_subaccount_type == p2pkh) {
-                    m_subaccount_type.clear();
-                    // No more subaccount types, ready to return
-                    return m_state;
+        nlohmann::json::array_t paths;
+        auto signer = get_signer();
+        using namespace address_type;
+        const nlohmann::json sa_details = { { "name", std::string() }, { "discovered", true } };
+        for (const auto& addr_type : { p2sh_p2wpkh, p2wpkh, p2pkh }) {
+            if (std::find(m_found.begin(), m_found.end(), addr_type) != m_found.end()) {
+                // Already discovered all subaccounts for this type
+                continue;
+            }
+            for (;;) {
+                // Find the last empty subaccount of this type
+                auto subaccount = m_session->get_last_empty_subaccount(addr_type);
+                auto path = m_session->get_subaccount_root_path(subaccount);
+                if (!signer->has_bip32_xpub(path)) {
+                    // Request the xpub for this subaccount so we can discover it
+                    paths.emplace_back(std::move(path));
+                    break;
+                } else {
+                    // Discover whether the subaccount exists
+                    const auto xpub = signer->get_bip32_xpub(path);
+                    if (m_session->discover_subaccount(xpub, addr_type)) {
+                        // Subaccount exists. Add it and loop to try the next one
+                        m_session->create_subaccount(sa_details, subaccount, xpub);
+                    } else {
+                        // Reached the last discoverable subaccount of this type
+                        m_found.push_back(addr_type);
+                        break;
+                    }
                 }
             }
         }
 
-        // Ask for the xpub for the next subaccount of the current type
-        m_subaccount = m_session->get_last_empty_subaccount(m_subaccount_type);
-        auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
-        paths.emplace_back(m_session->get_subaccount_root_path(m_subaccount));
+        if (paths.empty()) {
+            // We have discovered all subaccounts. When the caller calls
+            // us again, the results will be returned
+            GDK_RUNTIME_ASSERT(m_found.size() == NUM_ACCT_TYPES);
+            m_state = state_type::make_call;
+        } else {
+            // Request paths for further subaccounts to discover
+            signal_hw_request(hw_request::get_xpubs)["paths"] = std::move(paths);
+        }
         return m_state;
     }
 
