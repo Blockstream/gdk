@@ -60,13 +60,6 @@ namespace sdk {
             const std::string datadir = config["datadir"];
             config.emplace("registrydir", datadir + "/registry");
         }
-        if (!config.contains("optimize_expired_csv")) {
-            // optimize_expired_csv is a development setting to enable signing
-            // expired csv inputs with just the users signature.
-            // TODO: Remove this setting and all references to it once
-            // expired input signing is completed.
-            config.emplace("optimize_expired_csv", false);
-        }
 
         if (init_done) {
             // It is invalid to call GA_init() with different configs.
