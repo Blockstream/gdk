@@ -104,7 +104,11 @@ namespace sdk {
             get_cached_local_client_blob(std::string());
             // Load the latest blob from the server. If the server blob is
             // newer, this updates our locally cached blob data to it
-            m_blob_client_id = j_strref(m_login_data, "wallet_hash_id");
+            // Our client id is private: sha256(network | client secret pubkey)
+            const auto network = m_net_params.network();
+            std::vector<unsigned char> id_buffer(network.size() + public_key.size());
+            init_container(id_buffer, ustring_span(network), public_key);
+            m_blob_client_id = b2h(sha256(id_buffer));
             load_client_blob(locker, true);
         }
     }
