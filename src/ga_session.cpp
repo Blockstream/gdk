@@ -968,6 +968,20 @@ namespace sdk {
             // Set the newly computed ID
             login_data[key] = value;
         }
+        if (m_blobserver) {
+            // FIXME: Multisig watch-only doesn't have the xpub to make a
+            // secret blobserver client id. Since we aren't enabling the
+            // blobserver for multisig in production, use the wallet hash id
+            // for internal testing for now.
+            // To enable the external blobserver for multisig, we need to
+            // update set_watch_only to store the client id on the server
+            // and return it to watch only logins.
+            const auto network = m_net_params.network();
+            const auto& wallet_hash_id = j_strref(login_data, "wallet_hash_id");
+            std::vector<unsigned char> id_buffer(network.size() + wallet_hash_id.size());
+            init_container(id_buffer, ustring_span(network), wallet_hash_id);
+            m_blob_client_id = b2h(sha256(id_buffer));
+        }
     }
 
     nlohmann::json ga_session::authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer)
@@ -994,7 +1008,6 @@ namespace sdk {
 
         // Compute wallet identifiers
         derive_wallet_identifiers(locker, login_data, is_relogin);
-        m_blob_client_id = j_strref(login_data, "wallet_hash_id");
 
         const bool reset_2fa_active = j_bool_or_false(login_data, "reset_2fa_active");
         const std::string server_hmac = login_data["client_blob_hmac"];
@@ -1398,7 +1411,6 @@ namespace sdk {
 
         // Compute wallet identifiers
         derive_wallet_identifiers(locker, login_data, is_relogin);
-        m_blob_client_id = j_strref(login_data, "wallet_hash_id");
 
         const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 
