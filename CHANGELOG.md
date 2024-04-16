@@ -8,6 +8,10 @@
   to GA_init, tor sessions can be created and destroyed repeatedly without error.
   Prior to this change, once a tor session was destroyed, no further tor
   connections could be made.
+- Singlesig: Add experimental opt-in support for saving encrypted wallet metadata
+  to an external server. When enabled, metadata such as subaccount names and
+  transaction notes is synced automatically between different wallet installs
+  and when restoring a wallet from scratch.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
