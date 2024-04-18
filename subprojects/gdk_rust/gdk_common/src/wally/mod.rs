@@ -14,8 +14,6 @@ use std::os::raw::c_char;
 
 use crate::EC;
 
-pub mod ffi;
-
 #[derive(Clone, PartialEq, Debug)]
 pub struct MasterBlindingKey(pub Slip77MasterBlindingKey);
 
