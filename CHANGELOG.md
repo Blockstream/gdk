@@ -13,6 +13,8 @@
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
   and cheaper recovery path, which requires only a single signature and does not
   require two-factor authentication.
+- Build: refactor scripts that build dependencies, add an example dockerfile
+  for android build in bookworm-based image
 
 ### Fixed
 
