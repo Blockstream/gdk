@@ -6,6 +6,8 @@ use bitcoin::secp256k1;
 use elements::hex::ToHex;
 use std::fmt;
 
+use pbkdf2::pbkdf2_hmac_array;
+use sha2::Sha512;
 use std::borrow::Cow;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_char;
@@ -94,23 +96,7 @@ pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256
 }
 
 pub fn pbkdf2_hmac_sha512_256(password: Vec<u8>, salt: Vec<u8>, cost: u32) -> [u8; 32] {
-    let mut tmp = [0; 64];
-    let mut out = [0; 32];
-    let ret = unsafe {
-        ffi::wally_pbkdf2_hmac_sha512(
-            password.as_ptr(),
-            password.len(),
-            salt.as_ptr(),
-            salt.len(),
-            0,
-            cost,
-            tmp.as_mut_ptr(),
-            tmp.len(),
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    out.copy_from_slice(&tmp[..32]);
-    out
+    pbkdf2_hmac_array::<Sha512, 32>(&password, &salt, cost)
 }
 
 pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *mut c_char {
