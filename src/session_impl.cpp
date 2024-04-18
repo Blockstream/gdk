@@ -828,10 +828,11 @@ namespace sdk {
         if (m_blob_outdated) {
             load_client_blob(locker, true);
         }
+        const bool have_blobserver = !!m_blobserver;
         for (auto& tx_details : tx_list) {
             // Augment the tx with its memo if present
             auto memo = j_str(tx_details, "memo");
-            if (memo.value_or(std::string{}).empty()) {
+            if (have_blobserver || memo.value_or(std::string{}).empty()) {
                 memo.reset();
             }
             auto blob_memo = m_blob->get_tx_memo(j_strref(tx_details, "txhash"));
