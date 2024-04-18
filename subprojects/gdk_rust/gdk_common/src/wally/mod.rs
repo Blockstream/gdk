@@ -3,9 +3,9 @@
 //!
 
 use bitcoin::secp256k1;
-use elements::hex::ToHex;
 use std::fmt;
 
+use elements_miniscript::confidential::slip77::MasterBlindingKey as Slip77MasterBlindingKey;
 use pbkdf2::pbkdf2_hmac_array;
 use sha2::Sha512;
 use std::borrow::Cow;
@@ -16,15 +16,18 @@ use crate::EC;
 
 pub mod ffi;
 
-#[derive(Clone, PartialEq)]
-pub struct MasterBlindingKey(pub [u8; 64]);
+#[derive(Clone, PartialEq, Debug)]
+pub struct MasterBlindingKey(pub Slip77MasterBlindingKey);
 
 impl serde::Serialize for MasterBlindingKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
     {
-        serde::Serialize::serialize(&self.0.to_hex(), serializer)
+        use elements::hex::ToHex;
+        let mut key64: [u8; 64] = [0; 64];
+        key64[32..].copy_from_slice(self.0.as_bytes());
+        serde::Serialize::serialize(&key64.as_slice().to_hex(), serializer)
     }
 }
 impl<'de> serde::Deserialize<'de> for MasterBlindingKey {
@@ -32,63 +35,52 @@ impl<'de> serde::Deserialize<'de> for MasterBlindingKey {
     where
         D: serde::Deserializer<'de>,
     {
-        use bitcoin::hashes::hex::FromHex;
-        use std::convert::TryInto;
+        use elements::hex::FromHex;
+        use std::convert::TryFrom;
         let hex: String = serde::Deserialize::deserialize(deserializer)?;
-        let mut v = Vec::<u8>::from_hex(&hex).map_err(|e| {
-            serde::de::Error::custom(format!("Master blinding key must be valid hex ({:?})", e))
-        })?;
-        if v.len() == 32 {
-            // Handle both full and half-size blinding keys
-            v.splice(0..0, [0u8; 32]);
+
+        let is_32bytes = <[u8; 32]>::from_hex(&hex);
+        if is_32bytes.is_ok() {
+            return Ok(MasterBlindingKey(Slip77MasterBlindingKey::from(is_32bytes.unwrap())));
         }
-        Ok(MasterBlindingKey(
-            v.try_into().map_err(|_| {
-                serde::de::Error::custom("Master blinding key must be 64 or 32 bytes")
-            })?,
-        ))
+
+        let is_64bytes = <[u8; 64]>::from_hex(&hex);
+        if is_64bytes.is_ok() {
+            let raw_bytes = <[u8; 32]>::try_from(&is_64bytes.unwrap()[32..]);
+            return Ok(MasterBlindingKey(Slip77MasterBlindingKey::from(raw_bytes.unwrap())));
+        }
+        Err(serde::de::Error::custom("invalid length"))
+    }
+}
+impl fmt::Display for MasterBlindingKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }
 
-// need to manually implement Debug cause it's not supported for array>32
-impl fmt::Debug for MasterBlindingKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "MasterBlindingKey ({})", self.0.to_hex())
+impl std::convert::From<[u8; 64]> for MasterBlindingKey {
+    fn from(bytes: [u8; 64]) -> Self {
+        use std::convert::TryFrom;
+        let raw_bytes = <[u8; 32]>::try_from(&bytes[32..]);
+        MasterBlindingKey(Slip77MasterBlindingKey::from(raw_bytes.unwrap()))
+    }
+}
+
+impl std::convert::From<[u8; 32]> for MasterBlindingKey {
+    fn from(bytes: [u8; 32]) -> Self {
+        MasterBlindingKey(Slip77MasterBlindingKey::from(bytes))
     }
 }
 
 pub fn asset_blinding_key_from_seed(seed: &[u8]) -> MasterBlindingKey {
-    assert_eq!(seed.len(), 64);
-    let mut out = [0u8; 64];
-    let ret = unsafe {
-        ffi::wally_asset_blinding_key_from_seed(
-            seed.as_ptr(),
-            seed.len(),
-            out.as_mut_ptr(),
-            out.len(),
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    MasterBlindingKey(out)
+    MasterBlindingKey(Slip77MasterBlindingKey::from_seed(seed))
 }
 
 pub fn asset_blinding_key_to_ec_private_key(
     master_blinding_key: &MasterBlindingKey,
     script_pubkey: &elements::Script,
 ) -> secp256k1::SecretKey {
-    let mut out = [0; 32];
-    let ret = unsafe {
-        ffi::wally_asset_blinding_key_to_ec_private_key(
-            master_blinding_key.0.as_ptr(),
-            master_blinding_key.0.len(),
-            script_pubkey.as_bytes().as_ptr(),
-            script_pubkey.as_bytes().len(),
-            out.as_mut_ptr(),
-            out.len(),
-        )
-    };
-    assert_eq!(ret, ffi::WALLY_OK);
-    secp256k1::SecretKey::from_slice(&out).expect("size is 32")
+    master_blinding_key.0.blinding_private_key(script_pubkey)
 }
 
 pub fn ec_public_key_from_private_key(priv_key: secp256k1::SecretKey) -> secp256k1::PublicKey {
@@ -113,6 +105,7 @@ mod tests {
     use super::*;
     use bip39;
     use elements::hex::FromHex;
+    use elements::hex::ToHex;
     use elements::Script;
     use std::convert::TryInto;
     use std::str::FromStr;
@@ -128,7 +121,7 @@ mod tests {
         assert_eq!(seed.to_hex(), "c76c4ac4f4e4a00d6b274d5c39c700bb4a7ddc04fbc6f78e85ca75007b5b495f74a9043eeb77bdd53aa6fc3a0e31462270316fa04b8c19114c8798706cd02ac8");
         let master_blinding_key = asset_blinding_key_from_seed(&seed);
         assert_eq!(
-            master_blinding_key.0[32..].to_hex(),
+            master_blinding_key.0.to_string(),
             "6c2de18eabeff3f7822bc724ad482bef0557f3e1c1e1c75b7a393a5ced4de616"
         );
 
@@ -165,9 +158,13 @@ mod tests {
 
     #[test]
     fn test_master_blinding_key_serde() {
-        let m = MasterBlindingKey((0..64).collect::<Vec<_>>().try_into().unwrap());
+        let m_array: [u8; 64] = (0..64).collect::<Vec<_>>().try_into().unwrap();
+        let m = MasterBlindingKey::from(m_array);
         let s = serde_json::to_string(&m).unwrap();
-        assert_eq!(&s, "\"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f\"");
+        assert_eq!(
+            &s,
+            "\"0000000000000000000000000000000000000000000000000000000000000000202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f\""
+        );
         let m2: MasterBlindingKey = serde_json::from_str(&s).unwrap();
         assert_eq!(m, m2);
     }

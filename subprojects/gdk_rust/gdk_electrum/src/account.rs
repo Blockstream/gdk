@@ -7,7 +7,6 @@ use gdk_common::log::{info, warn};
 use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
-use gdk_common::elements::hex::ToHex;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETransactions, BETxid};
@@ -141,8 +140,8 @@ impl Account {
                 .master_blinding
                 .as_ref()
                 .expect("master blinding key always available in liquid")
-                .0[32..]
-                .to_hex();
+                .0
+                .to_string();
             let desc = format!("ct(slip77({}),el{})", slip77_key, desc);
             let checksum =
                 gdk_common::elements_miniscript::descriptor::checksum::desc_checksum(&desc)?;

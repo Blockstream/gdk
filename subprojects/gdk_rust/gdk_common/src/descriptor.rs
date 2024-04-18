@@ -8,7 +8,6 @@ use elements_miniscript::{
 };
 use miniscript::descriptor::checksum::desc_checksum;
 use miniscript::descriptor::{Descriptor, DescriptorPublicKey, ShInner};
-use std::convert::TryInto;
 use std::str::FromStr;
 
 /// Make sure the key origin is in the expected format
@@ -57,12 +56,7 @@ pub fn parse_single_sig_descriptor(
         let descriptor = ConfidentialDescriptor::<ElementsDescriptorPublicKey>::from_str(s)
             .map_err(|_| Error::UnsupportedDescriptor)?;
         let mbk = match descriptor.key {
-            Key::Slip77(mbk) => {
-                let mut v = mbk.as_bytes().to_vec();
-                // mbk is 32 bytes, make it 64 as wally expects
-                v.splice(0..0, [0u8; 32]);
-                MasterBlindingKey(v.try_into().map_err(|_| Error::UnsupportedDescriptor)?)
-            }
+            Key::Slip77(mbk) => MasterBlindingKey(mbk),
             _ => return Err(Error::UnsupportedDescriptor),
         };
         // remove "el" and elements checksum, then compute the bitcoin checksum
@@ -115,7 +109,6 @@ pub fn parse_single_sig_descriptor(
 #[cfg(test)]
 mod test {
     use super::*;
-    use elements::hex::ToHex;
 
     #[test]
     fn test_descriptor() {
@@ -197,7 +190,7 @@ mod test {
         assert_eq!(shp2wpkh_xpub_external.to_string(), tpub);
         assert_eq!(bip32_account, 0);
         assert_eq!(f, Fingerprint::default());
-        assert_eq!(slip77_key, mbk.unwrap().0[32..].to_hex());
+        assert_eq!(slip77_key, mbk.unwrap().to_string());
 
         // View key not supported
         let view_key = "cU5b4e1Zv5Kgda8A2Pn8SQBKAGq6PNZbzk14eHrFpHby7c8xKjLP";
