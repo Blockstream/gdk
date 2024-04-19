@@ -15,7 +15,7 @@ use gdk_common::log::{info, log, Level};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::serde_cbor;
 use gdk_common::store::{Decryptable, Encryptable, ToCipher};
-use gdk_common::wally::MasterBlindingKey;
+use gdk_common::util::MasterBlindingKey;
 use gdk_common::NetworkId;
 use serde::{Deserialize, Serialize};
 use std::collections::hash_map::Entry;

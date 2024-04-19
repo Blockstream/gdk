@@ -170,7 +170,7 @@ impl NetworkParameters {
         let password = xpub.encode().to_vec();
         let salt = self.network.as_bytes().to_vec();
         let cost = 2048;
-        crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
+        crate::util::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
     pub fn xpub_hash_id(&self, master_xpub: &Xpub) -> String {
@@ -184,7 +184,7 @@ impl NetworkParameters {
         let password = xpub.encode().to_vec();
         let salt = "GREEN_XPUB_HASH_NETWORK".as_bytes().to_vec();
         let cost = 2048;
-        crate::wally::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
+        crate::util::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
     pub fn bip32_network(&self) -> bitcoin::network::Network {

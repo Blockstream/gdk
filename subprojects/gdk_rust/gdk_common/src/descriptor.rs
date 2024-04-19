@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::scripts::ScriptType;
-use crate::wally::MasterBlindingKey;
+use crate::util::MasterBlindingKey;
 use bitcoin::bip32::{ChildNumber, Fingerprint, Xpub};
 use elements_miniscript::confidential::Key;
 use elements_miniscript::{

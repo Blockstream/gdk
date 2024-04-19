@@ -12,7 +12,7 @@ use std::collections::HashMap;
 
 use crate::error::Error;
 use crate::scripts::ScriptType;
-use crate::wally::MasterBlindingKey;
+use crate::util::MasterBlindingKey;
 use bitcoin::bip32::{ChildNumber, DerivationPath, Fingerprint, Xpriv, Xpub};
 use bitcoin::hashes::{sha256, Hash};
 use std::convert::TryFrom;
@@ -490,7 +490,7 @@ fn from_descriptor(
         account_num,
         xpub,
         master_xpub_fingerprint: Some(master_xpub_fingerprint),
-        master_blinding_key: master_blinding_key,
+        master_blinding_key,
     })
 }
 

@@ -4,7 +4,7 @@ extern crate serde_json;
 pub mod error;
 mod exchange_rates;
 
-use gdk_common::wally::{make_str, read_str};
+use gdk_common::util::{make_str, read_str};
 use serde_json::Value;
 
 use std::ffi::CString;

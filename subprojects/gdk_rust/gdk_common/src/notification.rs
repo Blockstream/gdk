@@ -1,5 +1,5 @@
 use crate::be::BEBlockHeader;
-use crate::wally::make_str;
+use crate::util::make_str;
 use crate::{be::BEBlockHash, model::Settings, model::TransactionType, State};
 use log::{info, warn};
 use serde::{Deserialize, Serialize};

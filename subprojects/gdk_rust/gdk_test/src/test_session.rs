@@ -7,7 +7,7 @@ use electrsd::electrum_client::ElectrumApi;
 use gdk_common::bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
 use gdk_common::log::{info, warn};
 use gdk_common::rand::Rng;
-use gdk_common::wally;
+use gdk_common::util;
 use gdk_common::{bitcoin, rand};
 use serde_json::{json, Value};
 use tempfile::TempDir;
@@ -423,11 +423,11 @@ impl TestSession {
 fn keys_from_credentials(
     credentials: &Credentials,
     network: bitcoin::Network,
-) -> (Xpriv, Xpub, wally::MasterBlindingKey) {
+) -> (Xpriv, Xpub, util::MasterBlindingKey) {
     let mnemonic = Mnemonic::parse(&credentials.mnemonic).unwrap();
     let seed = mnemonic.to_seed(&credentials.bip39_passphrase);
     let master_xprv = Xpriv::new_master(network, &seed).unwrap();
     let master_xpub = Xpub::from_priv(&gdk_common::EC, &master_xprv);
-    let master_blinding = wally::asset_blinding_key_from_seed(&seed);
+    let master_blinding = util::asset_blinding_key_from_seed(&seed);
     (master_xprv, master_xpub, master_blinding)
 }

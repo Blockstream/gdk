@@ -18,10 +18,10 @@ use gdk_common::model::{
 };
 use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
-use gdk_common::util::{now, weight_to_vsize};
-use gdk_common::wally::{
+use gdk_common::util::{
     asset_blinding_key_to_ec_private_key, ec_public_key_from_private_key, MasterBlindingKey,
 };
+use gdk_common::util::{now, weight_to_vsize};
 use gdk_common::{ElementsNetwork, NetworkId, NetworkParameters};
 
 use crate::error::Error;

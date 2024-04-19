@@ -35,7 +35,7 @@ use gdk_common::{bitcoin, elements};
 
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
-use gdk_common::wally::{asset_blinding_key_to_ec_private_key, MasterBlindingKey};
+use gdk_common::util::{asset_blinding_key_to_ec_private_key, MasterBlindingKey};
 use gdk_common::{be::*, State};
 
 use gdk_common::electrum_client::{self, RawHeaderNotification, ScriptStatus};

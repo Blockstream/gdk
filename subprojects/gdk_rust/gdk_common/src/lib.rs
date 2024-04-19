@@ -12,7 +12,6 @@ pub mod slip132;
 pub mod state;
 pub mod store;
 pub mod util;
-pub mod wally;
 pub mod aes {
     pub use aes::*;
     pub use aes_gcm_siv::*;
