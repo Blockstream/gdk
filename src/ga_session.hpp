@@ -158,7 +158,7 @@ namespace sdk {
         void encache_local_client_blob(
             locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
 
-        void load_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
+        void load_local_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
 
         void ack_system_message(locker_t& locker, const std::string& message_hash_hex, const std::string& sig_der_hex);
 

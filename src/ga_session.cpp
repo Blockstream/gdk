@@ -1198,7 +1198,7 @@ namespace sdk {
         m_cache->load_db(m_local_encryption_key.value(), signer);
         // Save the cache in case we carried forward data from a previous version
         m_cache->save_db(); // No-op if unchanged
-        load_signer_xpubs(locker, signer);
+        load_local_signer_xpubs(locker, signer);
     }
 
     void ga_session::save_cache()
@@ -1826,19 +1826,15 @@ namespace sdk {
         m_cache->save_db();
     }
 
-    void ga_session::load_signer_xpubs(session_impl::locker_t& locker, std::shared_ptr<signer> signer)
+    void ga_session::load_local_signer_xpubs(session_impl::locker_t& locker, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(signer.get());
-        m_cache->get_key_value("xpubs", { [&signer](const auto& db_blob) {
+        m_cache->get_key_value("xpubs", { [this, &locker, &signer](const auto& db_blob) {
             if (db_blob.has_value()) {
                 try {
-                    auto cached = nlohmann::json::from_msgpack(db_blob.value().begin(), db_blob.value().end());
-                    for (auto& item : cached.items()) {
-                        // Inverted: See encache_signer_xpubs()
-                        signer->cache_bip32_xpub(item.value(), item.key());
-                    }
-                    GDK_LOG(debug) << "Loaded " << cached.size() << " cached xpubs";
+                    auto xpubs = nlohmann::json::from_msgpack(db_blob.value().begin(), db_blob.value().end());
+                    load_signer_xpubs(locker, xpubs, signer);
                 } catch (const std::exception& e) {
                     GDK_LOG(warning) << "Error reading xpubs: " << e.what();
                 }

@@ -779,6 +779,19 @@ namespace sdk {
         // Overriden for multisig
     }
 
+    void session_impl::load_signer_xpubs(locker_t& locker, const nlohmann::json& xpubs, std::shared_ptr<signer> signer)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        // Load the provided xpubs into the sessions signer
+        for (auto& item : xpubs.items()) {
+            // Cached xpub JSON is inverted: See signer->get_cached_bip32_xpubs_json().
+            // This call will throw if any xpub for a given path mismatches
+            // what the signer has already cached
+            signer->cache_bip32_xpub(item.value(), item.key());
+        }
+        GDK_LOG(debug) << "Loaded " << xpubs.size() << " cached xpubs";
+    }
+
     ga_pubkeys& session_impl::get_ga_pubkeys()
     {
         GDK_RUNTIME_ASSERT(false);

@@ -84,9 +84,6 @@ namespace sdk {
         }
 
         locker_t locker(m_mutex);
-        // FIXME: Load subaccount paths and xpubs from the store and add them
-        // with signer->cache_bip32_xpub() - see ga_session::load_signer_xpubs
-        // (This avoids having to go to the HWW to fetch these xpubs)
         m_login_data = get_wallet_hash_ids({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
         m_login_data["warnings"] = nlohmann::json::array();
 
@@ -110,6 +107,7 @@ namespace sdk {
             init_container(id_buffer, ustring_span(network), public_key);
             m_blob_client_id = b2h(sha256(id_buffer));
             load_client_blob(locker, true);
+            load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
         }
     }
 

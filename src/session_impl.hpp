@@ -213,6 +213,7 @@ namespace sdk {
         std::shared_ptr<signer> get_nonnull_signer();
         std::shared_ptr<signer> get_signer();
         virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
+        void load_signer_xpubs(locker_t& locker, const nlohmann::json& xpubs, std::shared_ptr<signer> signer);
 
         virtual ga_pubkeys& get_ga_pubkeys();
         virtual user_pubkeys& get_user_pubkeys();
