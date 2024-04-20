@@ -421,6 +421,10 @@ impl ElectrumSession {
         Ok(self.store()?.read()?.store.memos.clone())
     }
 
+    pub fn set_memos(&self, memos: &HashMap<Txid, String>) -> Result<(), Error> {
+        Ok(self.store()?.write()?.store.memos = memos.clone())
+    }
+
     /// Remove the persisted cache and store
     ///
     /// The actual file removal will happen when the session will be dropped.
