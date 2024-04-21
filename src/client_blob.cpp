@@ -125,12 +125,33 @@ namespace sdk {
         return changed ? increment_version(m_data) : changed;
     }
 
+    bool client_blob::update_tx_memos(const nlohmann::json& memos)
+    {
+        const auto version = get_user_version();
+        for (const auto& m : memos.items()) {
+            set_tx_memo(m.key(), m.value());
+        }
+        if (get_user_version() == version) {
+            return false; // Nothing updated
+        }
+        set_user_version(version + 1);
+        return true;
+    }
+
     std::string client_blob::get_tx_memo(const std::string& txhash_hex) const
     {
         if (is_key_encrypted(TX_MEMOS)) {
-            return std::string(); // Has been made unavailable to watch only sessions
+            return {}; // Has been made unavailable to watch only sessions
         }
         return j_str_or_empty(m_data[TX_MEMOS], txhash_hex);
+    }
+
+    nlohmann::json client_blob::get_tx_memos() const
+    {
+        if (is_key_encrypted(TX_MEMOS)) {
+            return {}; // Has been made unavailable to watch only sessions
+        }
+        return m_data[TX_MEMOS];
     }
 
     bool client_blob::set_master_blinding_key(const std::string& master_blinding_key_hex)

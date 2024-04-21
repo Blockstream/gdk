@@ -497,7 +497,7 @@ namespace sdk {
     void session_impl::update_client_blob(locker_t& locker, std::function<bool()> update_fn)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(!m_watch_only);
+        GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value() && m_blob_hmac_key.has_value());
 
         while (true) {
             if (m_blob_outdated) {

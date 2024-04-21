@@ -33,7 +33,9 @@ namespace sdk {
         nlohmann::json get_subaccount_data(uint32_t subaccount) const;
 
         bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);
+        bool update_tx_memos(const nlohmann::json& memos);
         std::string get_tx_memo(const std::string& txhash_hex) const;
+        nlohmann::json get_tx_memos() const;
 
         bool set_master_blinding_key(const std::string& master_blinding_key_hex);
         std::string get_master_blinding_key() const;

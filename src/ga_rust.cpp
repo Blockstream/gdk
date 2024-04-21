@@ -99,6 +99,7 @@ namespace sdk {
             }
             // Load any cached blob data
             get_cached_local_client_blob(std::string());
+            const bool had_cached_blob = !m_blob_hmac.empty();
             // Load the latest blob from the server. If the server blob is
             // newer, this updates our locally cached blob data to it
             // Our client id is private: sha256(network | client secret pubkey)
@@ -108,6 +109,18 @@ namespace sdk {
             m_blob_client_id = b2h(sha256(id_buffer));
             load_client_blob(locker, true);
             load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
+            if (!had_cached_blob && !m_blob_hmac.empty()) {
+                // We didn't have a local client blob, but the server does.
+                // Merge any local metadata with the blob
+                GDK_LOG(info) << "Merging local updates to client blob";
+                auto memos = rust_call("get_memos", {}, m_session);
+                if (!memos.is_null() && !memos.empty()) {
+                    update_client_blob(locker, std::bind(&client_blob::update_tx_memos, m_blob.get(), memos));
+                }
+                // Save the merged memos locally
+                memos = m_blob->get_tx_memos();
+                rust_call("set_memos", memos.is_null() ? nlohmann::json({}) : memos, m_session);
+            }
         }
     }
 
@@ -119,7 +132,7 @@ namespace sdk {
         // Subaccount xpubs
         const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
         GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
-        update_client_blob(locker, std::bind(&client_blob::set_xpubs, m_blob.get(), signer_xpubs));
+        m_blob->set_xpubs(signer_xpubs);
         // Subaccount names
         const nlohmann::json empty; // Don't re-save xpubs
         for (const auto& sa : get_subaccounts_impl(locker)) {
@@ -130,9 +143,7 @@ namespace sdk {
             m_blob->update_subaccount_data(j_uint32ref(sa, "pointer"), sa_data, empty);
         }
         // Tx memos
-        for (const auto& m : rust_call("get_memos", {}, m_session).items()) {
-            m_blob->set_tx_memo(m.key(), m.value());
-        }
+        m_blob->update_tx_memos(rust_call("get_memos", {}, m_session));
         m_blob->set_user_version(1); // Initial version
         if (!save_client_blob(locker, client_blob::get_zero_hmac())) {
             // We raced and lost with another session creating the initial blob.
