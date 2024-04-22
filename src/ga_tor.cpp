@@ -726,9 +726,10 @@ namespace sdk {
 
     static std::unique_ptr<tor_controller_impl> make_controller(const std::string& socks5_port)
     {
-        const std::string tor_datadir = gdk_config()["tordir"];
-        GDK_LOG(info) << "tor: using '" << tor_datadir << "' as tor datadir";
-        return std::make_unique<tor_controller_impl>(socks5_port, tor_datadir);
+        const auto& tordir = j_strref(gdk_config(), "tordir");
+        GDK_RUNTIME_ASSERT(!tordir.empty());
+        GDK_LOG(info) << "tor: using '" << tordir << "' as tor datadir";
+        return std::make_unique<tor_controller_impl>(socks5_port, tordir);
     }
 
     tor_controller::tor_controller()
@@ -767,7 +768,6 @@ namespace sdk {
         std::shared_ptr<tor_controller> shared = s_inst.lock();
 
         if (!shared) {
-            GDK_RUNTIME_ASSERT(!j_str_is_empty(gdk_config(), "tordir"));
             s_inst = shared = std::make_shared<tor_controller>();
         }
 
