@@ -87,7 +87,13 @@ namespace sdk {
         m_login_data = get_wallet_hash_ids({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
         m_login_data["warnings"] = nlohmann::json::array();
 
-        if (m_blobserver) {
+        if (!m_blobserver) {
+            // Remove any previously enabled blob metadata.
+            // If the blob was disabled, and is then enabled again,
+            // the else branch below will sync local updates.
+            encache_local_client_blob(locker, "", {}, {});
+        } else {
+            // Enable, load and sync the client blob.
             // FIXME: enable blob for watch-only sessions
             if (!signer->is_watch_only()) {
                 // Compute the client blob HMAC key
