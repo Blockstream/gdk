@@ -11,10 +11,10 @@ autobins = false
 gdk-common = { path = "../gdk_common" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3.2.0"
 thiserror = "1.0"
 
 [dev-dependencies]
 env_logger = "0.10.0"
 httptest = "0.15.4"
 rusty-fork = "0.3.0"
+tempfile = "3.2.0"
