@@ -656,7 +656,7 @@ namespace sdk {
         inputs = std::move(m_details["transaction_inputs"]);
         request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         request["use_ae_protocol"] = use_ae_protocol;
-        const bool is_partial = m_details.value("is_partial", false);
+        const bool is_partial = j_bool_or_false(m_details, "is_partial");
         const bool is_partial_multisig = is_partial && !is_electrum;
         if (is_partial_multisig) {
             // Multisig partial signing. Ensure all inputs to be signed are segwit
@@ -681,7 +681,7 @@ namespace sdk {
                 // skip_signing=true and remove its private key so we
                 // don't expose it to the signer.
                 if (!tx) {
-                    tx = std::make_unique<Tx>(json_get_value(m_twofactor_data, "transaction"), is_liquid);
+                    tx = std::make_unique<Tx>(j_strref(m_twofactor_data, "transaction"), is_liquid);
                 }
                 const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
                 const auto tx_signature_hash = tx->get_signature_hash(input, i, sighash_flags);
@@ -690,7 +690,7 @@ namespace sdk {
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
                 input["skip_signing"] = true;
                 input.erase("private_key");
-            } else if (!input.value("skip_signing", false)) {
+            } else if (!j_bool_or_false(input, "skip_signing")) {
                 // Wallet input we have been asked to sign. Must be spendable by us
                 GDK_RUNTIME_ASSERT(!j_strref(input, "address_type").empty());
                 if (!have_checked_full_session) {
@@ -728,13 +728,13 @@ namespace sdk {
     // Determine whether to sign with the users key, green backend, or both
     static std::pair<bool, bool> get_sign_with(const nlohmann::json& details, bool is_electrum)
     {
-        const std::vector<std::string> with = json_get_value<decltype(with)>(details, "sign_with");
+        const auto with = j_array(details, "sign_with").value_or(nlohmann::json::array_t{});
         auto&& contains
             = [&with](const auto& who) -> bool { return std::find(with.begin(), with.end(), who) != with.end(); };
 
         const bool sign_with_all = contains("all");
-        const bool user_sign = with.empty() || contains("user") || sign_with_all;
-        const bool server_sign = contains("green-backend") || (sign_with_all && !is_electrum);
+        const bool user_sign = sign_with_all || with.empty() || contains("user");
+        const bool server_sign = is_electrum ? false : (sign_with_all || contains("green-backend"));
         return { user_sign, server_sign };
     }
 
@@ -764,7 +764,7 @@ namespace sdk {
 
         if (server_sign && !m_server_signed) {
             // Note that the server will fail to sign if the user hasn't signed first
-            auto&& must_sign = [](const auto& in) -> bool { return !in.value("skip_signing", false); };
+            auto&& must_sign = [](const auto& in) -> bool { return !j_bool_or_false(in, "skip_signing"); };
             const auto& inputs = m_result.at("transaction_inputs");
             if (std::any_of(inputs.begin(), inputs.end(), must_sign)) {
                 /* We have inputs that need signing */
@@ -784,7 +784,7 @@ namespace sdk {
         const auto& signatures = j_arrayref(hw_reply, "signatures", inputs.size());
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
-        Tx tx(json_get_value(m_twofactor_data, "transaction"), is_liquid);
+        Tx tx(j_strref(m_twofactor_data, "transaction"), is_liquid);
 
         // If we are using the Anti-Exfil protocol we verify the signatures
         // TODO: the signer-commitments should be verified as being the same for the
@@ -796,18 +796,18 @@ namespace sdk {
             auto& user_pubkeys = m_session->get_user_pubkeys();
             for (size_t i = 0; i < inputs.size(); ++i) {
                 const auto& utxo = inputs.at(i);
-                if (utxo.value("skip_signing", false)) {
+                if (j_bool_or_false(utxo, "skip_signing")) {
                     continue;
                 }
-                const uint32_t subaccount = utxo.at("subaccount");
-                const uint32_t pointer = utxo.at("pointer");
-                const uint32_t sighash_flags = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+                const uint32_t subaccount = j_uint32ref(utxo, "subaccount");
+                const uint32_t pointer = j_uint32ref(utxo, "pointer");
+                const uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
 
                 pub_key_t pubkey;
-                if (!is_electrum) {
-                    pubkey = user_pubkeys.derive(subaccount, pointer);
+                if (is_electrum) {
+                    pubkey = user_pubkeys.derive(subaccount, pointer, j_bool_or_false(utxo, "is_internal"));
                 } else {
-                    pubkey = user_pubkeys.derive(subaccount, pointer, utxo.value("is_internal", false));
+                    pubkey = user_pubkeys.derive(subaccount, pointer);
                 }
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
