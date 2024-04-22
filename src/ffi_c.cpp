@@ -6,10 +6,10 @@
 #include "assertion.hpp"
 #include "autobahn_wrapper.hpp"
 #include "bcur_auth_handlers.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_auth_handlers.hpp"
 #include "gdk.h"
+#include "json_utils.hpp"
 #include "network_parameters.hpp"
 #include "session.hpp"
 #include "swap_auth_handlers.hpp"
@@ -88,13 +88,6 @@ static const nlohmann::json* json_cast(const GA_json* json) { return reinterpret
 static nlohmann::json** json_cast(GA_json** json) { return reinterpret_cast<nlohmann::json**>(json); }
 
 static nlohmann::json&& json_move(GA_json* json) { return std::move(*json_cast(json)); }
-
-template <typename T> static void json_convert(const nlohmann::json& json, const char* path, T* value)
-{
-    GDK_RUNTIME_ASSERT(path);
-    GDK_RUNTIME_ASSERT(value);
-    *value = ga::sdk::json_get_value<T>(json, path);
-}
 
 static struct GA_auth_handler* auth_cast(ga::sdk::auth_handler* call)
 {
@@ -523,30 +516,31 @@ GDK_DEFINE_C_FUNCTION_3(GA_bcur_decode, struct GA_session*, session, GA_json*, d
     { *call = make_call(new ga::sdk::bcur_decoder_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_bool, const GA_json*, json, const char*, path, uint32_t*, output, {
-    bool v;
-    json_convert(*json_cast(json), path, &v);
+    *output = GA_FALSE;
+    const bool v = ::ga::sdk::j_bool_or_false(*json_cast(json), path);
     *output = v ? GA_TRUE : GA_FALSE;
 })
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_string, const GA_json*, json, const char*, path, char**, output, {
-    std::string v;
-    if (output) {
-        *output = nullptr;
-    }
-    json_convert(*json_cast(json), path, &v);
+    *output = nullptr;
+    const auto v = ::ga::sdk::j_str_or_empty(*json_cast(json), path);
     *output = to_c_string(v);
 })
 
-GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint32, const GA_json*, json, const char*, path, uint32_t*, output,
-    { json_convert(*json_cast(json), path, output); })
+GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint32, const GA_json*, json, const char*, path, uint32_t*, output, {
+    *output = 0;
+    *output = ::ga::sdk::j_uint32_or_zero(*json_cast(json), path);
+})
 
-GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint64, const GA_json*, json, const char*, path, uint64_t*, output,
-    { json_convert(*json_cast(json), path, output); })
+GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_uint64, const GA_json*, json, const char*, path, uint64_t*, output, {
+    *output = 0;
+    *output = ::ga::sdk::j_amount_or_zero(*json_cast(json), path).value();
+})
 
 GDK_DEFINE_C_FUNCTION_3(GA_convert_json_value_to_json, const GA_json*, json, const char*, path, GA_json**, output, {
-    nlohmann::json* v = new nlohmann::json();
-    json_convert(*json_cast(json), path, v);
-    *json_cast(output) = v;
+    *output = nullptr;
+    const auto& v = json_cast(json)->at(path);
+    *json_cast(output) = new nlohmann::json(v);
 })
 
 #ifdef __GNUC__
