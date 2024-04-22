@@ -1,7 +1,6 @@
 #include <boost/algorithm/string/trim.hpp>
 
 #include "client_blob.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
@@ -33,6 +32,33 @@ namespace sdk {
             auto& p = data[USER_VERSION];
             uint64_t version = p;
             p = version + 1;
+            return true;
+        }
+
+        // Set a value to a JSON object if it is non-default, otherwise remove any existing value.
+        // This saves space storing the value if a default value is returned when its fetched.
+        // Returns true if the JSON object was changed.
+        template <typename T>
+        static bool json_add_non_default(nlohmann::json& data, const std::string& key, const T& value)
+        {
+            const bool is_default = value == T();
+            const auto p = data.find(key);
+            const bool found = p != data.end();
+            if (is_default) {
+                if (found) {
+                    data.erase(p); // Remove existing value
+                    return true;
+                }
+                return false;
+            }
+            if (found) {
+                if (*p == value) {
+                    return false;
+                }
+                *p = value; // Overwrite existing value
+                return true;
+            }
+            data[key] = value; // Insert new value
             return true;
         }
     } // namespace
