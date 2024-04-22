@@ -866,7 +866,7 @@ namespace sdk {
             m_is_synced = true;
         }
 
-        m_psbt = std::make_unique<Psbt>(m_details.at("psbt"), m_net_params.is_liquid());
+        m_psbt = std::make_unique<Psbt>(j_strref(m_details, "psbt"), m_net_params.is_liquid());
         m_signing_details = m_psbt->to_json(*m_session, std::move(m_details.at("utxos")));
 
         if (m_signing_details.empty()) {
@@ -879,8 +879,8 @@ namespace sdk {
         sign_with.push_back("all");
         m_signing_details["sign_with"] = m_details.value("sign_with", sign_with);
 
-        if (m_details.contains("blinding_nonces")) {
-            m_signing_details.emplace("blinding_nonces", m_details["blinding_nonces"]);
+        if (const auto p = m_details.find("blinding_nonces"); p != m_details.end()) {
+            m_signing_details.emplace("blinding_nonces", *p);
         }
         // FIXME: pass in prev_txs from PSBT if present
 
@@ -898,10 +898,11 @@ namespace sdk {
             return;
         }
 
-        const Tx tx(json_get_value(m_result, "transaction"), m_net_params.is_liquid());
-        const auto& tx_inputs = m_result.at("transaction_inputs");
-        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-            if (!tx_inputs.at(i).value("skip_signing", false)) {
+        const Tx tx(j_strref(m_result, "transaction"), m_net_params.is_liquid());
+        const auto num_inputs = tx.get_num_inputs();
+        const auto& tx_inputs = j_arrayref(m_result, "transaction_inputs", num_inputs);
+        for (size_t i = 0; i < num_inputs; ++i) {
+            if (!j_bool_or_false(tx_inputs.at(i), "skip_signing")) {
                 m_psbt->set_input_finalization_data(i, tx);
             }
         }
