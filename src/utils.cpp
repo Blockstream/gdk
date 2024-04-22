@@ -441,10 +441,10 @@ namespace sdk {
             }
 
             const bool is_liquid = net_params.is_liquid();
-            if (params.contains("assetid")) {
+            if (auto p = params.find("assetid"); p != params.end()) {
                 // Lowercase and validate the asset id
-                params["assetid"] = boost::to_lower_copy(json_get_value(params, "assetid"));
-                j_assetref(is_liquid, params, "assetid"); // Validate it
+                *p = boost::to_lower_copy(p->is_null() ? std::string() : p->get<std::string>());
+                (void)j_assetref(is_liquid, params, "assetid"); // Validate it
             } else if (is_liquid && params.contains("amount")) {
                 // Asset id is mandatory if an amount is present
                 throw user_error(res::id_invalid_payment_request_assetid);

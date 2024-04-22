@@ -2,6 +2,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "assertion.hpp"
+#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
