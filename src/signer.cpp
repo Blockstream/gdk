@@ -1,6 +1,8 @@
 #include "signer.hpp"
+#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
+#include "json_utils.hpp"
 #include "memory.hpp"
 #include "network_parameters.hpp"
 #include "utils.hpp"
@@ -42,7 +44,7 @@ namespace sdk {
                         // Encrypted; decrypt it
                         mnemonic = decrypt_mnemonic(mnemonic, *password_p);
                     }
-                    const std::string passphrase = json_get_value(credentials, "bip39_passphrase");
+                    const auto passphrase = j_str_or_empty(credentials, "bip39_passphrase");
                     nlohmann::json ret
                         = { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic, passphrase)) } };
                     if (!passphrase.empty()) {
@@ -120,7 +122,7 @@ namespace sdk {
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
-            const auto device_type = json_get_value(ret, "device_type");
+            const auto device_type = j_str_or_empty(ret, "device_type");
             if (device_type == "hardware") {
                 if (ret.value("name", std::string()).empty()) {
                     throw user_error("Hardware device JSON requires a non-empty 'name' element");
