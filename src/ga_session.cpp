@@ -22,6 +22,7 @@
 
 #include "autobahn_wrapper.hpp"
 #include "client_blob.hpp"
+#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_cache.hpp"
 #include "ga_session.hpp"

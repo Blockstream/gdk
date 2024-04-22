@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "amount.hpp"
+#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
