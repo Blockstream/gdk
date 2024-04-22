@@ -117,7 +117,7 @@ namespace sdk {
             GDK_RUNTIME_ASSERT_MSG(ec_scalar_verify(scalar), "invalid scalar");
             GDK_RUNTIME_ASSERT_MSG(
                 proposal_input.at("asset") != proposal_output.at("asset"), "cannot swap the same asset");
-            auto tx = std::make_unique<Tx>(json_get_value(proposal, "transaction"), is_liquid);
+            auto tx = std::make_unique<Tx>(j_strref(proposal, "transaction"), is_liquid);
             GDK_RUNTIME_ASSERT_MSG(
                 tx->get_num_inputs() == 1 && tx->get_num_outputs() == 1, "unexpected number of inputs or outputs");
 
@@ -148,16 +148,16 @@ namespace sdk {
     create_swap_transaction_call::create_swap_transaction_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "create_swap_transaction")
         , m_details(details)
-        , m_swap_type(json_get_value(m_details, "swap_type"))
         , m_is_signed(false)
     {
     }
 
     auth_handler::state_type create_swap_transaction_call::call_impl()
     {
-        if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == LIQUIDEX_STR, "unknown output_type");
+        const auto& swap_type = j_strref(m_details, "swap_type");
+        if (swap_type == "liquidex") {
+            GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "output_type") == LIQUIDEX_STR, "unknown output_type");
             return liquidex_impl();
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
@@ -255,15 +255,15 @@ namespace sdk {
     complete_swap_transaction_call::complete_swap_transaction_call(session& session, const nlohmann::json& details)
         : auth_handler_impl(session, "complete_swap_transaction")
         , m_details(details)
-        , m_swap_type(json_get_value(m_details, "swap_type"))
     {
     }
 
     auth_handler::state_type complete_swap_transaction_call::call_impl()
     {
-        if (m_swap_type == "liquidex") {
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
-            GDK_RUNTIME_ASSERT_MSG(json_get_value(m_details, "output_type") == "transaction", "unknown output_type");
+        const auto& swap_type = j_strref(m_details, "swap_type");
+        if (swap_type == "liquidex") {
+            GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
+            GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "output_type") == "transaction", "unknown output_type");
             GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
             return liquidex_impl();
         } else {

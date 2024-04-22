@@ -19,7 +19,6 @@ namespace sdk {
         state_type liquidex_impl();
 
         nlohmann::json m_details;
-        const std::string m_swap_type;
         nlohmann::json m_receive_address;
         nlohmann::json m_create_details;
         bool m_is_signed;
@@ -36,7 +35,6 @@ namespace sdk {
         state_type liquidex_impl();
 
         nlohmann::json m_details;
-        const std::string m_swap_type;
         nlohmann::json m_receive_address;
         nlohmann::json m_create_details;
         std::unique_ptr<Tx> m_tx;
