@@ -1231,7 +1231,6 @@ namespace sdk {
     get_transactions_call::get_transactions_call(session& session, nlohmann::json details)
         : auth_handler_impl(session, "get_transactions")
         , m_details(std::move(details))
-        , m_subaccount(json_get_value(m_details, "subaccount", 0))
     {
     }
 
@@ -1245,11 +1244,12 @@ namespace sdk {
             return state_type::done;
         }
 
+        const auto subaccount = j_uint32_or_zero(m_details, "subaccount");
         if (m_hw_request == hw_request::get_blinding_nonces) {
             // Parse and cache the nonces we got back
             encache_blinding_data(*m_session, m_twofactor_data, get_hw_reply());
             // Unblind, cleanup and store the fetched txs
-            m_session->store_transactions(m_subaccount, m_result);
+            m_session->store_transactions(subaccount, m_result);
             // Make sure we don't re-encache the same nonces again next time through
             m_hw_request = hw_request::none;
             m_result.clear();
@@ -1271,7 +1271,7 @@ namespace sdk {
 
         // Sync a page of txs from the server
         unique_pubkeys_and_scripts_t missing;
-        m_result = m_session->sync_transactions(m_subaccount, missing);
+        m_result = m_session->sync_transactions(subaccount, missing);
         if (!missing.empty()) {
             // We have missing nonces we need to fetch, request them
             auto& request = signal_hw_request(hw_request::get_blinding_nonces);
@@ -1279,7 +1279,7 @@ namespace sdk {
             return m_state;
         }
         // No missing nonces, cleanup and store the fetched txs directly
-        m_session->store_transactions(m_subaccount, m_result);
+        m_session->store_transactions(subaccount, m_result);
         // Call again to either continue fetching, or return the result
         return state_type::make_call;
     }
