@@ -78,14 +78,14 @@ namespace sdk {
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 
     // Add an output from a JSON addressee
-    void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee);
+    void add_tx_addressee_output(session_impl& session, Tx& tx, nlohmann::json& addressee);
 
-    // Add an output from a JSON change output, returns the index in tx->outputs
+    // Add an output from a JSON change output.
     // Note the output is zero valued and is expected to be updated later
-    size_t add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id);
+    void add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id);
 
-    // Add a fee output to a tx, returns the index in tx->outputs
-    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, Tx& tx, amount::value_type satoshi);
+    // Add a fee output for the given value to a tx.
+    void add_tx_fee_output(session_impl& session, Tx& tx, amount::value_type satoshi);
 
     // Update the json tx size/fee rate information from tx
     void update_tx_size_info(const network_parameters& net_params, const Tx& tx, nlohmann::json& result);

@@ -692,31 +692,23 @@ namespace sdk {
         return std::string();
     }
 
-    static amount add_tx_output(
-        const network_parameters& net_params, nlohmann::json& result, Tx& tx, const nlohmann::json& output)
+    static void add_tx_output(const network_parameters& net_params, Tx& tx, const nlohmann::json& output)
     {
         const bool is_liquid = net_params.is_liquid();
-        std::string old_error = json_get_value(result, "error");
-        const auto satoshi = j_amountref(output);
+        const auto satoshi = j_amountref(output).value();
         const auto scriptpubkey = j_bytes_or_empty(output, "scriptpubkey");
         if (!is_liquid) {
-            tx.add_output(satoshi.value(), scriptpubkey);
-            return satoshi;
-        }
-        if (output.value("is_change", false)
-            && json_get_value(result, "error") == res::id_nonconfidential_addresses_not) {
-            // This is an unblinded change output, allow it
-            result["error"] = old_error;
+            tx.add_output(satoshi, scriptpubkey);
+            return;
         }
         const size_t index = tx.get_num_outputs(); // Append to outputs
         const auto asset_id = j_assetref(is_liquid, output);
         const auto asset_bytes = h2b_rev(asset_id, 0x1);
-        const auto ct_value = tx_confidential_value_from_satoshi(satoshi.value());
+        const auto ct_value = tx_confidential_value_from_satoshi(satoshi);
         tx.add_elements_output_at(index, scriptpubkey, asset_bytes, ct_value, {}, {}, {});
-        return satoshi;
     }
 
-    void add_tx_addressee_output(session_impl& session, nlohmann::json& result, Tx& tx, nlohmann::json& addressee)
+    void add_tx_addressee_output(session_impl& session, Tx& tx, nlohmann::json& addressee)
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_liquid = net_params.is_liquid();
@@ -767,10 +759,10 @@ namespace sdk {
             GDK_RUNTIME_ASSERT(!j_bool_or_false(addressee, "is_internal"));
             addressee["is_change"] = false;
         }
-        add_tx_output(net_params, result, tx, addressee);
+        add_tx_output(net_params, tx, addressee);
     }
 
-    size_t add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id)
+    void add_tx_change_output(session_impl& session, nlohmann::json& result, Tx& tx, const std::string& asset_id)
     {
         const auto& net_params = session.get_network_parameters();
         auto& output = result.at("change_address").at(asset_id);
@@ -779,21 +771,18 @@ namespace sdk {
             output["asset_id"] = asset_id;
         }
         output["satoshi"] = 0;
-        std::string error;
         const bool allow_unconfidential = true; // Change may not yet be blinded
         const auto spk = scriptpubkey_from_address(net_params, output.at("address"), allow_unconfidential);
         output["scriptpubkey"] = b2h(spk);
-        add_tx_output(net_params, result, tx, output);
-        return tx.get_num_outputs() - 1;
+        add_tx_output(net_params, tx, output);
     }
 
-    size_t add_tx_fee_output(session_impl& session, nlohmann::json& result, Tx& tx, amount::value_type satoshi)
+    void add_tx_fee_output(session_impl& session, Tx& tx, amount::value_type satoshi)
     {
         const auto& net_params = session.get_network_parameters();
         nlohmann::json output{ { "satoshi", satoshi }, { "scriptpubkey", "" }, { "is_change", false },
             { "asset_id", net_params.get_policy_asset() } };
-        add_tx_output(net_params, result, tx, output);
-        return tx.get_num_outputs() - 1;
+        add_tx_output(net_params, tx, output);
     }
 
     void update_tx_size_info(const network_parameters& net_params, const Tx& tx, nlohmann::json& result)

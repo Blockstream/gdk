@@ -698,7 +698,7 @@ namespace sdk {
                 // Add the value of this output to the required total
                 a.required_total += j_amountref(addressee);
                 // Add the addressee to our transaction
-                add_tx_addressee_output(session, result, tx, addressee);
+                add_tx_addressee_output(session, tx, addressee);
             }
 
             if (!are_tx_outputs_unique(result)) {
@@ -770,7 +770,7 @@ namespace sdk {
             }
 
             if (is_liquid && !is_partial) {
-                add_tx_fee_output(session, result, tx, btc_details.fee.value());
+                add_tx_fee_output(session, tx, btc_details.fee.value());
             }
             auto& tx_inputs = result.at("transaction_inputs");
             if (tx_inputs.size() > 1u && j_bool(result, "randomize_inputs").value_or(true)) {
