@@ -316,8 +316,8 @@ namespace sdk {
             auto nlocktime_json = wamp_cast_json(m_wamp->call(locker, "txs.upcoming_nlocktime"));
             m_nlocktimes = std::make_shared<nlocktime_t>();
             for (const auto& v : nlocktime_json.at("list")) {
-                const uint32_t vout = v.at("output_n");
-                const std::string k{ json_get_value(v, "txhash") + ":" + std::to_string(vout) };
+                const uint32_t vout = j_uint32ref(v, "output_n");
+                const std::string k{ j_strref(v, "txhash") + ":" + std::to_string(vout) };
                 m_nlocktimes->emplace(std::make_pair(k, v));
             }
         }
@@ -477,7 +477,7 @@ namespace sdk {
         }
         m_fiat_source = m_login_data["exchange"];
         m_fiat_currency = m_login_data["fiat_currency"];
-        update_fiat_rate(locker, json_get_value(m_login_data, "fiat_exchange"));
+        update_fiat_rate(locker, j_str_or_empty(m_login_data, "fiat_exchange"));
 
         if (watch_only) {
             // Check whether the user has locally overriden their pricing source
@@ -519,7 +519,7 @@ namespace sdk {
             // TODO: fail if *any* 2of3 subaccount has missing or invalid
             //       signature of the corresponding backup/recovery key.
             if (!recovery_xpub_sig.empty() && !root_bip32_xpub.empty()) {
-                recovery_xpub = json_get_value(sa, "2of3_backup_xpub");
+                recovery_xpub = j_str_or_empty(sa, "2of3_backup_xpub");
                 GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
@@ -544,7 +544,7 @@ namespace sdk {
         insert_subaccount(locker, 0, std::string(), j_str_or_empty(m_login_data, "receiving_id"), std::string(),
             std::string(), std::string(), "2of2", required_ca);
 
-        m_system_message_id = json_get_value(m_login_data, "next_system_message_id", 0);
+        m_system_message_id = j_uint32_or_zero(m_login_data, "next_system_message_id");
         m_system_message_ack_id = 0;
         m_system_message_ack = std::string();
         m_watch_only = watch_only;
@@ -1403,7 +1403,7 @@ namespace sdk {
         const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
 
         set_local_encryption_keys_impl(locker, encryption_key, signer);
-        const std::string wo_blob_key_hex = json_get_value(login_data, "wo_blob_key");
+        const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
         if (!wo_blob_key_hex.empty()) {
             auto decrypted_key = decrypt_wo_blob_key(entropy, wo_blob_key_hex);
             set_optional_variable(m_blob_aes_key, std::move(decrypted_key));
@@ -1641,7 +1641,7 @@ namespace sdk {
         }
         locker.unlock();
         const auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
-        return json_get_value(result, "username");
+        return j_str_or_empty(result, "username");
     }
 
     // Idempotent
@@ -1742,7 +1742,7 @@ namespace sdk {
     {
         const std::string name = details.at("name");
         const std::string type = details.at("type");
-        std::string recovery_bip32_xpub = json_get_value(details, "recovery_xpub");
+        std::string recovery_bip32_xpub = j_str_or_empty(details, "recovery_xpub");
         std::string recovery_pub_key;
         std::string recovery_chain_code;
 
@@ -1900,7 +1900,7 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         amount::value_type value;
 
-        if (boost::conversion::try_lexical_convert(json_get_value(utxo, "value"), value)) {
+        if (boost::conversion::try_lexical_convert(j_str_or_empty(utxo, "value"), value)) {
             utxo["satoshi"] = value;
             utxo["assetblinder"] = ZEROS;
             utxo["amountblinder"] = ZEROS;
@@ -2249,7 +2249,7 @@ namespace sdk {
                 tx_type = "incoming";
                 for (auto& ep : tx_details["inputs"]) {
                     if (!j_bool_or_false(ep, "is_relevant")) {
-                        std::string addressee = json_get_value(ep, "social_source");
+                        std::string addressee = j_str_or_empty(ep, "social_source");
                         if (!addressee.empty()) {
                             ep["addressee"] = std::move(addressee);
                         }
@@ -2495,10 +2495,9 @@ namespace sdk {
             const auto nlocktimes = update_nlocktime_info(locker);
             if (nlocktimes && !nlocktimes->empty()) {
                 for (auto& utxo : utxos) {
-                    const uint32_t vout = utxo.at("pt_idx");
-                    const std::string k{ json_get_value(utxo, "txhash") + ":" + std::to_string(vout) };
-                    const auto it = nlocktimes->find(k);
-                    if (it != nlocktimes->end()) {
+                    const uint32_t vout = j_uint32ref(utxo, "pt_idx");
+                    const std::string k{ j_strref(utxo, "txhash") + ":" + std::to_string(vout) };
+                    if (const auto it = nlocktimes->find(k); it != nlocktimes->end()) {
                         utxo["expiry_height"] = it->second.at("nlocktime_at");
                     }
                 }
@@ -2641,7 +2640,7 @@ namespace sdk {
     {
         const uint32_t subaccount = details.at("subaccount");
         const bool get_newest = !details.contains("last_pointer") || details["last_pointer"].is_null();
-        const uint32_t last_pointer = json_get_value(details, "last_pointer", 0);
+        const uint32_t last_pointer = j_uint32_or_zero(details, "last_pointer");
         if (!get_newest && last_pointer < 2) {
             // Prevent a server call if the user iterates until empty results
             return { { "list", nlohmann::json::array() } };
@@ -2847,7 +2846,7 @@ namespace sdk {
         if (!config.contains("gauth_url")) {
             // Copy over the existing gauth value until gauth is sorted out
             // TODO: Fix gauth so the user passes the secret
-            config["gauth_url"] = json_get_value(m_twofactor_config["gauth"], "data", MASKED_GAUTH_SEED);
+            config["gauth_url"] = j_str(m_twofactor_config["gauth"], "data").value_or(MASKED_GAUTH_SEED);
         }
         set_twofactor_config(locker, config);
     }
@@ -2953,7 +2952,7 @@ namespace sdk {
 
         const std::string pin = details.at("pin");
         const nlohmann::json& plaintext = details.at("plaintext");
-        const std::string device_id = json_get_value(details, "device_id", b2h(get_random_bytes<8>()));
+        const std::string device_id = j_str(details, "device_id").value_or(b2h(get_random_bytes<8>()));
 
         GDK_RUNTIME_ASSERT(pin.length() >= 4);
         GDK_RUNTIME_ASSERT(!device_id.empty() && device_id.length() <= 100);
@@ -3077,7 +3076,7 @@ namespace sdk {
         nlohmann::json result = details;
 
         // Check memo is storable, if we are sending and have one
-        const std::string memo = is_send ? json_get_value(result, "memo") : std::string();
+        const std::string memo = is_send ? j_str_or_empty(result, "memo") : std::string();
         check_tx_memo(memo);
 
         // FIXME: test weight and return error in create_transaction, not here
@@ -3103,7 +3102,7 @@ namespace sdk {
 
         // Update the details with the server signed transaction, since it
         // may be a slightly different size once signed
-        Tx tx(json_get_value(tx_details, "tx"), m_net_params.is_liquid());
+        Tx tx(j_strref(tx_details, "tx"), m_net_params.is_liquid());
         if (!old_scripts.empty()) {
             // Partial signing (signing of only some inputs):
             // Restore the original input scriptSigs, which were swapped out
