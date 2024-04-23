@@ -435,7 +435,7 @@ namespace sdk {
                     constexpr size_t default_gap_limit = 20;
                     bool is_duplicate_spk = false;
                     for (size_t i = 0; i < default_gap_limit * 2u; ++i) {
-                        const auto spk = json_get_value(new_change_address, "scriptpubkey");
+                        const auto spk = j_str_or_empty(new_change_address, "scriptpubkey");
                         is_duplicate_spk = !are_tx_outputs_unique(result, spk);
                         if (!is_duplicate_spk) {
                             break;
@@ -1185,9 +1185,9 @@ namespace sdk {
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
     {
-        const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
-        const uint32_t pointer = utxo.at("pointer");
-        const bool is_internal = utxo.value("is_internal", false);
+        const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
+        const uint32_t pointer = j_uint32ref(utxo, "pointer");
+        const bool is_internal = j_bool_or_false(utxo, "is_internal");
 
         if (utxo.find("user_path") == utxo.end()) {
             // Populate the full user path for h/w signing
@@ -1252,11 +1252,11 @@ namespace sdk {
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
-            uint32_t sighash_flags = json_get_value(utxo, "user_sighash", WALLY_SIGHASH_ALL);
+            uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
             const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
 
-            const uint32_t subaccount = json_get_value(utxo, "subaccount", 0u);
-            const uint32_t pointer = json_get_value(utxo, "pointer", 0u);
+            const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
+            const uint32_t pointer = j_uint32_or_zero(utxo, "pointer");
             const bool is_internal = j_bool_or_false(utxo, "is_internal");
             const auto path = session.get_subaccount_full_path(subaccount, pointer, is_internal);
             const auto sig = session.get_nonnull_signer()->sign_hash(path, tx_signature_hash);
@@ -1318,7 +1318,7 @@ namespace sdk {
         const bool is_liquid = net_params.is_liquid();
         GDK_RUNTIME_ASSERT(is_liquid);
 
-        const std::string error = json_get_value(details, "error");
+        const std::string error = j_str_or_empty(details, "error");
         if (!error.empty()) {
             GDK_LOG(debug) << " attempt to blind with error: " << details.dump();
             throw user_error(error);
@@ -1329,9 +1329,9 @@ namespace sdk {
         const auto& tx_inputs = details.at("transaction_inputs");
         auto& transaction_outputs = details.at("transaction_outputs");
 
-        Tx tx(json_get_value(details, "transaction"), is_liquid);
+        Tx tx(j_strref(details, "transaction"), is_liquid);
         const bool is_partial = j_bool_or_false(details, "is_partial");
-        const bool blinding_nonces_required = details.at("blinding_nonces_required");
+        const bool blinding_nonces_required = j_boolref(details, "blinding_nonces_required");
 
         // We must have at least a regular output and a fee output, unless partial
         GDK_RUNTIME_ASSERT(transaction_outputs.size() >= (is_partial ? 1 : 2));
@@ -1424,7 +1424,7 @@ namespace sdk {
             vbf_t vbf{ 0 };
             if (is_partial || i < transaction_outputs.size() - 2) {
                 if (for_final_vbf) {
-                    auto vbf_hex = json_get_value(output, "amountblinder", amountblinders.at(i));
+                    auto vbf_hex = j_str(output, "amountblinder").value_or(amountblinders.at(i));
                     vbf = h2b_rev<32>(vbf_hex);
                 }
                 // Leave the vbf to 0, below this value will not be used.
