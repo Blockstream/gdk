@@ -47,16 +47,13 @@ namespace sdk {
     static std::string read_file(const std::filesystem::path& file)
     {
         std::ifstream ifs(file);
-        GDK_RUNTIME_ASSERT_MSG(ifs.good() && ifs.is_open(), "Could not read file " + file.string());
+        if (!ifs.good()) {
+            return {};
+        }
         return { std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() };
     }
 
-    static void clear_file(const std::filesystem::path& file)
-    {
-        std::ofstream ofs(file, std::ios::trunc);
-        GDK_RUNTIME_ASSERT_MSG(ofs.is_open(), "Could not clear file " + file.string());
-        ofs.close();
-    }
+    static void clear_file(const std::filesystem::path& file) { std::ofstream ofs(file, std::ios::trunc); }
 
     static std::pair<std::string, std::string> split_tor_reply_line(std::string s)
     {
