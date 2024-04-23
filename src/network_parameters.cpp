@@ -2,7 +2,6 @@
 #include <mutex>
 
 #include "assertion.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "json_utils.hpp"
 #include "network_parameters.hpp"
