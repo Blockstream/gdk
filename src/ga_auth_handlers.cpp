@@ -5,7 +5,6 @@
 #include <utility>
 
 #include "assertion.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_psbt.hpp"
 #include "ga_strings.hpp"
@@ -1684,7 +1683,7 @@ namespace sdk {
         }
 
         // The data associated with m_method_to_update e.g. email, phone etc
-        const std::string data = json_get_value(m_details, "data");
+        const std::string data = j_str_or_empty(m_details, "data");
 
         if (m_enabling) {
             signal_2fa_request("enable_2fa");
@@ -1692,7 +1691,7 @@ namespace sdk {
                 // For gauth the user must pass in the current seed returned by the
                 // server.
                 // FIXME: Allow the user to specify their own seed in the future.
-                if (data != json_get_value(current_subconfig, "data")) {
+                if (data != j_str_or_empty(current_subconfig, "data")) {
                     set_error(res::id_inconsistent_data_provided_for);
                     return;
                 }
@@ -1756,8 +1755,7 @@ namespace sdk {
         }
 
         if (m_action == "set_email") {
-            const std::string data = json_get_value(m_details, "data");
-            m_session->set_email(data, m_twofactor_data);
+            m_session->set_email(j_strref(m_details, "data"), m_twofactor_data);
             // Move to activate email
             return on_init_done("activate_");
         }
@@ -1773,7 +1771,7 @@ namespace sdk {
                     // for sms backup are met
                     m_twofactor_data = { { "is_sms_backup", true } };
                 }
-                const std::string data = json_get_value(m_details, "data");
+                const auto data = j_str_or_empty(m_details, "data");
                 m_auth_data = m_session->init_enable_twofactor(m_method_to_update, data, m_twofactor_data);
             } else {
                 // gauth doesn't have an init_enable step
@@ -2253,7 +2251,7 @@ namespace sdk {
 
     auth_handler::state_type get_credentials_call::call_impl()
     {
-        const auto password = json_get_value(m_details, "password");
+        const auto password = j_str_or_empty(m_details, "password");
         const auto signer = get_signer();
         constexpr bool with_master_key = true;
         m_result = signer->get_credentials(with_master_key);

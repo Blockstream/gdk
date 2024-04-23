@@ -2,7 +2,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 
 #include "assertion.hpp"
-#include "containers.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
@@ -607,7 +606,7 @@ namespace sdk {
         const auto blech32_prefix = net_params.blech32_prefix();
 
         try {
-            std::string address = json_get_value(addressee, "address");
+            auto address = j_str_or_empty(addressee, "address");
             if (address.empty()) {
                 throw user_error(res::id_invalid_address);
             }
