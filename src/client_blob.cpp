@@ -131,7 +131,7 @@ namespace sdk {
         if (is_key_encrypted(TX_MEMOS)) {
             return std::string(); // Has been made unavailable to watch only sessions
         }
-        return json_get_value(m_data[TX_MEMOS], txhash_hex);
+        return j_str_or_empty(m_data[TX_MEMOS], txhash_hex);
     }
 
     bool client_blob::set_master_blinding_key(const std::string& master_blinding_key_hex)
@@ -144,7 +144,7 @@ namespace sdk {
 
     std::string client_blob::get_master_blinding_key() const
     {
-        return json_get_value(m_data[SLIP77KEY], "key"); // Blank if denied
+        return j_str_or_empty(m_data[SLIP77KEY], "key"); // Blank if denied
     }
 
     bool client_blob::is_master_blinding_key_denied() const
@@ -168,7 +168,7 @@ namespace sdk {
 
     std::string client_blob::get_wo_username() const
     {
-        return json_get_value(m_data[WATCHONLY], "username"); // Blank if unset
+        return j_str_or_empty(m_data[WATCHONLY], "username"); // Blank if unset
     }
 
     nlohmann::json client_blob::get_xpubs() const

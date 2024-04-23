@@ -49,17 +49,6 @@ namespace sdk {
         data[key] = value; // Insert new value
         return true;
     }
-
-    // Get a value if present and not null, otherwise return a default value
-    template <typename T = std::string>
-    T json_get_value(const nlohmann::json& data, const std::string& key, const T& default_value = T())
-    {
-        const auto p = data.find(key);
-        if (p == data.end() || p->is_null()) {
-            return default_value;
-        }
-        return p->get<T>();
-    }
 } // namespace sdk
 } // namespace ga
 
