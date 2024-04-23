@@ -1,1 +1,1 @@
-#define GDK_COMMIT "@VCS_TAG@"
+#define GDK_COMMIT "@VCS_SHA@"

@@ -1,6 +1,13 @@
 include(GNUInstallDirs)
 
 # version file
+find_package(Git REQUIRED)
+execute_process(
+    COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+    RESULT_VARIABLE VCS_SHA_RESULT
+    OUTPUT_VARIABLE VCS_SHA
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 find_file(version_file version.h.in PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 configure_file(${version_file} version.h @ONLY)
 
