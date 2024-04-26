@@ -102,8 +102,7 @@ namespace sdk {
         virtual bool discover_subaccount(const std::string& xpub, const std::string& type);
         virtual uint32_t get_next_subaccount(const std::string& type) = 0;
         virtual uint32_t get_last_empty_subaccount(const std::string& type);
-        virtual nlohmann::json create_subaccount(
-            const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
+        virtual nlohmann::json create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub)
             = 0;
 
         virtual void change_settings_limits(const nlohmann::json& limit_details, const nlohmann::json& twofactor_data)

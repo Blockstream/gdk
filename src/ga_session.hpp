@@ -51,8 +51,7 @@ namespace sdk {
         std::vector<uint32_t> get_subaccount_pointers();
         void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
         uint32_t get_next_subaccount(const std::string& type);
-        nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount);
-        nlohmann::json create_subaccount(const nlohmann::json& details, uint32_t subaccount, const std::string& xpub);
+        nlohmann::json create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(const nlohmann::json& details);
         void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);

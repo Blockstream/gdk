@@ -1749,11 +1749,10 @@ namespace sdk {
         return subaccount;
     }
 
-    nlohmann::json ga_session::create_subaccount(
-        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
+    nlohmann::json ga_session::create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub)
     {
-        const std::string name = details.at("name");
-        const std::string type = details.at("type");
+        const auto name = j_strref(details, "name");
+        const auto type = j_str_or_empty(details, "type");
         std::string recovery_bip32_xpub = j_str_or_empty(details, "recovery_xpub");
         std::string recovery_pub_key;
         std::string recovery_chain_code;
@@ -1765,7 +1764,7 @@ namespace sdk {
 
         if (type == "2of3") {
             xpubs.emplace_back(recovery_bip32_xpub);
-            sigs.emplace_back(details.at("recovery_key_sig"));
+            sigs.emplace_back(j_strref(details, "recovery_key_sig"));
 
             const xpub_t recovery_xpub = make_xpub(recovery_bip32_xpub);
             recovery_chain_code = b2h(recovery_xpub.first);

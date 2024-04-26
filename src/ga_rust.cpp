@@ -263,13 +263,11 @@ namespace sdk {
         return rust_call("get_last_empty_subaccount", nlohmann::json({ { "type", type } }), m_session);
     }
 
-    nlohmann::json ga_rust::create_subaccount(
-        const nlohmann::json& details, uint32_t subaccount, const std::string& xpub)
+    nlohmann::json ga_rust::create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub)
     {
-        auto details_c = details;
-        details_c["subaccount"] = subaccount;
-        details_c["xpub"] = xpub;
-        if (j_bool_or_false(details_c, "discovered")) {
+        details["subaccount"] = subaccount;
+        details["xpub"] = xpub;
+        if (j_bool_or_false(details, "discovered")) {
             // A subaccount found through discovery. Provide any metadata
             // we may already have for it from another session that created it
             locker_t locker(m_mutex);
@@ -278,18 +276,18 @@ namespace sdk {
                     load_client_blob(locker, true);
                 }
                 auto sa_data = m_blob->get_subaccount_data(subaccount);
-                details_c["name"] = j_str_or_empty(sa_data, "name");
-                details_c["hidden"] = j_bool_or_false(sa_data, "hidden");
+                details["name"] = j_str_or_empty(sa_data, "name");
+                details["hidden"] = j_bool_or_false(sa_data, "hidden");
             }
         }
-        auto ret = rust_call("create_subaccount", details_c, m_session);
+        auto ret = rust_call("create_subaccount", details, m_session);
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
-        if (!j_bool_or_false(details_c, "is_already_created")) {
+        if (!j_bool_or_false(details, "is_already_created")) {
             // Creating a new subaccount, set its metadata
             locker_t locker(m_mutex);
             if (have_writable_client_blob(locker)) {
                 const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-                const nlohmann::json sa_data = { { "name", j_strref(details_c, "name") }, { "hidden", false } };
+                const nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
                 update_client_blob(locker,
                     std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
             }
