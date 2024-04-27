@@ -377,8 +377,7 @@ namespace sdk {
             m_master_bip32_xpub = xpubs.at(0);
 
             // Set the cache keys for the wallet, loading/creating the
-            // local cache as needed. Note singlesig doesn't need the
-            // client secret pubkey.
+            // local cache as needed.
             m_session->set_local_encryption_keys(make_xpub(xpubs.at(1)).second, m_signer);
 
             if (is_electrum) {
