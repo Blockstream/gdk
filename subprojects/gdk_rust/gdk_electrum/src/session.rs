@@ -85,6 +85,8 @@ impl Session for ElectrumSession {
 
             "get_subaccounts" => self.get_subaccounts().to_json(),
 
+            "get_accounts_settings" => self.get_accounts_settings().to_json(),
+
             "discover_subaccount" => {
                 self.discover_subaccount(serde_json::from_value(input)?).to_json()
             }

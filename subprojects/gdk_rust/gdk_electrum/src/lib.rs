@@ -897,6 +897,10 @@ impl ElectrumSession {
         self.get_accounts()?.iter().map(|a| a.info()).collect()
     }
 
+    pub fn get_accounts_settings(&mut self) -> Result<HashMap<u32, AccountSettings>, Error> {
+        Ok(self.store()?.read()?.get_accounts_settings().clone())
+    }
+
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let store = self.store()?.clone();
         let master_blinding = store.read()?.cache.master_blinding.clone();
