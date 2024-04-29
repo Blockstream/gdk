@@ -122,6 +122,27 @@ namespace sdk {
         return changed ? increment_version(m_data) : changed;
     }
 
+    bool client_blob::update_subaccounts_data(const std::map<uint32_t, nlohmann::json>& subaccounts)
+    {
+        if (is_key_encrypted(SA_NAMES)) {
+            // This gdk version does not support encrypted subaccount names
+            throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
+        }
+        bool changed = false;
+
+        for (const auto& item : subaccounts) {
+            const auto subaccount_str(std::to_string(item.first));
+            if (auto name = j_str(item.second, "name"); name.has_value()) {
+                GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(name.value()), "Subaccount name is not a valid utf-8 string");
+                changed |= json_add_non_default(m_data[SA_NAMES], subaccount_str, name.value());
+            }
+            if (auto is_hidden = j_bool(item.second, "hidden"); is_hidden.has_value()) {
+                changed |= json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden.value());
+            }
+        }
+        return changed ? increment_version(m_data) : changed;
+    }
+
     nlohmann::json client_blob::get_subaccount_data(uint32_t subaccount) const
     {
         const auto subaccount_str(std::to_string(subaccount));
