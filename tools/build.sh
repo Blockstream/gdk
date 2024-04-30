@@ -58,7 +58,7 @@ if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
 
-TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,no-deps-rebuild,disable-bcur,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
+TEMPOPT=`"$GETOPT" -n "build.sh" -o b:,v -l enable-tests,clang,gcc,devmode,mingw-w64,no-deps-rebuild,disable-bcur,static,install:,ndk:,iphone:,iphonesim:,buildtype:,python-version:,parallel:,external-deps-dir: -- "$@"`
 eval set -- "$TEMPOPT"
 while true; do
     case "$1" in
@@ -66,6 +66,7 @@ while true; do
         -v ) verbose=true; shift 1 ;;
         --install ) install=true; install_prefix="$2"; shift 2 ;;
         --enable-tests ) enable_tests=TRUE; shift ;;
+        --static ) BUILD_SHARED_LIBS="FALSE"; shift ;;
         --disable-bcur ) bcur=FALSE; shift ;;
         --clang | --gcc | --mingw-w64 ) BUILD="$1"; shift ;;
         --no-deps-rebuild ) no_deps_rebuild=true; shift ;;
