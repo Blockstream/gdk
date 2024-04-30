@@ -426,23 +426,11 @@ impl StoreMeta {
     }
 
     pub fn account_nums(&self) -> Vec<u32> {
-        // Read the account nums from both the cache and store for backward compatibility.
-        // Between version 0.0.48 and 0.0.49 some changes were done to split account
-        // discovery from login, which is a necessary step for adding HWW support.
-        // Among these changes we changed the way to get the accounts created, instead of
-        // reading from the cache we read from the store.
-        // However when upgrading from e.g. 0.0.48 to 0.0.49 the accounts in the store might
-        // not have been populated, so we have to look at the cache as well.
-        // It's worth noting that if a GDK upgrade also requires a cache reconstruction,
-        // then it will miss the accounts from the cache.
         let store_account_nums = match &self.store.accounts_settings {
             None => HashSet::new(),
             Some(accounts) => accounts.keys().copied().collect(),
         };
-        let cache_account_nums = self.cache.accounts.keys().copied().collect();
-
-        let mut account_nums: Vec<_> =
-            store_account_nums.union(&cache_account_nums).copied().collect();
+        let mut account_nums = store_account_nums.into_iter().collect::<Vec<_>>();
         account_nums.sort_unstable();
         account_nums
     }
