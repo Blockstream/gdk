@@ -45,7 +45,6 @@ impl Session for ElectrumSession {
             store: None,
             master_xpub: None,
             master_xpub_fingerprint: Fingerprint::default(),
-            master_xprv: None,
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
             xr_cache: ExchangeRatesCache::default(),
             available_currencies: None,

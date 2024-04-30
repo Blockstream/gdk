@@ -138,12 +138,12 @@ pub struct GetAddressOpt {
     pub ignore_gap_limit: Option<bool>, // true = allow to return addresses beyond the gap limit
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct CreateAccountOpt {
     pub subaccount: u32,
     pub name: String,
-    // The account xpub if passed by the caller
-    pub xpub: Option<Xpub>,
+    // The account xpub
+    pub xpub: Xpub,
     #[serde(default)]
     pub discovered: bool,
     #[serde(default)]

@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 use gdk_common::electrum_client::ScriptStatus;
 use gdk_common::log::{info, warn};
 
-use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
+use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::PublicKey;
 use gdk_common::{bitcoin, elements};
@@ -64,32 +64,14 @@ pub fn xpubs_equivalent(xpub1: &Xpub, xpub2: &Xpub) -> Result<(), Error> {
 impl Account {
     pub fn new(
         network: NetworkParameters,
-        master_xprv: &Option<Xpriv>,
         master_xpub_fingerprint: Fingerprint,
-        account_xpub: &Option<Xpub>,
+        xpub: Xpub,
         master_blinding: Option<MasterBlindingKey>,
         store: Store,
         account_num: u32,
         discovered: bool,
     ) -> Result<Self, Error> {
         let (script_type, path) = get_account_derivation(account_num, network.id())?;
-
-        let xpub = if let Some(master_xprv) = master_xprv {
-            let xprv = master_xprv.derive_priv(&crate::EC, &path)?;
-            let xpub = Xpub::from_priv(&crate::EC, &xprv);
-            if let Some(account_xpub) = account_xpub {
-                xpubs_equivalent(&xpub, account_xpub)?;
-            };
-            xpub
-        } else {
-            if let Some(xpub) = account_xpub {
-                xpub.clone()
-            } else {
-                return Err(Error::Generic(
-                    "Account::new: either master_xprv or account_xpub must be Some".to_string(),
-                ));
-            }
-        };
 
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];

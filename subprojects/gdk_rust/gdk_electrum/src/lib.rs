@@ -27,7 +27,7 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpriv, Xpub};
+use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpub};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hex::DisplayHex;
 use gdk_common::bitcoin::Txid;
@@ -169,11 +169,6 @@ pub struct ElectrumSession {
     pub last_network_call_succeeded: Arc<AtomicBool>,
 
     pub store: Option<Store>,
-
-    /// Master xprv of the signer associated to the session
-    ///
-    /// FIXME: remove this once we have fully migrated to the hw signer interface
-    pub master_xprv: Option<Xpriv>,
 
     /// Spent utxos
     ///
@@ -475,7 +470,7 @@ impl ElectrumSession {
             self.create_subaccount(CreateAccountOpt {
                 subaccount: account.account_num,
                 name: "".to_string(),
-                xpub: Some(account.xpub),
+                xpub: account.xpub,
                 discovered: false,
                 is_already_created: true,
                 allow_gaps: true,
@@ -899,7 +894,6 @@ impl ElectrumSession {
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
-        let master_xprv = self.master_xprv.clone();
         let store = self.store()?.clone();
         let master_blinding = store.read()?.cache.master_blinding.clone();
         let network = self.network.clone();
@@ -939,9 +933,8 @@ impl ElectrumSession {
             Entry::Vacant(entry) => {
                 let account = entry.insert(Account::new(
                     network,
-                    &master_xprv,
                     self.master_xpub_fingerprint,
-                    &opt.xpub, // account xpub
+                    opt.xpub, // account xpub
                     master_blinding,
                     store,
                     opt.subaccount,

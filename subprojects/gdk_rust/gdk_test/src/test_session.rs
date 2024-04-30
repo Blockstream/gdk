@@ -148,7 +148,7 @@ impl TestSession {
         let opt = CreateAccountOpt {
             subaccount: 0,
             name: "".to_string(),
-            xpub: Some(xpub),
+            xpub: xpub,
             discovered: false,
             is_already_created: true,
             allow_gaps: false,
