@@ -607,8 +607,8 @@ namespace sdk {
     {
         locker_t locker(m_mutex);
         nlohmann::json empty;
-        update_client_blob(
-            locker, std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, details, empty));
+        std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, details } };
+        update_client_blob(locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, empty));
     }
 
     bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)

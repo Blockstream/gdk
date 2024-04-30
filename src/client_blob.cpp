@@ -94,35 +94,8 @@ namespace sdk {
 
     uint64_t client_blob::get_user_version() const { return m_data[USER_VERSION]; }
 
-    bool client_blob::update_subaccount_data(
-        uint32_t subaccount, const nlohmann::json& details, const nlohmann::json& xpubs)
-    {
-        const auto subaccount_str(std::to_string(subaccount));
-        bool changed = false;
-        // name
-        auto name = j_str(details, "name");
-        if (name.has_value()) {
-            if (is_key_encrypted(SA_NAMES)) {
-                // This gdk version does not support encrypted subaccount names
-                throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
-            }
-            GDK_RUNTIME_ASSERT_MSG(is_valid_utf8(name.value()), "Subaccount name is not a valid utf-8 string");
-            changed |= json_add_non_default(m_data[SA_NAMES], subaccount_str, name.value());
-        }
-        // hidden
-        auto is_hidden = j_bool(details, "hidden");
-        if (is_hidden.has_value()) {
-            changed |= json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden.value());
-        }
-        // xpubs
-        if (!xpubs.empty()) {
-            // Update the subaccount xpubs
-            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
-        }
-        return changed ? increment_version(m_data) : changed;
-    }
-
-    bool client_blob::update_subaccounts_data(const std::map<uint32_t, nlohmann::json>& subaccounts)
+    bool client_blob::update_subaccounts_data(
+        const std::map<uint32_t, nlohmann::json>& subaccounts, const nlohmann::json& xpubs)
     {
         if (is_key_encrypted(SA_NAMES)) {
             // This gdk version does not support encrypted subaccount names
@@ -139,6 +112,10 @@ namespace sdk {
             if (auto is_hidden = j_bool(item.second, "hidden"); is_hidden.has_value()) {
                 changed |= json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden.value());
             }
+        }
+        if (!xpubs.empty()) {
+            // Update the subaccount xpubs
+            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
         }
         return changed ? increment_version(m_data) : changed;
     }

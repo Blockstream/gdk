@@ -136,6 +136,8 @@ namespace sdk {
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
 
+        std::map<uint32_t, nlohmann::json> get_local_subaccounts_data();
+
         void* m_session;
     };
 

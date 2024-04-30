@@ -29,8 +29,8 @@ namespace sdk {
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 
-        bool update_subaccount_data(uint32_t subaccount, const nlohmann::json& details, const nlohmann::json& xpubs);
-        bool update_subaccounts_data(const std::map<uint32_t, nlohmann::json>& subaccounts);
+        bool update_subaccounts_data(
+            const std::map<uint32_t, nlohmann::json>& subaccounts, const nlohmann::json& xpubs);
         nlohmann::json get_subaccount_data(uint32_t subaccount) const;
 
         bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);

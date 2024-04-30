@@ -1021,14 +1021,14 @@ namespace sdk {
         if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
             // No client blob: create one, save it to the server and cache it,
             // but only when the wallet isn't locked for a two factor reset.
-            // Subaccount xpubs
-            m_blob->set_xpubs(m_signer->get_cached_bip32_xpubs_json());
-            // Subaccount names
-            const nlohmann::json empty; // Don't re-save xpubs
+            // Subaccount names/xpubs
+            auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+            std::map<uint32_t, nlohmann::json> subaccounts;
             for (const auto& sa : login_data["subaccounts"]) {
-                const nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
-                m_blob->update_subaccount_data(j_uint32ref(sa, "pointer"), sa_data, empty);
+                nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
+                subaccounts.emplace(j_uint32ref(sa, "pointer"), std::move(sa_data));
             }
+            m_blob->update_subaccounts_data(subaccounts, signer_xpubs);
             // Tx memos
             nlohmann::json tx_memos = wamp_cast_json(m_wamp->call(locker, "txs.get_memos"));
             for (const auto& m : tx_memos["bip70"].items()) {
@@ -1786,9 +1786,10 @@ namespace sdk {
         }
         if (have_writable_client_blob(locker)) {
             const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-            const nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
-            update_client_blob(locker,
-                std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
+            nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
+            std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, std::move(sa_data) } };
+            update_client_blob(
+                locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
         }
         nlohmann::json ntf
             = { { "event", "subaccount" }, { "subaccount", nlohmann::json::object({ { "pointer", subaccount } }) } };

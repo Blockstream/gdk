@@ -135,19 +135,8 @@ namespace sdk {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(have_writable_client_blob(locker));
         GDK_LOG(info) << "Populating initial client blob";
-        // Subaccount xpubs
-        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-        GDK_RUNTIME_ASSERT(!signer_xpubs.empty());
-        m_blob->set_xpubs(signer_xpubs);
-        // Subaccount names
-        const nlohmann::json empty; // Don't re-save xpubs
-        for (const auto& sa : get_subaccounts_impl(locker)) {
-            nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
-            if (j_bool_or_false(sa, "hidden")) {
-                sa_data["hidden"] = true;
-            }
-            m_blob->update_subaccount_data(j_uint32ref(sa, "pointer"), sa_data, empty);
-        }
+        // Subaccount names/xpubs
+        m_blob->update_subaccounts_data(get_local_subaccounts_data(), m_signer->get_cached_bip32_xpubs_json());
         // Tx memos
         m_blob->update_tx_memos(rust_call("get_memos", {}, m_session));
         m_blob->set_user_version(1); // Initial version
@@ -286,10 +275,11 @@ namespace sdk {
             // Creating a new subaccount, set its metadata
             locker_t locker(m_mutex);
             if (have_writable_client_blob(locker)) {
+                nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
+                std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, std::move(sa_data) } };
                 const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-                const nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
-                update_client_blob(locker,
-                    std::bind(&client_blob::update_subaccount_data, m_blob.get(), subaccount, sa_data, signer_xpubs));
+                update_client_blob(
+                    locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
             }
         }
         return ret;
@@ -367,6 +357,22 @@ namespace sdk {
     nlohmann::json ga_rust::get_subaccounts_impl(session_impl::locker_t& /*locker*/)
     {
         return rust_call("get_subaccounts", {}, m_session);
+    }
+
+    std::map<uint32_t, nlohmann::json> ga_rust::get_local_subaccounts_data()
+    {
+        std::map<uint32_t, nlohmann::json> ret;
+        auto subaccounts = rust_call("get_accounts_settings", {}, m_session);
+        for (auto& item : subaccounts.items()) {
+            auto key = std::stoul(item.key());
+            GDK_RUNTIME_ASSERT(key <= 0xffffffff);
+            auto& value = item.value();
+            if (j_str_or_empty(value, "name").empty()) {
+                value.erase("name");
+            }
+            ret.emplace(static_cast<uint32_t>(key), std::move(item.value()));
+        }
+        return ret;
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_pointers()
