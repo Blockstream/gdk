@@ -980,7 +980,9 @@ GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct 
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
  * For multi-part data, the call hander will request further parts using
- * ``"request_code"`` with a method of ``"data"``. see: `auth-handler-status`.
+ * ``"request_code"`` with a method of ``"data"``. see: `auth-handler-status` for
+ * details on the general mechanism and `bcur-decode-auth-handler-status` for
+ * details on the data passed to and expected from the auth handler.
  *
  * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
  */
