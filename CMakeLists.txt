@@ -87,7 +87,9 @@ find_package(autobahn REQUIRED MODULE)
 ####################################################################
 create_gdkrust_target()
 add_subdirectory(src)
-create_greenaddressfull_target()
+if (Windows OR ENABLE_SWIFT)
+    create_greengdkfull_target()
+endif()
 
 ## bindings
 find_package(SWIG)
