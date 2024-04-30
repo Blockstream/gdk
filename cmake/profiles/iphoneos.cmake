@@ -9,6 +9,18 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET 13.00 CACHE INTERNAL "")
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE INTERNAL "")
 set(CMAKE_IOS_INSTALL_COMBINED FALSE)
 set(SDK_NAME iphoneos)
+set(CMAKE_C_COMPILER_TARGET arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
+set(CMAKE_CXX_COMPILER_TARGET arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
+set(CMAKE_LIBRARY_ARCHITECTURE ${CMAKE_C_COMPILER_TARGET})
+execute_process(COMMAND xcodebuild -version -sdk iphone Path
+    OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_VARIABLE _execError
+    ERROR_QUIET
+)
+if(_execError)
+    message(FATAL_ERROR "seeking CMAKE_OSX_SYSROOT for iphonesimulator failed with error ${_execError}")
+endif()
 
 
 # Fix for PThread library not in path
