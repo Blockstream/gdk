@@ -362,7 +362,9 @@ namespace sdk {
 
         if (!m_decoder->is_complete() || !m_decoder->is_success()) {
             signal_data_request();
-            m_auth_data = { { "received_indices", m_decoder->received_part_indexes() } };
+            const uint32_t progress = std::lround(m_decoder->estimated_percent_complete() * 100.0);
+            m_auth_data
+                = { { "received_indices", m_decoder->received_part_indexes() }, { "estimated_progress", progress } };
             return m_state;
         }
 

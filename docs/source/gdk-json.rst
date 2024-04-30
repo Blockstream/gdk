@@ -835,6 +835,40 @@ Contains UR encoded data to decode into CBOR using `GA_bcur_decode`.
         CBOR byte data as a hex string in addition to any decoded data.
 
 
+.. _bcur-decode-auth-handler-status:
+
+BCUR Decoding Auth Handler JSON
+-------------------------------
+
+When further multi-part data is required to decode UR encoded data, the auth
+handler will request it from the caller using :ref:`auth-handler-status` as below:
+
+* ``"request_code" example``:
+
+.. code-block:: json
+
+  {
+    "status": "resolve_code",
+    "action": "data",
+    "method": "data",
+    "name": "bcur_decode",
+    "auth_data": {
+        "estimated_progress": 35,
+        "received_indices": [0, 1, 2]
+    }
+  }
+
+
+The caller should provide the requested data using `GA_auth_handler_resolve_code` as
+follows:
+
+* ``"resolve_code" example``:
+
+.. code-block:: json
+
+  "ur:jade-pin/1-4/lpadaacswecylb[...]"
+
+
 .. _bcur-decoded:
 
 BCUR Decoded data JSON
