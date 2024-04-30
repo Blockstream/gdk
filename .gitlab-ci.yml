@@ -38,14 +38,24 @@ build_gcc_bullseye:
   stage: build
   needs: [ test_format ]
   script:
-    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
+    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16 --enable-tests
     - cmake --build build-gcc --target green_gdk_java --parallel 16
     - cmake --install build-gcc --prefix install-java
     - cmake --install build-gcc --prefix install-java --component gdk-java
   artifacts:
     expire_in: 2 hrs
     paths:
+      - build-gcc/tests
+      - build-gcc/CTestTestfile.cmake
       - install-java
+
+test_gcc_bullseye:
+  extends: .debian-image
+  stage: test
+  needs: [build_gcc_bullseye]
+  script:
+    - cd build-gcc
+    - ctest
 
 
 
@@ -54,20 +64,13 @@ build_clang_bullseye:
   stage: build
   needs: [ test_format ]
   script:
-    - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16 --enable-tests
+    - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
+    - cmake --install build-clang --prefix install-clang
+    - cmake --install build-clang --prefix install-clang --component gdk-dev
   artifacts:
     expire_in: 2 hrs
     paths:
-      - build-clang/tests
-      - build-clang/CTestTestfile.cmake
-
-test_clang_bullseye:
-  extends: .debian-image
-  stage: test
-  needs: [build_clang_bullseye]
-  script:
-    - cd build-clang
-    - ctest
+      - install-clang
 
 
 
@@ -123,15 +126,14 @@ build_gcc_ubuntu20.04:
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
 
-build_gcc_ubuntu20.04-arm64:
+build_gcc_ubuntu2004_arm64:
   extends: .ubuntu-arm64-image
   stage: build
   needs: [ test_format ]
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  when: manual
   script:
     - source /root/.cargo/env
-    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 4
+    - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 4 --static
     - cmake --build build-gcc --target green_gdk_java --parallel 4
     - cmake --install build-gcc --prefix install-java
     - cmake --install build-gcc --prefix install-java --component gdk-java
@@ -199,6 +201,27 @@ apidocs:
     - sphinx-build -b html -a -c docs/source docs/source docs/build/html
     - cd docs/build && tar czf ../../apidocs.tar.gz html/ && cd ../..
     - deactivate
+
+
+jumbo-release:
+  extends: .debian-image
+  stage: release
+  needs: [build-android, build_clang_bullseye, build_gcc_ubuntu2004_arm64]
+  artifacts:
+    expire_in: 7 days
+    when: on_success
+    paths:
+    - archive.tar.gz
+  script:
+    - suffix=${CI_COMMIT_TAG}
+    - if [ -z ${suffix} ]; then suffix=${CI_COMMIT_SHORT_SHA}; fi
+    - mkdir gdk-${suffix}
+    - cp -r install-clang/* gdk-${suffix}/
+    - cp -r install-java/lib/* gdk-${suffix}/lib
+    - cp -r gdk-android-jni/lib gdk-${suffix}/
+    - cp -r gdk-android-jni/share gdk-${suffix}/
+
+    - tar -czf archive.tar.gz gdk-${suffix} --remove-files
 
 
 clean_osx:

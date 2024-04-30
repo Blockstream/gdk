@@ -22,10 +22,7 @@ build-linux-wheel-cp39:
 
 build-wheel-release:
   extends: .linux-wheel
-  rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    - if: $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-      when: manual
+  when: manual
   parallel:
     matrix:
       - PYTHON_VERSION: [cp38-cp38, pp39-pypy39_pp73, cp310-cp310, cp311-cp311] # , cp39-cp39 included in the previous job
@@ -47,6 +44,22 @@ release-python:
     paths:
     - $CI_PROJECT_DIR/gdk_dist
     when: on_success
+
+jumbo-release-python:
+  extends: .debian-image
+  stage: release
+  needs: [build-linux-wheel-cp39, build_clang_osx, build-wheel-release]
+  script:
+    - suffix=${CI_COMMIT_TAG}
+    - if [ -z ${suffix} ]; then suffix=${CI_COMMIT_SHORT_SHA}; fi
+    - mkdir gdk-${suffix}
+    - find wheelhouse/ -name *.whl -exec mv {} gdk-${suffix}/ \;
+    - tar -czf archive.tar.gz gdk-${suffix} --remove-files
+  artifacts:
+    expire_in: 7 days
+    when: on_success
+    paths:
+    - archive.tar.gz
 
 
 upload-python-gcloud:
