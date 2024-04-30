@@ -12,7 +12,7 @@ touch .${SECP_COMMIT}
 ./tools/cleanup.sh
 ./tools/autogen.sh
 
-${SED} -i 's/\"wallycore\"/\"greenaddress\"/' src/swig_java/swig.i
+${SED} -i 's/\"wallycore\"/\"green_gdk\"/' src/swig_java/swig.i
 
 CONFIGURE_ARGS="--prefix=${GDK_BUILD_ROOT} --enable-static --disable-shared --disable-tests --disable-swig-python"
 

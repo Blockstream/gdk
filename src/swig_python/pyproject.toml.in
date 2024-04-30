@@ -3,8 +3,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "greenaddress"
-description = "gdk Bitcoin library"
+name = "green_gdk"
+description = "Blockstream Green Development Kit"
 readme = "README.md"
 authors = [{name = "Blockstream", email = "inquiries@blockstream.com"}]
 license = {text = "MIT"}
@@ -29,4 +29,4 @@ tracker = "https://github.com/blockstream/gdk/issues"
 
 [tool.setuptools]
 zip-safe = false
-packages = ["greenaddress"]
+packages = ["green_gdk"]

@@ -1,5 +1,5 @@
 # Generate documentation JSON examples from a development localtest setup.
-import greenaddress as gdk
+import green_gdk as gdk
 import json, shutil, subprocess, sys
 
 # Random mnemonic for keeping the generated addresses the same

@@ -4,7 +4,7 @@ from setuptools import Extension, setup
 
 
 extra_objects = [
-    "${CMAKE_BINARY_DIR}/src/libgreenaddress.a",
+    "${CMAKE_BINARY_DIR}/src/libgreen_gdk.a",
     "@_gdk_rust_LINK_LIBRARIES@",
     "@wallycore_LINK_LIBRARIES@",
     "@libsecp256k1_LINK_LIBRARIES@",
@@ -29,8 +29,8 @@ extra_objects = [
 
 setup(
     ext_modules=[Extension(
-        name="greenaddress._greenaddress",
-        sources=["swig_gasdk.i"],
+        name="green_gdk._green_gdk",
+        sources=["swig_green_gdk.i"],
         include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
         swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API= "],
         extra_objects=extra_objects,

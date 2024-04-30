@@ -5,11 +5,11 @@ from setuptools import Extension, setup
 
 setup(
     ext_modules=[Extension(
-        name="greenaddress._greenaddress",
-        sources=["swig_gasdk.i"],
+        name="green_gdk._green_gdk",
+        sources=["swig_green_gdk.i"],
         include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
         swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API= "],
-        libraries=["greenaddress"],
+        libraries=["green_gdk"],
         runtime_library_dirs=["${CMAKE_BINARY_DIR}/src"],
         library_dirs=["${CMAKE_BINARY_DIR}/src"],
         extra_link_args=["-shared"],

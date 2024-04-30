@@ -24,7 +24,7 @@ $module = swig_import_helper()
 del swig_import_helper
 "
 %enddef
-%module(moduleimport=MODULEIMPORT) greenaddress
+%module(moduleimport=MODULEIMPORT) green_gdk
 %{
 #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #define SWIG_FILE_WITH_INIT

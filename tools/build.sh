@@ -171,7 +171,7 @@ fi
 cmake ${cmake_options}
 
 if [[ "${BUILD}" == "--ndk" ]]; then
-    cmake --build $bld_root --parallel $parallel $cmake_verbose --target greenaddress-java greenaddress-syms
+    cmake --build $bld_root --parallel $parallel $cmake_verbose --target green_gdk_java green_gdk_syms
 elif [[ "$enable_python" == "true" ]] ; then
     cmake --build $bld_root --parallel $parallel $cmake_verbose --target python-wheel
 else

@@ -1,7 +1,7 @@
 import atexit
 import json
-from ._greenaddress import *
-from ._greenaddress import _python_set_callback_handler, _python_destroy_session
+from ._green_gdk import *
+from ._green_gdk import _python_set_callback_handler, _python_destroy_session
 try:
     import queue
 except:

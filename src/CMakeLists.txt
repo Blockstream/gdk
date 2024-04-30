@@ -11,8 +11,8 @@ execute_process(
 find_file(version_file version.h.in PATHS ${CMAKE_CURRENT_SOURCE_DIR})
 configure_file(${version_file} version.h @ONLY)
 
-add_library(greenaddress)
-target_sources(greenaddress PRIVATE
+add_library(green_gdk)
+target_sources(green_gdk PRIVATE
     amount.cpp amount.hpp
     assertion.cpp assertion.hpp
     auth_handler.cpp auth_handler.hpp
@@ -46,19 +46,19 @@ target_sources(greenaddress PRIVATE
     xpub_hdkey.cpp xpub_hdkey.hpp
 )
 
-target_compile_definitions(greenaddress
+target_compile_definitions(green_gdk
     PRIVATE
         GDK_BUILD
         _FORTIFY_SOURCE=2
 )
 if(Windows)
-    target_compile_definitions(greenaddress PUBLIC
+    target_compile_definitions(green_gdk PUBLIC
         BOOST_ASIO_DISABLE_IOCP
         BOOST_ASIO_DISABLE_VISIBILITY
     )
 endif()
 
-target_compile_options(greenaddress
+target_compile_options(green_gdk
     PRIVATE
         ${COMPILE_OPTIONS}
         "-Wno-deprecated-declarations"
@@ -79,10 +79,10 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND MINGW)
     set_source_files_properties(ga_session.cpp PROPERTIES COMPILE_FLAGS "-O1")
     set_source_files_properties(http_client.cpp PROPERTIES COMPILE_FLAGS "-O1")
     set_source_files_properties(wamp_transport.cpp PROPERTIES COMPILE_FLAGS "-O1")
-    target_link_options(greenaddress PRIVATE "-Wa,-mbig-obj")
+    target_link_options(green_gdk PRIVATE "-Wa,-mbig-obj")
 endif()
 
-target_include_directories(greenaddress
+target_include_directories(green_gdk
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -93,7 +93,7 @@ target_include_directories(greenaddress
 #### wallycore special
 #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
 target_include_directories(
-    greenaddress SYSTEM PRIVATE $<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_INCLUDE_DIRECTORIES>
+    green_gdk SYSTEM PRIVATE $<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_INCLUDE_DIRECTORIES>
 )
 set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
 if(APPLE)
@@ -103,10 +103,10 @@ else()
          "LINKER:SHELL:--no-whole-archive"
     )
 endif()
-target_link_options(greenaddress PUBLIC $<BUILD_INTERFACE:${_gdkLinkOptions}>)
+target_link_options(green_gdk PUBLIC $<BUILD_INTERFACE:${_gdkLinkOptions}>)
 #### rest
 target_link_libraries(
-    greenaddress
+    green_gdk
     PRIVATE gdk-rust
             extern::sqlite3
             Microsoft.GSL::GSL
@@ -133,12 +133,12 @@ set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
     ${CMAKE_SOURCE_DIR}/include/wally_wrapper.h
 )
 
-set_target_properties(greenaddress PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
+set_target_properties(green_gdk PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
 
 get_library_install_dir(_libInstallDir)
 install(
-    TARGETS greenaddress
-    EXPORT "greenaddress-target"
+    TARGETS green_gdk
+    EXPORT "green_gdk-target"
     RUNTIME EXCLUDE_FROM_ALL
     OBJECTS EXCLUDE_FROM_ALL
     ARCHIVE EXCLUDE_FROM_ALL
@@ -176,10 +176,10 @@ install(
 )
 get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
 install(
-    EXPORT "greenaddress-target"
+    EXPORT "green_gdk-target"
     COMPONENT gdk-dev
     DESTINATION ${LIB_CMAKE_INSTALL_DIR}/cmake
     NAMESPACE ${PROJECT_NAME}::
-    FILE "greenaddress-targets.cmake"
+    FILE "green_gdk-targets.cmake"
     EXCLUDE_FROM_ALL
 )

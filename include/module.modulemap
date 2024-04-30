@@ -8,5 +8,5 @@ module ga [extern_c] {
         export *
     }
 
-    link "greenaddress"
+    link "green_gdk"
 }

@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 include(cmake/includes/helpers.cmake)
-include(cmake/includes/greenaddress.cmake)
+include(cmake/includes/greengdk.cmake)
 
 
 cmake_policy(SET CMP0074 NEW)

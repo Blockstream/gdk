@@ -22,20 +22,20 @@ tinycbor=$<TARGET_PROPERTY:PkgConfig::TinyCBOR,INTERFACE_LINK_LIBRARIES>
 urc=$<TARGET_FILE:urc::urc>
 
 
-libraries="libgreenaddress-partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent_core $libevent_extra $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
+libraries="libgreen_gdk_partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent_core $libevent_extra $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
 
 
 if [ "$(uname)" = "Darwin" ]; then
-    libtool -static -o $<TARGET_FILE:greenaddress-full> $libraries
+    libtool -static -o $<TARGET_FILE:green_gdk_full> $libraries
     exit 0
 fi
 
-echo "create $<TARGET_FILE_NAME:greenaddress-full>" > libgreenaddress.mri
+echo "create $<TARGET_FILE_NAME:green_gdk_full>" > libgreen_gdk.mri
 for lib in $libraries; do
     if [ ! -d "$obj_dir" ]; then
-        echo "addlib $lib" >> libgreenaddress.mri
+        echo "addlib $lib" >> libgreen_gdk.mri
     fi
 done
-echo "save" >> libgreenaddress.mri
-echo "end" >> libgreenaddress.mri
-ar -M < libgreenaddress.mri
+echo "save" >> libgreen_gdk.mri
+echo "end" >> libgreen_gdk.mri
+ar -M < libgreen_gdk.mri

@@ -33,56 +33,53 @@ endif()
 
 include(UseSWIG)
 
-set(_swig_package_option -package com.blockstream.libgreenaddress -DGDK_BUILD)
-set_source_files_properties(swig_gasdk.i PROPERTIES
+set(_swig_package_option -package com.blockstream.green_gdk -DGDK_BUILD)
+set_source_files_properties(swig_green_gdk.i PROPERTIES
     COMPILE_OPTIONS "${_swig_package_option}"
     USE_SWIG_DEPENDENCIES TRUE
     INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
 )
-swig_add_library(greenaddress-java
+swig_add_library(green_gdk_java
     TYPE SHARED
     LANGUAGE java
     NO_PROXY
-    SOURCES swig_gasdk.i
+    SOURCES swig_green_gdk.i
 )
-set_target_properties(greenaddress-java PROPERTIES
-    OUTPUT_NAME greenaddress
-)
-target_include_directories(greenaddress-java
+target_include_directories(green_gdk_java
     PRIVATE
         ${JNI_INCLUDE_DIRS}
 )
-target_link_options(greenaddress-java PRIVATE ${GDK_LINK_OPTIONS})
+target_link_options(green_gdk_java PRIVATE ${GDK_LINK_OPTIONS})
 
-swig_link_libraries(greenaddress-java PUBLIC greenaddress)
+swig_link_libraries(green_gdk_java PUBLIC green_gdk)
 
-add_custom_command(TARGET greenaddress-java
+add_custom_command(TARGET green_gdk_java
     POST_BUILD
-    COMMAND ${SED} -i 's/^}$$//g' GDKJNI.java
-    COMMAND grep "public final static" GDKConstants.java >> GDKJNI.java
-    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/jni_extra.java_in >> GDKJNI.java
-    COMMAND echo "}" >> GDKJNI.java
+    COMMAND ${SED} -i 's/^}$$//g' GDK.java
+    COMMAND grep "public final static" GDKConstants.java >> GDK.java
+    COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/jni_extra.java_in >> GDK.java
+    COMMAND echo "}" >> GDK.java
 )
 
 get_library_install_dir(_libInstallDir)
 add_custom_command(
-    OUTPUT libgreenaddress.syms
-    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:greenaddress-java> libgreenaddress.syms
-    DEPENDS greenaddress-java
-    BYPRODUCTS libgreenaddress.syms
+    OUTPUT libgreen_gdk.syms
+    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:green_gdk_java> libgreen_gdk.syms
+    DEPENDS green_gdk_java
+    BYPRODUCTS libgreen_gdk.syms
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
-add_custom_target(greenaddress-syms ALL DEPENDS libgreenaddress.syms)
+add_custom_target(green_gdk_syms ALL DEPENDS libgreen_gdk.syms)
 install(
-    FILES ${CMAKE_BINARY_DIR}/libgreenaddress.syms
+    FILES ${CMAKE_BINARY_DIR}/libgreen_gdk.syms
     DESTINATION ${_libInstallDir}
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL
 )
 
 install(
-    FILES ${CMAKE_CURRENT_BINARY_DIR}/GDKJNI.java
-    DESTINATION ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/libgreenaddress
+    FILES ${CMAKE_CURRENT_BINARY_DIR}/GDK.java
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/java/com/blockstream/green_gdk
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL
 )
@@ -94,7 +91,7 @@ install(
     EXCLUDE_FROM_ALL
 )
 install(
-    TARGETS greenaddress-java
+    TARGETS green_gdk_java
     DESTINATION ${_libInstallDir}
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL

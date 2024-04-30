@@ -39,7 +39,7 @@ build_gcc_bullseye:
   needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
-    - cmake --build build-gcc --target greenaddress-java --parallel 16
+    - cmake --build build-gcc --target green_gdk_java --parallel 16
     - cmake --install build-gcc --prefix install-java
     - cmake --install build-gcc --prefix install-java --component gdk-java
   artifacts:
@@ -132,7 +132,7 @@ build_gcc_ubuntu20.04-arm64:
   script:
     - source /root/.cargo/env
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 4
-    - cmake --build build-gcc --target greenaddress-java --parallel 4
+    - cmake --build build-gcc --target green_gdk_java --parallel 4
     - cmake --install build-gcc --prefix install-java
     - cmake --install build-gcc --prefix install-java --component gdk-java
   artifacts:

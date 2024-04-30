@@ -1,5 +1,5 @@
 """Example for Elements/Liquid using Managed Assets Blockstream AMP subaccount"""
-import greenaddress as gdk
+import green_gdk as gdk
 import json
 
 # To install GDK, download the GDK python wheel from:

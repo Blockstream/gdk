@@ -1,25 +1,25 @@
 
-macro(create_greenaddressfull_target)
-    add_library(greenaddress-full STATIC $<TARGET_OBJECTS:greenaddress>)
-    set_target_properties(greenaddress-full PROPERTIES
-        OUTPUT_NAME greenaddress_full
+macro(create_greengdkfull_target)
+    add_library(green_gdk_full STATIC $<TARGET_OBJECTS:green_gdk>)
+    set_target_properties(green_gdk_full PROPERTIES
+        OUTPUT_NAME green_gdk_full
         VERSION ${PROJECT_VERSION}
         SOVERSION ${PROJECT_VERSION_MAJOR}
-        PUBLIC_HEADER $<TARGET_PROPERTY:greenaddress,PUBLIC_HEADER>
+        PUBLIC_HEADER $<TARGET_PROPERTY:green_gdk,PUBLIC_HEADER>
     )
-    get_target_property(_gaIncludeDir greenaddress INTERFACE_INCLUDE_DIRECTORIES)
-    target_include_directories(greenaddress-full INTERFACE ${_gaIncludeDir})
+    get_target_property(_gaIncludeDir green_gdk INTERFACE_INCLUDE_DIRECTORIES)
+    target_include_directories(green_gdk_full INTERFACE ${_gaIncludeDir})
     file(GENERATE OUTPUT archiver.sh INPUT ${CMAKE_SOURCE_DIR}/tools/archiver.sh.gen)
-    add_custom_command(TARGET greenaddress-full POST_BUILD
-        COMMAND mv $<TARGET_FILE:greenaddress-full> libgreenaddress-partial.a
+    add_custom_command(TARGET green_gdk_full POST_BUILD
+        COMMAND mv $<TARGET_FILE:green_gdk_full> libgreen_gdk_partial.a
         COMMAND ./archiver.sh
-        COMMAND rm libgreenaddress-partial.a
+        COMMAND rm libgreen_gdk_partial.a
     )
-    target_link_options(greenaddress-full PRIVATE "${GDK_LINK_OPTIONS}")
+    target_link_options(green_gdk_full PRIVATE "${GDK_LINK_OPTIONS}")
     get_library_install_dir(_libInstallDir)
     get_cmake_install_dir(LIB_CMAKE_INSTALL_DIR ${_libInstallDir})
-    install(TARGETS greenaddress-full
-        EXPORT "greenaddress-full-target"
+    install(TARGETS green_gdk_full
+        EXPORT "green_gdk_full-target"
         RUNTIME EXCLUDE_FROM_ALL
         OBJECTS EXCLUDE_FROM_ALL
         LIBRARY EXCLUDE_FROM_ALL
@@ -31,11 +31,11 @@ macro(create_greenaddressfull_target)
             EXCLUDE_FROM_ALL
         OPTIONAL
     )
-    install(EXPORT "greenaddress-full-target"
+    install(EXPORT "green_gdk_full-target"
         COMPONENT gdk-dev
         DESTINATION ${LIB_CMAKE_INSTALL_DIR}/cmake
         NAMESPACE ${PROJECT_NAME}::
-        FILE "greenaddress-full-targets.cmake"
+        FILE "green_gdk_full-targets.cmake"
         EXCLUDE_FROM_ALL
     )
     install(
