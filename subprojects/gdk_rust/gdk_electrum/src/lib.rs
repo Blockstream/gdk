@@ -1003,6 +1003,11 @@ impl ElectrumSession {
         self.get_account(opt.subaccount)?.set_settings(opt)
     }
 
+    // Updates subaccount settings without requiring a cached Account
+    pub fn update_subaccount_settings(&mut self, opt: UpdateAccountOpt) -> Result<bool, Error> {
+        Account::set_account_settings(&self.store()?, opt)
+    }
+
     pub fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
         let mut txs = self.get_account(opt.subaccount)?.list_tx(opt)?;
         for tx in txs.iter_mut() {

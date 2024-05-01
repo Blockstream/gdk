@@ -174,22 +174,31 @@ impl Account {
         })
     }
 
-    pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<bool, Error> {
-        let mut store_write = self.store.write()?;
+    pub fn set_account_settings(store: &Store, opt: UpdateAccountOpt) -> Result<bool, Error> {
+        let mut store_write = store.write()?;
         let mut settings =
-            store_write.get_account_settings(self.account_num).cloned().unwrap_or_default();
+            store_write.get_account_settings(opt.subaccount).cloned().unwrap_or_default();
         if let Some(name) = opt.name {
             settings.name = name;
         }
         if let Some(hidden) = opt.hidden {
             settings.hidden = hidden;
         }
-        store_write.set_account_settings(self.account_num, settings)?;
+        store_write.set_account_settings(opt.subaccount, settings)?;
         Ok(true)
+    }
+
+    pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<bool, Error> {
+        if opt.subaccount != self.account_num {
+            Err(Error::Generic("Mismatched subaccount".into()))
+        } else {
+            Account::set_account_settings(&self.store, opt)
+        }
     }
 
     pub fn set_name(&self, name: &str) -> Result<bool, Error> {
         self.set_settings(UpdateAccountOpt {
+            subaccount: self.account_num,
             name: Some(name.into()),
             ..Default::default()
         })

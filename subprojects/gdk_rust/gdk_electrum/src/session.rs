@@ -106,6 +106,10 @@ impl Session for ElectrumSession {
                 let opt: UpdateAccountOpt = serde_json::from_value(input)?;
                 self.update_subaccount(opt).to_json()
             }
+            "update_subaccount_settings" => {
+                let opt: UpdateAccountOpt = serde_json::from_value(input)?;
+                self.update_subaccount_settings(opt).to_json()
+            }
 
             "get_transactions" => {
                 let opt: GetTransactionsOpt = serde_json::from_value(input)?;
