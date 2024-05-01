@@ -119,11 +119,23 @@ namespace sdk {
                 // We didn't have a local client blob, but the server does.
                 // Merge any local metadata with the blob
                 GDK_LOG(info) << "Merging local updates to client blob";
+                auto signer_xpubs = signer->get_cached_bip32_xpubs_json();
+                auto subaccounts = get_local_subaccounts_data();
+                update_client_blob(
+                    locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
+
                 auto memos = rust_call("get_memos", {}, m_session);
                 if (!memos.is_null() && !memos.empty()) {
                     update_client_blob(locker, std::bind(&client_blob::update_tx_memos, m_blob.get(), memos));
                 }
-                // Save the merged memos locally
+                // Save the merged metadata locally
+                for (auto& sa : subaccounts) {
+                    auto sa_details = m_blob->get_subaccount_data(sa.first);
+                    sa_details["subaccount"] = sa.first;
+                    sa_details["name"] = j_str_or_empty(sa_details, "name");
+                    sa_details["hidden"] = j_bool_or_false(sa_details, "hidden");
+                    rust_call("update_subaccount_settings", sa_details, m_session);
+                }
                 memos = m_blob->get_tx_memos();
                 rust_call("set_memos", memos.is_null() ? nlohmann::json({}) : memos, m_session);
             }
