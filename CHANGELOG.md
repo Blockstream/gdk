@@ -15,6 +15,8 @@
   require two-factor authentication.
 - Build: refactor scripts that build dependencies, add an example dockerfile
   for android build in bookworm-based image
+- Changed bip21 schema for liquid testnet networks, from `liquidtestnet` to 
+  `liquidnetwork`.
 
 ### Fixed
 
