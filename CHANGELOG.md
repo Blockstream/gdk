@@ -13,8 +13,21 @@
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
   and cheaper recovery path, which requires only a single signature and does not
   require two-factor authentication.
-- Build: refactor scripts that build dependencies, add an example dockerfile
-  for android build in bookworm-based image
+- C/C++: The name of the shared library has changed from from ``libgreenaddress``
+  to ``libgreen_gdk``. Applications linking to the shared library should update
+  their link commands accordingly.
+- Java: The namespace for the interface has changed
+  from ``com.blockstream.libgreenaddress`` to ``com.blockstream.green_gdk``. The
+  JNI class name has been changed from ``GDKJNI`` to ``GDK``.Additionally, the
+  native shared library providing the JNI implementation has been renamed
+  from ``libgreenaddress`` to ``libgreen_gdk_java``. Java/Kotlin applications
+  should adjust their references to the interface and their final linking
+  commands accordingly.
+- Python: The Python wheel and package name has been changed
+  from ``greenaddress`` to ``green_gdk``. Python applications should update
+  their import references and wheel installation commands accordingly.
+- Build: The scripts for building library dependencies have been simplified, and
+  an example Dockerfile for Android builds using Debian Bookworm is now included.
 
 ### Fixed
 
