@@ -129,9 +129,11 @@ target_link_libraries(
 )
 
 set(_publicHeaders ${CMAKE_SOURCE_DIR}/include/gdk.h
-    ${CMAKE_SOURCE_DIR}/include/module.modulemap
     ${CMAKE_SOURCE_DIR}/include/wally_wrapper.h
 )
+if (ENABLE_SWIFT)
+    list(APPEND _publicHeaders ${CMAKE_SOURCE_DIR}/include/module.modulemap)
+endif()
 
 set_target_properties(green_gdk PROPERTIES PUBLIC_HEADER "${_publicHeaders}")
 
