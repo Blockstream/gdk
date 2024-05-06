@@ -36,13 +36,7 @@ endfunction()
 
 
 function(get_library_install_dir outvar)
-    if(ANDROID)
-        join_path(_libInstallDir ${CMAKE_INSTALL_LIBDIR} ${CMAKE_ANDROID_ARCH_ABI})
-    elseif(CMAKE_SYSTEM_NAME STREQUAL iOS)
-        join_path(_libInstallDir ${CMAKE_INSTALL_LIBDIR} ${SDK_NAME})
-    else()
-        set(_libInstallDir ${CMAKE_INSTALL_LIBDIR})
-    endif()
+    join_path(_libInstallDir ${CMAKE_INSTALL_LIBDIR} ${CMAKE_LIBRARY_ARCHITECTURE})
     set(${outvar} ${_libInstallDir} PARENT_SCOPE)
 endfunction()
 

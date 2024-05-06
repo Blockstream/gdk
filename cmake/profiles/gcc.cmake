@@ -9,3 +9,5 @@ list(APPEND GDK_LINK_OPTIONS
 if( CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options("-ggdb3" "-fno-omit-frame-pointer")
 endif()
+
+set(CMAKE_LIBRARY_ARCHITECTURE "${CMAKE_HOST_SYSTEM_PROCESSOR}-linux-gnu")

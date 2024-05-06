@@ -21,7 +21,7 @@ esac
 
 case $BUILD in
     "--clang")
-        export target_triple=${HOST_ARCH}-pc-linux-gnu
+        export target_triple="${HOST_ARCH}-linux-gnu"
         export CC="clang"
         export CXX="clang++"
         export AR="ar"
@@ -38,7 +38,7 @@ case $BUILD in
         ;;
 
     "--gcc")
-        export target_triple="${HOST_ARCH}-pc-linux-gnu"
+        export target_triple="${HOST_ARCH}-linux-gnu"
         export CC="gcc"
         export CXX="g++"
         export AR="ar"
