@@ -1,8 +1,8 @@
 import Dispatch
 import Foundation
 
-import ga.sdk
-import ga.wally
+import green.gdk
+import green.wally
 
 public enum GaError: Error {
     case GenericError(_ localizedDescription: String? = nil)
