@@ -29,7 +29,7 @@ template <> struct default_delete<struct wally_tx_output> {
 };
 } // namespace std
 
-namespace ga {
+namespace green {
 namespace sdk {
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
 
@@ -325,6 +325,6 @@ namespace sdk {
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
 
 } /* namespace sdk */
-} /* namespace ga */
+} /* namespace green */
 
 #endif /* GDK_CORE_WALLY_HPP */

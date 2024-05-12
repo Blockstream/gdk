@@ -7,7 +7,7 @@
 #include <nlohmann/json.hpp>
 #include <optional>
 
-namespace ga {
+namespace green {
 namespace sdk {
     class network_parameters;
 
@@ -153,6 +153,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

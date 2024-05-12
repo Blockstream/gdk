@@ -643,7 +643,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
 static std::mutex registered_networks_mutex;
 } // namespace
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static std::string get_url(
@@ -856,4 +856,4 @@ namespace sdk {
         return get_url(m_details, "price_url", "price_onion_url", use_tor());
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

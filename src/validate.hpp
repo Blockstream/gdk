@@ -5,7 +5,7 @@
 #include "auth_handler.hpp"
 #include "ga_wally.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class validate_call : public auth_handler_impl {
     public:
@@ -23,5 +23,5 @@ namespace sdk {
         nlohmann::json m_details;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif // GDK_VALIDATE_HPP

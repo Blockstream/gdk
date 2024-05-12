@@ -8,7 +8,7 @@
 #include <string_view>
 #include <vector>
 
-namespace ga {
+namespace green {
 namespace sdk {
     class amount;
     using json_array_t = std::vector<nlohmann::json>;
@@ -65,5 +65,5 @@ namespace sdk {
     bool j_rename(nlohmann::json& data, std::string_view from_key, std::string_view to_key);
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif

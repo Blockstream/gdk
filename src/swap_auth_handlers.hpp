@@ -4,7 +4,7 @@
 
 #include "auth_handler.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class Tx;
 
@@ -40,5 +40,5 @@ namespace sdk {
         std::unique_ptr<Tx> m_tx;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif // GDK_SWAP_AUTH_HANDLERS_HPP

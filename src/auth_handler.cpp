@@ -10,7 +10,7 @@
 #include "session_impl.hpp"
 #include "signer.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         // Server gives 3 attempts to get the twofactor code right before it's invalidated
@@ -588,4 +588,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

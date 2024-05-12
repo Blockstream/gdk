@@ -23,7 +23,7 @@
 #include "wamp_transport.hpp"
 #include "xpub_hdkey.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -992,4 +992,4 @@ namespace sdk {
         throw std::runtime_error("service_sign_transaction not implemented");
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

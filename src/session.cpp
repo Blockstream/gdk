@@ -25,7 +25,7 @@
 
 using namespace std::literals;
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -461,4 +461,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

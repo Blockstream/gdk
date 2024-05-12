@@ -5,7 +5,7 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     class amount;
@@ -23,6 +23,6 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

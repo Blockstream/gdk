@@ -39,7 +39,7 @@ extern "C" {
 
 using namespace std::chrono_literals;
 
-namespace ga {
+namespace green {
 namespace sdk {
     std::mutex tor_controller::s_inst_mutex;
     std::weak_ptr<tor_controller> tor_controller::s_inst;
@@ -782,4 +782,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

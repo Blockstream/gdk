@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace res {
 
@@ -1414,6 +1414,6 @@ namespace sdk {
 
     } // namespace res
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

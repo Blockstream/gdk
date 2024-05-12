@@ -22,7 +22,7 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     ga_rust::ga_rust(network_parameters&& net_params)
@@ -346,7 +346,7 @@ namespace sdk {
     void ga_rust::set_notification_handler(GA_notification_handler handler, void* context)
     {
         session_impl::set_notification_handler(handler, context);
-        GDKRUST_set_notification_handler(m_session, ga::sdk::ga_rust::GDKRUST_notif_handler, this);
+        GDKRUST_set_notification_handler(m_session, green::sdk::ga_rust::GDKRUST_notif_handler, this);
     }
 
     nlohmann::json ga_rust::get_receive_address(const nlohmann::json& details)
@@ -656,4 +656,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

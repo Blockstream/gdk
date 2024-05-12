@@ -12,7 +12,7 @@ struct wally_psbt;
 struct wally_psbt_input;
 struct wally_psbt_output;
 
-namespace ga {
+namespace green {
 namespace sdk {
     class session_impl;
     class Tx;
@@ -66,6 +66,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

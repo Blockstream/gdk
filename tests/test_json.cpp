@@ -90,10 +90,10 @@ int main()
     GDK_RUNTIME_ASSERT(array_test["empty"].empty());
     GDK_RUNTIME_ASSERT(array_test["empty"].size() == 0);
 
-    GDK_RUNTIME_ASSERT(ga::sdk::is_valid_utf8("hello world") == true);
-    GDK_RUNTIME_ASSERT(ga::sdk::is_valid_utf8("مرحبا بالعالم") == true);
-    GDK_RUNTIME_ASSERT(ga::sdk::is_valid_utf8("Բարեւ աշխարհ") == true);
-    GDK_RUNTIME_ASSERT(ga::sdk::is_valid_utf8("\xa0\xa1") == false);
+    GDK_RUNTIME_ASSERT(green::sdk::is_valid_utf8("hello world") == true);
+    GDK_RUNTIME_ASSERT(green::sdk::is_valid_utf8("مرحبا بالعالم") == true);
+    GDK_RUNTIME_ASSERT(green::sdk::is_valid_utf8("Բարեւ աշխարհ") == true);
+    GDK_RUNTIME_ASSERT(green::sdk::is_valid_utf8("\xa0\xa1") == false);
 
     return 0;
 }

@@ -10,7 +10,7 @@
 struct sqlite3;
 struct sqlite3_stmt;
 
-namespace ga {
+namespace green {
 namespace sdk {
     class network_parameters;
     class signer;
@@ -106,6 +106,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

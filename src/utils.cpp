@@ -48,7 +48,7 @@
 #include <openssl/evp.h>
 #include <zlib.h>
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     // from bitcoin core
@@ -777,14 +777,14 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 namespace {
 template <std::size_t N> int generate_mnemonic(char** output)
 {
     try {
         GDK_RUNTIME_ASSERT(output);
-        auto entropy = ga::sdk::get_random_bytes<N>();
+        auto entropy = green::sdk::get_random_bytes<N>();
         GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
         if (::bip39_mnemonic_validate(nullptr, *output) != GA_OK) {
             wally_free_string(*output);
@@ -803,7 +803,7 @@ template <std::size_t N> int generate_mnemonic(char** output)
 extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)
 {
     try {
-        ga::sdk::get_random_bytes(num_bytes, output_bytes, len);
+        green::sdk::get_random_bytes(num_bytes, output_bytes, len);
         return GA_OK;
     } catch (const std::exception& e) {
         return GA_ERROR;

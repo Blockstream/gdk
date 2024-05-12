@@ -4,7 +4,7 @@
 
 #include <mutex>
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     // Scoped unlocker
@@ -39,6 +39,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

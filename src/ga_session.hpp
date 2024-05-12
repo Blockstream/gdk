@@ -13,7 +13,7 @@
 #include "ga_wally.hpp"
 #include "session_impl.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     struct cache;
     class ga_user_pubkeys;
@@ -269,6 +269,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

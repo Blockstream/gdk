@@ -27,7 +27,7 @@ using namespace std::literals;
 namespace asio = boost::asio;
 namespace wlog = websocketpp::log;
 
-namespace ga {
+namespace green {
 namespace sdk {
     struct websocket_rng_type {
         uint32_t operator()() const
@@ -713,4 +713,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

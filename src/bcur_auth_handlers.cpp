@@ -24,7 +24,7 @@ class URDecoder {
 } // namespace ur
 #endif
 
-namespace ga {
+namespace green {
 namespace sdk {
 #ifdef USE_REAL_BCUR
     namespace {
@@ -245,7 +245,7 @@ namespace sdk {
             };
         }
 
-        nlohmann::json parse_jade_rpc(const ga::sdk::byte_span_t raw)
+        nlohmann::json parse_jade_rpc(const green::sdk::byte_span_t raw)
         {
             char* raw_json = nullptr;
             int result = urc_jade_rpc_parse(raw.data(), raw.size(), &raw_json);
@@ -394,4 +394,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

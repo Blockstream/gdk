@@ -12,7 +12,7 @@
 #include <wally_psbt.h>
 #include <wally_psbt_members.h>
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         // PSBT input/output field constants from
@@ -565,4 +565,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

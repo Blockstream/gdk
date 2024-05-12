@@ -16,7 +16,7 @@
 #include "validate.hpp"
 #include "xpub_hdkey.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static const std::string LIQUIDEX_STR("liquidex_v1");
@@ -347,4 +347,4 @@ namespace sdk {
         liquidex_validate_proposal(proposal);
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

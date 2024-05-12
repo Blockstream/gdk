@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-namespace ga {
+namespace green {
 namespace sdk {
     class network_parameters;
     class session;
@@ -166,5 +166,5 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif

@@ -12,7 +12,7 @@
 
 #include "gsl_wrapper.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     class http_client {
@@ -113,6 +113,6 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

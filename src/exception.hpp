@@ -9,7 +9,7 @@ namespace autobahn {
 class call_error;
 }
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     class login_error : public std::runtime_error {
@@ -55,6 +55,6 @@ namespace sdk {
     std::pair<std::string, std::string> get_error_details(const autobahn::call_error& e);
     std::pair<std::string, std::string> remap_ga_server_error(const std::pair<std::string, std::string>& details);
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

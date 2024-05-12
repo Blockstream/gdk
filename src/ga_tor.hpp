@@ -8,7 +8,7 @@
 #include <string>
 #include <thread>
 
-namespace ga {
+namespace green {
 namespace sdk {
     static constexpr uint32_t DEFAULT_TOR_SOCKS_WAIT = 120; // maximum timeout for the tor socks to get ready
 
@@ -50,6 +50,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

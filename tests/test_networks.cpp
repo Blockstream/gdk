@@ -9,7 +9,7 @@
 
 int main()
 {
-    using namespace ga::sdk;
+    using namespace green::sdk;
 
     nlohmann::json init_config;
     init_config["datadir"] = ".";

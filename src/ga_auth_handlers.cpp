@@ -20,7 +20,7 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static const std::string CHALLENGE_PREFIX("greenaddress.it      login ");
@@ -2305,4 +2305,4 @@ namespace sdk {
         return state_type::done;
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

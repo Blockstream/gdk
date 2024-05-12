@@ -13,7 +13,7 @@
         }                                                                                                              \
     } while (false)
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     std::array<unsigned char, HASH160_LEN> hash160(byte_span_t data)
@@ -916,4 +916,4 @@ namespace sdk {
     }
 
 } /* namespace sdk */
-} /* namespace ga */
+} /* namespace green */

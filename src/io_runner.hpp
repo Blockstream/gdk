@@ -11,7 +11,7 @@
 
 #include "utils.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     class io_container {
@@ -39,6 +39,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 //
 #endif

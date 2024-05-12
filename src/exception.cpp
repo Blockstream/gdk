@@ -6,7 +6,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static bool is_prevout_missing(const std::string& msg)
@@ -49,4 +49,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

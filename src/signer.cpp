@@ -7,7 +7,7 @@
 #include "network_parameters.hpp"
 #include "utils.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -417,4 +417,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

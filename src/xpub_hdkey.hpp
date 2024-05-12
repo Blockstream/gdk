@@ -7,7 +7,7 @@
 #include "ga_wally.hpp"
 #include "network_parameters.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     //
@@ -214,6 +214,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

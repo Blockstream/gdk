@@ -12,7 +12,7 @@
 #include "io_runner.hpp"
 #include "network_parameters.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     using pubkey_and_script_t = std::pair<std::vector<unsigned char>, std::vector<unsigned char>>;
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
@@ -345,6 +345,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif // #ifndef GDK_SESSION_IMPL_HPP

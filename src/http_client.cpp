@@ -15,7 +15,7 @@ namespace beast = boost::beast;
 
 using namespace std::literals;
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -479,4 +479,4 @@ namespace sdk {
 #undef ASYNC_READ
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

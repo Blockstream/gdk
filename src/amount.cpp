@@ -12,7 +12,7 @@
 #include "amount.hpp"
 #include "assertion.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     // BTC amounts have 8 DP
     using btc_type = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<8>>;
@@ -175,4 +175,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

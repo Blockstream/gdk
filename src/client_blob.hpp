@@ -12,7 +12,7 @@
 #include "ga_wally.hpp"
 #include <nlohmann/json.hpp>
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     // Client-only data, stored on a server as a server-unreadable blob
@@ -61,6 +61,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

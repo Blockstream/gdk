@@ -22,7 +22,7 @@ namespace algo = boost::algorithm;
 namespace asio = boost::asio;
 namespace beast = boost::beast;
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     socks_client::socks_client(asio::io_context& io, boost::beast::tcp_stream& stream)
@@ -232,4 +232,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

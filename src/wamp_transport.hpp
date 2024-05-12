@@ -12,7 +12,7 @@
 #include "logging.hpp"
 #include "threading.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class exponential_backoff;
     struct websocketpp_gdk_config;
@@ -152,6 +152,6 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

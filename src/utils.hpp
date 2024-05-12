@@ -11,7 +11,7 @@
 #include "json_utils.hpp"
 #include "logging.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class network_parameters;
 
@@ -161,6 +161,6 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

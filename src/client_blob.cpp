@@ -7,7 +7,7 @@
 #include "memory.hpp"
 #include "utils.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -295,4 +295,4 @@ namespace sdk {
         return std::make_pair(std::move(encrypted), std::move(hmac));
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

@@ -10,7 +10,7 @@
 #include <stdlib.h>
 #include <thread>
 
-using namespace ga;
+using namespace green;
 
 static nlohmann::json process_auth(sdk::auth_handler& handler)
 {
@@ -40,9 +40,9 @@ static void test_two_sessions(nlohmann::json net_params)
     // NOTE: this isn't a supported operation, both sessions must have
     //       distinct data directories otherwise they may corrupt each
     //       others caches.
-    ga::sdk::session session;
+    green::sdk::session session;
     session.connect(net_params);
-    ga::sdk::session session2;
+    green::sdk::session session2;
     session2.connect(net_params);
 }
 

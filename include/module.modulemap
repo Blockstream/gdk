@@ -1,4 +1,4 @@
-module ga [extern_c] {
+module green [extern_c] {
     module sdk {
         header "gdk.h"
         export *

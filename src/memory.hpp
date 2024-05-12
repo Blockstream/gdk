@@ -11,7 +11,7 @@
 #include "ga_wally.hpp"
 #include "gsl_wrapper.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     template <std::size_t N> inline std::array<unsigned char, N> make_byte_array(byte_span_t bytes)
     {
@@ -53,6 +53,6 @@ namespace sdk {
         return gsl::make_span(reinterpret_cast<const unsigned char*>(str.data()), str.size());
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

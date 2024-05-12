@@ -10,7 +10,7 @@
 
 #include "gdk.h"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     class network_parameters final {
@@ -75,6 +75,6 @@ namespace sdk {
         nlohmann::json m_details;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

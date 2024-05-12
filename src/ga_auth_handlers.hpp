@@ -4,7 +4,7 @@
 
 #include "auth_handler.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class Psbt;
 
@@ -402,5 +402,5 @@ namespace sdk {
         nlohmann::json m_details;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif

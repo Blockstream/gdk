@@ -7,7 +7,7 @@
 #include "transaction_utils.hpp"
 #include <utility>
 
-namespace ga {
+namespace green {
 namespace sdk {
     //
     // Validate
@@ -64,4 +64,4 @@ namespace sdk {
         }
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

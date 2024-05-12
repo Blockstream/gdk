@@ -21,7 +21,7 @@
 
 #include <wally_coinselection.h>
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static const std::string UTXO_SEL_DEFAULT("default"); // Use the default utxo selection strategy
@@ -1560,4 +1560,4 @@ namespace sdk {
         return result;
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

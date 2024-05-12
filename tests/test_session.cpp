@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-using namespace ga;
+using namespace green;
 
 static std::string envstr(const char* name, const std::string& default_)
 {

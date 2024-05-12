@@ -15,7 +15,7 @@
 #include "transaction_utils.hpp"
 #include "utils.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     namespace {
@@ -897,4 +897,4 @@ namespace sdk {
         return get_scriptpubkey_pointer(m_stmt_scriptpubkey_latest_search);
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

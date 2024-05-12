@@ -1,7 +1,7 @@
 
 #include "io_runner.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
 
     io_container::io_container()
@@ -29,4 +29,4 @@ namespace sdk {
             "io_context pool");
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

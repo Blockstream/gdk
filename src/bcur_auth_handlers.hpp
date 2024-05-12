@@ -9,7 +9,7 @@ class UREncoder;
 class URDecoder;
 } // namespace ur
 
-namespace ga {
+namespace green {
 namespace sdk {
     class bcur_encoder_call : public auth_handler_impl {
     public:
@@ -33,5 +33,5 @@ namespace sdk {
         std::unique_ptr<ur::URDecoder> m_decoder;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 #endif

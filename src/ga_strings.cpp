@@ -2,7 +2,7 @@
 // THIS IS A GENERATED FILE, DO NOT EDIT
 #include "ga_strings.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace res {
 
@@ -2537,4 +2537,4 @@ namespace sdk {
 
     } // namespace res
 } // namespace sdk
-} // namespace ga
+} // namespace green

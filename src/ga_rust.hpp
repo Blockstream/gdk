@@ -2,7 +2,7 @@
 
 #include "session_impl.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class ga_rust final : public session_impl {
     public:
@@ -142,4 +142,4 @@ namespace sdk {
     };
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

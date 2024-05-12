@@ -1,6 +1,6 @@
 #include "src/utils.hpp"
 
-using namespace ga::sdk;
+using namespace green::sdk;
 
 // Verify AES GCM encryption/decryption
 

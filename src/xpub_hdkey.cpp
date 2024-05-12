@@ -4,7 +4,7 @@
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         static const uint32_t GAIT_GENERATION_PATH = harden(0x4741); // 'GA'
@@ -246,4 +246,4 @@ namespace sdk {
     }
 
 } // namespace sdk
-} // namespace ga
+} // namespace green

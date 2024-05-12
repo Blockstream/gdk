@@ -10,7 +10,7 @@
 
 #include "ga_wally.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     class network_parameters;
     class session_impl;
@@ -94,6 +94,6 @@ namespace sdk {
         void* m_notification_context;
     };
 } // namespace sdk
-} // namespace ga
+} // namespace green
 
 #endif

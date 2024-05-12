@@ -15,7 +15,7 @@
 
 #include <cctype>
 
-namespace ga {
+namespace green {
 namespace sdk {
     namespace {
         // Script types returned by the Green backend server
@@ -1039,4 +1039,4 @@ namespace sdk {
         return false;
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green

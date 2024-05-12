@@ -4,7 +4,7 @@
 #include "exception.hpp"
 #include "logging.hpp"
 
-namespace ga {
+namespace green {
 namespace sdk {
     void runtime_assert_message(const std::string& error_message, const char* file, unsigned int line)
     {
@@ -20,4 +20,4 @@ namespace sdk {
         throw assertion_error(msg);
     }
 } // namespace sdk
-} // namespace ga
+} // namespace green
