@@ -638,9 +638,9 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "wamp_url", std::string() },
         })) },
 };
-// clang-format on
+    // clang-format on
 
-static std::mutex registered_networks_mutex;
+    static std::mutex registered_networks_mutex;
 } // namespace
 
 namespace green {

@@ -105,7 +105,6 @@ namespace green {
         sqlite3_stmt_ptr m_stmt_scriptpubkey_latest_search;
     };
 
-
 } // namespace green
 
 #endif

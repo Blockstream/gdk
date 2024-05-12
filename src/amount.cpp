@@ -174,5 +174,4 @@ namespace green {
         return static_cast<signed_value_type>(m_value);
     }
 
-
 } // namespace green

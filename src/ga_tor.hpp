@@ -49,7 +49,6 @@ namespace green {
         std::string m_socks5_port;
     };
 
-
 } // namespace green
 
 #endif

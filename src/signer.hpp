@@ -152,7 +152,6 @@ namespace green {
         cache_t m_cached_bip32_xpubs;
     };
 
-
 } // namespace green
 
 #endif

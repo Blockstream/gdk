@@ -12,7 +12,6 @@
 
 namespace green {
 
-
     class network_parameters final {
     public:
         static void add(const std::string& name, const nlohmann::json& details);

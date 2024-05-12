@@ -104,7 +104,6 @@ namespace green {
 
     void blind_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 
-
 } // namespace green
 
 #endif

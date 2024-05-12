@@ -268,7 +268,6 @@ namespace green {
         std::set<std::string> m_spv_verified_txs;
     };
 
-
 } // namespace green
 
 #endif

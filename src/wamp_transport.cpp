@@ -712,5 +712,4 @@ namespace green {
         m_subscriptions.emplace_back(sub);
     }
 
-
 } // namespace green

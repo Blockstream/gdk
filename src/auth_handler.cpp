@@ -587,5 +587,4 @@ namespace green {
         return nlohmann::json({ { "xpubs", std::move(xpubs) } });
     }
 
-
 } // namespace green

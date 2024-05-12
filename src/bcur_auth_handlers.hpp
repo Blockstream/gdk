@@ -5,8 +5,8 @@
 #include "auth_handler.hpp"
 
 namespace ur {
-class UREncoder;
-class URDecoder;
+    class UREncoder;
+    class URDecoder;
 } // namespace ur
 
 namespace green {

@@ -245,5 +245,4 @@ namespace green {
         return p->second;
     }
 
-
 } // namespace green

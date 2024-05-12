@@ -27,7 +27,6 @@ using namespace std::literals;
 
 namespace green {
 
-
     namespace {
         static std::atomic_bool init_done{ false };
         static nlohmann::json global_config;
@@ -459,6 +458,5 @@ namespace green {
         locker_t locker(m_mutex);
         return m_impl;
     }
-
 
 } // namespace green

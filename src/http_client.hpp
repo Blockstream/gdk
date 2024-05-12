@@ -14,7 +14,6 @@
 
 namespace green {
 
-
     class http_client {
     public:
         http_client(const http_client&) = delete;
@@ -111,7 +110,6 @@ namespace green {
         return ssl_ctx != nullptr ? std::shared_ptr<http_client>(new tls_http_client(io, *ssl_ctx))
                                   : std::shared_ptr<http_client>(new tcp_http_client(io));
     }
-
 
 } // namespace green
 

@@ -16,17 +16,17 @@
 #define SIGHASH_SINGLE_ANYONECANPAY (WALLY_SIGHASH_SINGLE | WALLY_SIGHASH_ANYONECANPAY)
 
 namespace std {
-template <> struct default_delete<struct ext_key> {
-    void operator()(struct ext_key* ptr) const { ::bip32_key_free(ptr); }
-};
+    template <> struct default_delete<struct ext_key> {
+        void operator()(struct ext_key* ptr) const { ::bip32_key_free(ptr); }
+    };
 
-template <> struct default_delete<struct wally_tx_input> {
-    void operator()(struct wally_tx_input* ptr) const { wally_tx_input_free(ptr); }
-};
+    template <> struct default_delete<struct wally_tx_input> {
+        void operator()(struct wally_tx_input* ptr) const { wally_tx_input_free(ptr); }
+    };
 
-template <> struct default_delete<struct wally_tx_output> {
-    void operator()(struct wally_tx_output* ptr) const { wally_tx_output_free(ptr); }
-};
+    template <> struct default_delete<struct wally_tx_output> {
+        void operator()(struct wally_tx_output* ptr) const { wally_tx_output_free(ptr); }
+    };
 } // namespace std
 
 namespace green {

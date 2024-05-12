@@ -9,7 +9,6 @@
 
 namespace green {
 
-
     class amount final {
     public:
         // Internally, BTC amounts are held as satoshi

@@ -23,93 +23,99 @@
 
 namespace {
 
-static boost::thread_specific_ptr<nlohmann::json> g_thread_error;
+    static boost::thread_specific_ptr<nlohmann::json> g_thread_error;
 
-static void set_thread_error(const char* what) { g_thread_error.reset(new nlohmann::json({ { "details", what } })); }
-
-template <typename Arg>
-static typename std::enable_if_t<!std::is_pointer<Arg>::value> assert_pointer_arg(
-    const char* /*func*/, const Arg& /*arg*/)
-{
-}
-
-template <typename Arg>
-static typename std::enable_if_t<std::is_pointer<Arg>::value> assert_pointer_arg(const char* func, const Arg& arg)
-{
-    if (!arg) {
-        GDK_RUNTIME_ASSERT_MSG(false, std::string("null argument calling ") + func);
+    static void set_thread_error(const char* what)
+    {
+        g_thread_error.reset(new nlohmann::json({ { "details", what } }));
     }
-}
 
-template <typename... Args> static void assert_invoke_args(const char* func, Args&&... args)
-{
-    (void)std::initializer_list<int>{ (assert_pointer_arg(func, std::forward<Args>(args)), 0)... };
-}
-
-template <typename F, typename... Args> static auto c_invoke(const char* func, F&& f, Args&&... args)
-{
-    try {
-        g_thread_error.reset();
-        assert_invoke_args(func, std::forward<Args>(args)...);
-        f(std::forward<Args>(args)...);
-        g_thread_error.reset();
-        return GA_OK;
-    } catch (const green::login_error& e) {
-        set_thread_error(e.what());
-        return GA_NOT_AUTHORIZED;
-    } catch (const autobahn::no_session_error& e) {
-        set_thread_error(e.what());
-        return GA_SESSION_LOST;
-    } catch (const green::reconnect_error& e) {
-        set_thread_error(e.what());
-        return GA_RECONNECT;
-    } catch (const green::timeout_error& e) {
-        set_thread_error(e.what());
-        return GA_TIMEOUT;
-    } catch (const std::exception& e) {
-        set_thread_error(e.what());
-        return GA_ERROR;
+    template <typename Arg>
+    static typename std::enable_if_t<!std::is_pointer<Arg>::value> assert_pointer_arg(
+        const char* /*func*/, const Arg& /*arg*/)
+    {
     }
-    __builtin_unreachable();
-}
 
-static char* to_c_string(const std::string& s)
-{
-    char* str = static_cast<char*>(malloc(s.size() + 1));
-    std::copy(s.begin(), s.end(), str);
-    *(str + s.size()) = 0;
-    return str;
-}
+    template <typename Arg>
+    static typename std::enable_if_t<std::is_pointer<Arg>::value> assert_pointer_arg(const char* func, const Arg& arg)
+    {
+        if (!arg) {
+            GDK_RUNTIME_ASSERT_MSG(false, std::string("null argument calling ") + func);
+        }
+    }
 
-static nlohmann::json* json_cast(GA_json* json) { return reinterpret_cast<nlohmann::json*>(json); }
+    template <typename... Args> static void assert_invoke_args(const char* func, Args&&... args)
+    {
+        (void)std::initializer_list<int>{ (assert_pointer_arg(func, std::forward<Args>(args)), 0)... };
+    }
 
-static const nlohmann::json* json_cast(const GA_json* json) { return reinterpret_cast<const nlohmann::json*>(json); }
+    template <typename F, typename... Args> static auto c_invoke(const char* func, F&& f, Args&&... args)
+    {
+        try {
+            g_thread_error.reset();
+            assert_invoke_args(func, std::forward<Args>(args)...);
+            f(std::forward<Args>(args)...);
+            g_thread_error.reset();
+            return GA_OK;
+        } catch (const green::login_error& e) {
+            set_thread_error(e.what());
+            return GA_NOT_AUTHORIZED;
+        } catch (const autobahn::no_session_error& e) {
+            set_thread_error(e.what());
+            return GA_SESSION_LOST;
+        } catch (const green::reconnect_error& e) {
+            set_thread_error(e.what());
+            return GA_RECONNECT;
+        } catch (const green::timeout_error& e) {
+            set_thread_error(e.what());
+            return GA_TIMEOUT;
+        } catch (const std::exception& e) {
+            set_thread_error(e.what());
+            return GA_ERROR;
+        }
+        __builtin_unreachable();
+    }
 
-static nlohmann::json** json_cast(GA_json** json) { return reinterpret_cast<nlohmann::json**>(json); }
+    static char* to_c_string(const std::string& s)
+    {
+        char* str = static_cast<char*>(malloc(s.size() + 1));
+        std::copy(s.begin(), s.end(), str);
+        *(str + s.size()) = 0;
+        return str;
+    }
 
-static nlohmann::json&& json_move(GA_json* json) { return std::move(*json_cast(json)); }
+    static nlohmann::json* json_cast(GA_json* json) { return reinterpret_cast<nlohmann::json*>(json); }
 
-static struct GA_auth_handler* auth_cast(green::auth_handler* call)
-{
-    return reinterpret_cast<struct GA_auth_handler*>(call);
-}
+    static const nlohmann::json* json_cast(const GA_json* json)
+    {
+        return reinterpret_cast<const nlohmann::json*>(json);
+    }
 
-static green::auth_handler* auth_cast(struct GA_auth_handler* call)
-{
-    return reinterpret_cast<struct green::auth_handler*>(call);
-}
+    static nlohmann::json** json_cast(GA_json** json) { return reinterpret_cast<nlohmann::json**>(json); }
 
-// Returns the passed call handler wrapped in an auto_auth_handler
-static struct GA_auth_handler* make_call(green::auth_handler* call_impl)
-{
-    std::unique_ptr<green::auth_handler> tmp(call_impl);
-    std::unique_ptr<green::auto_auth_handler> wrapped(new green::auto_auth_handler(tmp.get()));
-    tmp.release();
-    wrapped->advance();
-    return auth_cast(wrapped.release());
-}
+    static nlohmann::json&& json_move(GA_json* json) { return std::move(*json_cast(json)); }
 
-struct call_timer {
+    static struct GA_auth_handler* auth_cast(green::auth_handler* call)
+    {
+        return reinterpret_cast<struct GA_auth_handler*>(call);
+    }
+
+    static green::auth_handler* auth_cast(struct GA_auth_handler* call)
+    {
+        return reinterpret_cast<struct green::auth_handler*>(call);
+    }
+
+    // Returns the passed call handler wrapped in an auto_auth_handler
+    static struct GA_auth_handler* make_call(green::auth_handler* call_impl)
+    {
+        std::unique_ptr<green::auth_handler> tmp(call_impl);
+        std::unique_ptr<green::auto_auth_handler> wrapped(new green::auto_auth_handler(tmp.get()));
+        tmp.release();
+        wrapped->advance();
+        return auth_cast(wrapped.release());
+    }
+
+    struct call_timer {
 #if 0
     call_timer(const char* func)
         : m_func(func)
@@ -119,9 +125,9 @@ struct call_timer {
     ~call_timer() { GDK_LOG(info) << "RETN: " << m_func; }
     const char* m_func;
 #else
-    call_timer(const char* /*func*/) {}
+        call_timer(const char* /*func*/) {}
 #endif
-};
+    };
 
 } // namespace
 
@@ -271,8 +277,7 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_proxy_settings, struct GA_session*, session, GA_j
 
 GDK_DEFINE_C_FUNCTION_3(
     GA_get_wallet_identifier, const GA_json*, net_params, const GA_json*, params, GA_json**, output, {
-        *json_cast(output)
-            = new nlohmann::json(green::get_wallet_hash_ids(*json_cast(net_params), *json_cast(params)));
+        *json_cast(output) = new nlohmann::json(green::get_wallet_hash_ids(*json_cast(net_params), *json_cast(params)));
     })
 
 GDK_DEFINE_C_FUNCTION_3(GA_http_request, struct GA_session*, session, const GA_json*, params, GA_json**, output,
@@ -314,8 +319,7 @@ GDK_DEFINE_C_FUNCTION_2(GA_get_system_message, struct GA_session*, session, char
     { *message_text = to_c_string(session->get_system_message()); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_ack_system_message, struct GA_session*, session, const char*, message_text,
-    struct GA_auth_handler**, call,
-    { *call = make_call(new green::ack_system_message_call(*session, message_text)); })
+    struct GA_auth_handler**, call, { *call = make_call(new green::ack_system_message_call(*session, message_text)); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_twofactor_config, struct GA_session*, session, GA_json**, config,
     { *json_cast(config) = new nlohmann::json(session->get_twofactor_config()); })
@@ -476,10 +480,8 @@ GDK_DEFINE_C_FUNCTION_3(GA_change_settings, struct GA_session*, session, GA_json
     call, { *call = make_call(new green::change_settings_call(*session, json_move(settings))); })
 
 GDK_DEFINE_C_FUNCTION_4(GA_change_settings_twofactor, struct GA_session*, session, const char*, method, GA_json*,
-    twofactor_details, struct GA_auth_handler**, call, {
-        *call
-            = make_call(new green::change_settings_twofactor_call(*session, method, json_move(twofactor_details)));
-    })
+    twofactor_details, struct GA_auth_handler**, call,
+    { *call = make_call(new green::change_settings_twofactor_call(*session, method, json_move(twofactor_details))); })
 
 GDK_DEFINE_C_FUNCTION_4(GA_twofactor_reset, struct GA_session*, session, const char*, email, uint32_t, is_dispute,
     struct GA_auth_handler**, call, {

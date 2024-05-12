@@ -24,7 +24,6 @@ namespace beast = boost::beast;
 
 namespace green {
 
-
     socks_client::socks_client(asio::io_context& io, boost::beast::tcp_stream& stream)
         : m_resolver(asio::make_strand(io))
         , m_stream(stream)
@@ -230,6 +229,5 @@ namespace green {
     {
         m_promise.set_exception(std::make_exception_ptr(std::runtime_error(what)));
     }
-
 
 } // namespace green

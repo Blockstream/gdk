@@ -25,7 +25,6 @@
 
 namespace green {
 
-
     namespace {
         static void check_hint(const std::string& hint, const char* hint_type)
         {

@@ -7,7 +7,6 @@
 
 namespace green {
 
-
     class amount;
 
     // Add a value to a JSON object if one is not already present under the given key
@@ -21,7 +20,6 @@ namespace green {
         }
         return *p;
     }
-
 
 } // namespace green
 

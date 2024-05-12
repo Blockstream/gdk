@@ -3,7 +3,6 @@
 
 namespace green {
 
-
     io_container::io_container()
         : m_io(std::make_unique<boost::asio::io_context>())
         , m_work_guard(boost::asio::make_work_guard(m_io->get_executor()))

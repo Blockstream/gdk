@@ -43,7 +43,6 @@ using namespace std::literals;
 
 namespace green {
 
-
     namespace {
         static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
         static const std::string USER_AGENT_CAPS_NO_CSV("[v2,sw]");
@@ -3264,6 +3263,5 @@ namespace green {
         locker_t locker(m_mutex);
         m_spv_thread_done = true;
     }
-
 
 } // namespace green

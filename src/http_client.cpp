@@ -17,7 +17,6 @@ using namespace std::literals;
 
 namespace green {
 
-
     namespace {
 
         constexpr uint8_t HTTP_VERSION = 11;
@@ -477,6 +476,5 @@ namespace green {
 #undef ASYNC_WRITE
 #undef ASYNC_RESOLVE
 #undef ASYNC_READ
-
 
 } // namespace green

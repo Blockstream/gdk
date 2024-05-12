@@ -165,6 +165,5 @@ namespace green {
         nlohmann::json m_xpubs_request;
     };
 
-
 } // namespace green
 #endif

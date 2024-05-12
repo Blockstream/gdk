@@ -9,7 +9,6 @@
 
 namespace green {
 
-
     namespace {
         static wally_ext_key_ptr derive(
             const wally_ext_key_ptr& hdkey, uint32_span_t path, uint32_t flags = BIP32_FLAG_KEY_PRIVATE)
@@ -415,6 +414,5 @@ namespace green {
     {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
-
 
 } // namespace green

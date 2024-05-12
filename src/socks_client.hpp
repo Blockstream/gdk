@@ -6,7 +6,6 @@
 
 namespace green {
 
-
     class socks_client final : public std::enable_shared_from_this<socks_client> {
     public:
         explicit socks_client(boost::asio::io_context& io, boost::beast::tcp_stream& stream);

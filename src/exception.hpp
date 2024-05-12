@@ -6,11 +6,10 @@
 #include <utility>
 
 namespace autobahn {
-class call_error;
+    class call_error;
 }
 
 namespace green {
-
 
     class login_error : public std::runtime_error {
     public:

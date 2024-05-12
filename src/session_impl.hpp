@@ -344,7 +344,6 @@ namespace green {
         std::shared_ptr<wamp_transport> m_blobserver;
     };
 
-
 } // namespace green
 
 #endif // #ifndef GDK_SESSION_IMPL_HPP

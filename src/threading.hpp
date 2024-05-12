@@ -6,7 +6,6 @@
 
 namespace green {
 
-
     // Scoped unlocker
     struct unique_unlock {
         explicit unique_unlock(std::unique_lock<std::mutex>& locker)
@@ -37,7 +36,6 @@ namespace green {
 
         std::unique_lock<std::mutex>& m_locker;
     };
-
 
 } // namespace green
 

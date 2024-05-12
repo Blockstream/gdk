@@ -24,7 +24,6 @@
 
 namespace green {
 
-
     ga_rust::ga_rust(network_parameters&& net_params)
         : session_impl(std::move(net_params))
     {
@@ -654,6 +653,5 @@ namespace green {
     {
         return rust_call("get_address_data", details, m_session);
     }
-
 
 } // namespace green

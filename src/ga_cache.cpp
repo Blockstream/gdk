@@ -17,7 +17,6 @@
 
 namespace green {
 
-
     namespace {
 
         // Cache types, each has a different filename for the cache file

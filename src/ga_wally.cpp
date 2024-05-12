@@ -15,7 +15,6 @@
 
 namespace green {
 
-
     std::array<unsigned char, HASH160_LEN> hash160(byte_span_t data)
     {
         std::array<unsigned char, HASH160_LEN> ret;

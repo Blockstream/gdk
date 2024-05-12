@@ -17,10 +17,10 @@
 #include <urc/urc.h>
 #else
 namespace ur {
-class UREncoder {
-};
-class URDecoder {
-};
+    class UREncoder {
+    };
+    class URDecoder {
+    };
 } // namespace ur
 #endif
 
@@ -392,6 +392,5 @@ namespace green {
         return state_type::done;
 #endif
     }
-
 
 } // namespace green

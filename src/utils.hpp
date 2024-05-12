@@ -160,7 +160,6 @@ namespace green {
         return false;
     }
 
-
 } // namespace green
 
 #endif

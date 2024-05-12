@@ -82,7 +82,6 @@ namespace green {
 
 #define GDK_LOG(sev) BOOST_LOG_SEV(::green::gdk_logger::get(), log_level::sev)
 
-
 } // namespace green
 
 #endif

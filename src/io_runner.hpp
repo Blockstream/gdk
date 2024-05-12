@@ -13,7 +13,6 @@
 
 namespace green {
 
-
     class io_container {
         std::unique_ptr<boost::asio::io_context> m_io;
         boost::asio::executor_work_guard<boost::asio::io_context::executor_type> m_work_guard;
@@ -37,7 +36,6 @@ namespace green {
         io_container m_io;
         std::array<std::thread, PoolSize> m_pool;
     };
-
 
 } // namespace green
 //

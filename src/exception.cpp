@@ -48,5 +48,4 @@ namespace green {
         return details;
     }
 
-
 } // namespace green

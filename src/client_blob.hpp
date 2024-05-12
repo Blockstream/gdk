@@ -14,7 +14,6 @@
 
 namespace green {
 
-
     // Client-only data, stored on a server as a server-unreadable blob
     class client_blob final {
     public:
@@ -59,7 +58,6 @@ namespace green {
 
         nlohmann::json m_data;
     };
-
 
 } // namespace green
 

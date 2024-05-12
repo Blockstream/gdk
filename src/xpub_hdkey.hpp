@@ -9,7 +9,6 @@
 
 namespace green {
 
-
     //
     // Derives public keys from an xpub
     //
@@ -212,7 +211,6 @@ namespace green {
 
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) override;
     };
-
 
 } // namespace green
 

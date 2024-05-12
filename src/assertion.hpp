@@ -12,14 +12,14 @@ namespace green {
 #define GDK_RUNTIME_ASSERT_MSG(condition, error_message)                                                               \
     do {                                                                                                               \
         if (!(condition)) {                                                                                            \
-            green::runtime_assert_message(error_message, __FILE_NAME__, __LINE__);                                \
+            green::runtime_assert_message(error_message, __FILE_NAME__, __LINE__);                                     \
         }                                                                                                              \
     } while (false)
 #else
 #define GDK_RUNTIME_ASSERT_MSG(condition, error_message)                                                               \
     do {                                                                                                               \
         if (!(condition)) {                                                                                            \
-            green::runtime_assert_message(error_message, __FILE__, __LINE__);                                     \
+            green::runtime_assert_message(error_message, __FILE__, __LINE__);                                          \
         }                                                                                                              \
     } while (false)
 #endif

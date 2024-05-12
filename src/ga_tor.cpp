@@ -781,5 +781,4 @@ namespace green {
         return m_ctrl.get() ? m_ctrl->wait_for_socks5(timeout, phase_cb) : std::string();
     }
 
-
 } // namespace green

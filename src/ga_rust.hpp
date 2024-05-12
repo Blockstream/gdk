@@ -141,5 +141,4 @@ namespace green {
         void* m_session;
     };
 
-
 } // namespace green

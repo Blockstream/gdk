@@ -50,7 +50,6 @@
 
 namespace green {
 
-
     // from bitcoin core
     namespace {
         // Dummy network to use for computing xpub_hash_id
@@ -776,28 +775,27 @@ namespace green {
         return false;
     }
 
-
 } // namespace green
 
 namespace {
-template <std::size_t N> int generate_mnemonic(char** output)
-{
-    try {
-        GDK_RUNTIME_ASSERT(output);
-        auto entropy = green::get_random_bytes<N>();
-        GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
-        if (::bip39_mnemonic_validate(nullptr, *output) != GA_OK) {
-            wally_free_string(*output);
-            *output = nullptr;
-            // This should only be possible with bad hardware/cosmic rays
-            GDK_RUNTIME_ASSERT_MSG(false, "Mnemonic creation failed!");
+    template <std::size_t N> int generate_mnemonic(char** output)
+    {
+        try {
+            GDK_RUNTIME_ASSERT(output);
+            auto entropy = green::get_random_bytes<N>();
+            GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
+            if (::bip39_mnemonic_validate(nullptr, *output) != GA_OK) {
+                wally_free_string(*output);
+                *output = nullptr;
+                // This should only be possible with bad hardware/cosmic rays
+                GDK_RUNTIME_ASSERT_MSG(false, "Mnemonic creation failed!");
+            }
+            wally_bzero(entropy.data(), entropy.size());
+            return GA_OK;
+        } catch (const std::exception& e) {
+            return GA_ERROR;
         }
-        wally_bzero(entropy.data(), entropy.size());
-        return GA_OK;
-    } catch (const std::exception& e) {
-        return GA_ERROR;
     }
-}
 } // namespace
 
 extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)

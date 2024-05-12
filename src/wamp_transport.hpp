@@ -151,7 +151,6 @@ namespace green {
         std::vector<autobahn::wamp_subscription> m_subscriptions;
     };
 
-
 } // namespace green
 
 #endif

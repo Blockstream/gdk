@@ -65,7 +65,6 @@ namespace green {
         bool m_is_liquid;
     };
 
-
 } // namespace green
 
 #endif
