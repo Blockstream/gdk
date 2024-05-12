@@ -11,7 +11,7 @@
 #include "gdk.h"
 
 namespace green {
-namespace sdk {
+
 
     class network_parameters final {
     public:
@@ -74,7 +74,7 @@ namespace sdk {
     private:
         nlohmann::json m_details;
     };
-} // namespace sdk
+
 } // namespace green
 
 #endif

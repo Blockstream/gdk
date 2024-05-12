@@ -3,7 +3,7 @@
 #include "ga_strings.hpp"
 
 namespace green {
-namespace sdk {
+
     namespace res {
 
         const std::string id_1030_minutes{ "id_1030_minutes" }; // ~ 10-30 Minutes
@@ -2536,5 +2536,5 @@ namespace sdk {
         }; // You\'ve entered an invalid PIN too many times.
 
     } // namespace res
-} // namespace sdk
+
 } // namespace green

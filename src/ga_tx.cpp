@@ -22,7 +22,7 @@
 #include <wally_coinselection.h>
 
 namespace green {
-namespace sdk {
+
     namespace {
         static const std::string UTXO_SEL_DEFAULT("default"); // Use the default utxo selection strategy
         static const std::string UTXO_SEL_MANUAL("manual"); // Use manual utxo selection
@@ -1559,5 +1559,5 @@ namespace sdk {
 
         return result;
     }
-} // namespace sdk
+
 } // namespace green

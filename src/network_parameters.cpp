@@ -644,7 +644,7 @@ static std::mutex registered_networks_mutex;
 } // namespace
 
 namespace green {
-namespace sdk {
+
     namespace {
         static std::string get_url(
             const nlohmann::json& details, const char* url_key, const char* onion_key, bool use_tor)
@@ -855,5 +855,5 @@ namespace sdk {
     {
         return get_url(m_details, "price_url", "price_onion_url", use_tor());
     }
-} // namespace sdk
+
 } // namespace green

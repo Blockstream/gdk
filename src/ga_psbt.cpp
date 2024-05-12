@@ -13,7 +13,7 @@
 #include <wally_psbt_members.h>
 
 namespace green {
-namespace sdk {
+
     namespace {
         // PSBT input/output field constants from
         // https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki
@@ -564,5 +564,5 @@ namespace sdk {
         }
     }
 
-} // namespace sdk
+
 } // namespace green

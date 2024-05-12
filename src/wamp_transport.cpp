@@ -28,7 +28,7 @@ namespace asio = boost::asio;
 namespace wlog = websocketpp::log;
 
 namespace green {
-namespace sdk {
+
     struct websocket_rng_type {
         uint32_t operator()() const
         {
@@ -712,5 +712,5 @@ namespace sdk {
         m_subscriptions.emplace_back(sub);
     }
 
-} // namespace sdk
+
 } // namespace green

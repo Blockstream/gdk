@@ -8,7 +8,7 @@
 #include <nlohmann/json_fwd.hpp>
 
 namespace green {
-namespace sdk {
+
 
     class amount final {
     public:
@@ -216,7 +216,7 @@ namespace sdk {
     }
 
     inline std::string to_string(const amount& x) { return std::to_string(x.value()); }
-} // namespace sdk
+
 } // namespace green
 
 #endif

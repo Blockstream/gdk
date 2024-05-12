@@ -9,7 +9,7 @@
 #include <vector>
 
 namespace green {
-namespace sdk {
+
     class amount;
     using json_array_t = std::vector<nlohmann::json>;
     using namespace std::string_view_literals;
@@ -64,6 +64,6 @@ namespace sdk {
     // Rename from_key to to_key in the given JSON object
     bool j_rename(nlohmann::json& data, std::string_view from_key, std::string_view to_key);
 
-} // namespace sdk
+
 } // namespace green
 #endif

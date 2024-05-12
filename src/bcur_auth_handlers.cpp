@@ -25,7 +25,7 @@ class URDecoder {
 #endif
 
 namespace green {
-namespace sdk {
+
 #ifdef USE_REAL_BCUR
     namespace {
         // FIXME: this whole set of functions inside this anonymous namespace should be moved to ur-c library
@@ -245,7 +245,7 @@ namespace sdk {
             };
         }
 
-        nlohmann::json parse_jade_rpc(const green::sdk::byte_span_t raw)
+        nlohmann::json parse_jade_rpc(const green::byte_span_t raw)
         {
             char* raw_json = nullptr;
             int result = urc_jade_rpc_parse(raw.data(), raw.size(), &raw_json);
@@ -393,5 +393,5 @@ namespace sdk {
 #endif
     }
 
-} // namespace sdk
+
 } // namespace green

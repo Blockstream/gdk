@@ -17,7 +17,7 @@
 #include <thread>
 
 namespace green {
-namespace sdk {
+
     namespace log_level = boost::log::trivial;
 
     using gdk_logger_t = boost::log::sources::severity_logger_mt<log_level::severity_level>;
@@ -80,9 +80,9 @@ namespace sdk {
         return gdk_logger_t{};
     }
 
-#define GDK_LOG(sev) BOOST_LOG_SEV(::green::sdk::gdk_logger::get(), log_level::sev)
+#define GDK_LOG(sev) BOOST_LOG_SEV(::green::gdk_logger::get(), log_level::sev)
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

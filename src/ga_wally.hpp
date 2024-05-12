@@ -30,7 +30,7 @@ template <> struct default_delete<struct wally_tx_output> {
 } // namespace std
 
 namespace green {
-namespace sdk {
+
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
 
     using byte_span_t = gsl::span<const unsigned char>;
@@ -324,7 +324,6 @@ namespace sdk {
 
     uint64_t tx_confidential_value_to_satoshi(byte_span_t ct_value);
 
-} /* namespace sdk */
-} /* namespace green */
+} // namespace green
 
 #endif /* GDK_CORE_WALLY_HPP */

@@ -42,7 +42,7 @@
 using namespace std::literals;
 
 namespace green {
-namespace sdk {
+
 
     namespace {
         static const std::string USER_AGENT_CAPS("[v2,sw,csv,csv_opt]");
@@ -3265,5 +3265,5 @@ namespace sdk {
         m_spv_thread_done = true;
     }
 
-} // namespace sdk
+
 } // namespace green

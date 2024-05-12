@@ -13,7 +13,7 @@
 #include "gsl_wrapper.hpp"
 
 namespace green {
-namespace sdk {
+
 
     class http_client {
     public:
@@ -112,7 +112,7 @@ namespace sdk {
                                   : std::shared_ptr<http_client>(new tcp_http_client(io));
     }
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

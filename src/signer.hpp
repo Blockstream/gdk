@@ -8,7 +8,7 @@
 #include <optional>
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
 
     // Enum to represent the "level" of support for Liquid on an HW
@@ -152,7 +152,7 @@ namespace sdk {
         cache_t m_cached_bip32_xpubs;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

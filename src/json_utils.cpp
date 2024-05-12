@@ -26,7 +26,7 @@ static auto get_or_throw(const nlohmann::json& src, std::string_view key)
     auto it = find(src, key);
     if (it == src.end()) {
         std::string error_message = std::string("key ") + std::string(key) + " not found";
-        throw ::green::sdk::user_error(error_message);
+        throw ::green::user_error(error_message);
     }
     return it;
 }
@@ -46,7 +46,7 @@ template <typename T> static T get_or_default(const nlohmann::json& src, std::st
 } // namespace
 
 namespace green {
-namespace sdk {
+
 
     const std::string& j_strref(const nlohmann::json& src, std::string_view key)
     {
@@ -210,5 +210,5 @@ namespace sdk {
         data.erase(p);
         return true;
     }
-} // namespace sdk
+
 } // namespace green

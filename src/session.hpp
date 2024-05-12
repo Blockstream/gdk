@@ -11,7 +11,7 @@
 #include "ga_wally.hpp"
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
     class session_impl;
     struct tor_controller;
@@ -93,7 +93,7 @@ namespace sdk {
         GA_notification_handler m_notification_handler;
         void* m_notification_context;
     };
-} // namespace sdk
+
 } // namespace green
 
 #endif

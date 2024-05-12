@@ -13,7 +13,7 @@ struct wally_psbt_input;
 struct wally_psbt_output;
 
 namespace green {
-namespace sdk {
+
     class session_impl;
     class Tx;
 
@@ -65,7 +65,7 @@ namespace sdk {
         bool m_is_liquid;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

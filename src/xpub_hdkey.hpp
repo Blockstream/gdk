@@ -8,7 +8,7 @@
 #include "network_parameters.hpp"
 
 namespace green {
-namespace sdk {
+
 
     //
     // Derives public keys from an xpub
@@ -213,7 +213,7 @@ namespace sdk {
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) override;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

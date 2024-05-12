@@ -9,7 +9,7 @@
 #include <thread>
 
 namespace green {
-namespace sdk {
+
     static constexpr uint32_t DEFAULT_TOR_SOCKS_WAIT = 120; // maximum timeout for the tor socks to get ready
 
     struct tor_bootstrap_phase {
@@ -49,7 +49,7 @@ namespace sdk {
         std::string m_socks5_port;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

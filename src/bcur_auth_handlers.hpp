@@ -10,7 +10,7 @@ class URDecoder;
 } // namespace ur
 
 namespace green {
-namespace sdk {
+
     class bcur_encoder_call : public auth_handler_impl {
     public:
         explicit bcur_encoder_call(session& session, nlohmann::json details);
@@ -32,6 +32,6 @@ namespace sdk {
         nlohmann::json m_details;
         std::unique_ptr<ur::URDecoder> m_decoder;
     };
-} // namespace sdk
+
 } // namespace green
 #endif

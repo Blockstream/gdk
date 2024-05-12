@@ -1,5 +1,5 @@
 module green [extern_c] {
-    module sdk {
+    module gdk {
         header "gdk.h"
         export *
     }

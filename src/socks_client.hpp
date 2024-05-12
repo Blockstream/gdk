@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace green {
-namespace sdk {
+
 
     class socks_client final : public std::enable_shared_from_this<socks_client> {
     public:
@@ -60,7 +60,7 @@ namespace sdk {
 
         std::promise<void> m_promise;
     };
-} // namespace sdk
+
 } // namespace green
 
 #endif

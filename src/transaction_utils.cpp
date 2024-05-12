@@ -16,7 +16,7 @@
 #include <cctype>
 
 namespace green {
-namespace sdk {
+
     namespace {
         // Script types returned by the Green backend server
         constexpr uint32_t ga_p2sh_fortified_out = 10;
@@ -1038,5 +1038,5 @@ namespace sdk {
         }
         return false;
     }
-} // namespace sdk
+
 } // namespace green

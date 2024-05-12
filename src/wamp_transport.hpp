@@ -13,7 +13,7 @@
 #include "threading.hpp"
 
 namespace green {
-namespace sdk {
+
     class exponential_backoff;
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
@@ -151,7 +151,7 @@ namespace sdk {
         std::vector<autobahn::wamp_subscription> m_subscriptions;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

@@ -5,7 +5,7 @@
 #include "auth_handler.hpp"
 
 namespace green {
-namespace sdk {
+
     class Psbt;
 
     class register_call : public auth_handler_impl {
@@ -401,6 +401,6 @@ namespace sdk {
 
         nlohmann::json m_details;
     };
-} // namespace sdk
+
 } // namespace green
 #endif

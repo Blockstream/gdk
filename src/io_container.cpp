@@ -2,7 +2,7 @@
 #include "io_runner.hpp"
 
 namespace green {
-namespace sdk {
+
 
     io_container::io_container()
         : m_io(std::make_unique<boost::asio::io_context>())
@@ -28,5 +28,5 @@ namespace sdk {
             },
             "io_context pool");
     }
-} // namespace sdk
+
 } // namespace green

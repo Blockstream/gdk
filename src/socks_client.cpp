@@ -23,7 +23,7 @@ namespace asio = boost::asio;
 namespace beast = boost::beast;
 
 namespace green {
-namespace sdk {
+
 
     socks_client::socks_client(asio::io_context& io, boost::beast::tcp_stream& stream)
         : m_resolver(asio::make_strand(io))
@@ -231,5 +231,5 @@ namespace sdk {
         m_promise.set_exception(std::make_exception_ptr(std::runtime_error(what)));
     }
 
-} // namespace sdk
+
 } // namespace green

@@ -8,7 +8,7 @@
 #include <utility>
 
 namespace green {
-namespace sdk {
+
     //
     // Validate
     //
@@ -63,5 +63,5 @@ namespace sdk {
             m_result.emplace("network", std::move(m_details["network"]));
         }
     }
-} // namespace sdk
+
 } // namespace green

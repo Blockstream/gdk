@@ -16,7 +16,7 @@
 #include "utils.hpp"
 
 namespace green {
-namespace sdk {
+
 
     namespace {
 
@@ -896,5 +896,5 @@ namespace sdk {
         bind_int(m_stmt_scriptpubkey_latest_search, 1, subaccount);
         return get_scriptpubkey_pointer(m_stmt_scriptpubkey_latest_search);
     }
-} // namespace sdk
+
 } // namespace green

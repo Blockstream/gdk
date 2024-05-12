@@ -13,7 +13,7 @@
 #include "assertion.hpp"
 
 namespace green {
-namespace sdk {
+
     // BTC amounts have 8 DP
     using btc_type = boost::multiprecision::number<boost::multiprecision::cpp_dec_float<8>>;
     // Fiat amounts are decimal values with 2 DP
@@ -174,5 +174,5 @@ namespace sdk {
         return static_cast<signed_value_type>(m_value);
     }
 
-} // namespace sdk
+
 } // namespace green

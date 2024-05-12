@@ -17,7 +17,7 @@
 #include "xpub_hdkey.hpp"
 
 namespace green {
-namespace sdk {
+
     namespace {
         static const std::string LIQUIDEX_STR("liquidex_v1");
         static constexpr uint32_t LIQUIDEX_VERSION = 1;
@@ -346,5 +346,5 @@ namespace sdk {
         const auto& proposal = m_details.at(LIQUIDEX_STR).at("proposal");
         liquidex_validate_proposal(proposal);
     }
-} // namespace sdk
+
 } // namespace green

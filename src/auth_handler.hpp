@@ -8,7 +8,7 @@
 #include <vector>
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
     class session;
     class session_impl;
@@ -165,6 +165,6 @@ namespace sdk {
         nlohmann::json m_xpubs_request;
     };
 
-} // namespace sdk
+
 } // namespace green
 #endif

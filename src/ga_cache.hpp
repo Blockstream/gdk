@@ -11,7 +11,7 @@ struct sqlite3;
 struct sqlite3_stmt;
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
     class signer;
 
@@ -105,7 +105,7 @@ namespace sdk {
         sqlite3_stmt_ptr m_stmt_scriptpubkey_latest_search;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

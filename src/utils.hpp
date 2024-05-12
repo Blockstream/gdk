@@ -12,7 +12,7 @@
 #include "logging.hpp"
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
 
     void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz);
@@ -160,7 +160,7 @@ namespace sdk {
         return false;
     }
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

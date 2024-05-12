@@ -8,7 +8,7 @@
 #include "utils.hpp"
 
 namespace green {
-namespace sdk {
+
 
     namespace {
         static const std::string ZERO_HMAC_BASE64 = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -294,5 +294,5 @@ namespace sdk {
         auto hmac{ compute_hmac(hmac_key, encrypted) };
         return std::make_pair(std::move(encrypted), std::move(hmac));
     }
-} // namespace sdk
+
 } // namespace green

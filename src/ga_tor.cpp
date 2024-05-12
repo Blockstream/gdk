@@ -40,7 +40,7 @@ extern "C" {
 using namespace std::chrono_literals;
 
 namespace green {
-namespace sdk {
+
     std::mutex tor_controller::s_inst_mutex;
     std::weak_ptr<tor_controller> tor_controller::s_inst;
 
@@ -781,5 +781,5 @@ namespace sdk {
         return m_ctrl.get() ? m_ctrl->wait_for_socks5(timeout, phase_cb) : std::string();
     }
 
-} // namespace sdk
+
 } // namespace green

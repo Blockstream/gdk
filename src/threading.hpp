@@ -5,7 +5,7 @@
 #include <mutex>
 
 namespace green {
-namespace sdk {
+
 
     // Scoped unlocker
     struct unique_unlock {
@@ -38,7 +38,7 @@ namespace sdk {
         std::unique_lock<std::mutex>& m_locker;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

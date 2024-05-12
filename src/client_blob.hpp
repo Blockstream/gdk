@@ -13,7 +13,7 @@
 #include <nlohmann/json.hpp>
 
 namespace green {
-namespace sdk {
+
 
     // Client-only data, stored on a server as a server-unreadable blob
     class client_blob final {
@@ -60,7 +60,7 @@ namespace sdk {
         nlohmann::json m_data;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

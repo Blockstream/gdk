@@ -13,7 +13,7 @@
 struct wally_tx_witness_stack;
 
 namespace green {
-namespace sdk {
+
     class ga_pubkeys;
     class session_impl;
     class user_pubkeys;
@@ -108,7 +108,7 @@ namespace sdk {
 
     // Returns true if a tx has AMP inputs
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
-} // namespace sdk
+
 } // namespace green
 
 #endif

@@ -24,7 +24,7 @@
 #include "xpub_hdkey.hpp"
 
 namespace green {
-namespace sdk {
+
 
     namespace {
         static void check_hint(const std::string& hint, const char* hint_type)
@@ -991,5 +991,5 @@ namespace sdk {
         // Only implemented for multisig
         throw std::runtime_error("service_sign_transaction not implemented");
     }
-} // namespace sdk
+
 } // namespace green

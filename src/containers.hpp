@@ -6,7 +6,7 @@
 #include <string>
 
 namespace green {
-namespace sdk {
+
 
     class amount;
 
@@ -22,7 +22,7 @@ namespace sdk {
         return *p;
     }
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

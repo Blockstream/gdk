@@ -1,6 +1,6 @@
 #include "src/utils.hpp"
 
-using namespace green::sdk;
+using namespace green;
 
 // Verify AES GCM encryption/decryption
 

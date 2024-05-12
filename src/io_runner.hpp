@@ -12,7 +12,7 @@
 #include "utils.hpp"
 
 namespace green {
-namespace sdk {
+
 
     class io_container {
         std::unique_ptr<boost::asio::io_context> m_io;
@@ -38,7 +38,7 @@ namespace sdk {
         std::array<std::thread, PoolSize> m_pool;
     };
 
-} // namespace sdk
+
 } // namespace green
 //
 #endif

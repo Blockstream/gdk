@@ -7,7 +7,7 @@
 #include <optional>
 
 namespace green {
-namespace sdk {
+
     class network_parameters;
     class session_impl;
 
@@ -104,7 +104,7 @@ namespace sdk {
 
     void blind_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

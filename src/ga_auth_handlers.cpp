@@ -21,7 +21,7 @@
 #include "xpub_hdkey.hpp"
 
 namespace green {
-namespace sdk {
+
     namespace {
         static const std::string CHALLENGE_PREFIX("greenaddress.it      login ");
         // Addresses uploaded after creation of 2of2_no_recovery subaccounts.
@@ -2304,5 +2304,5 @@ namespace sdk {
         m_result = m_session->decrypt_with_pin(m_details);
         return state_type::done;
     }
-} // namespace sdk
+
 } // namespace green

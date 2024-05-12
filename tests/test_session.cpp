@@ -26,7 +26,7 @@ static uint64_t envnum(const char* name, const uint64_t default_)
 }
 #endif
 
-static nlohmann::json process_auth(sdk::auth_handler& handler)
+static nlohmann::json process_auth(auth_handler& handler)
 {
     while (true) {
         const auto status_json = handler.get_status();
@@ -55,12 +55,12 @@ int main()
     nlohmann::json init_config;
     init_config["datadir"] = ".";
     init_config["log_level"] = "info";
-    sdk::gdk_init(init_config);
+    gdk_init(init_config);
 
     nlohmann::json net_params;
     net_params["name"] = envstr("GA_NETWORK", "localtest");
 
-    sdk::session session;
+    session session;
     session.connect(net_params);
 
     // Login
@@ -70,19 +70,19 @@ int main()
         return 0; // Do not fail
     }
     const nlohmann::json details({ { "mnemonic", mnemonic } });
-    sdk::auto_auth_handler login_call(new sdk::login_user_call(session, nlohmann::json(), details));
+    auto_auth_handler login_call(new login_user_call(session, nlohmann::json(), details));
     std::cout << process_auth(login_call) << std::endl;
 
 #if 1
     // Get subaccounts/ Get subaccount
     std::vector<uint32_t> subaccounts;
     {
-        std::unique_ptr<sdk::auth_handler> call{ new sdk::get_subaccounts_call(session, nlohmann::json()) };
+        std::unique_ptr<auth_handler> call{ new get_subaccounts_call(session, nlohmann::json()) };
         const auto result = process_auth(*call);
         std::cout << result << std::endl;
         for (const auto& sa : result["subaccounts"]) {
             subaccounts.push_back(sa["pointer"]);
-            std::unique_ptr<sdk::auth_handler> call{ new sdk::get_subaccount_call(session, sa["pointer"]) };
+            std::unique_ptr<auth_handler> call{ new get_subaccount_call(session, sa["pointer"]) };
             std::cout << process_auth(*call) << std::endl;
         }
     }
@@ -93,13 +93,13 @@ int main()
 
             // Balance
             {
-                sdk::auto_auth_handler call(new sdk::get_balance_call(session, utxo_details));
+                auto_auth_handler call(new get_balance_call(session, utxo_details));
                 std::cout << process_auth(call) << std::endl;
             }
 
             // UTXOs
             {
-                sdk::auto_auth_handler call(new sdk::get_unspent_outputs_call(session, utxo_details));
+                auto_auth_handler call(new get_unspent_outputs_call(session, utxo_details));
                 std::cout << process_auth(call) << std::endl;
             }
         }
@@ -107,7 +107,7 @@ int main()
         // Transactions
         {
             const nlohmann::json tx_details({ { "subaccount", subaccount }, { "first", 0 }, { "count", 99999 } });
-            sdk::auto_auth_handler call(new sdk::get_transactions_call(session, tx_details));
+            auto_auth_handler call(new get_transactions_call(session, tx_details));
             std::cout << process_auth(call) << std::endl;
         }
     }
@@ -122,7 +122,7 @@ int main()
             std::this_thread::yield();
             std::this_thread::sleep_for(1ms);
             try {
-                sdk::auto_auth_handler call(new sdk::get_transactions_call(session, tx_details));
+                auto_auth_handler call(new get_transactions_call(session, tx_details));
                 process_auth(call);
             } catch (const std::exception& ex) {
                 // std::cout << "get_transactions_call exception: " << ex.what() << std::endl;
@@ -143,10 +143,10 @@ int main()
     bool exception_caught = false;
     {
         const nlohmann::json tx_details({ { "subaccount", 0 }, { "first", 0 }, { "count", 99999 } });
-        auto tx_call = new sdk::get_transactions_call(session, tx_details);
+        auto tx_call = new get_transactions_call(session, tx_details);
         session.reconnect_hint(nlohmann::json({ { "hint", "disconnect" } }));
         try {
-            sdk::auto_auth_handler call(tx_call);
+            auto_auth_handler call(tx_call);
             process_auth(call);
         } catch (const std::exception&) {
             exception_caught = true;

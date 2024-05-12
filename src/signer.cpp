@@ -8,7 +8,7 @@
 #include "utils.hpp"
 
 namespace green {
-namespace sdk {
+
 
     namespace {
         static wally_ext_key_ptr derive(
@@ -416,5 +416,5 @@ namespace sdk {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
 
-} // namespace sdk
+
 } // namespace green

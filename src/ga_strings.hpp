@@ -7,7 +7,7 @@
 #include <string>
 
 namespace green {
-namespace sdk {
+
     namespace res {
 
         extern const std::string id_1030_minutes;
@@ -1413,7 +1413,7 @@ namespace sdk {
         extern const std::string id_youve_entered_an_invalid_pin;
 
     } // namespace res
-} // namespace sdk
+
 } // namespace green
 
 #endif

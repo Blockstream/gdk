@@ -5,7 +5,7 @@
 #include "auth_handler.hpp"
 
 namespace green {
-namespace sdk {
+
     class Tx;
 
     class create_swap_transaction_call : public auth_handler_impl {
@@ -39,6 +39,6 @@ namespace sdk {
         nlohmann::json m_create_details;
         std::unique_ptr<Tx> m_tx;
     };
-} // namespace sdk
+
 } // namespace green
 #endif // GDK_SWAP_AUTH_HANDLERS_HPP

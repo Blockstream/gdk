@@ -14,7 +14,7 @@
 #include "session_impl.hpp"
 
 namespace green {
-namespace sdk {
+
     struct cache;
     class ga_user_pubkeys;
 
@@ -268,7 +268,7 @@ namespace sdk {
         std::set<std::string> m_spv_verified_txs;
     };
 
-} // namespace sdk
+
 } // namespace green
 
 #endif

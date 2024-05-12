@@ -11,7 +11,7 @@
 #include "signer.hpp"
 
 namespace green {
-namespace sdk {
+
     namespace {
         // Server gives 3 attempts to get the twofactor code right before it's invalidated
         static const uint32_t TWO_FACTOR_ATTEMPTS = 3;
@@ -573,7 +573,7 @@ namespace sdk {
         }
         handler->resolve_hw_reply(std::move(result));
         return true;
-    } // namespace sdk
+    }
 
     nlohmann::json auto_auth_handler::get_xpubs(
         const std::shared_ptr<signer>& signer, const nlohmann::json::array_t& paths) const
@@ -587,5 +587,5 @@ namespace sdk {
         return nlohmann::json({ { "xpubs", std::move(xpubs) } });
     }
 
-} // namespace sdk
+
 } // namespace green

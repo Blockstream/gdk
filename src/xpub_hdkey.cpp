@@ -5,7 +5,7 @@
 #include "xpub_hdkey.hpp"
 
 namespace green {
-namespace sdk {
+
     namespace {
         static const uint32_t GAIT_GENERATION_PATH = harden(0x4741); // 'GA'
         static const unsigned char GAIT_GENERATION_NONCE[30] = { 'G', 'r', 'e', 'e', 'n', 'A', 'd', 'd', 'r', 'e', 's',
@@ -245,5 +245,5 @@ namespace sdk {
         return p->second;
     }
 
-} // namespace sdk
+
 } // namespace green

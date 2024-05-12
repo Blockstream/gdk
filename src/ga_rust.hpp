@@ -3,7 +3,7 @@
 #include "session_impl.hpp"
 
 namespace green {
-namespace sdk {
+
     class ga_rust final : public session_impl {
     public:
         explicit ga_rust(network_parameters&& net_params);
@@ -141,5 +141,5 @@ namespace sdk {
         void* m_session;
     };
 
-} // namespace sdk
+
 } // namespace green

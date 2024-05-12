@@ -5,7 +5,7 @@
 #include "logging.hpp"
 
 namespace green {
-namespace sdk {
+
     void runtime_assert_message(const std::string& error_message, const char* file, unsigned int line)
     {
 #ifndef __FILE_NAME__
@@ -19,5 +19,5 @@ namespace sdk {
         GDK_LOG(error) << msg;
         throw assertion_error(msg);
     }
-} // namespace sdk
+
 } // namespace green

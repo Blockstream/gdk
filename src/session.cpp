@@ -26,7 +26,7 @@
 using namespace std::literals;
 
 namespace green {
-namespace sdk {
+
 
     namespace {
         static std::atomic_bool init_done{ false };
@@ -460,5 +460,5 @@ namespace sdk {
         return m_impl;
     }
 
-} // namespace sdk
+
 } // namespace green

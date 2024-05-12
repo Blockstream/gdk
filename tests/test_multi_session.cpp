@@ -12,7 +12,7 @@
 
 using namespace green;
 
-static nlohmann::json process_auth(sdk::auth_handler& handler)
+static nlohmann::json process_auth(auth_handler& handler)
 {
     while (true) {
         const auto status_json = handler.get_status();
@@ -40,9 +40,9 @@ static void test_two_sessions(nlohmann::json net_params)
     // NOTE: this isn't a supported operation, both sessions must have
     //       distinct data directories otherwise they may corrupt each
     //       others caches.
-    green::sdk::session session;
+    green::session session;
     session.connect(net_params);
-    green::sdk::session session2;
+    green::session session2;
     session2.connect(net_params);
 }
 
@@ -54,14 +54,14 @@ static void test_async_disconnect(nlohmann::json net_params)
     const auto mnemonic = std::getenv("GA_MNEMONIC");
 
     for (size_t i = 0; i < 1; ++i) {
-        sdk::session session;
+        session session;
 
         // The delay to use is random in order to provoke cancellation
         // to happen at various points in the connection logic. Increase
         // the number of loop iterations to test exhaustively against a
         // local server.
         uint32_t delay;
-        sdk::get_random_bytes(sizeof(delay), &delay, sizeof(delay));
+        get_random_bytes(sizeof(delay), &delay, sizeof(delay));
         const auto delay_ms = std::chrono::milliseconds(delay % 100);
 
         // First thread connects in the background
@@ -109,12 +109,12 @@ static void test_async_disconnect(nlohmann::json net_params)
         {
             // Log in the session now that it has reconnected
             const nlohmann::json details({ { "mnemonic", mnemonic } });
-            sdk::auto_auth_handler login_call(new sdk::login_user_call(session, nlohmann::json(), details));
+            auto_auth_handler login_call(new login_user_call(session, nlohmann::json(), details));
             std::cout << process_auth(login_call) << std::endl;
         }
 
         // Verify that the session works to call server methods on
-        std::unique_ptr<sdk::auth_handler> call{ new sdk::get_subaccounts_call(session, nlohmann::json()) };
+        std::unique_ptr<auth_handler> call{ new get_subaccounts_call(session, nlohmann::json()) };
         std::cout << process_auth(*call) << std::endl;
 
         // session dtor fires here and disconnects/destroys the session
@@ -126,7 +126,7 @@ int main()
     nlohmann::json init_config;
     init_config["datadir"] = ".";
     init_config["log_level"] = "info";
-    sdk::gdk_init(init_config);
+    gdk_init(init_config);
 
     nlohmann::json net_params;
     net_params["use_tor"] = false; // Set to true to test tor

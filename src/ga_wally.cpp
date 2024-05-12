@@ -14,7 +14,7 @@
     } while (false)
 
 namespace green {
-namespace sdk {
+
 
     std::array<unsigned char, HASH160_LEN> hash160(byte_span_t data)
     {
@@ -915,5 +915,4 @@ namespace sdk {
         return make_string(s);
     }
 
-} /* namespace sdk */
-} /* namespace green */
+} // namespace green
