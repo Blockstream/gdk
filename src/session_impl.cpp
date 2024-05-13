@@ -85,7 +85,7 @@ namespace green {
         }
         m_wamp_connections.reserve(2u);
         if (!m_net_params.get_blob_server_url().empty()) {
-            m_blobserver = std::make_unique<wamp_transport>(
+            m_blobserver = std::make_shared<wamp_transport>(
                 m_net_params, *m_strand,
                 [](nlohmann::json details, bool) { GDK_LOG(info) << "blob_server notification: " << details.dump(); },
                 "blob_server");
