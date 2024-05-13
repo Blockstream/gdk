@@ -525,7 +525,13 @@ namespace green {
         auto last_handled_failure_count = m_failure_count.load();
         exponential_backoff backoff;
 
-        GDK_LOG(info) << "net: thread started for gdk version " << GDK_COMMIT;
+        const std::string net_prefix = "net: " + m_server_prefix + " ";
+        const auto dead_transport = net_prefix + "dead transport";
+        const auto ping_failed = net_prefix + "ping failed";
+        const auto unhandled_failure = net_prefix + "unhandled failure detected";
+        const auto connection_successful = net_prefix + "connection successful";
+
+        GDK_LOG(info) << net_prefix << "thread started for gdk version " << GDK_COMMIT;
 
         for (;;) {
             decltype(m_transport) t;
@@ -539,7 +545,7 @@ namespace green {
             const bool need_to_ping = !m_proxy.empty();
 
             if (desired_state != state_t::exited && last_handled_failure_count != failure_count) {
-                GDK_LOG(info) << "net: unhandled failure detected";
+                GDK_LOG(info) << unhandled_failure;
                 desired_state = state_t::disconnected;
             } else if (state == desired_state) {
                 // We are already in the desired state. Wait until something changes
@@ -547,11 +553,11 @@ namespace green {
                     if (!m_transport->is_connected()) {
                         // The transport has been closed or failed. Mark the
                         // error and loop again to reconnect if needed.
-                        notify_failure(locker, "net: detected dead transport", false);
+                        notify_failure(locker, dead_transport, false);
                         continue;
                     } else if (need_to_ping && is_elapsed(m_last_ping_ts, DEFAULT_PING)) {
                         if (!connection_ping_ok(m_transport, is_tls)) {
-                            notify_failure(locker, "net: sending ping failed", false);
+                            notify_failure(locker, ping_failed, false);
                             continue;
                         }
                         m_last_ping_ts = std::chrono::system_clock::now();
@@ -563,7 +569,7 @@ namespace green {
                 continue;
             }
 
-            GDK_LOG(info) << "net: desired " << state_str(desired_state) << " actual " << state_str(state);
+            GDK_LOG(info) << net_prefix << "desired " << state_str(desired_state) << " actual " << state_str(state);
 
             if (desired_state == state_t::exited || desired_state == state_t::disconnected) {
                 // We want the connection closed
@@ -573,7 +579,7 @@ namespace green {
                     m_subscriptions.swap(subscriptions);
 
                     unique_unlock unlocker(locker);
-                    GDK_LOG(info) << "net: disconnecting";
+                    GDK_LOG(info) << net_prefix << "disconnecting";
                     handle_disconnect(executor, t, s);
                 }
 
@@ -599,7 +605,8 @@ namespace green {
                 const std::string proxy = m_proxy;
                 locker.unlock();
 
-                GDK_LOG(info) << "net: connect to " << m_server << (proxy.empty() ? "" : std::string(" via ") + proxy);
+                GDK_LOG(info) << net_prefix << "connect to " << m_server
+                              << (proxy.empty() ? "" : std::string(" via ") + proxy);
 
                 if (is_tls) {
                     t = std::make_shared<transport_tls>(*m_client_tls, m_server, proxy, is_debug);
@@ -634,7 +641,7 @@ namespace green {
                     continue;
                 }
 
-                GDK_LOG(info) << "net: connection successful";
+                GDK_LOG(info) << connection_successful;
                 backoff.reset(); // Start our backoff sequence again when we reconnect
                 locker.lock();
                 m_session.swap(s);
