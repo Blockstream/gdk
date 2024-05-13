@@ -103,7 +103,7 @@ namespace green {
                     m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
             }
             // Load any cached blob data
-            get_cached_local_client_blob(std::string());
+            get_cached_local_client_blob(locker, std::string());
             const bool had_cached_blob = !m_blob_hmac.empty();
             // Load the latest blob from the server. If the server blob is
             // newer, this updates our locally cached blob data to it
@@ -159,7 +159,7 @@ namespace green {
         }
     }
 
-    void ga_rust::get_cached_local_client_blob(const std::string& /*server_hmac*/)
+    void ga_rust::get_cached_local_client_blob(session_impl::locker_t& locker, const std::string& /*server_hmac*/)
     {
         // Load our client blob from from the cache if we have one
         if (!m_blob_hmac.empty()) {
