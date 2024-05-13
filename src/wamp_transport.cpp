@@ -265,46 +265,36 @@ namespace green {
         }
     } // namespace
 
-    class exponential_backoff {
+    class connection_backoff {
     public:
-        explicit exponential_backoff()
-            : m_limit(300s)
+        explicit connection_backoff()
+            : m_num_retries(0)
         {
-            reset();
         }
 
-        std::chrono::seconds get_backoff()
+        std::chrono::milliseconds get_next_backoff_time()
         {
-            if (m_n == 0) {
-                return 1s;
-            }
-            m_elapsed += m_waiting;
-            const auto v
-                = std::min(static_cast<uint32_t>(m_limit.count()), uint32_t{ 1 } << std::min(m_n, uint32_t{ 31 }));
-            std::random_device rd;
-            std::uniform_int_distribution<uint32_t> d(v / 2, v);
-            m_waiting = std::chrono::seconds(d(rd));
-            return m_waiting;
+            const auto& item = m_num_retries >= m_delays.size() ? m_delays.back() : m_delays[m_num_retries];
+            const auto jitter = item.second ? get_uniform_uint32_t(item.second * 1000) : 0;
+            ++m_num_retries; // Next call will fetch the next backoff time
+            return std::chrono::milliseconds(item.first * 1000) + std::chrono::milliseconds(jitter);
         }
 
-        bool limit_reached() const { return m_elapsed >= m_limit; }
-        std::chrono::seconds elapsed() const { return m_elapsed; }
-        std::chrono::seconds waiting() const { return m_waiting; }
-
-        void increment() { ++m_n; }
-
-        void reset()
-        {
-            m_n = 0;
-            m_elapsed = 0s;
-            m_waiting = 0s;
-        }
+        void reset() { m_num_retries = 0; }
 
     private:
-        const std::chrono::seconds m_limit;
-        uint32_t m_n;
-        std::chrono::seconds m_elapsed;
-        std::chrono::seconds m_waiting;
+        using delay_and_jitter = std::pair<uint32_t, uint32_t>;
+        static constexpr std::array<delay_and_jitter, 8> m_delays = { {
+            { 1, 2 }, // 1-3 seconds
+            { 3, 6 }, // 3-9 seconds
+            { 9, 6 }, // 9-15 seconds
+            { 15, 15 }, // 15-30 seconds
+            { 30, 30 }, // 30-60 seconds
+            { 60, 60 }, // 1-2 minutes
+            { 120, 120 }, // 2-4 minutes
+            { 300, 0 }, // 5 minutes
+        } };
+        size_t m_num_retries;
     };
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(*event); }
@@ -523,7 +513,7 @@ namespace green {
 
         // The last failure number that we handled
         auto last_handled_failure_count = m_failure_count.load();
-        exponential_backoff backoff;
+        connection_backoff backoff;
 
         const std::string net_prefix = "net: " + m_server_prefix + " ";
         const auto dead_transport = net_prefix + "dead transport";
@@ -657,11 +647,10 @@ namespace green {
         }
     }
 
-    void wamp_transport::backoff_handler(locker_t& locker, exponential_backoff& backoff)
+    void wamp_transport::backoff_handler(locker_t& locker, connection_backoff& backoff)
     {
-        backoff.increment();
-        const auto backoff_time = backoff.get_backoff();
-        GDK_LOG(info) << "net: backing off for " << backoff_time.count() << "s";
+        const auto backoff_time = backoff.get_next_backoff_time();
+        GDK_LOG(info) << "net: backing off for " << backoff_time.count() << " ms";
         const auto start = std::chrono::system_clock::now();
         auto&& elapsed_fn = [this, start, backoff_time] {
             if (is_elapsed(start, backoff_time)) {
@@ -672,7 +661,7 @@ namespace green {
             }
             return false;
         };
-        emit_state(state_t::disconnected, state_t::connected, backoff_time.count() * 1000);
+        emit_state(state_t::disconnected, state_t::connected, backoff_time.count());
         // Wait for the backoff time, ignoring spurious wakeups
         locker.lock();
         m_condition.wait_for(locker, backoff_time, elapsed_fn);
