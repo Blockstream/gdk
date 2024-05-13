@@ -90,7 +90,7 @@ namespace green {
             // Remove any previously enabled blob metadata.
             // If the blob was disabled, and is then enabled again,
             // the else branch below will sync local updates.
-            encache_local_client_blob(locker, "", {}, {});
+            encache_local_client_blob(locker, {}, {}, {});
         } else {
             // Enable, load and sync the client blob.
             // FIXME: enable blob for watch-only sessions
@@ -175,12 +175,12 @@ namespace green {
         }
     }
 
-    void ga_rust::encache_local_client_blob(session_impl::locker_t& locker, const char* data_b64,
-        const std::vector<unsigned char>& data, const std::string& hmac)
+    void ga_rust::encache_local_client_blob(
+        session_impl::locker_t& locker, std::string data_b64, byte_span_t /*data*/, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        rust_call(
-            "save_blob", { { "blob", data_b64 }, { "client_id", m_blob_client_id }, { "hmac", hmac } }, m_session);
+        rust_call("save_blob", { { "blob", std::move(data_b64) }, { "client_id", m_blob_client_id }, { "hmac", hmac } },
+            m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }

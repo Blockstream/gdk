@@ -420,10 +420,11 @@ namespace green {
         GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value());
         GDK_RUNTIME_ASSERT(m_blob_hmac_key.has_value());
 
-        const auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
-        auto blob_b64{ base64_string_from_bytes(saved.first) };
+        auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
+        const auto& hmac = j_strref(saved.second, "hmac");
+        auto& blob_b64 = j_strref(saved.second, "blob");
 
-        auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64.get(), saved.second);
+        auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64, hmac);
 
         if (!j_str_is_empty(server_data, "blob")) {
             // Raced with another update on the server.
@@ -435,14 +436,14 @@ namespace green {
             return false; // Save failed, the caller should retry
         }
         // Blob has been saved on the server, cache it locally
-        encache_local_client_blob(locker, blob_b64.get(), saved.first, saved.second);
-        m_blob_hmac = saved.second;
+        encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
+        m_blob_hmac = hmac;
         m_blob_outdated = false; // Blob is now current with the servers view
         return true; // Saved successfully
     }
 
     nlohmann::json session_impl::save_client_blob_impl(
-        locker_t& locker, const std::string& old_hmac, const char* blob_b64, const std::string& hmac)
+        locker_t& locker, const std::string& old_hmac, const std::string& blob_b64, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
@@ -466,7 +467,7 @@ namespace green {
         m_blob->load(*m_blob_aes_key, server_blob);
 
         if (encache) {
-            encache_local_client_blob(locker, server_blob_b64.c_str(), server_blob, server_hmac);
+            encache_local_client_blob(locker, std::move(server_blob_b64), server_blob, server_hmac);
         }
         m_blob_hmac = server_hmac;
         m_blob_outdated = false; // Blob is now current with the servers view

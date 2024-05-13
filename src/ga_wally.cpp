@@ -421,16 +421,11 @@ namespace green {
         return ret;
     }
 
-    wally_string_ptr base64_string_from_bytes(byte_span_t bytes)
+    std::string base64_from_bytes(byte_span_t bytes)
     {
         char* output = nullptr;
         GDK_VERIFY(wally_base64_from_bytes(bytes.data(), bytes.size(), 0, &output));
-        return wally_string_ptr(output);
-    }
-
-    std::string base64_from_bytes(byte_span_t bytes)
-    {
-        auto ret = base64_string_from_bytes(bytes);
+        auto ret = wally_string_ptr(output);
         return std::string(ret.get());
     }
 

@@ -213,8 +213,6 @@ namespace green {
 
     std::vector<unsigned char> base58check_to_bytes(const std::string& base58);
 
-    wally_string_ptr base64_string_from_bytes(byte_span_t bytes);
-
     std::string base64_from_bytes(byte_span_t bytes);
 
     std::vector<unsigned char> base64_to_bytes(const std::string& base64);

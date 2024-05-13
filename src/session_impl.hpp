@@ -262,7 +262,7 @@ namespace green {
         // Save our local copy of the client blob to the server, then encache it
         bool save_client_blob(locker_t& locker, const std::string& old_hmac);
         virtual nlohmann::json save_client_blob_impl(
-            locker_t& locker, const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+            locker_t& locker, const std::string& old_hmac, const std::string& blob_b64, const std::string& hmac);
 
         // Set our local copy of the client blob, then encache it
         // We pass the blob data as both base64 and raw bytes to account
@@ -271,7 +271,7 @@ namespace green {
 
         virtual void get_cached_local_client_blob(locker_t& locker, const std::string& server_hmac) = 0;
         virtual void encache_local_client_blob(
-            locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac)
+            locker_t& locker, std::string data_b64, byte_span_t data, const std::string& hmac)
             = 0;
 
         // Apply an update to our local copy of the client blob. If this

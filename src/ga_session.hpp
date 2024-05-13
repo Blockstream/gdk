@@ -152,10 +152,10 @@ namespace green {
         void derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin);
         nlohmann::json load_client_blob_impl(locker_t& locker);
         nlohmann::json save_client_blob_impl(
-            locker_t& locker, const std::string& old_hmac, const char* blob_b64, const std::string& hmac);
+            locker_t& locker, const std::string& old_hmac, const std::string& blob_b64, const std::string& hmac);
         void get_cached_local_client_blob(locker_t& locker, const std::string& server_hmac);
         void encache_local_client_blob(
-            locker_t& locker, const char* data_b64, const std::vector<unsigned char>& data, const std::string& hmac);
+            locker_t& locker, std::string data_b64, byte_span_t data, const std::string& hmac);
 
         void load_local_signer_xpubs(locker_t& locker, std::shared_ptr<signer> signer);
 

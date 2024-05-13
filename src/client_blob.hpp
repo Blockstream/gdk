@@ -47,7 +47,7 @@ namespace green {
         nlohmann::json get_xpubs() const;
 
         void load(byte_span_t key, byte_span_t data);
-        std::pair<std::vector<unsigned char>, std::string> save(byte_span_t key, byte_span_t hmac_key) const;
+        std::pair<std::vector<unsigned char>, nlohmann::json> save(byte_span_t key, byte_span_t hmac_key) const;
 
         static const std::string& get_zero_hmac();
         static const std::string& get_one_hmac();

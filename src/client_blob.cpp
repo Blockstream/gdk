@@ -275,7 +275,7 @@ namespace green {
         m_data.swap(new_data);
     }
 
-    std::pair<std::vector<unsigned char>, std::string> client_blob::save(byte_span_t key, byte_span_t hmac_key) const
+    std::pair<std::vector<unsigned char>, nlohmann::json> client_blob::save(byte_span_t key, byte_span_t hmac_key) const
     {
         // Dump out data to msgpack format and compress it, prepending PREFIX
         auto msgpack_data{ nlohmann::json::to_msgpack(m_data) };
@@ -291,9 +291,10 @@ namespace green {
         // Clear and free the compressed representation immediately
         bzero_and_free(compressed);
 
-        // Compute hmac of the final representation and return it with the encrypted data
-        auto hmac{ compute_hmac(hmac_key, encrypted) };
-        return std::make_pair(std::move(encrypted), std::move(hmac));
+        // Compute and return base64 encoded data and its HMAC
+        nlohmann::json details
+            = { { "hmac", compute_hmac(hmac_key, encrypted) }, { "blob", base64_from_bytes(encrypted) } };
+        return std::make_pair(std::move(encrypted), std::move(details));
     }
 
 } // namespace green
