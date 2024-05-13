@@ -1154,7 +1154,6 @@ namespace green {
                 const auto one_hmac = client_blob::get_one_hmac();
                 auto ret
                     = wamp_cast_json(m_wamp->call(locker, "login.set_client_blob", one_hmac, 0, one_hmac, old_hmac));
-                GDK_RUNTIME_ASSERT(!ret.contains("error")); // FIXME: get rid of "error" keys
             }
             return session_impl::save_client_blob_impl(locker, old_hmac, blob_b64, hmac);
         }
