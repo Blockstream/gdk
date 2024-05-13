@@ -312,7 +312,7 @@ namespace green {
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
 
     wamp_transport::wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand,
-        wamp_transport::notify_fn_t fn, std::string server_prefix)
+        wamp_transport::notify_fn_t fn, std::string server_prefix, bool is_mandatory)
         : m_net_params(net_params)
         , m_strand(strand)
         , m_server_prefix(std::move(server_prefix))
@@ -321,6 +321,7 @@ namespace green {
         , m_wamp_call_prefix(m_server_prefix == "wamp" ? "com.greenaddress." : "")
         , m_wamp_call_options()
         , m_notify_fn(fn)
+        , m_is_mandatory(is_mandatory)
         , m_desired_state(state_t::disconnected)
         , m_state(state_t::disconnected)
         , m_failure_count(0)
@@ -360,7 +361,10 @@ namespace green {
         no_std_exception_escape([this] { m_reconnect_thread.join(); }, "wamp dtor(2)");
     }
 
-    void wamp_transport::connect(const std::string& proxy) { change_state_to(state_t::connected, proxy, true); }
+    void wamp_transport::connect(const std::string& proxy, bool wait)
+    {
+        change_state_to(state_t::connected, proxy, wait);
+    }
 
     void wamp_transport::disconnect() { change_state_to(state_t::disconnected, std::string(), true); }
 

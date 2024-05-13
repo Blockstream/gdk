@@ -46,14 +46,14 @@ namespace green {
         using subscribe_fn_t = std::function<void(nlohmann::json)>;
 
         wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand, notify_fn_t fn,
-            std::string server_prefix);
+            std::string server_prefix, bool is_mandatory);
         ~wamp_transport();
 
         // Connect the transport. The proxy to use is passed to us as it can
         // be dynamic in some cases (e.g. using built-in tor). Choosing the
         // proxy to use is handled for all session types by the base class
         // session_impl.
-        void connect(const std::string& proxy); // Currently synchronous
+        void connect(const std::string& proxy, bool wait);
 
         // Disconnect the transport.
         void disconnect(); // Currently synchronous
@@ -69,6 +69,8 @@ namespace green {
         // Subscribe to a topic. Use is_initial=true for the first
         // subscription after reconnecting
         void subscribe(const std::string& topic, subscribe_fn_t cb, bool is_initial = false);
+
+        bool is_mandatory() const { return m_is_mandatory; }
 
         // Make a background WAMP call and return its result to the current thread.
         // The session mutex must not be held when calling this function.
@@ -131,6 +133,8 @@ namespace green {
         notify_fn_t m_notify_fn;
         std::unique_ptr<client> m_client;
         std::unique_ptr<client_tls> m_client_tls;
+        // true if this connection must remain alive for the session to function
+        bool m_is_mandatory;
 
         // This mutex protects the following members
         std::mutex m_mutex;

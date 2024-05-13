@@ -85,10 +85,12 @@ namespace green {
         }
         m_wamp_connections.reserve(2u);
         if (!m_net_params.get_blob_server_url().empty()) {
+            // FIXME: Make the blobserver non-mandatory
+            constexpr bool is_mandatory = true;
             m_blobserver = std::make_shared<wamp_transport>(
                 m_net_params, *m_strand,
                 [](nlohmann::json details, bool) { GDK_LOG(info) << "blob_server notification: " << details.dump(); },
-                "blob_server");
+                "blob_server", is_mandatory);
             m_wamp_connections.push_back(m_blobserver);
         }
     }
@@ -111,7 +113,7 @@ namespace green {
     {
         const auto proxy = session_impl::connect_tor();
         std::for_each(m_wamp_connections.rbegin(), m_wamp_connections.rend(),
-            [&proxy](auto& connection) { connection->connect(proxy); });
+            [&proxy](auto& connection) { connection->connect(proxy, connection->is_mandatory()); });
         connect_session();
     }
 
