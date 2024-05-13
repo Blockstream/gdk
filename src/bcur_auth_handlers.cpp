@@ -350,7 +350,10 @@ namespace green {
 #else
         if (!m_decoder) {
             m_decoder = std::make_unique<ur::URDecoder>();
-            m_decoder->receive_part(j_strref(m_details, "part"));
+            bool is_ok = m_decoder->receive_part(j_strref(m_details, "part"));
+            if (!is_ok) {
+                throw user_error("Invalid part");
+            }
         } else {
             GDK_RUNTIME_ASSERT(m_action == "data");
             m_decoder->receive_part(m_code);
