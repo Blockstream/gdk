@@ -408,9 +408,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
         nlohmann::json args = { { "client_id", m_blob_client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
-        auto ret = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
-        GDK_RUNTIME_ASSERT(!ret.contains("error")); // FIXME: Remove any error keys from blobserver
-        return ret;
+        return wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
     }
 
     bool session_impl::save_client_blob(locker_t& locker, const std::string& old_hmac)
