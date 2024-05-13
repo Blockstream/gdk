@@ -1024,10 +1024,10 @@ namespace green {
             // but only when the wallet isn't locked for a two factor reset.
             // Subaccount names/xpubs
             auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-            std::map<uint32_t, nlohmann::json> subaccounts;
+            nlohmann::json subaccounts;
             for (const auto& sa : login_data["subaccounts"]) {
                 nlohmann::json sa_data = { { "name", j_strref(sa, "name") } };
-                subaccounts.emplace(j_uint32ref(sa, "pointer"), std::move(sa_data));
+                subaccounts.emplace(std::to_string(j_uint32ref(sa, "pointer")), std::move(sa_data));
             }
             m_blob->update_subaccounts_data(subaccounts, signer_xpubs);
             // Tx memos
@@ -1788,7 +1788,7 @@ namespace green {
         if (have_writable_client_blob(locker)) {
             const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
             nlohmann::json sa_data = { { "name", name }, { "hidden", false } };
-            std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, std::move(sa_data) } };
+            nlohmann::json subaccounts = { { std::to_string(subaccount), std::move(sa_data) } };
             update_client_blob(
                 locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
         }

@@ -128,9 +128,10 @@ namespace green {
                     update_client_blob(locker, std::bind(&client_blob::update_tx_memos, m_blob.get(), memos));
                 }
                 // Save the merged metadata locally
-                for (auto& sa : subaccounts) {
-                    auto sa_details = m_blob->get_subaccount_data(sa.first);
-                    sa_details["subaccount"] = sa.first;
+                for (auto& sa : subaccounts.items()) {
+                    auto pointer = std::stoul(sa.key());
+                    auto sa_details = m_blob->get_subaccount_data(pointer);
+                    sa_details["subaccount"] = pointer;
                     sa_details["name"] = j_str_or_empty(sa_details, "name");
                     sa_details["hidden"] = j_bool_or_false(sa_details, "hidden");
                     rust_call("update_subaccount_settings", sa_details, m_session);
@@ -287,7 +288,7 @@ namespace green {
             locker_t locker(m_mutex);
             if (have_writable_client_blob(locker)) {
                 nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
-                std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, std::move(sa_data) } };
+                nlohmann::json subaccounts = { { std::to_string(subaccount), std::move(sa_data) } };
                 const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
                 update_client_blob(
                     locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
@@ -370,20 +371,16 @@ namespace green {
         return rust_call("get_subaccounts", {}, m_session);
     }
 
-    std::map<uint32_t, nlohmann::json> ga_rust::get_local_subaccounts_data()
+    nlohmann::json ga_rust::get_local_subaccounts_data()
     {
-        std::map<uint32_t, nlohmann::json> ret;
         auto subaccounts = rust_call("get_accounts_settings", {}, m_session);
         for (auto& item : subaccounts.items()) {
-            auto key = std::stoul(item.key());
-            GDK_RUNTIME_ASSERT(key <= 0xffffffff);
             auto& value = item.value();
             if (j_str_or_empty(value, "name").empty()) {
                 value.erase("name");
             }
-            ret.emplace(static_cast<uint32_t>(key), std::move(item.value()));
         }
-        return ret;
+        return subaccounts;
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_pointers()

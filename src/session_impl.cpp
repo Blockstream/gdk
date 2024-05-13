@@ -607,7 +607,7 @@ namespace green {
     {
         locker_t locker(m_mutex);
         nlohmann::json empty;
-        std::map<uint32_t, nlohmann::json> subaccounts = { { subaccount, details } };
+        nlohmann::json subaccounts = { { std::to_string(subaccount), details } };
         update_client_blob(locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, empty));
     }
 
