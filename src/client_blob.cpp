@@ -112,10 +112,8 @@ namespace green {
                 changed |= json_add_non_default(m_data[SA_HIDDEN], subaccount_str, is_hidden.value());
             }
         }
-        if (!xpubs.empty()) {
-            // Update the subaccount xpubs
-            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
-        }
+        // Update the subaccount xpubs
+        changed |= merge_xpubs(xpubs);
         return changed ? increment_version(m_data) : changed;
     }
 
@@ -197,22 +195,27 @@ namespace green {
 
     bool client_blob::set_wo_data(const std::string& username, const nlohmann::json& xpubs)
     {
-        auto& wo = m_data[WATCHONLY];
-        bool changed = json_add_non_default(wo, "username", username);
-        if (!xpubs.empty()) {
-            // Update the subaccount xpubs
-            changed |= json_add_non_default(m_data[WATCHONLY], "xpubs", xpubs);
-        }
+        bool changed = json_add_non_default(m_data[WATCHONLY], "username", username);
+        changed |= merge_xpubs(xpubs);
         return changed ? increment_version(m_data) : changed;
+    }
+
+    bool client_blob::merge_xpubs(const nlohmann::json& xpubs)
+    {
+        bool changed = false;
+        auto& dest = m_data[WATCHONLY]["xpubs"];
+        for (const auto& xpub : xpubs.items()) {
+            if (!dest.contains(xpub.key())) {
+                dest.emplace(xpub.key(), xpub.value());
+                changed = true;
+            }
+        }
+        return changed;
     }
 
     bool client_blob::set_xpubs(const nlohmann::json& xpubs)
     {
-        bool changed = false;
-        if (!xpubs.empty()) {
-            auto& wo = m_data[WATCHONLY];
-            changed = json_add_non_default(wo, "xpubs", xpubs);
-        }
+        bool changed = merge_xpubs(xpubs);
         return changed ? increment_version(m_data) : changed;
     }
 
@@ -224,8 +227,7 @@ namespace green {
     nlohmann::json client_blob::get_xpubs() const
     {
         auto& wo = m_data[WATCHONLY];
-        auto xpubs_p = wo.find("xpubs");
-        if (xpubs_p != wo.end()) {
+        if (auto xpubs_p = wo.find("xpubs"); xpubs_p != wo.end()) {
             return *xpubs_p;
         }
         return {};

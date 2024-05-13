@@ -56,6 +56,8 @@ namespace green {
     private:
         bool is_key_encrypted(uint32_t key) const;
 
+        bool merge_xpubs(const nlohmann::json& xpubs);
+
         nlohmann::json m_data;
     };
 
