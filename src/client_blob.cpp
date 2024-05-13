@@ -37,7 +37,7 @@ namespace green {
         // Set a value to a JSON object if it is non-default, otherwise remove any existing value.
         // This saves space storing the value if a default value is returned when its fetched.
         // Returns true if the JSON object was changed.
-        template <typename T>
+        template <typename T, typename = std::enable_if_t<std::is_default_constructible<T>::value>>
         static bool json_add_non_default(nlohmann::json& data, const std::string& key, const T& value)
         {
             const bool is_default = value == T();
