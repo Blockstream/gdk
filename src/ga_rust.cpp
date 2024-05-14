@@ -86,60 +86,20 @@ namespace green {
         m_login_data = get_wallet_hash_ids({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
         m_login_data["warnings"] = nlohmann::json::array();
 
-        if (!m_blobserver) {
-            // Remove any previously enabled blob metadata.
-            // If the blob was disabled, and is then enabled again,
-            // the else branch below will sync local updates.
-            encache_local_client_blob(locker, {}, {}, {});
-        } else {
-            // Enable, load and sync the client blob.
-            // FIXME: enable blob for watch-only sessions
-            if (!signer->is_watch_only()) {
-                // Compute the client blob HMAC key
-                const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
-                const auto tmp_span = gsl::make_span(tmp_key);
-                set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
-                set_optional_variable(
-                    m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
-            }
-            // Load any cached blob data
-            get_cached_local_client_blob(locker, std::string());
-            const bool had_cached_blob = !m_blob_hmac.empty();
-            // Load the latest blob from the server. If the server blob is
-            // newer, this updates our locally cached blob data to it
-            // Our client id is private: sha256(network | client secret pubkey)
-            const auto network = m_net_params.network();
-            std::vector<unsigned char> id_buffer(network.size() + public_key.size());
-            init_container(id_buffer, ustring_span(network), public_key);
-            m_blob_client_id = b2h(sha256(id_buffer));
-            load_client_blob(locker, true);
-            load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
-            if (!had_cached_blob && !m_blob_hmac.empty()) {
-                // We didn't have a local client blob, but the server does.
-                // Merge any local metadata with the blob
-                GDK_LOG(info) << "Merging local updates to client blob";
-                auto signer_xpubs = signer->get_cached_bip32_xpubs_json();
-                auto subaccounts = get_local_subaccounts_data();
-                update_client_blob(
-                    locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
+        // FIXME: enable blob for watch-only sessions
 
-                auto memos = rust_call("get_memos", {}, m_session);
-                if (!memos.is_null() && !memos.empty()) {
-                    update_client_blob(locker, std::bind(&client_blob::update_tx_memos, m_blob.get(), memos));
-                }
-                // Save the merged metadata locally
-                for (auto& sa : subaccounts.items()) {
-                    auto pointer = std::stoul(sa.key());
-                    auto sa_details = m_blob->get_subaccount_data(pointer);
-                    sa_details["subaccount"] = pointer;
-                    sa_details["name"] = j_str_or_empty(sa_details, "name");
-                    sa_details["hidden"] = j_bool_or_false(sa_details, "hidden");
-                    rust_call("update_subaccount_settings", sa_details, m_session);
-                }
-                memos = m_blob->get_tx_memos();
-                rust_call("set_memos", memos.is_null() ? nlohmann::json({}) : memos, m_session);
-            }
-        }
+        // Compute the client blob HMAC key
+        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        const auto tmp_span = gsl::make_span(tmp_key);
+        set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
+        set_optional_variable(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+
+        // Set the client blob client id
+        // Our client id is private: sha256(network | client secret pubkey)
+        const auto network = m_net_params.network();
+        std::vector<unsigned char> id_buffer(network.size() + public_key.size());
+        init_container(id_buffer, ustring_span(network), public_key);
+        m_blob_client_id = b2h(sha256(id_buffer));
     }
 
     void ga_rust::populate_initial_client_blob(session_impl::locker_t& locker)
@@ -193,6 +153,48 @@ namespace green {
         locker_t locker(m_mutex);
         set_signer(locker, signer);
         m_watch_only = false;
+
+        if (!m_blobserver) {
+            // Remove any previously enabled blob metadata.
+            // If the blob was disabled, and is then enabled again,
+            // the else branch below will sync local updates.
+            encache_local_client_blob(locker, {}, {}, {});
+        } else {
+            // Enable, load and sync the client blob.
+            // Load any cached blob data
+            get_cached_local_client_blob(locker, std::string());
+            const bool had_cached_blob = !m_blob_hmac.empty();
+            // Load the latest blob from the server. If the server blob is
+            // newer, this updates our locally cached blob data to it
+            load_client_blob(locker, true);
+            load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
+            if (!had_cached_blob && !m_blob_hmac.empty()) {
+                // We didn't have a local client blob, but the server does.
+                // Merge any local metadata with the blob
+                GDK_LOG(info) << "Merging local updates to client blob";
+                auto signer_xpubs = signer->get_cached_bip32_xpubs_json();
+                auto subaccounts = get_local_subaccounts_data();
+                update_client_blob(
+                    locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
+
+                auto memos = rust_call("get_memos", {}, m_session);
+                if (!memos.is_null() && !memos.empty()) {
+                    update_client_blob(locker, std::bind(&client_blob::update_tx_memos, m_blob.get(), memos));
+                }
+                // Save the merged metadata locally
+                for (auto& sa : subaccounts.items()) {
+                    auto pointer = std::stoul(sa.key());
+                    auto sa_details = m_blob->get_subaccount_data(pointer);
+                    sa_details["subaccount"] = pointer;
+                    sa_details["name"] = j_str_or_empty(sa_details, "name");
+                    sa_details["hidden"] = j_bool_or_false(sa_details, "hidden");
+                    rust_call("update_subaccount_settings", sa_details, m_session);
+                }
+                memos = m_blob->get_tx_memos();
+                rust_call("set_memos", memos.is_null() ? nlohmann::json({}) : memos, m_session);
+            }
+        }
+
         if (m_blobserver && m_blob_hmac.empty()) {
             // No client blob locally or on the blobserver: create it
             populate_initial_client_blob(locker);
