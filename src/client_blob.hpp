@@ -29,6 +29,7 @@ namespace green {
         uint64_t get_user_version() const;
 
         bool update_subaccounts_data(const nlohmann::json& subaccounts, const nlohmann::json& xpubs);
+        nlohmann::json get_subaccounts_data() const;
         nlohmann::json get_subaccount_data(uint32_t subaccount) const;
 
         bool set_tx_memo(const std::string& txhash_hex, const std::string& memo);

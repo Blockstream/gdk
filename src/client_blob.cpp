@@ -115,6 +115,23 @@ namespace green {
         return changed ? increment_version(m_data) : changed;
     }
 
+    nlohmann::json client_blob::get_subaccounts_data() const
+    {
+        nlohmann::json ret{};
+
+        if (is_key_encrypted(SA_NAMES)) {
+            // This gdk version does not support encrypted subaccount names
+            throw user_error("Client too old. Please upgrade your app!"); // TODO: i18n
+        }
+        for (const auto& item : m_data[SA_NAMES].items()) {
+            ret[item.key()] = { { "name", item.value() } };
+        }
+        for (const auto& item : m_data[SA_HIDDEN].items()) {
+            ret[item.key()].update({ { "hidden", item.value() } });
+        }
+        return ret;
+    }
+
     nlohmann::json client_blob::get_subaccount_data(uint32_t subaccount) const
     {
         const auto subaccount_str(std::to_string(subaccount));
