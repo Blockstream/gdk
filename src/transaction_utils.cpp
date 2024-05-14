@@ -665,8 +665,10 @@ namespace green {
             // corresponding prices available).
             if (!override_network) {
                 try {
-                    const auto satoshi = j_amountref(session.convert_amount(addressee));
-                    addressee["satoshi"] = satoshi.value();
+                    if (!j_bool_or_false(addressee, "is_greedy")) {
+                        const auto satoshi = j_amountref(session.convert_amount(addressee));
+                        addressee["satoshi"] = satoshi.value();
+                    }
                     amount::strip_non_satoshi_keys(addressee);
                 } catch (const user_error& ex) {
                     return ex.what();
