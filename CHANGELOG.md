@@ -12,6 +12,7 @@
   to an external server. When enabled, metadata such as subaccount names and
   transaction notes is synced automatically between different wallet installs
   and when restoring a wallet from scratch.
+- Docs: Document how to disable RBF when creating transactions.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller

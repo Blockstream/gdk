@@ -163,6 +163,18 @@ Finally, creating a PSBT/PSET and using `GA_psbt_sign` to sign it allows
 exact specification of all transaction details including UTXOs.
 
 
+Disable Replace-By-Fee
+----------------------
+
+Callers can disable RBF (Replace-By-Fee) for a transaction by modifying
+the ``"sequence"`` value of UTXOs passed in the ``"utxos"`` element. Setting
+the sequence for all UTXOs to the integer ``0xFFFFFFFE``/``4294967294``
+will disable RBF for the transaction.
+
+.. note:: This may result in stuck transactions if the free rate is insufficient,
+          and should only be used if the caller understands the potential implications.
+
+
 Re-deposit
 ----------
 
