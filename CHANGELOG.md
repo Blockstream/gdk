@@ -1,8 +1,9 @@
 # Changelog
 
-## Release 0.72.0
+## Release 0.71.1
 
 ### Added
+- Docs: Document how to disable RBF when creating transactions.
 
 ### Changed
 
