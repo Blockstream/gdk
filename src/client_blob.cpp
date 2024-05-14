@@ -257,7 +257,7 @@ namespace green {
         return base64_from_bytes(hmac_sha256(hmac_key, data));
     }
 
-    void client_blob::load(byte_span_t key, byte_span_t data)
+    void client_blob::load(byte_span_t key, byte_span_t data, bool merge_current)
     {
         // Decrypt the encrypted data
         std::vector<unsigned char> decrypted(aes_gcm_decrypt_get_length(data));
@@ -287,7 +287,21 @@ namespace green {
         const bool is_newer = new_version > current_version || (current_version == 1 && new_version == 1);
         GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
 
+        if (!merge_current) {
+            m_data.swap(new_data);
+            return;
+        }
+        // Merge the existing metadata into the current blob
+        auto subaccounts_data = get_subaccounts_data();
+        auto xpubs = get_xpubs();
+        auto tx_memos = get_tx_memos();
+        const auto version = get_user_version();
         m_data.swap(new_data);
+        update_subaccounts_data(subaccounts_data, xpubs);
+        update_tx_memos(tx_memos);
+        if (version != get_user_version()) {
+            set_user_version(version + 1);
+        }
     }
 
     std::pair<std::vector<unsigned char>, nlohmann::json> client_blob::save(byte_span_t key, byte_span_t hmac_key) const

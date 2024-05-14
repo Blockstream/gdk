@@ -46,7 +46,7 @@ namespace green {
         std::string get_wo_username() const;
         nlohmann::json get_xpubs() const;
 
-        void load(byte_span_t key, byte_span_t data);
+        void load(byte_span_t key, byte_span_t data, bool merge_current = false);
         std::pair<std::vector<unsigned char>, nlohmann::json> save(byte_span_t key, byte_span_t hmac_key) const;
 
         static const std::string& get_zero_hmac();
