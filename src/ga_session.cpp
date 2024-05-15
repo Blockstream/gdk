@@ -1016,7 +1016,7 @@ namespace green {
             GDK_RUNTIME_ASSERT(m_blobserver); // We must have a blobserver connection
         }
 
-        if (!reset_2fa_active && !is_blob_on_server && m_blob_hmac.empty()) {
+        if (!reset_2fa_active && !is_blob_on_server && m_blob->get_hmac().empty()) {
             // No client blob: create one, save it to the server and cache it,
             // but only when the wallet isn't locked for a two factor reset.
             // Subaccount names/xpubs
@@ -1038,7 +1038,7 @@ namespace green {
 
             m_blob->set_user_version(1); // Initial version
 
-            // If this save fails due to a race, m_blob_hmac will be empty below
+            // If this save fails due to a race, m_blob->get_hmac() will be empty below
             save_client_blob(locker, server_hmac);
             // Our blob was enabled, either by us or another login we raced with
             is_blob_on_server = true;
@@ -1054,16 +1054,16 @@ namespace green {
         if (is_blob_on_server) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
-            if (is_relogin && m_blob_hmac != server_hmac) {
+            if (is_relogin && m_blob->get_hmac() != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
-                m_blob_hmac.clear();
+                m_blob->set_hmac({});
             }
-            if (m_blob_hmac.empty()) {
+            if (m_blob->get_hmac().empty()) {
                 // No cached blob, or our cached blob is out of date:
                 // Load the latest blob from the server and cache it
                 load_client_blob(locker, true);
             }
-            GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
+            GDK_RUNTIME_ASSERT(!m_blob->get_hmac().empty()); // Must have a client blob from this point
         }
 
         if (!is_relogin) {
@@ -1109,7 +1109,7 @@ namespace green {
     void ga_session::get_cached_local_client_blob(session_impl::locker_t& locker, const std::string& server_hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (m_blob_hmac.empty()) {
+        if (m_blob->get_hmac().empty()) {
             // Load our client blob from from the cache if we have one
             std::string db_hmac;
             if (m_watch_only) {
@@ -1123,8 +1123,7 @@ namespace green {
                     }
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
-                        m_blob->load(*db_blob);
-                        m_blob_hmac = server_hmac;
+                        m_blob->load(*db_blob, server_hmac);
                     }
                 }
             } });
@@ -1214,7 +1213,6 @@ namespace green {
             swap_with_default(m_login_data);
             m_local_encryption_key.reset();
             m_blob->reset();
-            m_blob_hmac.clear();
             m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
             swap_with_default(m_limits_data);
             swap_with_default(m_twofactor_config);
@@ -1420,20 +1418,20 @@ namespace green {
         if (is_blob_on_server && m_blob->has_key()) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
-            if (is_relogin && m_blob_hmac != server_hmac) {
+            if (is_relogin && m_blob->get_hmac() != server_hmac) {
                 // Re-login, and our blob has been updated on the server: re-load below
-                m_blob_hmac.clear();
+                m_blob->set_hmac({});
             }
-            if (m_blob_hmac.empty()) {
+            if (m_blob->get_hmac().empty()) {
                 // No cached blob, or our cached blob is out of date:
                 // Load the latest blob from the server and cache it
                 load_client_blob(locker, true);
             }
-            GDK_RUNTIME_ASSERT(!m_blob_hmac.empty()); // Must have a client blob from this point
+            GDK_RUNTIME_ASSERT(!m_blob->get_hmac().empty()); // Must have a client blob from this point
         }
 
         std::string root_bip32_xpub;
-        if (!m_blob_hmac.empty()) {
+        if (!m_blob->get_hmac().empty()) {
             // Load any cached xpubs from the client blob.
             // If the client blob values differ from the cached values,
             // cache_bip32_xpub will throw.

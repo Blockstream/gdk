@@ -81,6 +81,7 @@ namespace green {
         m_client_id.clear();
         m_key.reset();
         m_hmac_key.reset();
+        m_hmac.clear();
     }
 
     void client_blob::compute_client_id(const std::string& network, byte_span_t key)
@@ -291,7 +292,7 @@ namespace green {
         return base64_from_bytes(hmac_sha256(*m_hmac_key, data));
     }
 
-    void client_blob::load(byte_span_t data, bool merge_current)
+    void client_blob::load(byte_span_t data, const std::string& hmac, bool merge_current)
     {
         GDK_RUNTIME_ASSERT(m_key.has_value());
 
@@ -325,6 +326,7 @@ namespace green {
 
         if (!merge_current) {
             m_data.swap(new_data);
+            m_hmac = hmac;
             return;
         }
         // Merge the existing metadata into the current blob
@@ -338,6 +340,7 @@ namespace green {
         if (version != get_user_version()) {
             set_user_version(version + 1);
         }
+        m_hmac = hmac;
     }
 
     std::pair<std::vector<unsigned char>, nlohmann::json> client_blob::save() const

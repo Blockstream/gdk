@@ -322,8 +322,6 @@ namespace green {
         // Client blob
         // Current client blob (if any)
         std::unique_ptr<client_blob> m_blob;
-        // HMAC of the current blobs contents
-        std::string m_blob_hmac;
         bool m_blob_outdated;
 
         // UTXOs

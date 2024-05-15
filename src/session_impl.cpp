@@ -67,7 +67,6 @@ namespace green {
         , m_watch_only(true)
         , m_notify(true)
         , m_blob(std::make_unique<client_blob>())
-        , m_blob_hmac()
         , m_blob_outdated(false)
         , m_utxo_cache_mutex()
         , m_utxo_cache()
@@ -407,7 +406,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
         nlohmann::json args
-            = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
+            = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "hmac", m_blob->get_hmac() } };
         return wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
     }
 
@@ -433,7 +432,7 @@ namespace green {
         }
         // Blob has been saved on the server, cache it locally
         encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
-        m_blob_hmac = hmac;
+        m_blob->set_hmac(hmac);
         m_blob_outdated = false; // Blob is now current with the servers view
         return true; // Saved successfully
     }
@@ -460,12 +459,11 @@ namespace green {
             const auto hmac = m_blob->compute_hmac(server_blob);
             GDK_RUNTIME_ASSERT_MSG(hmac == server_hmac, "Bad server client blob");
         }
-        m_blob->load(server_blob);
+        m_blob->load(server_blob, server_hmac);
 
         if (encache) {
             encache_local_client_blob(locker, std::move(server_blob_b64), server_blob, server_hmac);
         }
-        m_blob_hmac = server_hmac;
         m_blob_outdated = false; // Blob is now current with the servers view
     }
 
@@ -507,7 +505,7 @@ namespace green {
                 return;
             }
             // Save the blob to the server
-            auto prev_hmac = m_blob_hmac.empty() ? client_blob::get_zero_hmac() : m_blob_hmac;
+            auto prev_hmac = m_blob->get_hmac().empty() ? client_blob::get_zero_hmac() : m_blob->get_hmac();
             if (save_client_blob(locker, prev_hmac)) {
                 return; // Saved successfully
             }
@@ -526,9 +524,9 @@ namespace green {
         }
         // Check the hmac as we will be notified of our own changes
         // when more than one session is logged in at a time.
-        const auto new_hmac = j_strref(event, "hmac");
+        const auto& new_hmac = j_strref(event, "hmac");
         locker_t locker(m_mutex);
-        if (m_blob_hmac != new_hmac) {
+        if (m_blob->get_hmac() != new_hmac) {
             // Another session has updated our client blob, mark it dirty.
             m_blob_outdated = true;
             locker.unlock();

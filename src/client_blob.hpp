@@ -39,6 +39,9 @@ namespace green {
         pbkdf2_hmac256_t get_key() const;
         bool has_hmac_key() const;
 
+        void set_hmac(const std::string& hmac) { m_hmac = hmac; }
+        const std::string& get_hmac() const { return m_hmac; }
+
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 
@@ -60,7 +63,8 @@ namespace green {
         std::string get_wo_username() const;
         nlohmann::json get_xpubs() const;
 
-        void load(byte_span_t data, bool merge_current = false);
+        void load(byte_span_t data, const std::string& hmac, bool merge_current = false);
+
         std::pair<std::vector<unsigned char>, nlohmann::json> save() const;
 
         static const std::string& get_zero_hmac();
@@ -80,6 +84,8 @@ namespace green {
         // Key for generating blob HMAC. Only set if the
         // client blob is writable.
         std::optional<pbkdf2_hmac256_t> m_hmac_key;
+        // The hmac of the last saved/loaded blob contents
+        std::string m_hmac;
     };
 
 } // namespace green

@@ -114,16 +114,14 @@ namespace green {
     void ga_rust::get_cached_local_client_blob(session_impl::locker_t& locker, const std::string& /*server_hmac*/)
     {
         // Load our client blob from from the cache if we have one
-        if (!m_blob_hmac.empty()) {
+        if (!m_blob->get_hmac().empty()) {
             return; // Already loaded
         }
-        nlohmann::json local_blob;
-        local_blob = rust_call("load_blob", {}, m_session);
-        if (!j_str_is_empty(local_blob, "blob")) {
+        const auto blob_data = rust_call("load_blob", {}, m_session);
+        if (!j_str_is_empty(blob_data, "blob")) {
             // We have a local blob, load it into our in-memory blob
             GDK_RUNTIME_ASSERT(m_watch_only || m_blob->has_hmac_key());
-            m_blob->load(base64_to_bytes(j_strref(local_blob, "blob")));
-            m_blob_hmac = j_strref(local_blob, "hmac");
+            m_blob->load(base64_to_bytes(j_strref(blob_data, "blob")), j_strref(blob_data, "hmac"));
         }
     }
 
@@ -154,12 +152,12 @@ namespace green {
             // Enable, load and sync the client blob.
             // Load any cached blob data
             get_cached_local_client_blob(locker, std::string());
-            const bool had_cached_blob = !m_blob_hmac.empty();
+            const bool had_cached_blob = !m_blob->get_hmac().empty();
             // Load the latest blob from the server. If the server blob is
             // newer, this updates our locally cached blob data to it
             load_client_blob(locker, true);
             load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
-            if (!had_cached_blob && !m_blob_hmac.empty()) {
+            if (!had_cached_blob && !m_blob->get_hmac().empty()) {
                 // We didn't have a local client blob, but the server does.
                 // Merge any local metadata with the blob
                 GDK_LOG(info) << "Merging local updates to client blob";
@@ -186,7 +184,7 @@ namespace green {
             }
         }
 
-        if (m_blobserver && m_blob_hmac.empty()) {
+        if (m_blobserver && m_blob->get_hmac().empty()) {
             // No client blob locally or on the blobserver: create it
             populate_initial_client_blob(locker);
         }
