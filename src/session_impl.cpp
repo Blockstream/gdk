@@ -69,8 +69,6 @@ namespace green {
         , m_notify(true)
         , m_blob(std::make_unique<client_blob>())
         , m_blob_hmac()
-        , m_blob_aes_key()
-        , m_blob_hmac_key()
         , m_blob_outdated(false)
         , m_utxo_cache_mutex()
         , m_utxo_cache()
@@ -417,10 +415,8 @@ namespace green {
     {
         // Generate our encrypted blob + hmac, store on the server, cache locally
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value());
-        GDK_RUNTIME_ASSERT(m_blob_hmac_key.has_value());
 
-        auto saved{ m_blob->save(*m_blob_aes_key, *m_blob_hmac_key) };
+        auto saved{ m_blob->save() };
         const auto& hmac = j_strref(saved.second, "hmac");
         auto& blob_b64 = j_strref(saved.second, "blob");
 
@@ -461,10 +457,10 @@ namespace green {
         const auto& server_hmac = j_strref(server_data, "hmac");
         if (!m_watch_only) {
             // Verify the servers hmac
-            const auto hmac = client_blob::compute_hmac(*m_blob_hmac_key, server_blob);
+            const auto hmac = m_blob->compute_hmac(server_blob);
             GDK_RUNTIME_ASSERT_MSG(hmac == server_hmac, "Bad server client blob");
         }
-        m_blob->load(*m_blob_aes_key, server_blob);
+        m_blob->load(server_blob);
 
         if (encache) {
             encache_local_client_blob(locker, std::move(server_blob_b64), server_blob, server_hmac);
@@ -483,7 +479,7 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
-        if (!m_blob_hmac_key.has_value() || is_twofactor_reset_active(locker)) {
+        if (!m_blob->has_hmac_key() || is_twofactor_reset_active(locker)) {
             // Can't create blob HMACs, or we are in a 2FA reset
             return false;
         }
@@ -497,7 +493,7 @@ namespace green {
     void session_impl::update_client_blob(locker_t& locker, std::function<bool()> update_fn)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_blob_aes_key.has_value() && m_blob_hmac_key.has_value());
+        GDK_RUNTIME_ASSERT(m_blob->has_key() && m_blob->has_hmac_key());
 
         while (true) {
             if (m_blob_outdated) {

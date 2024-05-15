@@ -1120,13 +1120,13 @@ namespace green {
             }
             m_cache->get_key_value("client_blob", { [this, &db_hmac, &server_hmac](const auto& db_blob) {
                 if (db_blob.has_value()) {
-                    GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key.has_value());
+                    GDK_RUNTIME_ASSERT(m_watch_only || m_blob->has_hmac_key());
                     if (!m_watch_only) {
-                        db_hmac = client_blob::compute_hmac(m_blob_hmac_key.value(), *db_blob);
+                        db_hmac = m_blob->compute_hmac(*db_blob);
                     }
                     if (db_hmac == server_hmac) {
                         // Cached blob is current, load it
-                        m_blob->load(*m_blob_aes_key, *db_blob);
+                        m_blob->load(*db_blob);
                         m_blob_hmac = server_hmac;
                     }
                 }
@@ -1187,14 +1187,7 @@ namespace green {
             return;
         }
         if (!signer->is_watch_only()) {
-            // Watch only sessions get an encrypted m_blob_aes_key from the server,
-            // but don't ever get m_blob_hmac_key (they can read the blob, but
-            // not save it to the server or produce a valid hmac for it).
-            const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
-            const auto tmp_span = gsl::make_span(tmp_key);
-            set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
-            set_optional_variable(
-                m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+            m_blob->compute_keys(public_key);
         }
         m_cache->load_db(m_local_encryption_key.value(), signer);
         // Save the cache in case we carried forward data from a previous version
@@ -1225,8 +1218,6 @@ namespace green {
             m_local_encryption_key.reset();
             m_blob->reset();
             m_blob_hmac.clear();
-            m_blob_aes_key.reset();
-            m_blob_hmac_key.reset();
             m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
             swap_with_default(m_limits_data);
             swap_with_default(m_twofactor_config);
@@ -1418,8 +1409,7 @@ namespace green {
         set_local_encryption_keys_impl(locker, encryption_key, signer);
         const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
         if (!wo_blob_key_hex.empty()) {
-            auto decrypted_key = decrypt_wo_blob_key(entropy, wo_blob_key_hex);
-            set_optional_variable(m_blob_aes_key, std::move(decrypted_key));
+            m_blob->set_key(decrypt_wo_blob_key(entropy, wo_blob_key_hex));
         }
 
         const std::string server_hmac = login_data["client_blob_hmac"];
@@ -1430,7 +1420,7 @@ namespace green {
             get_cached_local_client_blob(locker, server_hmac);
         }
 
-        if (is_blob_on_server && m_blob_aes_key.has_value()) {
+        if (is_blob_on_server && m_blob->has_key()) {
             // The server has a blob for this wallet. If we haven't got an
             // up to date copy of it loaded yet, do so.
             if (is_relogin && m_blob_hmac != server_hmac) {
@@ -1471,7 +1461,7 @@ namespace green {
         auto ret = on_post_login(locker, login_data, root_bip32_xpub, watch_only, is_relogin);
 
         // Note that locker is unlocked at this point
-        if (m_blob_aes_key.has_value()) {
+        if (m_blob->has_key()) {
             const auto subaccount_pointers = get_subaccount_pointers();
             std::vector<std::string> bip32_xpubs;
             bip32_xpubs.reserve(subaccount_pointers.size());
@@ -1632,7 +1622,7 @@ namespace green {
             // Derive the username/password to use, encrypt the client blob key for upload
             const auto entropy = get_wo_entropy(username, password);
             u_p = get_wo_credentials(entropy);
-            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob_aes_key.value());
+            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob->get_key());
         }
         locker.unlock();
         return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
@@ -1641,7 +1631,7 @@ namespace green {
     std::string ga_session::get_wo_username()
     {
         locker_t locker(m_mutex);
-        if (m_blob_aes_key.has_value()) {
+        if (m_blob->has_key()) {
             // Client blob watch only; return from the client blob,
             // since the server doesn't know our real username.
             const auto username = m_blob->get_wo_username();
@@ -2477,7 +2467,7 @@ namespace green {
             = wamp_cast_json(m_wamp->call("txs.get_all_unspent_outputs", num_confs, subaccount, "any", all_coins));
 
         locker_t locker(m_mutex);
-        old_watch_only = m_watch_only && !m_blob_aes_key.has_value();
+        old_watch_only = m_watch_only && !m_blob->has_key();
         if (cleanup_utxos(locker, utxos, std::string(), missing)) {
             m_cache->save_db(); // Cache was updated; save it
         }
@@ -2596,7 +2586,7 @@ namespace green {
         {
             locker_t locker(m_mutex);
             // Old (non client blob) watch only sessions cannot validate addrs
-            old_watch_only = m_watch_only && !m_blob_aes_key.has_value();
+            old_watch_only = m_watch_only && !m_blob->has_key();
             csv_blocks = m_csv_blocks;
         }
 

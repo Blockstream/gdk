@@ -8,6 +8,7 @@
 #include <limits>
 #include <map>
 #include <memory>
+#include <optional>
 
 #include "ga_wally.hpp"
 #include <nlohmann/json.hpp>
@@ -24,6 +25,15 @@ namespace green {
         client_blob& operator=(client_blob&&) = delete;
 
         void reset();
+
+        // Set the encryption key
+        void set_key(pbkdf2_hmac256_t key);
+        // Compute the encryption and HMAC keys from a privately derived public key
+        void compute_keys(byte_span_t public_key);
+
+        bool has_key() const;
+        pbkdf2_hmac256_t get_key() const;
+        bool has_hmac_key() const;
 
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
@@ -46,12 +56,12 @@ namespace green {
         std::string get_wo_username() const;
         nlohmann::json get_xpubs() const;
 
-        void load(byte_span_t key, byte_span_t data, bool merge_current = false);
-        std::pair<std::vector<unsigned char>, nlohmann::json> save(byte_span_t key, byte_span_t hmac_key) const;
+        void load(byte_span_t data, bool merge_current = false);
+        std::pair<std::vector<unsigned char>, nlohmann::json> save() const;
 
         static const std::string& get_zero_hmac();
         static const std::string& get_one_hmac();
-        static std::string compute_hmac(byte_span_t hmac_key, byte_span_t data);
+        std::string compute_hmac(byte_span_t data) const;
 
     private:
         bool is_key_encrypted(uint32_t key) const;
@@ -59,6 +69,11 @@ namespace green {
         bool merge_xpubs(const nlohmann::json& xpubs);
 
         nlohmann::json m_data;
+        // Key for encrypting the client blob contents
+        std::optional<pbkdf2_hmac256_t> m_key;
+        // Key for generating blob HMAC. Only set if the
+        // client blob is writable.
+        std::optional<pbkdf2_hmac256_t> m_hmac_key;
     };
 
 } // namespace green

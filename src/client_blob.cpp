@@ -5,6 +5,7 @@
 #include "json_utils.hpp"
 #include "logging.hpp"
 #include "memory.hpp"
+#include "signer.hpp"
 #include "utils.hpp"
 
 namespace green {
@@ -77,7 +78,30 @@ namespace green {
         for (uint32_t i = SA_NAMES; i < 32u; ++i) {
             m_data[i] = nlohmann::json();
         }
+        m_key.reset();
+        m_hmac_key.reset();
     }
+
+    void client_blob::set_key(pbkdf2_hmac256_t key) { set_optional_variable(m_key, std::move(key)); }
+
+    void client_blob::compute_keys(byte_span_t public_key)
+    {
+        // Compute the encryption and HMAC keys
+        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        const auto tmp_span = gsl::make_span(tmp_key);
+        set_optional_variable(m_key, sha256(tmp_span.subspan(SHA256_LEN)));
+        set_optional_variable(m_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+    }
+
+    bool client_blob::has_key() const { return m_key.has_value(); }
+
+    pbkdf2_hmac256_t client_blob::get_key() const
+    {
+        GDK_RUNTIME_ASSERT(has_key());
+        return m_key.value();
+    }
+
+    bool client_blob::has_hmac_key() const { return m_hmac_key.has_value(); }
 
     bool client_blob::is_key_encrypted(uint32_t key) const
     {
@@ -252,17 +276,20 @@ namespace green {
 
     const std::string& client_blob::get_one_hmac() { return ONE_HMAC_BASE64; }
 
-    std::string client_blob::compute_hmac(byte_span_t hmac_key, byte_span_t data)
+    std::string client_blob::compute_hmac(byte_span_t data) const
     {
-        return base64_from_bytes(hmac_sha256(hmac_key, data));
+        GDK_RUNTIME_ASSERT(m_hmac_key.has_value());
+        return base64_from_bytes(hmac_sha256(*m_hmac_key, data));
     }
 
-    void client_blob::load(byte_span_t key, byte_span_t data, bool merge_current)
+    void client_blob::load(byte_span_t data, bool merge_current)
     {
+        GDK_RUNTIME_ASSERT(m_key.has_value());
+
         // Decrypt the encrypted data
         std::vector<unsigned char> decrypted(aes_gcm_decrypt_get_length(data));
         GDK_RUNTIME_ASSERT(decrypted.size() > PREFIX.size());
-        GDK_RUNTIME_ASSERT(aes_gcm_decrypt(key, data, decrypted) == decrypted.size());
+        GDK_RUNTIME_ASSERT(aes_gcm_decrypt(*m_key, data, decrypted) == decrypted.size());
 
         // Only one fixed prefix value is currently allowed, check we match it
         GDK_RUNTIME_ASSERT(memcmp(decrypted.data(), PREFIX.data(), PREFIX.size()) == 0);
@@ -304,8 +331,10 @@ namespace green {
         }
     }
 
-    std::pair<std::vector<unsigned char>, nlohmann::json> client_blob::save(byte_span_t key, byte_span_t hmac_key) const
+    std::pair<std::vector<unsigned char>, nlohmann::json> client_blob::save() const
     {
+        GDK_RUNTIME_ASSERT(m_key.has_value());
+
         // Dump out data to msgpack format and compress it, prepending PREFIX
         auto msgpack_data{ nlohmann::json::to_msgpack(m_data) };
         auto compressed{ compress(PREFIX, msgpack_data) };
@@ -315,14 +344,13 @@ namespace green {
 
         // Encrypt the compressed representation
         std::vector<unsigned char> encrypted(aes_gcm_encrypt_get_length(compressed));
-        GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, compressed, encrypted) == encrypted.size());
+        GDK_RUNTIME_ASSERT(aes_gcm_encrypt(*m_key, compressed, encrypted) == encrypted.size());
 
         // Clear and free the compressed representation immediately
         bzero_and_free(compressed);
 
         // Compute and return base64 encoded data and its HMAC
-        nlohmann::json details
-            = { { "hmac", compute_hmac(hmac_key, encrypted) }, { "blob", base64_from_bytes(encrypted) } };
+        nlohmann::json details = { { "hmac", compute_hmac(encrypted) }, { "blob", base64_from_bytes(encrypted) } };
         return std::make_pair(std::move(encrypted), std::move(details));
     }
 

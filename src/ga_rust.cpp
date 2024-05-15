@@ -89,10 +89,7 @@ namespace green {
         // FIXME: enable blob for watch-only sessions
 
         // Compute the client blob HMAC key
-        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
-        const auto tmp_span = gsl::make_span(tmp_key);
-        set_optional_variable(m_blob_aes_key, sha256(tmp_span.subspan(SHA256_LEN)));
-        set_optional_variable(m_blob_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        m_blob->compute_keys(public_key);
 
         // Set the client blob client id
         // Our client id is private: sha256(network | client secret pubkey)
@@ -130,8 +127,8 @@ namespace green {
         local_blob = rust_call("load_blob", {}, m_session);
         if (!j_str_is_empty(local_blob, "blob")) {
             // We have a local blob, load it into our in-memory blob
-            GDK_RUNTIME_ASSERT(m_watch_only || m_blob_hmac_key.has_value());
-            m_blob->load(*m_blob_aes_key, base64_to_bytes(j_strref(local_blob, "blob")));
+            GDK_RUNTIME_ASSERT(m_watch_only || m_blob->has_hmac_key());
+            m_blob->load(base64_to_bytes(j_strref(local_blob, "blob")));
             m_blob_hmac = j_strref(local_blob, "hmac");
         }
     }

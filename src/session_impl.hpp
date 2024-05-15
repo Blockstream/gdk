@@ -325,11 +325,6 @@ namespace green {
         std::unique_ptr<client_blob> m_blob;
         // HMAC of the current blobs contents
         std::string m_blob_hmac;
-        // Key for encrypting the client blob contents
-        std::optional<pbkdf2_hmac256_t> m_blob_aes_key;
-        // Key for generating blob HMAC. Only set if the
-        // client blob is writable.
-        std::optional<pbkdf2_hmac256_t> m_blob_hmac_key;
         bool m_blob_outdated;
 
         // UTXOs
