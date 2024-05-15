@@ -26,6 +26,10 @@ namespace green {
 
         void reset();
 
+        // Compute the client id to use
+        void compute_client_id(const std::string& network, byte_span_t key);
+        auto get_client_id() const { return m_client_id; }
+
         // Set the encryption key
         void set_key(pbkdf2_hmac256_t key);
         // Compute the encryption and HMAC keys from a privately derived public key
@@ -69,6 +73,8 @@ namespace green {
         bool merge_xpubs(const nlohmann::json& xpubs);
 
         nlohmann::json m_data;
+        // Client id for talking to a blobserver
+        std::string m_client_id;
         // Key for encrypting the client blob contents
         std::optional<pbkdf2_hmac256_t> m_key;
         // Key for generating blob HMAC. Only set if the

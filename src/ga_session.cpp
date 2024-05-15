@@ -977,11 +977,8 @@ namespace green {
             // To enable the external blobserver for multisig, we need to
             // update set_watch_only to store the client id on the server
             // and return it to watch only logins.
-            const auto network = m_net_params.network();
             const auto& wallet_hash_id = j_strref(login_data, "wallet_hash_id");
-            std::vector<unsigned char> id_buffer(network.size() + wallet_hash_id.size());
-            init_container(id_buffer, ustring_span(network), wallet_hash_id);
-            m_blob_client_id = b2h(sha256(id_buffer));
+            m_blob->compute_client_id(m_net_params.network(), ustring_span(wallet_hash_id));
         }
     }
 

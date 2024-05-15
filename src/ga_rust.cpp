@@ -88,15 +88,9 @@ namespace green {
 
         // FIXME: enable blob for watch-only sessions
 
-        // Compute the client blob HMAC key
+        // Compute client blob keys and client id
+        m_blob->compute_client_id(m_net_params.network(), public_key);
         m_blob->compute_keys(public_key);
-
-        // Set the client blob client id
-        // Our client id is private: sha256(network | client secret pubkey)
-        const auto network = m_net_params.network();
-        std::vector<unsigned char> id_buffer(network.size() + public_key.size());
-        init_container(id_buffer, ustring_span(network), public_key);
-        m_blob_client_id = b2h(sha256(id_buffer));
     }
 
     void ga_rust::populate_initial_client_blob(session_impl::locker_t& locker)
@@ -137,8 +131,8 @@ namespace green {
         session_impl::locker_t& locker, std::string data_b64, byte_span_t /*data*/, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        rust_call("save_blob", { { "blob", std::move(data_b64) }, { "client_id", m_blob_client_id }, { "hmac", hmac } },
-            m_session);
+        rust_call("save_blob",
+            { { "blob", std::move(data_b64) }, { "client_id", m_blob->get_client_id() }, { "hmac", hmac } }, m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }

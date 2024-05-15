@@ -313,7 +313,6 @@ namespace green {
         nlohmann::json m_login_data;
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
-        std::string m_blob_client_id;
         bool m_watch_only;
 
         // Mutable

@@ -78,8 +78,17 @@ namespace green {
         for (uint32_t i = SA_NAMES; i < 32u; ++i) {
             m_data[i] = nlohmann::json();
         }
+        m_client_id.clear();
         m_key.reset();
         m_hmac_key.reset();
+    }
+
+    void client_blob::compute_client_id(const std::string& network, byte_span_t key)
+    {
+        // Our client id is private: sha256(network | client secret pubkey)
+        std::vector<unsigned char> id_buffer(network.size() + key.size());
+        init_container(id_buffer, ustring_span(network), key);
+        m_client_id = b2h(sha256(id_buffer));
     }
 
     void client_blob::set_key(pbkdf2_hmac256_t key) { set_optional_variable(m_key, std::move(key)); }

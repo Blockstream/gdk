@@ -64,7 +64,6 @@ namespace green {
         , m_notification_handler(nullptr)
         , m_notification_context(nullptr)
         , m_login_data{}
-        , m_blob_client_id{}
         , m_watch_only(true)
         , m_notify(true)
         , m_blob(std::make_unique<client_blob>())
@@ -407,7 +406,8 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
-        nlohmann::json args = { { "client_id", m_blob_client_id }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
+        nlohmann::json args
+            = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "hmac", m_blob_hmac } };
         return wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
     }
 
@@ -443,7 +443,7 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
-        nlohmann::json args = { { "client_id", m_blob_client_id }, { "sequence", "0" }, { "blob", blob_b64 },
+        nlohmann::json args = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "blob", blob_b64 },
             { "hmac", hmac }, { "previous_hmac", old_hmac } };
         return wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
     }
@@ -540,7 +540,7 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         if (m_blobserver) {
-            const auto blob_feed = "blob.update." + m_blob_client_id;
+            const auto blob_feed = "blob.update." + m_blob->get_client_id();
             m_blobserver->subscribe(
                 blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
         }
