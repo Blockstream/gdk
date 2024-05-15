@@ -1213,7 +1213,6 @@ namespace green {
             swap_with_default(m_login_data);
             m_local_encryption_key.reset();
             m_blob->reset();
-            m_blob_outdated = false; // Blob will be reloaded if needed when login succeeds
             swap_with_default(m_limits_data);
             swap_with_default(m_twofactor_config);
             swap_with_default(m_subaccounts);

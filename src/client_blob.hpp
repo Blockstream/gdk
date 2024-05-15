@@ -42,6 +42,12 @@ namespace green {
         void set_hmac(const std::string& hmac) { m_hmac = hmac; }
         const std::string& get_hmac() const { return m_hmac; }
 
+        bool is_outdated() const { return m_is_outdated; }
+        void set_not_outdated() { m_is_outdated = false; }
+
+        // Mark the blob outdated if the new_hmac is not our current hmac.
+        bool on_update(const std::string& new_hmac);
+
         void set_user_version(uint64_t version);
         uint64_t get_user_version() const;
 
@@ -86,6 +92,9 @@ namespace green {
         std::optional<pbkdf2_hmac256_t> m_hmac_key;
         // The hmac of the last saved/loaded blob contents
         std::string m_hmac;
+        // True if the blob is (or may be) outdated with respect to
+        // any stored server blob.
+        bool m_is_outdated;
     };
 
 } // namespace green

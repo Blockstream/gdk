@@ -67,7 +67,6 @@ namespace green {
         , m_watch_only(true)
         , m_notify(true)
         , m_blob(std::make_unique<client_blob>())
-        , m_blob_outdated(false)
         , m_utxo_cache_mutex()
         , m_utxo_cache()
         , m_wamp_connections()
@@ -396,6 +395,7 @@ namespace green {
         auto server_data = load_client_blob_impl(locker);
         if (!j_str_is_empty(server_data, "blob")) {
             set_local_client_blob(locker, server_data, encache);
+            m_blob->set_not_outdated();
             return true;
         }
         return false;
@@ -428,12 +428,13 @@ namespace green {
             // Don't encache the latest blob, the caller will retry to update it
             constexpr bool encache = false;
             set_local_client_blob(locker, server_data, encache);
+            m_blob->set_not_outdated();
             return false; // Save failed, the caller should retry
         }
         // Blob has been saved on the server, cache it locally
         encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
         m_blob->set_hmac(hmac);
-        m_blob_outdated = false; // Blob is now current with the servers view
+        m_blob->set_not_outdated();
         return true; // Saved successfully
     }
 
@@ -464,7 +465,6 @@ namespace green {
         if (encache) {
             encache_local_client_blob(locker, std::move(server_blob_b64), server_blob, server_hmac);
         }
-        m_blob_outdated = false; // Blob is now current with the servers view
     }
 
     bool session_impl::have_writable_client_blob() const
@@ -494,7 +494,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(m_blob->has_key() && m_blob->has_hmac_key());
 
         while (true) {
-            if (m_blob_outdated) {
+            if (m_blob->is_outdated()) {
                 // Our blob is known to be outdated.
                 // Re-load the up-to-date blob from the server.
                 load_client_blob(locker, false);
@@ -525,12 +525,13 @@ namespace green {
         // Check the hmac as we will be notified of our own changes
         // when more than one session is logged in at a time.
         const auto& new_hmac = j_strref(event, "hmac");
-        locker_t locker(m_mutex);
-        if (m_blob->get_hmac() != new_hmac) {
-            // Another session has updated our client blob, mark it dirty.
-            m_blob_outdated = true;
-            locker.unlock();
-            GDK_LOG(info) << "client blob updated, new HMAC " << new_hmac;
+        bool is_outdated;
+        {
+            locker_t locker(m_mutex);
+            is_outdated = m_blob->on_update(new_hmac);
+        }
+        if (is_outdated) {
+            GDK_LOG(info) << "client blob updated by another session to HMAC " << new_hmac;
         }
     }
 
@@ -564,7 +565,7 @@ namespace green {
         locker_t locker(m_mutex);
         const bool is_electrum = m_net_params.is_electrum();
 
-        if (m_blob_outdated) {
+        if (m_blob->is_outdated()) {
             load_client_blob(locker, true);
         }
         auto subaccounts = get_subaccounts_impl(locker);
@@ -832,7 +833,7 @@ namespace green {
     {
         // Set tx memos in the returned txs from the blob cache
         locker_t locker(m_mutex);
-        if (m_blob_outdated) {
+        if (m_blob->is_outdated()) {
             load_client_blob(locker, true);
         }
         const bool have_blobserver = !!m_blobserver;

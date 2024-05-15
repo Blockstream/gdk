@@ -63,11 +63,7 @@ namespace green {
         }
     } // namespace
 
-    client_blob::client_blob()
-        : m_data()
-    {
-        reset();
-    }
+    client_blob::client_blob() { reset(); }
 
     void client_blob::reset()
     {
@@ -82,6 +78,7 @@ namespace green {
         m_key.reset();
         m_hmac_key.reset();
         m_hmac.clear();
+        m_is_outdated = false;
     }
 
     void client_blob::compute_client_id(const std::string& network, byte_span_t key)
@@ -112,6 +109,15 @@ namespace green {
     }
 
     bool client_blob::has_hmac_key() const { return m_hmac_key.has_value(); }
+
+    bool client_blob::on_update(const std::string& new_hmac)
+    {
+        if (m_hmac != new_hmac) {
+            m_is_outdated = true;
+            return true;
+        }
+        return false;
+    }
 
     bool client_blob::is_key_encrypted(uint32_t key) const
     {

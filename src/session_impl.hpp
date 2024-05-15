@@ -319,10 +319,8 @@ namespace green {
         std::string m_tor_proxy; // Updated on connect(), protected by m_mutex
         std::atomic_bool m_notify; // Whether to emit notifications
 
-        // Client blob
-        // Current client blob (if any)
+        // Current client blob
         std::unique_ptr<client_blob> m_blob;
-        bool m_blob_outdated;
 
         // UTXOs
         // Cached UTXOs are unfiltered; if using the cached values you
