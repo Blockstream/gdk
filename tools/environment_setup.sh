@@ -8,7 +8,7 @@ export HOST_ARCH=$(uname -m)
 export HOST_PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
 case $HOST_PLATFORM in
     linux)
-        export host_triple="${HOST_ARCH}-pc-linux-gnu"
+        export host_triple="${HOST_ARCH}-linux-gnu"
         ;;
     darwin)
         export host_triple="${HOST_ARCH}-apple-darwin"

@@ -7,7 +7,7 @@ OPENSSL_NAME="$(basename ${PRJ_SUBDIR})"
 CONFIGURE_ARGS="no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp no-tests no-ui-console"
 
 case $target_triple in
-    *-pc-linux-gnu)
+    *-linux-gnu)
         CONFIGURE_ARGS+=" enable-ec_nistp_64_gcc_128"
         openssl_triple="linux-${HOST_ARCH}"
         if [ "${CC}" == "clang" ]; then

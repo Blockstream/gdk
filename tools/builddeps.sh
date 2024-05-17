@@ -227,6 +227,7 @@ source_filename="${source_name}.tar.gz"
 source_hash="cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
+# building in a subshell to avoid leaking openssl-specific exports
 (build ${name} ${OPENSSL_SRCDIR})
 
 
