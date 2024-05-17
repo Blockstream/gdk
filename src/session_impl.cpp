@@ -467,10 +467,12 @@ namespace green {
         }
     }
 
-    bool session_impl::have_writable_client_blob() const
+    bool session_impl::have_client_blob_server(locker_t& locker) const
     {
-        locker_t locker(m_mutex);
-        return have_writable_client_blob(locker);
+        // Returns true if we are:
+        // Multisig, and not in a 2fa reset, or
+        // Singlesig, and have a blobserver connection
+        return !is_twofactor_reset_active(locker) && (!m_net_params.is_electrum() || m_blobserver);
     }
 
     bool session_impl::have_writable_client_blob(locker_t& locker) const

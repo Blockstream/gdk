@@ -389,9 +389,13 @@ namespace green {
         // Make the rust call to ensure the subaccount is valid, and
         // store the metadata in case the blobserver is not enabled
         rust_call("update_subaccount", details, m_session);
-        if (have_writable_client_blob()) {
-            session_impl::update_subaccount(subaccount, details);
+        {
+            locker_t locker(m_mutex);
+            if (!have_writable_client_blob(locker)) {
+                return;
+            }
         }
+        session_impl::update_subaccount(subaccount, details);
     }
 
     std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)

@@ -251,8 +251,9 @@ namespace green {
         /// Returns whether the signer was already set (i.e. true if this is a re-login)
         bool set_signer(locker_t& locker, std::shared_ptr<signer> signer);
 
+        /// Returns true if we have a server we can write our client blob to
+        bool have_client_blob_server(locker_t& locker) const;
         /// Returns true if we have a client blob we can write to
-        bool have_writable_client_blob() const;
         bool have_writable_client_blob(locker_t& locker) const;
 
         // Load the latest blob from the server & update our local/cached copy
