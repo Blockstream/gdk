@@ -256,6 +256,9 @@ namespace green {
         /// Returns true if we have a client blob we can write to
         bool have_writable_client_blob(locker_t& locker) const;
 
+        // Sync our local blob with any server blob (No-op if no server blob)
+        void sync_client_blob(locker_t& locker);
+
         // Load the latest blob from the server & update our local/cached copy
         bool load_client_blob(locker_t& locker, bool encache);
         virtual nlohmann::json load_client_blob_impl(locker_t& locker);

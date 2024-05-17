@@ -388,6 +388,15 @@ namespace green {
         return { { "network", std::move(np) }, { "timeout", timeout_secs } };
     }
 
+    void session_impl::sync_client_blob(locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (have_client_blob_server(locker) && m_blob->is_outdated()) {
+            constexpr bool encache = true;
+            load_client_blob(locker, encache);
+        }
+    }
+
     bool session_impl::load_client_blob(locker_t& locker, bool encache)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -398,6 +407,7 @@ namespace green {
             m_blob->set_not_outdated();
             return true;
         }
+        m_blob->set_not_outdated();
         return false;
     }
 
@@ -567,9 +577,8 @@ namespace green {
         locker_t locker(m_mutex);
         const bool is_electrum = m_net_params.is_electrum();
 
-        if (m_blob->is_outdated()) {
-            load_client_blob(locker, true);
-        }
+        sync_client_blob(locker);
+
         auto subaccounts = get_subaccounts_impl(locker);
         for (auto& sa : subaccounts) {
             const auto pointer = j_uint32ref(sa, "pointer");
@@ -835,9 +844,9 @@ namespace green {
     {
         // Set tx memos in the returned txs from the blob cache
         locker_t locker(m_mutex);
-        if (m_blob->is_outdated()) {
-            load_client_blob(locker, true);
-        }
+
+        sync_client_blob(locker);
+
         const bool have_blobserver = !!m_blobserver;
         for (auto& tx_details : tx_list) {
             // Augment the tx with its memo if present

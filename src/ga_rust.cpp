@@ -264,9 +264,7 @@ namespace green {
             // we may already have for it from another session that created it
             locker_t locker(m_mutex);
             if (m_blobserver) {
-                if (m_blob->is_outdated()) {
-                    load_client_blob(locker, true);
-                }
+                sync_client_blob(locker);
                 auto sa_data = m_blob->get_subaccount_data(subaccount);
                 details["name"] = j_str_or_empty(sa_data, "name");
                 details["hidden"] = j_bool_or_false(sa_data, "hidden");
