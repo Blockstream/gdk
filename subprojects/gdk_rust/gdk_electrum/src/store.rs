@@ -123,6 +123,7 @@ pub struct ClientBlob {
     pub blob: String,
     pub client_id: String,
     pub hmac: String,
+    pub requires_merge: bool,
 }
 
 /// RawStore contains data that are not extractable from xpub+blockchain

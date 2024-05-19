@@ -452,13 +452,13 @@ namespace green {
         }
         // Blob has been saved on the server, or we have no server to save to.
         // Cache the blob locally
-        encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
         m_blob->set_hmac(hmac);
         m_blob->unset_is_outdated();
         m_blob->unset_is_modified();
         if (have_server) {
             m_blob->unset_requires_merge();
         }
+        encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
         return true; // Saved successfully
     }
 

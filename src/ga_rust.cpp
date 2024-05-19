@@ -118,6 +118,9 @@ namespace green {
             // We have a local blob, load it into our in-memory blob
             GDK_RUNTIME_ASSERT(m_watch_only || m_blob->has_hmac_key());
             m_blob->load(base64_to_bytes(j_strref(blob_data, "blob")), j_strref(blob_data, "hmac"));
+            if (j_boolref(blob_data, "requires_merge")) {
+                m_blob->set_requires_merge();
+            }
         }
     }
 
@@ -125,8 +128,9 @@ namespace green {
         session_impl::locker_t& locker, std::string data_b64, byte_span_t /*data*/, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        rust_call("save_blob",
-            { { "blob", std::move(data_b64) }, { "client_id", m_blob->get_client_id() }, { "hmac", hmac } }, m_session);
+        nlohmann::json args{ { "blob", std::move(data_b64) }, { "client_id", m_blob->get_client_id() },
+            { "hmac", hmac }, { "requires_merge", m_blob->get_requires_merge() } };
+        rust_call("save_blob", args, m_session);
     }
 
     void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
@@ -146,8 +150,6 @@ namespace green {
             // We don't have a local client blob. Create one for merging
             populate_initial_client_blob(locker);
         }
-        // FIXME: Store this with the blob
-        m_blob->set_requires_merge();
 
         // Load the latest blob from the server. If the server blob is
         // newer, this updates our locally cached blob data to it,
