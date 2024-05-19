@@ -79,6 +79,8 @@ namespace green {
         m_hmac_key.reset();
         m_hmac.clear();
         m_is_outdated = false;
+        m_is_modified = false;
+        m_requires_merge = false;
     }
 
     void client_blob::compute_client_id(const std::string& network, byte_span_t key)
@@ -298,7 +300,7 @@ namespace green {
         return base64_from_bytes(hmac_sha256(*m_hmac_key, data));
     }
 
-    void client_blob::load(byte_span_t data, const std::string& hmac, bool merge_current)
+    void client_blob::load(byte_span_t data, const std::string& hmac)
     {
         GDK_RUNTIME_ASSERT(m_key.has_value());
 
@@ -326,13 +328,15 @@ namespace green {
         const uint64_t new_version = new_data[USER_VERSION];
         const uint64_t current_version = get_user_version();
         GDK_LOG(info) << "Load blob ver " << new_version << " over " << current_version;
+        // FIXME: We can only check versions when the blobserver is trusted
         // Allow to load a v1 blob over a v1 blob for initial creation races
-        const bool is_newer = new_version > current_version || (current_version == 1 && new_version == 1);
-        GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
+        // const bool is_newer = new_version >= current_version || (current_version == 1 && new_version == 1);
+        // GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
 
-        if (!merge_current) {
+        if (!m_requires_merge) {
             m_data.swap(new_data);
             m_hmac = hmac;
+            m_is_modified = false;
             return;
         }
         // Merge the existing metadata into the current blob
@@ -343,9 +347,11 @@ namespace green {
         m_data.swap(new_data);
         update_subaccounts_data(subaccounts_data, xpubs);
         update_tx_memos(tx_memos);
-        if (version != get_user_version()) {
+        m_is_modified = version != get_user_version();
+        if (m_is_modified) {
             set_user_version(version + 1);
         }
+        // Do not update m_requires_merge, it will be reset once the blob is saved
         m_hmac = hmac;
     }
 

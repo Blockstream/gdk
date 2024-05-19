@@ -400,15 +400,21 @@ namespace green {
     bool session_impl::load_client_blob(locker_t& locker, bool encache)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (!have_client_blob_server(locker)) {
+            return false;
+        }
         GDK_LOG(info) << "Fetching client blob from server";
         auto server_data = load_client_blob_impl(locker);
         if (!j_str_is_empty(server_data, "blob")) {
             set_local_client_blob(locker, server_data, encache);
-            m_blob->set_not_outdated();
             return true;
         }
-        m_blob->set_not_outdated();
-        return false;
+        bool had_server_blob = j_strref(server_data, "hmac") != client_blob::get_zero_hmac();
+        if (had_server_blob) {
+            // The server blob matches ours, so our blob is not outdated
+            m_blob->unset_is_outdated();
+        }
+        return had_server_blob;
     }
 
     nlohmann::json session_impl::load_client_blob_impl(locker_t& locker)
@@ -429,22 +435,30 @@ namespace green {
         const auto& hmac = j_strref(saved.second, "hmac");
         auto& blob_b64 = j_strref(saved.second, "blob");
 
-        auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64, hmac);
+        const bool have_server = have_client_blob_server(locker);
+        if (have_server) {
+            auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64, hmac);
 
-        if (!j_str_is_empty(server_data, "blob")) {
-            // Raced with another update on the server.
-            // Update the blob and tell the caller to retry their update on top.
-            GDK_LOG(info) << "Save client blob race, retrying";
-            // Don't encache the latest blob, the caller will retry to update it
-            constexpr bool encache = false;
-            set_local_client_blob(locker, server_data, encache);
-            m_blob->set_not_outdated();
-            return false; // Save failed, the caller should retry
+            if (!j_str_is_empty(server_data, "blob")) {
+                // Raced with another update on the server.
+                // Update the blob and tell the caller to retry their update on top.
+                GDK_LOG(info) << "Save client blob race, retrying";
+                // Don't encache the latest blob, the caller will retry to update it
+                constexpr bool encache = false;
+                set_local_client_blob(locker, server_data, encache);
+                m_blob->unset_is_outdated();
+                return false; // Save failed, the caller should retry
+            }
         }
-        // Blob has been saved on the server, cache it locally
+        // Blob has been saved on the server, or we have no server to save to.
+        // Cache the blob locally
         encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
         m_blob->set_hmac(hmac);
-        m_blob->set_not_outdated();
+        m_blob->unset_is_outdated();
+        m_blob->unset_is_modified();
+        if (have_server) {
+            m_blob->unset_requires_merge();
+        }
         return true; // Saved successfully
     }
 
@@ -869,10 +883,7 @@ namespace green {
     {
         check_tx_memo(memo);
         locker_t locker(m_mutex);
-        if (!have_writable_client_blob(locker)) {
-            if (m_net_params.is_electrum()) {
-                return; // Singlesig watch-only or no client blob
-            }
+        if (m_watch_only || is_twofactor_reset_active(locker)) {
             throw user_error(m_watch_only ? "Authentication required" : res::id_2fa_reset_in_progress);
         }
         update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));

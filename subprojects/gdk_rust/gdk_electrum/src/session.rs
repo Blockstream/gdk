@@ -106,10 +106,6 @@ impl Session for ElectrumSession {
                 let opt: UpdateAccountOpt = serde_json::from_value(input)?;
                 self.update_subaccount(opt).to_json()
             }
-            "update_subaccount_settings" => {
-                let opt: UpdateAccountOpt = serde_json::from_value(input)?;
-                self.update_subaccount_settings(opt).to_json()
-            }
 
             "get_transactions" => {
                 let opt: GetTransactionsOpt = serde_json::from_value(input)?;
@@ -157,7 +153,6 @@ impl Session for ElectrumSession {
             "load_blob" => self.load_blob().to_json(),
             "save_blob" => self.save_blob(serde_json::from_value(input)?).to_json(),
             "get_memos" => self.get_memos().to_json(),
-            "set_memos" => self.set_memos(&serde_json::from_value(input)?).to_json(),
             "get_master_blinding_key" => self.get_master_blinding_key().to_json(),
             "set_master_blinding_key" => {
                 self.set_master_blinding_key(&serde_json::from_value(input)?).to_json()

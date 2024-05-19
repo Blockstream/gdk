@@ -43,7 +43,16 @@ namespace green {
         const std::string& get_hmac() const { return m_hmac; }
 
         bool is_outdated() const { return m_is_outdated; }
-        void set_not_outdated() { m_is_outdated = false; }
+        void set_is_outdated() { m_is_outdated = true; }
+        void unset_is_outdated() { m_is_outdated = false; }
+
+        bool is_modified() const { return m_is_modified; }
+        void set_is_modified() { m_is_modified = true; }
+        void unset_is_modified() { m_is_modified = true; }
+
+        bool get_requires_merge() const { return m_requires_merge; }
+        void set_requires_merge() { m_requires_merge = true; }
+        void unset_requires_merge() { m_requires_merge = false; }
 
         // Mark the blob outdated if the new_hmac is not our current hmac.
         bool on_update(const std::string& new_hmac);
@@ -69,7 +78,7 @@ namespace green {
         std::string get_wo_username() const;
         nlohmann::json get_xpubs() const;
 
-        void load(byte_span_t data, const std::string& hmac, bool merge_current = false);
+        void load(byte_span_t data, const std::string& hmac);
 
         std::pair<std::vector<unsigned char>, nlohmann::json> save() const;
 
@@ -95,6 +104,11 @@ namespace green {
         // True if the blob is (or may be) outdated with respect to
         // any stored server blob.
         bool m_is_outdated;
+        // True if the blob is modified locally from the last loaded state
+        bool m_is_modified;
+        // True if the blob has been modified while unsynced, and so must
+        // be merged when next synced.
+        bool m_requires_merge;
     };
 
 } // namespace green

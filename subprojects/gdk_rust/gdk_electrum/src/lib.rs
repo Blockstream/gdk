@@ -421,10 +421,6 @@ impl ElectrumSession {
         Ok(self.store()?.read()?.store.memos.clone())
     }
 
-    pub fn set_memos(&self, memos: &HashMap<Txid, String>) -> Result<(), Error> {
-        Ok(self.store()?.write()?.store.memos = memos.clone())
-    }
-
     /// Remove the persisted cache and store
     ///
     /// The actual file removal will happen when the session will be dropped.
@@ -1001,11 +997,6 @@ impl ElectrumSession {
 
     pub fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<bool, Error> {
         self.get_account(opt.subaccount)?.set_settings(opt)
-    }
-
-    // Updates subaccount settings without requiring a cached Account
-    pub fn update_subaccount_settings(&mut self, opt: UpdateAccountOpt) -> Result<bool, Error> {
-        Account::set_account_settings(&self.store()?, opt)
     }
 
     pub fn get_transactions(&self, opt: &GetTransactionsOpt) -> Result<TxsResult, Error> {
