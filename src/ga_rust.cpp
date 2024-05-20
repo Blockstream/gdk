@@ -101,8 +101,11 @@ namespace green {
         m_blob->update_subaccounts_data(get_local_subaccounts_data(), m_signer->get_cached_bip32_xpubs_json());
         // Tx memos
         m_blob->update_tx_memos(rust_call("get_memos", {}, m_session));
+        // Master blinding key (Liquid)
+        if (m_signer->has_master_blinding_key()) {
+            m_blob->set_master_blinding_key(b2h(m_signer->get_master_blinding_key()));
+        }
         m_blob->set_user_version(1); // Initial version
-        // FIXME: master blinding key
         m_blob->set_is_modified();
         m_blob->set_requires_merge();
     }
@@ -165,6 +168,13 @@ namespace green {
 
         // Load any xpubs from the blob into our signer
         load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
+        if (!signer->has_master_blinding_key()) {
+            // Load the master blinding key from the blob if available
+            if (auto key_hex = m_blob->get_master_blinding_key(); !key_hex.empty()) {
+                signer->set_master_blinding_key(key_hex);
+            }
+        }
+
         subscribe_all(locker);
         return m_login_data;
     }
