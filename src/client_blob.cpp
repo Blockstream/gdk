@@ -81,6 +81,7 @@ namespace green {
         m_is_outdated = false;
         m_is_modified = false;
         m_requires_merge = false;
+        m_server_is_mandatory = false;
     }
 
     void client_blob::compute_client_id(const std::string& network, byte_span_t key)
@@ -328,10 +329,13 @@ namespace green {
         const uint64_t new_version = new_data[USER_VERSION];
         const uint64_t current_version = get_user_version();
         GDK_LOG(info) << "Load blob ver " << new_version << " over " << current_version;
-        // FIXME: We can only check versions when the blobserver is trusted
-        // Allow to load a v1 blob over a v1 blob for initial creation races
-        // const bool is_newer = new_version >= current_version || (current_version == 1 && new_version == 1);
-        // GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
+        if (m_server_is_mandatory) {
+            // Check that the client version doesn't regress. This can only
+            // be checked if the server is mandatory
+            // Allow to load a v1 blob over a v1 blob for initial creation races
+            const bool is_newer = new_version >= current_version || (current_version == 1 && new_version == 1);
+            GDK_RUNTIME_ASSERT_MSG(is_newer, "Server returned an outdated client blob");
+        }
 
         if (!m_requires_merge) {
             m_data.swap(new_data);

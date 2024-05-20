@@ -42,6 +42,9 @@ namespace green {
         void set_hmac(const std::string& hmac) { m_hmac = hmac; }
         const std::string& get_hmac() const { return m_hmac; }
 
+        bool get_server_is_mandatory() { return m_server_is_mandatory; }
+        void set_server_is_mandatory() { m_server_is_mandatory = true; }
+
         bool is_outdated() const { return m_is_outdated; }
         void set_is_outdated() { m_is_outdated = true; }
         void unset_is_outdated() { m_is_outdated = false; }
@@ -109,6 +112,9 @@ namespace green {
         // True if the blob has been modified while unsynced, and so must
         // be merged when next synced.
         bool m_requires_merge;
+        // True if the blobserver connection is mandatory (i.e. if using the
+        // Green server to provide the client blob
+        bool m_server_is_mandatory;
     };
 
 } // namespace green

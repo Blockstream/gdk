@@ -1014,6 +1014,10 @@ namespace green {
         if (is_elsewhere) {
             GDK_RUNTIME_ASSERT(is_blob_on_server); // Server must indicate we have a blob
             GDK_RUNTIME_ASSERT(m_blobserver); // We must have a blobserver connection
+        } else if (is_blob_on_server) {
+            // The Green backend is our blobserver; let the blob know that
+            // it has a mandatory server.
+            m_blob->set_server_is_mandatory();
         }
 
         if (!reset_2fa_active && !is_blob_on_server && m_blob->get_hmac().empty()) {
