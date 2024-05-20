@@ -232,7 +232,8 @@ impl Account {
     ) -> Result<AddressPointer, Error> {
         let store = &mut self.store.write()?;
         let acc_store = store.account_cache_mut(self.account_num)?;
-        let pointer = acc_store.increment_last_given(is_internal, ignore_gap_limit, gap_limit);
+        let pointer = acc_store.get_next_pointer(is_internal);
+        acc_store.increment_pointer(is_internal, ignore_gap_limit, gap_limit);
         let account_path = DerivationPath::from(&[(is_internal as u32).into(), pointer.into()][..]);
         let user_path = self.get_full_path(&account_path);
         let address = self.derive_address(is_internal, pointer)?;
@@ -290,7 +291,7 @@ impl Account {
         let is_internal = opt.is_internal;
         let store = self.store.read()?;
         let acc_store = store.account_cache(subaccount)?;
-        let wallet_last_pointer = acc_store.get_last_given(is_internal) + 1;
+        let wallet_last_pointer = acc_store.get_next_pointer(is_internal);
         let before_pointer = match opt.last_pointer {
             None => wallet_last_pointer,
             Some(p) => std::cmp::min(p, wallet_last_pointer),

@@ -575,16 +575,16 @@ impl RawAccountCache {
         self.count_given.as_ref().map_or(0, |c| c[is_internal])
     }
 
-    pub fn get_last_given(&self, is_internal: bool) -> u32 {
-        self.last_used[is_internal] + self.get_count_given(is_internal)
+    /// Get the next address pointer
+    pub fn get_next_pointer(&self, is_internal: bool) -> u32 {
+        // last_used:   the pointer of the last script involved in a transaction
+        // count_given: the number of pointer given (ranges from 0 to gap_limit-1 included)
+        // +1:          we want the next one
+        self.last_used[is_internal] + self.get_count_given(is_internal) + 1
     }
 
-    pub fn increment_last_given(
-        &mut self,
-        is_internal: bool,
-        ignore_gap_limit: bool,
-        gap_limit: u32,
-    ) -> u32 {
+    /// Increment next pointer
+    pub fn increment_pointer(&mut self, is_internal: bool, ignore_gap_limit: bool, gap_limit: u32) {
         if is_internal {
             let count_given = self.count_given.clone().unwrap_or_default();
             let mut internal = count_given.internal + 1;
@@ -606,7 +606,6 @@ impl RawAccountCache {
                 external,
             });
         }
-        self.get_last_given(is_internal)
     }
 }
 
