@@ -5,6 +5,7 @@
 #include "ga_auth_handlers.hpp"
 #include "network_parameters.hpp"
 #include "session_impl.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include <utility>
 
@@ -14,7 +15,7 @@ namespace sdk {
     // Validate
     //
     validate_call::validate_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "validate")
+        : auth_handler_impl(session, "validate", std::shared_ptr<signer>())
         , m_details(std::move(details))
     {
     }
