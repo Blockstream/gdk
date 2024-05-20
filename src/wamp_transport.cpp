@@ -372,9 +372,10 @@ namespace green {
 
     void wamp_transport::reconnect_hint(const nlohmann::json& hint, const std::string& proxy)
     {
-        const auto hint_p = hint.find("hint");
-        if (hint_p != hint.end()) {
-            change_state_to(*hint_p == "connect" ? state_t::connected : state_t::disconnected, proxy, true);
+        if (const auto hint_p = hint.find("hint"); hint_p != hint.end()) {
+            const auto new_state = *hint_p == "connect" ? state_t::connected : state_t::disconnected;
+            const bool wait = m_is_mandatory || new_state == state_t::disconnected;
+            change_state_to(new_state, proxy, wait);
         }
     }
 
