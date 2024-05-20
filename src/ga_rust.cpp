@@ -148,7 +148,8 @@ namespace green {
 
         // Load any cached blob data
         get_cached_local_client_blob(locker, std::string());
-        const bool had_cached_blob = !m_blob->get_hmac().empty();
+        const auto cached_hmac = m_blob->get_hmac();
+        const bool had_cached_blob = !cached_hmac.empty();
         if (!had_cached_blob) {
             // We don't have a local client blob. Create one for merging
             populate_initial_client_blob(locker);
@@ -158,11 +159,12 @@ namespace green {
         // newer, this updates our locally cached blob data to it,
         // and merges any local data if required.
         bool had_server_blob = load_client_blob(locker, true);
-        if (!had_server_blob && have_client_blob_server(locker)) {
-            // No blob on the server but a blobserver is configured - save it
+        if (!had_server_blob && have_client_blob_server(locker) && !m_blob->get_server_has_failure()) {
+            // No server blob, but a working blobserver is configured: save it
             // FIXME: handle race on initial blob creation
             save_client_blob(locker, client_blob::get_zero_hmac());
-        } else if (m_blob->is_modified()) {
+        }
+        if (m_blob->is_modified() || cached_hmac != m_blob->get_hmac()) {
             save_client_blob(locker, m_blob->get_hmac());
         }
 

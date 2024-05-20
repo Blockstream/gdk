@@ -45,6 +45,10 @@ namespace green {
         bool get_server_is_mandatory() { return m_server_is_mandatory; }
         void set_server_is_mandatory() { m_server_is_mandatory = true; }
 
+        bool get_server_has_failure() { return m_server_has_failure; }
+        void set_server_has_failure() { m_server_has_failure = true; }
+        void unset_server_has_failure() { m_server_has_failure = false; }
+
         bool is_outdated() const { return m_is_outdated; }
         void set_is_outdated() { m_is_outdated = true; }
         void unset_is_outdated() { m_is_outdated = false; }
@@ -113,8 +117,11 @@ namespace green {
         // be merged when next synced.
         bool m_requires_merge;
         // True if the blobserver connection is mandatory (i.e. if using the
-        // Green server to provide the client blob
+        // Green server to provide the client blob.
         bool m_server_is_mandatory;
+        // True if the connection to the blobserver we are using has failed
+        // (timeout, disconnection etc).
+        bool m_server_has_failure;
     };
 
 } // namespace green

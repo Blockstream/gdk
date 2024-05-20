@@ -80,8 +80,7 @@ namespace green {
         }
         m_wamp_connections.reserve(2u);
         if (!m_net_params.get_blob_server_url().empty()) {
-            // FIXME: Make the blobserver non-mandatory
-            constexpr bool is_mandatory = true;
+            constexpr bool is_mandatory = false;
             m_blobserver = std::make_shared<wamp_transport>(
                 m_net_params, *m_strand,
                 [](nlohmann::json details, bool) { GDK_LOG(info) << "blob_server notification: " << details.dump(); },
@@ -109,6 +108,7 @@ namespace green {
         const auto proxy = session_impl::connect_tor();
         std::for_each(m_wamp_connections.rbegin(), m_wamp_connections.rend(),
             [&proxy](auto& connection) { connection->connect(proxy, connection->is_mandatory()); });
+        m_blob->unset_server_has_failure(); // Retry blob loading/saving if it failed
         connect_session();
     }
 
@@ -118,6 +118,7 @@ namespace green {
     {
         // Called by the session class in reponse to reconnect and timeout errors.
         disconnect_session();
+        m_blob->unset_server_has_failure(); // Retry blob loading/saving if it failed
         connect_session();
         for (auto& connection : m_wamp_connections) {
             connection->reconnect();
@@ -400,11 +401,14 @@ namespace green {
     bool session_impl::load_client_blob(locker_t& locker, bool encache)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (!have_client_blob_server(locker)) {
+        if (!have_client_blob_server(locker) || m_blob->get_server_has_failure()) {
             return false;
         }
         GDK_LOG(info) << "Fetching client blob from server";
         auto server_data = load_client_blob_impl(locker);
+        if (m_blob->get_server_has_failure()) {
+            return false;
+        }
         if (!j_str_is_empty(server_data, "blob")) {
             set_local_client_blob(locker, server_data, encache);
             return true;
@@ -421,9 +425,16 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
-        nlohmann::json args
-            = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "hmac", m_blob->get_hmac() } };
-        return wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
+        nlohmann::json ret;
+        try {
+            nlohmann::json args
+                = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "hmac", m_blob->get_hmac() } };
+            ret = wamp_cast_json(m_blobserver->call(locker, "get_client_blob", mp_cast(args).get()));
+        } catch (const connection_error& e) {
+            m_blob->set_server_has_failure();
+            m_blob->set_requires_merge();
+        }
+        return ret;
     }
 
     bool session_impl::save_client_blob(locker_t& locker, const std::string& old_hmac)
@@ -436,7 +447,7 @@ namespace green {
         auto& blob_b64 = j_strref(saved.second, "blob");
 
         const bool have_server = have_client_blob_server(locker);
-        if (have_server) {
+        if (have_server && !m_blob->get_server_has_failure()) {
             auto server_data = save_client_blob_impl(locker, old_hmac, blob_b64, hmac);
 
             if (!j_str_is_empty(server_data, "blob")) {
@@ -455,7 +466,7 @@ namespace green {
         m_blob->set_hmac(hmac);
         m_blob->unset_is_outdated();
         m_blob->unset_is_modified();
-        if (have_server) {
+        if (have_server && !m_blob->get_server_has_failure()) {
             m_blob->unset_requires_merge();
         }
         encache_local_client_blob(locker, std::move(blob_b64), saved.first, hmac);
@@ -467,9 +478,16 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_blobserver);
+        nlohmann::json ret;
         nlohmann::json args = { { "client_id", m_blob->get_client_id() }, { "sequence", "0" }, { "blob", blob_b64 },
             { "hmac", hmac }, { "previous_hmac", old_hmac } };
-        return wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
+        try {
+            ret = wamp_cast_json(m_blobserver->call(locker, "set_client_blob", mp_cast(args).get()));
+        } catch (const connection_error& e) {
+            m_blob->set_server_has_failure();
+            m_blob->set_requires_merge();
+        }
+        return ret;
     }
 
     void session_impl::set_local_client_blob(locker_t& locker, const nlohmann::json& server_data, bool encache)
@@ -564,10 +582,16 @@ namespace green {
     void session_impl::subscribe_all(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (m_blobserver) {
-            const auto blob_feed = "blob.update." + m_blob->get_client_id();
+        if (!m_blobserver || m_blob->get_server_has_failure()) {
+            return;
+        }
+        const auto blob_feed = "blob.update." + m_blob->get_client_id();
+        try {
             m_blobserver->subscribe(
                 blob_feed, [this](nlohmann::json event) { on_client_blob_updated(std::move(event)); });
+        } catch (const connection_error& e) {
+            m_blob->set_server_has_failure();
+            m_blob->set_requires_merge();
         }
     }
 
