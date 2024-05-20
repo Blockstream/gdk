@@ -19,18 +19,26 @@ namespace green {
         }
     };
 
-    class reconnect_error : public std::runtime_error {
+    class connection_error : public std::runtime_error {
     public:
-        reconnect_error()
-            : std::runtime_error("reconnect required")
+        connection_error(const char* what_str)
+            : std::runtime_error(what_str)
         {
         }
     };
 
-    class timeout_error : public std::runtime_error {
+    class reconnect_error : public connection_error {
+    public:
+        reconnect_error()
+            : connection_error("reconnect required")
+        {
+        }
+    };
+
+    class timeout_error : public connection_error {
     public:
         timeout_error()
-            : std::runtime_error("timeout error")
+            : connection_error("timeout error")
         {
         }
     };
