@@ -799,6 +799,9 @@ decode the data, split into parts of size ``max_fragment_len`` or less.
 In this case, the caller must provide all returned parts to any decoder, e.g. by
 generating an animated QR code from them.
 
+Special case is for ``ur_type`` equal to ``crypto-psbt``: ``data`` field is expected to be in base64 format.
+
+
 .. _bcur-encoded:
 
 BCUR Encoded fragments JSON

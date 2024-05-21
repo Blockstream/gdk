@@ -367,6 +367,7 @@ prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BCUR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${BCUR_SRCDIR}
 
+
 # build tinyCBOR
 name="tinycbor"
 source_url="https://github.com/lightyear15/tinycbor/archive/refs/tags/v0.6.0-memfile-rc1.tar.gz"
@@ -377,12 +378,13 @@ prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BCUR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${BCUR_SRCDIR}
 
+
 # build ur-c
 name="ur-c"
-source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.3.0-rc3.tar.gz"
-source_name="ur-c-0.3.0-rc3"
-source_filename="ur-c-0.3.0-rc3.tar.gz"
-source_hash="0560fb7cd5e93e0de1c9a1831a5b7081ea9a34c12acd0c32118c5bb4c50683d4"
+source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.4.0-rc1.tar.gz"
+source_name="ur-c-0.4.0-rc1"
+source_filename="ur-c-0.4.0-rc1.tar.gz"
+source_hash="40ec7cfc961de6685e83356d7d7c5875e204676d3a30d02d8077e201380477c1"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
