@@ -161,8 +161,7 @@ namespace green {
             if (result != URC_OK) {
                 throw user_error("ur-c: Parsing crypto_psbt failed with error code:" + std::to_string(result));
             }
-            nlohmann::json retv = { { "psbt", base64_from_bytes({ psbt.psbt, psbt.psbt_len }) } };
-            return retv;
+            return { { "psbt", base64_from_bytes({ psbt.psbt, psbt.psbt_len }) } };
         }
 
         static nlohmann::json deserialize_output(const std::vector<uint8_t>& raw)
