@@ -1,13 +1,17 @@
 # Changelog
 
-## Release 0.71.1
+## Release 0.71.1 - 24-05-22
 
 ### Added
 - Docs: Document how to disable RBF when creating transactions.
+- GA_bcur_decode: add decoding progress in multi-qr process.
 
 ### Changed
+- GA_validate: do not require session to be logged in.
+- GA_bcur_decode: throw an error if qr code not processed correctly.
 
 ### Fixed
+- GA_get_receive_address: fix an off-by-one error for singlesig.
 
 ### Removed
 
