@@ -12,7 +12,6 @@
   to an external server. When enabled, metadata such as subaccount names and
   transaction notes is synced automatically between different wallet installs
   and when restoring a wallet from scratch.
-- Docs: Document how to disable RBF when creating transactions.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
@@ -37,6 +36,19 @@
 ### Fixed
 
 ### Removed
+
+## Release 0.71.1 - 24-05-22
+
+### Added
+- Docs: Document how to disable RBF when creating transactions.
+- GA_bcur_decode: add decoding progress in multi-qr process.
+
+### Changed
+- GA_validate: do not require session to be logged in.
+- GA_bcur_decode: throw an error if qr code not processed correctly.
+
+### Fixed
+- GA_get_receive_address: fix an off-by-one error for singlesig.
 
 ## Release 0.71.0 - 24-04-10
 
