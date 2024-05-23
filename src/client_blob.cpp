@@ -291,6 +291,19 @@ namespace green {
         return {};
     }
 
+    nlohmann::json::array_t client_blob::get_bip329() const
+    {
+        nlohmann::json::array_t items;
+        const auto memos = get_tx_memos();
+        for (const auto& memo : memos.items()) {
+            nlohmann::json line = { { "type", "tx" }, { "ref", memo.key() }, { "label", memo.value() } };
+            items.emplace_back(std::move(line));
+        }
+        // TODO: Once subaccounts/addresses are in the blob, add them here
+        // instead of having the session do it
+        return items;
+    }
+
     const std::string& client_blob::get_zero_hmac() { return ZERO_HMAC_BASE64; }
 
     const std::string& client_blob::get_one_hmac() { return ONE_HMAC_BASE64; }

@@ -93,6 +93,8 @@ namespace green {
         static const std::string& get_one_hmac();
         std::string compute_hmac(byte_span_t data) const;
 
+        nlohmann::json::array_t get_bip329() const;
+
     private:
         bool is_key_encrypted(uint32_t key) const;
 
