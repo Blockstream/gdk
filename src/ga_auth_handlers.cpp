@@ -260,7 +260,7 @@ namespace green {
     // Register
     //
     register_call::register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data)
-        : auth_handler_impl(session, "register_user", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "register_user", {})
         , m_hw_device(std::move(hw_device))
         , m_credential_data(std::move(credential_data))
     {
@@ -308,7 +308,7 @@ namespace green {
     // Login User
     //
     login_user_call::login_user_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data)
-        : auth_handler_impl(session, "login_user", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "login_user", {})
         , m_hw_device(std::move(hw_device))
         , m_credential_data(std::move(credential_data))
     {
@@ -2279,7 +2279,7 @@ namespace green {
     // Encrypt with PIN
     //
     encrypt_with_pin_call::encrypt_with_pin_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "encrypt_with_pin", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "encrypt_with_pin", {})
         , m_details(std::move(details))
     {
     }
@@ -2294,7 +2294,7 @@ namespace green {
     // Decrypt with PIN
     //
     decrypt_with_pin_call::decrypt_with_pin_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "decrypt_with_pin", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "decrypt_with_pin", {})
         , m_details(std::move(details))
     {
     }

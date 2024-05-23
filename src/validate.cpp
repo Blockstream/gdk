@@ -14,7 +14,7 @@ namespace green {
     // Validate
     //
     validate_call::validate_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "validate", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "validate", {})
         , m_details(std::move(details))
     {
     }

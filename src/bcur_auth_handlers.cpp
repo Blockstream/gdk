@@ -308,7 +308,7 @@ namespace green {
 #endif
 
     bcur_encoder_call::bcur_encoder_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "bcur_encode", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "bcur_encode", {})
         , m_details(std::move(details))
     {
     }
@@ -347,7 +347,7 @@ namespace green {
     }
 
     bcur_decoder_call::bcur_decoder_call(session& session, nlohmann::json details)
-        : auth_handler_impl(session, "bcur_decode", std::shared_ptr<signer>())
+        : auth_handler_impl(session, "bcur_decode", {})
         , m_details(std::move(details))
     {
     }
