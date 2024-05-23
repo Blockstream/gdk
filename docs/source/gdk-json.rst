@@ -773,6 +773,56 @@ Describes the wallets enabled two factor methods, current spending limits, and t
 :twofactor_reset/is_active: Whether or not the wallet is currently undergoing the two factor reset procedure.
 :twofactor_reset/is_disputed: Whether or not the wallet two factor reset procedure is disputed.
 
+
+.. _cache-control-request:
+
+Cache Control Request JSON
+--------------------------
+
+Describes the operation to perform on cached wallet data using `GA_cache_control`.
+
+.. code-block:: json
+
+  {
+    "action": "fetch",
+    "data_source": "client_blob"
+  }
+
+:action: The cache action to perform. Currently only ``"fetch"`` is accepted.
+:data_source: The data source to operate on as described below.
+
+.. list-table:: Cached Data Sources
+   :widths: 25 75
+   :header-rows: 1
+
+   * - data_source
+     - Description
+   * - ``"client_blob"``
+     - Private user data stored encrypted in the users client blob.
+
+
+.. _cache-control-result:
+
+Cache Control Result JSON
+--------------------------
+
+Describes the result of a cache control operation requested via `GA_cache_control`.
+
+for the action ``"fetch"`` with a data source of ``"client_blob"``, the following
+data is returned:
+
+.. code-block:: json
+
+  {
+      "bip329": []
+  }
+
+:bip329: An array of BIP329 (https://github.com/bitcoin/bips/blob/master/bip-0329.mediawiki) compatible
+    elements representing the users metadata. Note that in order to comply with BIP329 (e.g. for
+    exporting the data), the caller must convert the array into JSON Lines format.
+    See https://jsonlines.org for more details.
+
+
 .. _bcur-encode:
 
 BCUR Encode JSON

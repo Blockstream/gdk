@@ -12,6 +12,9 @@
   to an external server. When enabled, metadata such as subaccount names and
   transaction notes is synced automatically between different wallet installs
   and when restoring a wallet from scratch.
+- Add GA_cache_control to enable caller control of cached data. This initial
+  implementation supports returning user metadata using the BIP329 data format
+  (see https://github.com/bitcoin/bips/blob/master/bip-0329.mediawiki for details).
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller

@@ -66,6 +66,16 @@ namespace green {
         bool m_initialized;
     };
 
+    class cache_control_call : public auth_handler_impl {
+    public:
+        cache_control_call(session& session, nlohmann::json details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class sign_transaction_call : public auth_handler_impl {
     public:
         sign_transaction_call(session& session, nlohmann::json details);

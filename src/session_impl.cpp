@@ -165,6 +165,20 @@ namespace green {
         }
     }
 
+    nlohmann::json session_impl::cache_control(const nlohmann::json& details)
+    {
+        const auto& action = j_strref(details, "action");
+        const auto& data_source = j_strref(details, "data_source");
+        if (action == "fetch") {
+            if (data_source != "client_blob") {
+                throw user_error("Unknown cache control data_source");
+            }
+            return { { "bip329", m_blob->get_bip329() } };
+        }
+        throw user_error("Unknown cache control action");
+        __builtin_unreachable();
+    }
+
     nlohmann::json session_impl::http_request(nlohmann::json params)
     {
         GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");

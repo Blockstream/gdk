@@ -283,6 +283,9 @@ class Session(object):
     def ack_system_message(self, message_text):
         return Call(ack_system_message(self.session_obj, message_text))
 
+    def cache_control(self, details):
+        return Call(cache_control(self.session_obj, self._to_json(details)))
+
     def get_twofactor_config(self):
         return json.loads(get_twofactor_config(self.session_obj))
 
