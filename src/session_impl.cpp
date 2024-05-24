@@ -167,13 +167,34 @@ namespace green {
 
     nlohmann::json session_impl::cache_control(const nlohmann::json& details)
     {
+        const bool is_electrum = m_net_params.is_electrum();
         const auto& action = j_strref(details, "action");
         const auto& data_source = j_strref(details, "data_source");
         if (action == "fetch") {
             if (data_source != "client_blob") {
                 throw user_error("Unknown cache control data_source");
             }
-            return { { "bip329", m_blob->get_bip329() } };
+            auto ret = m_blob->get_bip329();
+            if (is_electrum) {
+                // Add the subaccount xpubs
+                // TODO: Implement for multisig (needs thought/possible BIP changes)
+                for (const auto& sa : get_subaccounts()) {
+                    nlohmann::json sa_json{ { "type", "xpub" }, { "label", j_strref(sa, "name") } };
+                    // We add origin information which is an extention to BIP329,
+                    // which only specifies this field for transactions.
+                    auto descriptor = j_arrayref(sa, "core_descriptors", 2).at(0).get<std::string>();
+                    auto origin = descriptor.substr(0, descriptor.find("]", 0)) + "])";
+                    auto xpub = descriptor.substr(origin.size() - 1);
+                    xpub = xpub.substr(0, xpub.find("/", 0));
+                    sa_json.emplace("ref", std::move(xpub));
+                    if (boost::algorithm::starts_with(origin, "sh(")) {
+                        origin.append(")");
+                    }
+                    sa_json.emplace("origin", std::move(origin));
+                    ret.emplace_back(std::move(sa_json));
+                }
+            }
+            return { { "bip329", std::move(ret) } };
         }
         throw user_error("Unknown cache control action");
         __builtin_unreachable();
