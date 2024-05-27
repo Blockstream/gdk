@@ -193,9 +193,6 @@ pub enum Error {
     #[error(transparent)]
     Sighash(#[from] sighash::Error),
 
-    #[error("wallet is not initialized")]
-    WalletNotInitialized,
-
     #[error(
         "{}method not found: {method:?}",
         if *.in_session { "session " } else {""}

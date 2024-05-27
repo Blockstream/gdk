@@ -479,7 +479,10 @@ impl ElectrumSession {
         }
 
         self.start_threads()?;
-        self.get_wallet_hash_id()
+        Ok(LoginData {
+            wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
+            xpub_hash_id: self.network.xpub_hash_id(&master_xpub),
+        })
     }
 
     pub fn join_threads(&mut self) {
@@ -833,14 +836,6 @@ impl ElectrumSession {
         self.handles.push(syncer_tipper_handle);
 
         Ok(())
-    }
-
-    pub fn get_wallet_hash_id(&self) -> Result<LoginData, Error> {
-        let master_xpub = self.master_xpub.ok_or_else(|| Error::WalletNotInitialized)?;
-        Ok(LoginData {
-            wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
-            xpub_hash_id: self.network.xpub_hash_id(&master_xpub),
-        })
     }
 
     pub fn get_receive_address(&self, opt: &GetAddressOpt) -> Result<AddressPointer, Error> {
