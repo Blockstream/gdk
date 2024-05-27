@@ -171,7 +171,7 @@ the ``"sequence"`` value of UTXOs passed in the ``"utxos"`` element. Setting
 the sequence for all UTXOs to the integer ``0xFFFFFFFE``/``4294967294``
 will disable RBF for the transaction.
 
-.. note:: This may result in stuck transactions if the free rate is insufficient,
+.. note:: This may result in stuck transactions if the fee rate is insufficient,
           and should only be used if the caller understands the potential implications.
 
 
