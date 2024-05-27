@@ -200,17 +200,21 @@ namespace green {
     {
         return rust_call("credentials_from_pin_data", pin_data, m_session);
     }
+
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
         {
             locker_t locker(m_mutex);
             set_signer(locker, signer);
             m_watch_only = true;
-            // FIXME: Enable blobserver for rich watch only sessions
-            m_blobserver.reset();
         }
-        return rust_call("login_wo", signer->get_credentials(false), m_session);
+        if (signer->is_descriptor_watch_only()) {
+            m_blobserver.reset(); // No blobserver for descriptor wallets
+            return rust_call("login_wo", signer->get_credentials(false), m_session);
+        }
+        throw user_error("Rich watch only is not yet implemented");
     }
+
     bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
     {
         throw std::runtime_error("set_wo_credentials not implemented");
