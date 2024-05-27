@@ -94,7 +94,7 @@ namespace green {
             = 0;
         virtual nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_wo(std::shared_ptr<signer> signer) = 0;
-        virtual bool set_wo_credentials(const std::string& username, const std::string& password) = 0;
+        virtual bool set_wo_credentials(const std::string& username, const std::string& password);
         virtual std::string get_wo_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;
 

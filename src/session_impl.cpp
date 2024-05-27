@@ -639,6 +639,43 @@ namespace green {
         return ret;
     }
 
+    bool session_impl::set_wo_credentials(const std::string& username, const std::string& password)
+    {
+        ensure_full_session();
+        GDK_RUNTIME_ASSERT(username.empty() == password.empty());
+        if (!username.empty() && username.size() < 8u) {
+            throw user_error("Watch-only username must be at least 8 characters long");
+        }
+        if (!password.empty() && password.size() < 8u) {
+            throw user_error("Watch-only password must be at least 8 characters long");
+        }
+
+        if (m_net_params.is_liquid()) {
+            GDK_RUNTIME_ASSERT_MSG(
+                m_signer->has_master_blinding_key(), "Master blinding key must be exported to enable watch-only");
+        }
+
+        locker_t locker(m_mutex);
+        if (!have_writable_client_blob(locker)) {
+            // The wallet doesn't have a writable client blob: can only happen
+            // when a 2FA reset is in progress and the wallet was
+            // created before client blobs were enabled.
+            std::string err;
+            if (m_net_params.is_electrum()) {
+                err = "Client blob must be enabled to enable watch-only";
+            } else {
+                err = res::id_twofactor_reset_in_progress;
+            }
+            throw user_error(err);
+        }
+
+        // Set watch only data in the client blob. Blanks the username if disabling.
+        const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+        update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
+        // FIXME: if not saved, fail
+        return true;
+    }
+
     void session_impl::start_sync_threads()
     {
         // Overriden for ga_rust
