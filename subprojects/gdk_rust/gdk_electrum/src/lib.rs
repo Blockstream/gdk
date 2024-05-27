@@ -27,7 +27,7 @@ use crate::error::Error;
 use crate::interface::ElectrumUrl;
 use crate::store::*;
 
-use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpub};
+use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint};
 use gdk_common::bitcoin::hashes::hex::FromHex;
 use gdk_common::bitcoin::hex::DisplayHex;
 use gdk_common::bitcoin::Txid;
@@ -149,15 +149,12 @@ pub struct ElectrumSession {
     /// Accounts of the wallet
     pub accounts: Arc<RwLock<HashMap<u32, Account>>>,
 
-    /// Master xpub of the signer associated to the session
-    ///
-    /// It is Some after wallet initialization
-    master_xpub: Option<Xpub>,
+    /// True after wallet initialization
+    is_initialized: bool,
 
-    /// The BIP32 fingerprint of the master xpub
+    /// The BIP32 fingerprint of the master xpub of the signer associated to the session
     ///
-    /// If watch-only `master_xpub` is `None`, thus we have this value here.
-    /// If watch-only with slip132 exteneded keys, this value is not known, and we use the default value, i.e. `00000000`.
+    /// If watch-only with slip132 extended keys, this value is not known, and we use the default value, i.e. `00000000`.
     master_xpub_fingerprint: Fingerprint,
 
     pub notify: NativeNotif,
@@ -294,7 +291,7 @@ impl ElectrumSession {
         // A call to connect signals that the caller wants the background threads to start
         self.user_wants_to_sync.store(true, Ordering::Relaxed);
 
-        let last_network_call_succeeded = if self.master_xpub.is_some() {
+        let last_network_call_succeeded = if self.is_initialized {
             // Wallet initialized, we can start the background threads.
             self.start_threads()?;
             // Use the last persisted network call result so we don't have to wait for a network roundtrip
@@ -398,7 +395,7 @@ impl ElectrumSession {
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
         }
-        self.master_xpub = Some(opt.master_xpub);
+        self.is_initialized = true;
         self.master_xpub_fingerprint = opt.master_xpub_fingerprint.clone();
         self.notify.settings(&self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?);
         Ok(())

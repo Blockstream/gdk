@@ -43,7 +43,7 @@ impl Session for ElectrumSession {
             last_network_call_succeeded: Arc::new(AtomicBool::new(false)),
             timeout: None,
             store: None,
-            master_xpub: None,
+            is_initialized: false,
             master_xpub_fingerprint: Fingerprint::default(),
             recent_spent_utxos: Arc::new(RwLock::new(HashSet::<BEOutPoint>::new())),
             xr_cache: ExchangeRatesCache::default(),
