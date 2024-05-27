@@ -144,7 +144,7 @@ namespace green {
     {
         locker_t locker(m_mutex);
         set_signer(locker, signer);
-        m_watch_only = false;
+        m_watch_only = signer->is_watch_only();
 
         // Load any cached blob data
         get_cached_local_client_blob(locker, std::string());
