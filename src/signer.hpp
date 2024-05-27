@@ -88,6 +88,10 @@ namespace green {
         // Returns true if this signer is watch-only (cannot sign)
         bool is_watch_only() const;
 
+        // Returns true if this signer is a watch-only descriptor wallet
+        // (cannot sign, fixed list of subaccounts)
+        bool is_descriptor_watch_only() const;
+
         // Returns true if this signer is hardware (i.e. externally implemented)
         bool is_hardware() const;
 

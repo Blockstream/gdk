@@ -232,6 +232,11 @@ namespace green {
 
     bool signer::is_watch_only() const { return m_device["device_type"] == "watch-only"; }
 
+    bool signer::is_descriptor_watch_only() const
+    {
+        return m_credentials.contains("core_descriptors") || m_credentials.contains("slip132_extended_pubkeys");
+    }
+
     bool signer::is_hardware() const { return m_device["device_type"] == "hardware"; }
 
     const nlohmann::json& signer::get_device() const { return m_device; }
