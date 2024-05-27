@@ -133,7 +133,7 @@ impl TestSession {
 
         let opt = LoadStoreOpt {
             master_xpub: master_xpub.clone(),
-            master_xpub_fingerprint: None,
+            master_xpub_fingerprint: master_xpub.fingerprint().clone(),
         };
         session.load_store(&opt).unwrap();
 

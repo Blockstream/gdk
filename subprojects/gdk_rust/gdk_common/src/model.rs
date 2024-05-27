@@ -111,7 +111,7 @@ pub struct GetUnspentOpt {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadStoreOpt {
     pub master_xpub: Xpub,
-    pub master_xpub_fingerprint: Option<Fingerprint>,
+    pub master_xpub_fingerprint: Fingerprint,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

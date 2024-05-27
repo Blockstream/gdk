@@ -399,8 +399,7 @@ impl ElectrumSession {
             self.store = Some(store);
         }
         self.master_xpub = Some(opt.master_xpub);
-        self.master_xpub_fingerprint =
-            opt.master_xpub_fingerprint.unwrap_or_else(|| opt.master_xpub.fingerprint());
+        self.master_xpub_fingerprint = opt.master_xpub_fingerprint.clone();
         self.notify.settings(&self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?);
         Ok(())
     }
@@ -460,7 +459,7 @@ impl ElectrumSession {
             credentials.accounts(self.network.mainnet, self.network.liquid)?;
         self.load_store(&LoadStoreOpt {
             master_xpub,
-            master_xpub_fingerprint: Some(master_xpub_fingerprint),
+            master_xpub_fingerprint: master_xpub_fingerprint,
         })?;
         if let Some(master_blinding_key) = master_blinding_key {
             self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
