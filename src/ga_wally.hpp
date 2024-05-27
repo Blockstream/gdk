@@ -103,6 +103,8 @@ namespace green {
     wally_ext_key_ptr bip32_key_from_seed_alloc(
         byte_span_t seed, uint32_t version, uint32_t flags = BIP32_FLAG_SKIP_HASH);
 
+    std::vector<unsigned char> bip32_key_get_fingerprint(const wally_ext_key_ptr& hdkey);
+
     xpub_t make_xpub(const ext_key* hdkey);
     xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex);
     xpub_t make_xpub(const std::string& bip32_xpub);

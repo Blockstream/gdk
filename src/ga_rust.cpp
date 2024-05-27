@@ -70,7 +70,13 @@ namespace green {
         auto master_xpub = signer->get_master_bip32_xpub();
 
         // Load the cache on the rust side
-        rust_call("load_store", { { "master_xpub", master_xpub } }, m_session);
+        nlohmann::json store_details;
+        {
+            auto master_hdkey = bip32_public_key_from_bip32_xpub(master_xpub);
+            auto fingerprint = bip32_key_get_fingerprint(master_hdkey);
+            store_details = { { "master_xpub", master_xpub }, { "master_xpub_fingerprint", b2h(fingerprint) } };
+        }
+        rust_call("load_store", store_details, m_session);
 
         if (!signer->has_master_blinding_key()) {
             // Load the cached master blinding key, if we have it

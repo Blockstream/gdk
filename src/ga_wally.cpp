@@ -135,6 +135,14 @@ namespace green {
         return wally_ext_key_ptr{ p };
     }
 
+    std::vector<unsigned char> bip32_key_get_fingerprint(const wally_ext_key_ptr& hdkey)
+    {
+        std::vector<unsigned char> fp;
+        fp.resize(BIP32_KEY_FINGERPRINT_LEN);
+        GDK_VERIFY(::bip32_key_get_fingerprint(hdkey.get(), fp.data(), fp.size()));
+        return fp;
+    }
+
     //
     // Scripts
     //
