@@ -14,7 +14,7 @@ use gdk_common::elements::TxOutSecrets;
 use gdk_common::log::{info, log, Level};
 use gdk_common::model::{AccountSettings, FeeEstimate, SPVVerifyTxResult, Settings};
 use gdk_common::serde_cbor;
-use gdk_common::store::{Decryptable, Encryptable, ToCipher};
+use gdk_common::store::{Decryptable, Encryptable};
 use gdk_common::util::MasterBlindingKey;
 use gdk_common::NetworkId;
 use serde::{Deserialize, Serialize};
@@ -295,8 +295,11 @@ fn load_decrypt<P: AsRef<Path>>(
 }
 
 impl StoreMeta {
-    pub fn new<P: AsRef<Path>>(path: P, xpub: &Xpub, id: NetworkId) -> Result<StoreMeta, Error> {
-        let cipher = xpub.to_cipher()?;
+    pub fn new<P: AsRef<Path>>(
+        path: P,
+        cipher: &Aes256GcmSiv,
+        id: NetworkId,
+    ) -> Result<StoreMeta, Error> {
         let cache = RawCache::new(path.as_ref(), &cipher);
 
         let mut store = RawStore::new(path.as_ref(), &cipher);
@@ -310,7 +313,7 @@ impl StoreMeta {
             cache,
             store,
             id,
-            cipher,
+            cipher: cipher.clone(),
             path,
             last: HashMap::new(),
             to_remove: false,
@@ -612,6 +615,7 @@ mod tests {
     use super::*;
     use gdk_common::bitcoin::bip32::Xpub;
     use gdk_common::bitcoin::{Network, Txid};
+    use gdk_common::store::ToCipher;
     use gdk_common::{be::BETxid, NetworkId};
     use std::str::FromStr;
     use tempfile::TempDir;
@@ -630,14 +634,15 @@ mod tests {
         .unwrap();
         let txid_btc = txid.ref_bitcoin().unwrap();
 
+        let cipher = xpub.to_cipher().unwrap();
         {
-            let mut store = StoreMeta::new(&dir, &xpub, id).unwrap();
+            let mut store = StoreMeta::new(&dir, &cipher, id).unwrap();
             store.make_account(0, xpub, true).unwrap(); // The xpub here is incorrect, but that's irrelevant for the sake of the test
             store.account_cache_mut(0).unwrap().heights.insert(txid, Some(1));
             store.store.memos.insert(*txid_btc, "memo".to_string());
         }
 
-        let store = StoreMeta::new(&dir, &xpub, id).unwrap();
+        let store = StoreMeta::new(&dir, &cipher, id).unwrap();
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));
@@ -665,7 +670,8 @@ mod tests {
             std::fs::copy(curr_data, curr_temp).unwrap();
         }
 
-        let store = StoreMeta::new(temp_dir, &xpub, id).unwrap();
+        let cipher = xpub.to_cipher().unwrap();
+        let store = StoreMeta::new(temp_dir, &cipher, id).unwrap();
 
         assert_eq!(store.account_cache(0).unwrap().heights.get(&txid), Some(&Some(1)));
         assert_eq!(store.store.memos.get(txid_btc), Some(&"memo".to_string()));

@@ -35,6 +35,7 @@ use gdk_common::{bitcoin, elements};
 
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
+use gdk_common::store::ToCipher;
 use gdk_common::util::{asset_blinding_key_to_ec_private_key, MasterBlindingKey};
 use gdk_common::{be::*, State};
 
@@ -151,7 +152,7 @@ pub struct ElectrumSession {
     /// Master xpub of the signer associated to the session
     ///
     /// It is Some after wallet initialization
-    pub master_xpub: Option<Xpub>,
+    master_xpub: Option<Xpub>,
 
     /// The BIP32 fingerprint of the master xpub
     ///
@@ -392,7 +393,8 @@ impl ElectrumSession {
             path.push(wallet_hash_id);
 
             info!("Store root path: {:?}", path);
-            let store = StoreMeta::new(&path, &opt.master_xpub, self.network.id())?;
+            let cipher = opt.master_xpub.to_cipher()?;
+            let store = StoreMeta::new(&path, &cipher, self.network.id())?;
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
         }
