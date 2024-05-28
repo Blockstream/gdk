@@ -39,6 +39,8 @@ use gdk_common::store::ToCipher;
 use gdk_common::util::{asset_blinding_key_to_ec_private_key, MasterBlindingKey};
 use gdk_common::{be::*, State};
 
+use gdk_common::aes::aead::NewAead;
+use gdk_common::aes::{Aes256GcmSiv, Key};
 use gdk_common::electrum_client::{self, RawHeaderNotification, ScriptStatus};
 use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
@@ -384,13 +386,22 @@ impl ElectrumSession {
     /// Load store and cache from disk.
     pub fn load_store(&mut self, opt: &LoadStoreOpt) -> Result<(), Error> {
         if self.store.is_none() {
-            let wallet_hash_id = self.network.wallet_hash_id(&opt.master_xpub);
             let mut path: PathBuf = self.network.state_dir.as_str().into();
             std::fs::create_dir_all(&path)?; // does nothing if path exists
-            path.push(wallet_hash_id);
-
+            let (filename, cipher) = match opt.master_xpub {
+                Some(xpub) => (self.network.wallet_hash_id(&xpub), xpub.to_cipher()?),
+                None => match (&opt.filename, &opt.key_hex) {
+                    (Some(f), Some(k)) => {
+                        let key_bytes = Vec::<u8>::from_hex(&k).unwrap();
+                        let key = Key::from_slice(&key_bytes);
+                        (f.clone(), Aes256GcmSiv::new(&key))
+                    }
+                    _ => return Err(Error::Generic("Missing filename or key".into())),
+                },
+            };
+            path.push(filename);
             info!("Store root path: {:?}", path);
-            let cipher = opt.master_xpub.to_cipher()?;
+
             let store = StoreMeta::new(&path, &cipher, self.network.id())?;
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
@@ -455,8 +466,10 @@ impl ElectrumSession {
         let (accounts, master_xpub_fingerprint, master_blinding_key) =
             credentials.accounts(self.network.mainnet, self.network.liquid)?;
         self.load_store(&LoadStoreOpt {
-            master_xpub,
+            master_xpub: Some(master_xpub),
             master_xpub_fingerprint: master_xpub_fingerprint,
+            filename: None,
+            key_hex: None,
         })?;
         if let Some(master_blinding_key) = master_blinding_key {
             self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
