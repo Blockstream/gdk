@@ -43,6 +43,9 @@ pub enum Error {
     BitcoinHexToBytesError(#[from] bitcoin::hashes::hex::HexToBytesError),
 
     #[error(transparent)]
+    BitcoinHexToArrayError(#[from] bitcoin::hashes::hex::HexToArrayError),
+
+    #[error(transparent)]
     BitcoinKeyError(#[from] bitcoin::key::Error),
 
     #[error(transparent)]

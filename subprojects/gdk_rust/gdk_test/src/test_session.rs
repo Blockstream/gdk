@@ -132,8 +132,10 @@ impl TestSession {
             keys_from_credentials(&credentials, network.bip32_network());
 
         let opt = LoadStoreOpt {
-            master_xpub: master_xpub.clone(),
-            master_xpub_fingerprint: master_xpub.fingerprint().clone(),
+            master_xpub: Some(master_xpub),
+            master_xpub_fingerprint: Some(master_xpub.fingerprint()),
+            filename: None,
+            key_hex: None,
         };
         session.load_store(&opt).unwrap();
 

@@ -406,9 +406,17 @@ impl ElectrumSession {
             let store = Arc::new(RwLock::new(store));
             self.store = Some(store);
         }
-        self.is_initialized = true;
-        self.master_xpub_fingerprint = opt.master_xpub_fingerprint.clone();
+        if let Some(fingerprint) = opt.master_xpub_fingerprint {
+            self.master_xpub_fingerprint = fingerprint;
+            self.is_initialized = true;
+        }
         self.notify.settings(&self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?);
+        Ok(())
+    }
+
+    pub fn set_fingerprint(&mut self, fingerprint_hex: &str) -> Result<(), Error> {
+        self.master_xpub_fingerprint = Fingerprint::from_hex(fingerprint_hex)?;
+        self.is_initialized = true;
         Ok(())
     }
 
@@ -467,7 +475,7 @@ impl ElectrumSession {
             credentials.accounts(self.network.mainnet, self.network.liquid)?;
         self.load_store(&LoadStoreOpt {
             master_xpub: Some(master_xpub),
-            master_xpub_fingerprint: master_xpub_fingerprint,
+            master_xpub_fingerprint: Some(master_xpub_fingerprint),
             filename: None,
             key_hex: None,
         })?;

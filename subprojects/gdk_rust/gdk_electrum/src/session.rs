@@ -150,6 +150,11 @@ impl Session for ElectrumSession {
             }
 
             "load_store" => self.load_store(&serde_json::from_value(input)?).to_json(),
+            "set_fingerprint" => self
+                .set_fingerprint(input.as_str().ok_or_else(|| {
+                    Error::Generic("set_fingerprint: input is not a string".into())
+                })?)
+                .to_json(),
             "load_blob" => self.load_blob().to_json(),
             "save_blob" => self.save_blob(serde_json::from_value(input)?).to_json(),
             "get_memos" => self.get_memos().to_json(),
