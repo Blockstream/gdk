@@ -29,8 +29,7 @@ namespace green {
 
         void emit_notification(nlohmann::json details, bool async);
 
-        nlohmann::json register_user(const std::string& master_pub_key_hex, const std::string& master_chain_code_hex,
-            const std::string& gait_path_hex, bool supports_csv);
+        nlohmann::json register_user(std::shared_ptr<signer> signer);
 
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer);

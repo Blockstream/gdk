@@ -630,11 +630,11 @@ namespace green {
         }
     }
 
-    nlohmann::json session_impl::register_user(const std::string& master_pub_key_hex,
-        const std::string& master_chain_code_hex, const std::string& /*gait_path_hex*/, bool /*supports_csv*/)
+    nlohmann::json session_impl::register_user(std::shared_ptr<signer> signer)
     {
-        // Default impl just returns the wallet hash; registration is only meaningful in multisig
-        auto ret = get_wallet_hash_ids(m_net_params, master_chain_code_hex, master_pub_key_hex);
+        // Default impl just returns the wallet hash ids
+        const auto master = signer->get_master_xpub();
+        auto ret = get_wallet_hash_ids(m_net_params, b2h(master.first), b2h(master.second));
         ret["warnings"] = nlohmann::json::array();
         return ret;
     }

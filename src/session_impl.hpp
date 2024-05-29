@@ -58,8 +58,7 @@ namespace green {
             const nlohmann::json& details, const nlohmann::json& twofactor_data)
             = 0;
 
-        virtual nlohmann::json register_user(const std::string& master_pub_key_hex,
-            const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv);
+        virtual nlohmann::json register_user(std::shared_ptr<signer> signer);
 
         // Disable notifications from being delivered
         void disable_notifications();

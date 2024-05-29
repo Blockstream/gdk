@@ -401,14 +401,22 @@ namespace green {
         m_fee_estimates_ts = std::chrono::system_clock::now();
     }
 
-    nlohmann::json ga_session::register_user(const std::string& master_pub_key_hex,
-        const std::string& master_chain_code_hex, const std::string& gait_path_hex, bool supports_csv)
+    nlohmann::json ga_session::register_user(std::shared_ptr<signer> signer)
     {
-        const auto user_agent = get_user_agent(supports_csv, m_user_agent);
-        auto result
-            = m_wamp->call("login.register", master_pub_key_hex, master_chain_code_hex, user_agent, gait_path_hex);
+        // Get the master chain code and pubkey
+        const auto master = signer->get_master_xpub();
+
+        // Get our gait path xpub and compute gait_path from it
+        std::vector register_path(signer::REGISTER_PATH.begin(), signer::REGISTER_PATH.end());
+        const auto gait_xpub = signer->get_xpub(register_path);
+        const auto gait_path = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
+        const bool supports_csv = signer->supports_arbitrary_scripts();
+        const auto agent = get_user_agent(supports_csv, m_user_agent);
+        auto result = m_wamp->call("login.register", b2h(master.second), b2h(master.first), agent, gait_path);
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
-        return session_impl::register_user(master_pub_key_hex, master_chain_code_hex, gait_path_hex, supports_csv);
+
+        // Return the wallet hash ids
+        return session_impl::register_user(signer);
     }
 
     std::string ga_session::get_challenge(const pub_key_t& public_key)
