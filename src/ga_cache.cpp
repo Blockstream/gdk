@@ -459,16 +459,24 @@ namespace green {
         m_require_write = false;
     }
 
-    void cache::load_db(byte_span_t encryption_key, std::shared_ptr<signer> signer)
+    std::tuple<std::string, uint32_t, std::array<unsigned char, SHA256_LEN>> cache::get_name_type_and_key(
+        byte_span_t encryption_key, const std::string& network_name, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(!encryption_key.empty());
+        GDK_RUNTIME_ASSERT(signer != nullptr);
 
-        m_type = signer->is_watch_only() ? CT_WO : signer->is_hardware() ? CT_HW : CT_SW;
-        const auto intermediate = hmac_sha512(encryption_key, ustring_span(m_network_name));
+        uint32_t type = signer->is_watch_only() ? CT_WO : signer->is_hardware() ? CT_HW : CT_SW;
+        const auto intermediate = hmac_sha512(encryption_key, ustring_span(network_name));
         // Note: the line below means the file name is endian dependant
-        const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&m_type), sizeof(m_type));
-        m_db_name = b2h({ hmac_sha512(intermediate, type_span).data(), 16 });
-        m_encryption_key = sha256(encryption_key);
+        const auto type_span = gsl::make_span(reinterpret_cast<const unsigned char*>(&type), sizeof(type));
+        std::string db_name = b2h({ hmac_sha512(intermediate, type_span).data(), 16 });
+        std::array<unsigned char, SHA256_LEN> derived_encryption_key = sha256(encryption_key);
+        return { std::move(db_name), type, std::move(derived_encryption_key) };
+    }
+
+    void cache::load_db(byte_span_t encryption_key, std::shared_ptr<signer> signer)
+    {
+        std::tie(m_db_name, m_type, m_encryption_key) = get_name_type_and_key(encryption_key, m_network_name, signer);
 
         const auto path = get_persistent_storage_file(m_data_dir, m_db_name, VERSION);
         if (!load_db_impl(m_encryption_key, path, m_db)) {

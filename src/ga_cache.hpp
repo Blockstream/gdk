@@ -6,6 +6,7 @@
 #include <functional>
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
+#include <tuple>
 
 struct sqlite3;
 struct sqlite3_stmt;
@@ -21,6 +22,9 @@ namespace green {
 
         cache(const network_parameters& net_params, const std::string& network_name);
         ~cache();
+
+        static std::tuple<std::string, uint32_t, std::array<unsigned char, SHA256_LEN>> get_name_type_and_key(
+            byte_span_t encryption_key, const std::string& network_name, std::shared_ptr<signer> signer);
 
         const std::string& get_network_name() const;
 
