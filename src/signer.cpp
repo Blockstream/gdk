@@ -255,6 +255,12 @@ namespace green {
         return credentials;
     }
 
+    std::string signer::get_master_bip32_xpub() { return get_bip32_xpub({}); }
+
+    bool signer::has_master_bip32_xpub() { return has_bip32_xpub({}); }
+
+    xpub_t signer::get_master_xpub() { return get_xpub({}); }
+
     std::string signer::get_bip32_xpub(const std::vector<uint32_t>& path)
     {
         std::vector<uint32_t> parent_path{ path }, child_path;
@@ -306,9 +312,6 @@ namespace green {
         return cache_ext_key(path, child_key); // Cache with the full path
     }
 
-    std::string signer::get_master_bip32_xpub() { return get_bip32_xpub({}); }
-    bool signer::has_master_bip32_xpub() { return has_bip32_xpub({}); }
-
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
         if (m_master_key.get()) {
@@ -329,6 +332,8 @@ namespace green {
             parent_path.pop_back();
         }
     }
+
+    xpub_t signer::get_xpub(const std::vector<uint32_t>& path) { return make_xpub(get_bip32_xpub(path)); }
 
     std::string signer::cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey)
     {

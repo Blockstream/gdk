@@ -1691,7 +1691,7 @@ namespace green {
             if (m_user_pubkeys && !m_user_pubkeys->have_subaccount(subaccount)) {
                 const std::vector<uint32_t> path{ harden(3), harden(subaccount) };
                 // TODO: Investigate whether this code path can ever execute
-                m_user_pubkeys->add_subaccount(subaccount, make_xpub(m_signer->get_bip32_xpub(path)));
+                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
             }
 
             if (m_recovery_pubkeys != nullptr && !recovery_chain_code.empty()) {

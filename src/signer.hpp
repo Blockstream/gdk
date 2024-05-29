@@ -101,11 +101,6 @@ namespace green {
         // Get the login credentials for this signer (empty for hardware signers)
         nlohmann::json get_credentials(bool with_master_key) const;
 
-        // Get the xpub for 'm/<path>'. This should only be used to derive the master
-        // xpub for privately derived master keys, since it may involve talking to
-        // hardware. Use xpub_hdkeys_base to quickly derive from the resulting key.
-        std::string get_bip32_xpub(const std::vector<uint32_t>& path);
-
         // Get the master xpub. Equivalent to calling `get_bip32_xpub` with an
         // empty path.
         std::string get_master_bip32_xpub();
@@ -113,8 +108,19 @@ namespace green {
         // Returns true if we have the master xpub
         bool has_master_bip32_xpub();
 
+        // Get the master xpub as a {chain code, public key} pair
+        xpub_t get_master_xpub();
+
+        // Get the xpub for 'm/<path>'. This should only be used to derive
+        // the master xpub for privately derived keys such as subaccounts.
+        // Use xpub_hdkeys to quickly derive from the resulting key.
+        std::string get_bip32_xpub(const std::vector<uint32_t>& path);
+
         // Whether this signer has a pre-computed cached xpub for the given path
         bool has_bip32_xpub(const std::vector<uint32_t>& path);
+
+        // Get an xpub as a {chain code, public key} pair.
+        xpub_t get_xpub(const std::vector<uint32_t>& path);
 
         // Cache an xpub for a given path
         bool cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub);
