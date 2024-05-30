@@ -180,7 +180,7 @@ namespace green {
         }
         // Otherwise, caller is resolving a HWW action
         try {
-            resolve_hw_reply(nlohmann::json::parse(code));
+            resolve_hw_reply(json_parse(code));
         } catch (const std::exception&) {
             throw user_error("Invalid hardware reply");
         }

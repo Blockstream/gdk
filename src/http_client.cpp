@@ -333,7 +333,7 @@ namespace green {
             nlohmann::json body;
 
             if (m_accept == "json") {
-                body["body"] = nlohmann::json::parse(response.body());
+                body["body"] = json_parse(response.body());
             } else if (m_accept == "base64") {
                 body["body"] = base64_from_bytes(ustring_span(response.body()));
             } else {

@@ -187,8 +187,8 @@ namespace green {
             if (output) {
                 // output was set by calling `std::ffi::CString::into_raw`;
                 // parse it, then destroy it with GDKRUST_destroy_string.
-                cppjson = nlohmann::json::parse(output);
-                GDKRUST_destroy_string(output);
+                std::unique_ptr<char, decltype(&GDKRUST_destroy_string)> holder(output, GDKRUST_destroy_string);
+                cppjson = json_parse(output);
             }
             check_rust_return_code(ret, cppjson);
             return cppjson;

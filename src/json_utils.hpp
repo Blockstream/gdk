@@ -3,6 +3,7 @@
 #include <cstdint>
 #pragma once
 
+#include "gsl_wrapper.hpp"
 #include <nlohmann/json_fwd.hpp>
 #include <optional>
 #include <string_view>
@@ -13,6 +14,9 @@ namespace green {
     class amount;
     using json_array_t = std::vector<nlohmann::json>;
     using namespace std::string_view_literals;
+
+    nlohmann::json json_parse(std::string_view src);
+    nlohmann::json json_parse(gsl::span<const unsigned char> src);
 
     // JSON fetch helpers:
     // j_fooref:      get a const reference to a foo (or by value for value types). Throw if not found.

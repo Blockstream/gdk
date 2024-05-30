@@ -564,7 +564,11 @@ namespace green {
         cleanup_appearance_settings(locker, m_login_data["appearance"]);
         if (watch_only) {
             auto overrides_str = m_cache->get_key_value_string("appearance");
-            auto overrides = nlohmann::json::parse(overrides_str.empty() ? "{}" : overrides_str);
+            if (overrides_str.empty()) {
+                overrides_str.push_back('{');
+                overrides_str.push_back('}');
+            }
+            auto overrides = json_parse(overrides_str);
             m_login_data["appearance"].update(overrides);
         }
 
@@ -1343,7 +1347,7 @@ namespace green {
 
             // FIXME: clear data after use
             const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
-            return nlohmann::json::parse(plaintext.begin(), plaintext.end());
+            return json_parse(plaintext);
         } catch (const autobahn::call_error& e) {
             GDK_LOG(warning) << "pin " << (is_login ? "login " : "") << "failed: " << e.what();
             if (is_login) {

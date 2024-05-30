@@ -319,7 +319,7 @@ namespace green {
     void ga_rust::GDKRUST_notif_handler(void* self_context, char* json)
     {
         ga_rust* self = static_cast<ga_rust*>(self_context);
-        auto notification = nlohmann::json::parse(json);
+        auto notification = json_parse(json);
         GDKRUST_destroy_string(json);
         if (notification.at("event") == "transaction") {
             // FIXME: Get the actual subaccounts affected from the notification

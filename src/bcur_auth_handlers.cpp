@@ -244,9 +244,7 @@ namespace green {
             int result = urc_jade_rpc_deserialize(raw.data(), raw.size(), &raw_json);
             std::unique_ptr<char, decltype(&urc_string_free)> holder(raw_json, urc_string_free);
             GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
-            std::string_view json_str(raw_json);
-            auto retv = nlohmann::json::parse(json_str);
-            return retv;
+            return json_parse(raw_json);
         }
 
         struct json_jaderequest {

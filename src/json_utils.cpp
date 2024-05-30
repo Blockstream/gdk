@@ -8,6 +8,7 @@
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
+#include "logging.hpp"
 
 namespace {
     static auto find(const nlohmann::json& src, std::string_view key)
@@ -46,6 +47,20 @@ namespace {
 } // namespace
 
 namespace green {
+    nlohmann::json json_parse(std::string_view src)
+    {
+        try {
+            return nlohmann::json::parse(src);
+        } catch (const std::exception&) {
+            GDK_LOG(debug) << "exception parsing json input: " << src;
+            throw user_error("Invalid JSON");
+        }
+    }
+
+    nlohmann::json json_parse(gsl::span<const unsigned char> src)
+    {
+        return json_parse(std::string_view(reinterpret_cast<const char*>(src.data()), src.size()));
+    }
 
     const std::string& j_strref(const nlohmann::json& src, std::string_view key)
     {
