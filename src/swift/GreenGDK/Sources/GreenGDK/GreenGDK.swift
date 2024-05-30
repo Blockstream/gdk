@@ -281,10 +281,6 @@ public class Session {
         return TwoFactorCall(optr: optr!);
     }
 
-    public func setWatchOnly(username: String, password: String) throws {
-        try callWrapper(fun: GA_set_watch_only(session, username, password))
-    }
-
     public func getWatchOnlyUsername() throws -> String {
         var buff: UnsafeMutablePointer<Int8>? = nil
         try callWrapper(fun: GA_get_watch_only_username(session, &buff))

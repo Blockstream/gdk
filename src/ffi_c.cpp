@@ -306,9 +306,6 @@ GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, GA_json*, hw
     struct GA_auth_handler**, call,
     { *call = make_call(new green::login_user_call(*session, json_move(hw_device), json_move(details))); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_set_watch_only, struct GA_session*, session, const char*, username, const char*, password,
-    { session->set_wo_credentials(username, password); })
-
 GDK_DEFINE_C_FUNCTION_2(GA_get_watch_only_username, struct GA_session*, session, char**, username,
     { *username = to_c_string(session->get_wo_username()); })
 

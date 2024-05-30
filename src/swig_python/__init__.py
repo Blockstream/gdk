@@ -161,10 +161,6 @@ class Session(object):
     def login_user(self, hw_device, details):
         return Call(login_user(self.session_obj, self._to_json(hw_device), self._to_json(details)))
 
-    def set_watch_only(self, username, password):
-        set_watch_only(self.session_obj, username, password)
-        return self
-
     def get_watch_only_username(self):
         return get_watch_only_username(self.session_obj)
 

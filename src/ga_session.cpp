@@ -997,7 +997,7 @@ namespace green {
             // blobserver for multisig in production, use the wallet hash id
             // for internal testing for now.
             // To enable the external blobserver for multisig, we need to
-            // update set_watch_only to store the client id on the server
+            // update register_user to store the client id on the server
             // and return it to watch only logins.
             const auto& wallet_hash_id = j_strref(login_data, "wallet_hash_id");
             m_blob->compute_client_id(m_net_params.network(), ustring_span(wallet_hash_id));

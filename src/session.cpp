@@ -295,14 +295,6 @@ namespace green {
         });
     }
 
-    bool session::set_wo_credentials(const std::string& username, const std::string& password)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->set_wo_credentials(username, password);
-        });
-    }
-
     std::string session::get_wo_username()
     {
         return exception_wrapper([&] {
