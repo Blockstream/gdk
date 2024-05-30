@@ -632,8 +632,9 @@ namespace green {
 
     nlohmann::json session_impl::register_user(std::shared_ptr<signer> signer)
     {
+        auto& full_signer = signer->is_watch_only() ? m_signer : signer;
         // Default impl just returns the wallet hash ids
-        const auto master = signer->get_master_xpub();
+        const auto master = full_signer->get_master_xpub();
         auto ret = get_wallet_hash_ids(m_net_params, b2h(master.first), b2h(master.second));
         ret["warnings"] = nlohmann::json::array();
         return ret;

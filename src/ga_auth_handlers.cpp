@@ -260,30 +260,41 @@ namespace green {
     // Register
     //
     register_call::register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data)
-        : auth_handler_impl(session, "register_user", {})
+        : auth_handler_impl(session, "register_user", session.get_nonnull_impl()->get_signer())
         , m_hw_device(std::move(hw_device))
         , m_credential_data(std::move(credential_data))
+        , m_registration_signer()
     {
     }
 
     auth_handler::state_type register_call::call_impl()
     {
-        if (!m_signer) {
-            // Create our signer
-            m_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
-
-            auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
-            // We need the master xpub to identify the wallet
-            paths.emplace_back(signer::EMPTY_PATH);
-            if (!m_net_params.is_electrum()) {
-                // Multisig: we need the registration xpub to compute our gait path
-                paths.emplace_back(signer::REGISTER_PATH);
-            }
-            return m_state;
+        if (m_hw_request == hw_request::get_xpubs) {
+            // xpubs have been loaded into the signer: Register the user.
+            m_result = m_session->register_user(m_registration_signer);
+            return state_type::done;
         }
-        // xpubs have been loaded into the signer: Register the user.
-        m_result = m_session->register_user(m_signer);
-        return state_type::done;
+
+        // Create our signer for registration
+        m_registration_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
+        const bool registering_watch_only = m_registration_signer->is_watch_only();
+        if (registering_watch_only) {
+            // A logged in full session is required to register a watch only session
+            m_session->ensure_full_session();
+        } else {
+            // Use the (full session) registration signer to resolve our xpub requests
+            m_signer = m_registration_signer;
+        }
+
+        // Fetch the xpubs needed for registration
+        auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
+        // We need the master xpub to identify the wallet
+        paths.emplace_back(signer::EMPTY_PATH);
+        if (!m_net_params.is_electrum()) {
+            // Multisig: we need the registration xpub to compute our gait path
+            paths.emplace_back(signer::REGISTER_PATH);
+        }
+        return m_state;
     }
 
     //

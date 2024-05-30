@@ -17,6 +17,7 @@ namespace green {
 
         nlohmann::json m_hw_device;
         nlohmann::json m_credential_data;
+        std::shared_ptr<signer> m_registration_signer;
     };
 
     class login_user_call : public auth_handler_impl {

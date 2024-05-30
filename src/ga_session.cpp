@@ -403,20 +403,23 @@ namespace green {
 
     nlohmann::json ga_session::register_user(std::shared_ptr<signer> signer)
     {
-        // Get the master chain code and pubkey
         const auto master = signer->get_master_xpub();
+        auto wallet_hash_ids = session_impl::register_user(signer);
+
+        auto& full_signer = signer->is_watch_only() ? m_signer : signer;
 
         // Get our gait path xpub and compute gait_path from it
         std::vector register_path(signer::REGISTER_PATH.begin(), signer::REGISTER_PATH.end());
-        const auto gait_xpub = signer->get_xpub(register_path);
+        const auto gait_xpub = full_signer->get_xpub(register_path);
         const auto gait_path = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
-        const bool supports_csv = signer->supports_arbitrary_scripts();
+        const bool supports_csv = full_signer->supports_arbitrary_scripts();
         const auto agent = get_user_agent(supports_csv, m_user_agent);
+
+        // Register the full session with the Green backend
         auto result = m_wamp->call("login.register", b2h(master.second), b2h(master.first), agent, gait_path);
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
 
-        // Return the wallet hash ids
-        return session_impl::register_user(signer);
+        return wallet_hash_ids;
     }
 
     std::string ga_session::get_challenge(const pub_key_t& public_key)
