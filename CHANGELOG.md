@@ -15,6 +15,10 @@
 - Add GA_cache_control to enable caller control of cached data. This initial
   implementation supports returning user metadata using the BIP329 data format
   (see https://github.com/bitcoin/bips/blob/master/bip-0329.mediawiki for details).
+- GA_register_user: Added support for creating watch only users by passing in
+  watch only credentials (i.e. ``"username"`` and ``"password"``). This replaces
+  the old call GA_set_watch_only and allows for returning more data when a
+  watch only session is created.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
@@ -39,6 +43,8 @@
 ### Fixed
 
 ### Removed
+- GA_set_watch_only: This call has been removed. Users should use GA_register_user to
+  create watch only sessions as documented above.
 
 ## Release 0.71.1 - 24-05-22
 

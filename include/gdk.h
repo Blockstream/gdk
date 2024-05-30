@@ -245,15 +245,16 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
 GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Create a new user wallet.
+ * Create a new user wallet or watch only session.
  *
  * :param session: The session to use.
- * :param hw_device: :ref:`hw-device` or empty JSON for software wallet registration.
- * :param details: The :ref:`login-credentials` for software wallet registration.
+ * :param hw_device: :ref:`hw-device` or empty JSON for software wallet/watch only registration.
+ * :param details: The :ref:`login-credentials` for software wallet/watch only registration.
  * :param call: Destination for the resulting GA_auth_handler to perform the registration.
  *|     The call handlers result is :ref:`login-result`.
  *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
  *
+ * .. note:: When registering a watch only session, the calling session must be logged in.
  * .. note:: When calling from C/C++, the parameters ``hw_device`` and ``details`` will be emptied when the call
  *completes.
  */
