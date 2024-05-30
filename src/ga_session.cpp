@@ -1390,10 +1390,9 @@ namespace green {
         const bool is_relogin = set_signer(locker, signer);
 
         const bool is_liquid = m_net_params.is_liquid();
-        const auto& credentials = m_signer->get_credentials(false);
-        const std::string username = credentials.at("username");
-        const std::string password = credentials.at("password");
-        std::map<std::string, std::string> args;
+        const auto credentials = m_signer->get_credentials(false);
+        const auto& username = j_strref(credentials, "username");
+        const auto& password = j_strref(credentials, "password");
         const auto user_agent = get_user_agent(true, m_user_agent);
 
         // First, try using client blob
