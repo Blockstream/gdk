@@ -275,6 +275,7 @@ namespace green {
             return state_type::done;
         }
 
+        const bool is_electrum = m_net_params.is_electrum();
         // Create our signer for registration
         m_registration_signer = std::make_shared<signer>(m_net_params, m_hw_device, m_credential_data);
         const bool registering_watch_only = m_registration_signer->is_watch_only();
@@ -290,7 +291,10 @@ namespace green {
         auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
         // We need the master xpub to identify the wallet
         paths.emplace_back(signer::EMPTY_PATH);
-        if (!m_net_params.is_electrum()) {
+        if (registering_watch_only) {
+            // We need the client secret path to generate blobserver credentials
+            paths.emplace_back(signer::CLIENT_SECRET_PATH);
+        } else if (!is_electrum) {
             // Multisig: we need the registration xpub to compute our gait path
             paths.emplace_back(signer::REGISTER_PATH);
         }

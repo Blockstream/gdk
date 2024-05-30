@@ -14,6 +14,8 @@ namespace green {
         void connect_session();
         void disconnect_session();
 
+        nlohmann::json register_user(std::shared_ptr<signer> signer);
+
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(
