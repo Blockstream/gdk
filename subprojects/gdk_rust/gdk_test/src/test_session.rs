@@ -135,7 +135,7 @@ impl TestSession {
             master_xpub: Some(master_xpub),
             master_xpub_fingerprint: Some(master_xpub.fingerprint()),
             filename: None,
-            key_hex: None,
+            encryption_key_hex: None,
         };
         session.load_store(&opt).unwrap();
 

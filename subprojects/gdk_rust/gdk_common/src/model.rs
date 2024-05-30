@@ -110,17 +110,17 @@ pub struct GetUnspentOpt {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LoadStoreOpt {
-    // Master xpub. If provided, the store filename and encryption key
-    // are derived from it.
+    /// Master xpub. If provided, the store filename and encryption key
+    /// are derived from it.
     pub master_xpub: Option<Xpub>,
-    // Master xpub fingerprint. If not provided, the user must call
-    // set_fingerprint before the store can be used.
+    /// Master xpub fingerprint. If not provided, the user must call
+    /// set_fingerprint before the store can be used.
     pub master_xpub_fingerprint: Option<Fingerprint>,
-    // If master_xpub is not provided, the caller must provide
-    // filename and key_hex.
-    // Used for rich watch only sessions.
+    /// If master_xpub is not provided, the caller must provide
+    /// filename and encryption_key_hex.
+    /// Used for rich watch only sessions.
     pub filename: Option<String>,
-    pub key_hex: Option<String>,
+    pub encryption_key_hex: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

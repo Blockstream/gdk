@@ -390,7 +390,7 @@ impl ElectrumSession {
             std::fs::create_dir_all(&path)?; // does nothing if path exists
             let (filename, cipher) = match opt.master_xpub {
                 Some(xpub) => (self.network.wallet_hash_id(&xpub), xpub.to_cipher()?),
-                None => match (&opt.filename, &opt.key_hex) {
+                None => match (&opt.filename, &opt.encryption_key_hex) {
                     (Some(f), Some(k)) => {
                         let key_bytes = Vec::<u8>::from_hex(&k).unwrap();
                         let key = Key::from_slice(&key_bytes);
@@ -477,7 +477,7 @@ impl ElectrumSession {
             master_xpub: Some(master_xpub),
             master_xpub_fingerprint: Some(master_xpub_fingerprint),
             filename: None,
-            key_hex: None,
+            encryption_key_hex: None,
         })?;
         if let Some(master_blinding_key) = master_blinding_key {
             self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
