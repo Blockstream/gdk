@@ -1462,8 +1462,13 @@ namespace sdk {
         }
 
         // Remove any keys that have become empty
-        auto&& filter = [](const auto& assets) { return assets.empty(); };
-        outputs.erase(std::remove_if(outputs.begin(), outputs.end(), filter), outputs.end());
+        for (auto asset = outputs.begin(); asset != outputs.end(); /* no-op */) {
+            if (asset.value().empty()) {
+                outputs.erase(asset++);
+            } else {
+                ++asset;
+            }
+        }
 
         // Sort the results
         if (!outputs.empty()) {
