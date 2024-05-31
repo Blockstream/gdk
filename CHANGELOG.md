@@ -1,5 +1,16 @@
 # Changelog
 
+## Release 0.71.2 - 24-06-01
+
+### Added
+
+### Changed
+
+### Fixed
+- GA_get_unspent_outputs(Liquid): Fix results when (1) a filter criteria such
+  as ``"expired_at"`` is given, (2) this causes all utxos for an asset id to
+  be removed and (3) more than one asset id was present in the results initially.
+
 ## Release 0.71.1 - 24-05-22
 
 ### Added
