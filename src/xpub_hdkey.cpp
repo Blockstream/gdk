@@ -160,7 +160,7 @@ namespace green {
     {
         std::array<uint32_t, 1> path{ { 1 } };
         auto user_key = xpub_hdkey(m_is_main_net, xpub, path);
-        const auto ret = m_subaccounts.emplace(subaccount, std::move(user_key));
+        const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
             GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
@@ -224,7 +224,7 @@ namespace green {
     void bip44_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
     {
         auto user_key = xpub_hdkey(m_is_main_net, xpub);
-        const auto ret = m_subaccounts.emplace(subaccount, std::move(user_key));
+        const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
             GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
