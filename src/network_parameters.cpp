@@ -805,8 +805,14 @@ namespace green {
         std::copy(default_wamp_cert_roots.cbegin(), default_wamp_cert_roots.cend(), std::back_inserter(certificates));
         return certificates;
     }
-    std::string network_parameters::block_explorer_address() const { return m_details.at("address_explorer_url"); }
-    std::string network_parameters::block_explorer_tx() const { return m_details.at("tx_explorer_url"); }
+    std::string network_parameters::block_explorer_address() const
+    {
+        return get_url(m_details, "address_explorer_url", "address_explorer_onion_url", use_tor());
+    }
+    std::string network_parameters::block_explorer_tx() const
+    {
+        return get_url(m_details, "tx_explorer_url", "tx_explorer_onion_url", use_tor());
+    }
     std::string network_parameters::chain_code() const { return m_details.at("service_chain_code"); }
     bool network_parameters::electrum_tls() const { return m_details.at("electrum_tls"); }
     std::string network_parameters::electrum_url() const
