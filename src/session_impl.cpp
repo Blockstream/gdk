@@ -4,6 +4,7 @@
 #include <boost/asio/strand.hpp>
 
 #include "client_blob.hpp"
+#include "credentials.hpp"
 #include "exception.hpp"
 #include "ga_psbt.hpp"
 #include "ga_rust.hpp"
@@ -689,9 +690,9 @@ namespace green {
 
             nlohmann::json wo
                 = { { "username", username }, { "password", password }, { "raw_watch_only_data", std::move(data) } };
-            wo = signer::normalize_watch_only_credentials(wo);
-            ret["watch_only_data"] = std::move(wo["watch_only_data"]);
-            ret["raw_watch_only_data"] = std::move(wo["raw_watch_only_data"]);
+            auto wo_cred = wo_credentials::normalize_credentials(wo);
+            ret["watch_only_data"] = std::move(wo_cred.data);
+            ret["raw_watch_only_data"] = std::move(wo_cred.raw_data);
         }
 
         // Set watch only data in the client blob. Blanks the username if disabling.

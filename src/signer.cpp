@@ -1,5 +1,6 @@
 #include "signer.hpp"
 #include "containers.hpp"
+#include "credentials.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "json_utils.hpp"
@@ -17,59 +18,13 @@ namespace green {
             return bip32_key_from_parent_path_alloc(hdkey, path, flags | BIP32_FLAG_SKIP_HASH);
         }
 
-        static nlohmann::json get_credentials_json(const nlohmann::json& credentials)
+        static nlohmann::json get_credentials_json(const nlohmann::json& blob)
         {
-            if (credentials.empty()) {
-                // Hardware wallet or remote service
-                return {};
-            }
-
-            if (auto username = j_str(credentials, "username"); username) {
-                return signer::normalize_watch_only_credentials(credentials);
-            }
-
-            if (auto user_mnemonic = j_str(credentials, "mnemonic"); user_mnemonic) {
-                // Mnemonic, or a hex seed
-                const auto bip39_passphrase = j_str(credentials, "bip39_passphrase");
-                std::string mnemonic = *user_mnemonic;
-                if (mnemonic.find(' ') != std::string::npos) {
-                    // Mnemonic, possibly encrypted
-                    if (auto password = j_str(credentials, "password"); password) {
-                        GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and password");
-                        // Encrypted; decrypt it
-                        mnemonic = decrypt_mnemonic(mnemonic, *password);
-                    }
-                    auto passphrase = bip39_passphrase.value_or(std::string{});
-                    auto seed = b2h(bip39_mnemonic_to_seed(mnemonic, passphrase));
-                    nlohmann::json ret = { { "mnemonic", std::move(mnemonic) }, { "seed", std::move(seed) } };
-                    if (!passphrase.empty()) {
-                        ret["bip39_passphrase"] = std::move(passphrase);
-                    }
-                    return ret;
-                }
-                if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
-                    // Hex seed (a 512 bit bip32 seed encoding in hex with 'X' appended)
-                    GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and hex seed");
-                    mnemonic.pop_back();
-                    return { { "seed", std::move(mnemonic) } };
-                }
-            }
-
-            const auto slip132_pubkeys = j_array(credentials, "slip132_extended_pubkeys");
-            if (auto descriptors = j_array(credentials, "core_descriptors"); descriptors) {
-                // Descriptor watch-only login
-                if (slip132_pubkeys) {
-                    throw user_error("cannot use slip132_extended_pubkeys and core_descriptors");
-                }
-                return { { "core_descriptors", std::move(*descriptors) } };
-            }
-
-            if (slip132_pubkeys) {
-                // Descriptor watch-only login
-                return { { "slip132_extended_pubkeys", std::move(*slip132_pubkeys) } };
-            }
-
-            throw user_error("Invalid credentials");
+            credentials creds;
+            from_json(blob, creds);
+            nlohmann::json ret;
+            to_json(ret, creds);
+            return ret;
         }
 
         static const nlohmann::json GREEN_DEVICE_JSON{ { "device_type", "green-backend" }, { "supports_low_r", true },
@@ -203,33 +158,6 @@ namespace green {
             return encrypt_mnemonic(*mnemonic, password); // Mnemonic
         }
         return j_strref(m_credentials, "seed") + "X"; // Hex seed
-    }
-
-    nlohmann::json signer::normalize_watch_only_credentials(const nlohmann::json& credentials)
-    {
-        const auto& username = j_strref(credentials, "username");
-        const auto& password = j_strref(credentials, "password");
-        nlohmann::json ret = { { "username", username }, { "password", password } };
-        auto raw_data = j_str_or_empty(credentials, "raw_watch_only_data");
-        auto data = j_str_or_empty(credentials, "watch_only_data");
-        if (!raw_data.empty() || !data.empty()) {
-            // Blobserver rich watch-only login
-            const auto entropy = compute_watch_only_entropy(username, password);
-            if (raw_data.empty()) {
-                raw_data = b2h(decrypt_watch_only_data(entropy, data));
-            } else if (data.empty()) {
-                data = encrypt_watch_only_data(entropy, h2b(raw_data));
-            }
-            constexpr auto expected_size = (pub_key_t().size() + pbkdf2_hmac256_t().size()) * 2;
-            if (raw_data.size() != expected_size) {
-                // Decrypted to the wrong length: invalid username, password
-                // or watch-only data.
-                throw user_error(res::id_user_not_found_or_invalid);
-            }
-            ret["raw_watch_only_data"] = std::move(raw_data);
-            ret["watch_only_data"] = std::move(data);
-        }
-        return ret;
     }
 
     bool signer::supports_low_r() const
