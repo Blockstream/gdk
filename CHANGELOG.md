@@ -19,6 +19,7 @@
   watch only credentials (i.e. ``"username"`` and ``"password"``). This replaces
   the old call GA_set_watch_only and allows for returning more data when a
   watch only session is created.
+- Singlesig: Add Signet support.
 
 ### Changed
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
