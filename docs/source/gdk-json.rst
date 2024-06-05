@@ -624,6 +624,30 @@ Complete Swap Transaction Result JSON
 If the ``"output_type"`` was ``"transaction"`` this field is :ref:`sign-tx-details`.
 
 
+.. _create-redeposit-tx-details:
+
+Create Redeposit Transaction JSON
+----------------------------
+
+Contains the utxo candidates to be included in the redeposit transactions.
+The format of the utxos is the same as the one returned by `GA_get_unspent_outputs`.
+
+.. code-block:: json
+
+  {
+    "lbtc": [],
+    "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225": []
+  }
+
+
+.. _create-redeposit-tx-result:
+
+Create Redeposit Transaction Result JSON
+-----------------------------------
+
+A complete transaction ready to be signed with `GA_sign_transaction`.
+
+
 .. _sign-psbt-details:
 
 Sign PSBT JSON
