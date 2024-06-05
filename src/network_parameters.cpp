@@ -167,6 +167,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "localtest",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
+            { "address_explorer_onion_url", std::string() },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -204,6 +205,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/address/" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "bech32_prefix", "ex" },
@@ -246,6 +248,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
+            { "address_explorer_onion_url", std::string() },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "bech32_prefix", "ert" },
@@ -288,6 +291,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "testnet-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://esplora.blockstream.com/liquidtestnet/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/address/" },
             { "asset_registry_url", "https://assets-testnet.blockstream.info/" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/" },
             { "bech32_prefix", "tex" },
@@ -330,6 +334,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -367,6 +372,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "testnet",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -404,6 +410,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquid/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/address/" },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "bech32_prefix", "ex" },
@@ -446,6 +453,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-localtest-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", std::string() },
+            { "address_explorer_onion_url", std::string() },
             { "asset_registry_url", "https://assets.blockstream.info" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion" },
             { "bech32_prefix", "ert" },
@@ -488,6 +496,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-mainnet",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/address/" },
             { "bech32_prefix", "bc" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -525,6 +534,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-testnet",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/testnet/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/address/" },
             { "bech32_prefix", "tb" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -562,6 +572,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-localtest",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "http://127.0.0.1:8080/address/" },
+            { "address_explorer_onion_url", std::string() },
             { "bech32_prefix", "bcrt" },
             { "bip21_prefix", "bitcoin" },
             { "blob_server_url", std::string() },
@@ -599,6 +610,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
     { "electrum-testnet-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
             { "address_explorer_url", "https://blockstream.info/liquidtestnet/address/" },
+            { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/address/" },
             { "asset_registry_url", "https://assets-testnet.blockstream.info/" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/" },
             { "bech32_prefix", "tex" },
