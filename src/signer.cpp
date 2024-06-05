@@ -1,5 +1,6 @@
 #include "signer.hpp"
 #include "containers.hpp"
+#include "credentials.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "json_utils.hpp"
@@ -17,66 +18,13 @@ namespace green {
             return bip32_key_from_parent_path_alloc(hdkey, path, flags | BIP32_FLAG_SKIP_HASH);
         }
 
-        static nlohmann::json get_credentials_json(const nlohmann::json& credentials)
+        static nlohmann::json get_credentials_json(const nlohmann::json& blob)
         {
-            if (credentials.empty()) {
-                // Hardware wallet or remote service
-                return {};
-            }
-
-            const auto username_p = credentials.find("username");
-            if (username_p != credentials.end()) {
-                // Watch-only login
-                return { { "username", *username_p }, { "password", credentials.at("password") } };
-            }
-
-            const auto mnemonic_p = credentials.find("mnemonic");
-            if (mnemonic_p != credentials.end()) {
-                // Mnemonic, or a hex seed
-                std::string mnemonic = *mnemonic_p;
-                if (mnemonic.find(' ') != std::string::npos) {
-                    // Mnemonic, possibly encrypted
-                    const auto password_p = credentials.find("password");
-                    if (password_p != credentials.end()) {
-                        GDK_RUNTIME_ASSERT_MSG(
-                            !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and password");
-                        // Encrypted; decrypt it
-                        mnemonic = decrypt_mnemonic(mnemonic, *password_p);
-                    }
-                    const auto passphrase = j_str_or_empty(credentials, "bip39_passphrase");
-                    nlohmann::json ret
-                        = { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic, passphrase)) } };
-                    if (!passphrase.empty()) {
-                        ret["bip39_passphrase"] = passphrase;
-                    }
-                    return ret;
-                }
-                if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
-                    GDK_RUNTIME_ASSERT_MSG(
-                        !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and hex seed");
-                    // Hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
-                    mnemonic.pop_back();
-                    return { { "seed", mnemonic } };
-                }
-            }
-
-            const auto core_descriptors_p = credentials.find("core_descriptors");
-            const auto slip132_extended_pubkeys_p = credentials.find("slip132_extended_pubkeys");
-            if (core_descriptors_p != credentials.end()) {
-                if (slip132_extended_pubkeys_p != credentials.end()) {
-                    throw user_error(
-                        "You can only provide either 'core_descriptors' or 'slip132_extended_pubkeys', not both");
-                }
-                // Watch-only login
-                return { { "core_descriptors", *core_descriptors_p } };
-            }
-
-            if (slip132_extended_pubkeys_p != credentials.end()) {
-                // Watch-only login
-                return { { "slip132_extended_pubkeys", *slip132_extended_pubkeys_p } };
-            }
-
-            throw user_error("Invalid credentials");
+            credentials creds;
+            from_json(blob, creds);
+            nlohmann::json ret;
+            to_json(ret, creds);
+            return ret;
         }
 
         static const nlohmann::json GREEN_DEVICE_JSON{ { "device_type", "green-backend" }, { "supports_low_r", true },

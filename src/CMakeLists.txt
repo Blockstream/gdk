@@ -19,6 +19,7 @@ target_sources(green_gdk PRIVATE
     bcur_auth_handlers.cpp bcur_auth_handlers.hpp
     client_blob.cpp client_blob.hpp
     containers.hpp
+    credentials.cpp credentials.hpp
     exception.cpp exception.hpp
     ffi_c.cpp
     ga_auth_handlers.cpp ga_auth_handlers.hpp
