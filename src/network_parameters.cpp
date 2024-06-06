@@ -713,6 +713,10 @@ namespace green {
             set_override(defaults, "blob_server_onion_url", user_overrides, empty);
             set_override(defaults, "blob_server_url", user_overrides, empty);
             set_override(defaults, "gap_limit", user_overrides, 20);
+            set_override(defaults, "address_explorer_url", user_overrides, empty);
+            set_override(defaults, "address_explorer_onion_url", user_overrides, empty);
+            set_override(defaults, "tx_explorer_url", user_overrides, empty);
+            set_override(defaults, "tx_explorer_onion_url", user_overrides, empty);
 
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
             return defaults;
