@@ -5,7 +5,7 @@
 #include <string>
 
 namespace green {
-    void runtime_assert_message(const std::string& error_message, const char* file, unsigned int line);
+    [[noreturn]] void runtime_assert_message(const std::string& error_message, const char* file, unsigned int line);
 } // namespace green
 
 #ifdef __FILE_NAME__
