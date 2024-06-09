@@ -2,7 +2,12 @@
 #define GDK_SOCKS_CLIENT_HPP
 #pragma once
 
+#include <boost/asio/io_context.hpp>
+#include <boost/beast/core.hpp>
+#include <future>
 #include <memory>
+#include <string>
+#include <vector>
 
 namespace green {
 

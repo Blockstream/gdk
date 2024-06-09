@@ -9,12 +9,12 @@
 #include <utility>
 
 #include "amount.hpp"
-
-struct wally_tx_witness_stack;
+#include "ga_wally.hpp"
 
 namespace green {
 
     class ga_pubkeys;
+    class network_parameters;
     class session_impl;
     class user_pubkeys;
     class Tx;

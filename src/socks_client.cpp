@@ -10,7 +10,6 @@
 #include <boost/asio/write.hpp>
 #include <boost/beast/core.hpp>
 #include <chrono>
-#include <future>
 
 #include "assertion.hpp"
 #include "logging.hpp"

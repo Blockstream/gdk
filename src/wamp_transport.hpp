@@ -9,12 +9,14 @@
 #include <vector>
 
 #include "autobahn_wrapper.hpp"
+#include "exception.hpp"
 #include "logging.hpp"
 #include "threading.hpp"
 
 namespace green {
 
     class connection_backoff;
+    class network_parameters;
     struct websocketpp_gdk_config;
     struct websocketpp_gdk_tls_config;
 

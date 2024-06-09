@@ -2,6 +2,7 @@
 #define GDK_THREADING_HPP
 #pragma once
 
+#include "assertion.hpp"
 #include <mutex>
 
 namespace green {
