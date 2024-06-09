@@ -134,7 +134,7 @@ namespace green {
     void init_rust(const nlohmann::json& details);
 
     // Make a call into rust code and return the result
-    nlohmann::json rust_call(const std::string& method, const nlohmann::json& input, void* session = nullptr);
+    nlohmann::json rust_call(const std::string& method, const nlohmann::json& details, void* session = nullptr);
 
     // Return the SPV verification status of a tx
     uint32_t spv_verify_tx(const nlohmann::json& details);

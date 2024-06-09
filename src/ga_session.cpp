@@ -1367,10 +1367,10 @@ namespace green {
         }
     }
 
-    nlohmann::json ga_session::credentials_from_pin_data(const nlohmann::json& details)
+    nlohmann::json ga_session::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
         constexpr bool is_login = true;
-        return decrypt_with_pin_impl(details, is_login);
+        return decrypt_with_pin_impl(pin_data, is_login);
     }
 
     // Idempotent

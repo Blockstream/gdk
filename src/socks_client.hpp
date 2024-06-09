@@ -52,7 +52,7 @@ namespace green {
 
         // SOCKS5 request. TODO: this is a simplified version of the code PR'd to websocketpp
         boost::asio::const_buffer method_selection_request();
-        boost::asio::const_buffer connect_request(const std::string& domain_name);
+        boost::asio::const_buffer connect_request(const std::string& url);
 
         boost::asio::ip::tcp::resolver m_resolver;
         boost::beast::tcp_stream& m_stream;

@@ -79,8 +79,8 @@ namespace green {
     };
 
     struct auth_handler_impl : public auth_handler {
-        auth_handler_impl(session& session, const std::string& action, std::shared_ptr<signer> signer);
-        auth_handler_impl(session& session, const std::string& action);
+        auth_handler_impl(session& session, const std::string& name, std::shared_ptr<signer> signer);
+        auth_handler_impl(session& session, const std::string& name);
         ~auth_handler_impl();
 
         void request_code(const std::string& method) override;
