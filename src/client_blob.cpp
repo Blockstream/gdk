@@ -41,7 +41,7 @@ namespace green {
         template <typename T, typename = std::enable_if_t<std::is_default_constructible<T>::value>>
         static bool json_add_non_default(nlohmann::json& data, const std::string& key, const T& value)
         {
-            const bool is_default = value == T();
+            const bool is_default = value == T(); // NOLINT: readability-container-size-empty
             const auto p = data.find(key);
             const bool found = p != data.end();
             if (is_default) {

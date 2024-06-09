@@ -58,7 +58,7 @@ namespace green {
 
         static auto der_from_push(byte_span_t push)
         {
-            const size_t push_len = push.size() > 0 ? push[0] : 0;
+            const size_t push_len = !push.empty() ? push[0] : 0;
             GDK_RUNTIME_ASSERT(push_len && push_len <= EC_SIGNATURE_DER_MAX_LEN + 1);
             GDK_RUNTIME_ASSERT(static_cast<size_t>(push.size()) >= push_len + 2);
             return der_validate(push.subspan(1, push_len));
@@ -67,7 +67,7 @@ namespace green {
         static std::vector<byte_span_t> ders_from_multisig_scriptsig(byte_span_t scriptsig)
         {
             // OP_0 <ga_sig> <user_sig> <redeem_script>
-            GDK_RUNTIME_ASSERT(scriptsig.size() > 0 && scriptsig.front() == OP_0);
+            GDK_RUNTIME_ASSERT(!scriptsig.empty() && scriptsig.front() == OP_0);
             auto green_sig = der_from_push({ scriptsig.data() + 1, scriptsig.size() - 1 });
             const auto remainder = scriptsig.subspan(1 + 1 + green_sig.size());
             return { green_sig, der_from_push(remainder) };
@@ -889,7 +889,7 @@ namespace green {
             auto& wit_array = result["witness"];
             for (const auto& item : gsl::make_span(wit->items, wit->num_items)) {
                 const byte_span_t data{ item.witness, item.witness_len };
-                wit_array.emplace_back(data.size() ? b2h(data) : std::string());
+                wit_array.emplace_back(!data.empty() ? b2h(data) : std::string());
             }
         }
         if (in.script_len) {
@@ -926,7 +926,7 @@ namespace green {
 
     void Tx::set_input_script(size_t index, byte_span_t script)
     {
-        const unsigned char* data = script.size() ? script.data() : nullptr;
+        const unsigned char* data = !script.empty() ? script.data() : nullptr;
         GDK_VERIFY(wally_tx_set_input_script(m_tx.get(), index, data, script.size()));
     }
 

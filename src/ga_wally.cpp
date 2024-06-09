@@ -528,7 +528,7 @@ namespace green {
     {
         ecdsa_sig_t sig;
         int ret = WALLY_EINVAL;
-        if (der.size()) {
+        if (!der.empty()) {
             const auto non_sighash_len = der.size() - (has_sighash_byte ? 1 : 0);
             ret = wally_ec_sig_from_der(der.data(), non_sighash_len, sig.data(), sig.size());
         }
