@@ -75,8 +75,9 @@ namespace green {
                 key.push_back(s[ptr]);
                 ++ptr;
             }
-            if (ptr == s.size()) // unexpected end of line
+            if (ptr == s.size()) { // unexpected end of line
                 return std::map<std::string, std::string>();
+            }
             if (s[ptr] == ' ') { // The remaining string is an OptArguments
                 mapping[key] = key;
                 ++ptr; // skip the ' '
@@ -92,8 +93,9 @@ namespace green {
                     value.push_back(s[ptr]);
                     ++ptr;
                 }
-                if (ptr == s.size()) // unexpected end of line
+                if (ptr == s.size()) { // unexpected end of line
                     return std::map<std::string, std::string>();
+                }
                 ++ptr; // skip closing '"'
                 /**
                  * Unescape value. Per https://spec.torproject.org/control-spec section 2.1.1:
@@ -150,8 +152,9 @@ namespace green {
                     ++ptr;
                 }
             }
-            if (ptr < s.size() && s[ptr] == ' ')
+            if (ptr < s.size() && s[ptr] == ' ') {
                 ++ptr; // skip ' ' after key=value
+            }
             mapping[key] = value;
         }
         return mapping;
@@ -307,8 +310,9 @@ namespace green {
         while ((line = evbuffer_readln(input, &n_read_out, EVBUFFER_EOL_CRLF)) != nullptr) {
             std::string s(line, n_read_out);
             free(line);
-            if (s.size() < 4) // Short line
+            if (s.size() < 4) { // Short line
                 continue;
+            }
             // <status>(-|+| )<data><CRLF>
             self->m_message.m_code = atoi(s.substr(0, 3).c_str());
             self->m_message.m_lines.push_back(s.substr(4));
@@ -360,8 +364,9 @@ namespace green {
 
     bool tor_control_connection::connect(const ConnectionCB& _connected, const ConnectionCB& _disconnected)
     {
-        if (m_b_conn)
+        if (m_b_conn) {
             disconnect();
+        }
 
         // Parse target address:port
         struct sockaddr_storage connect_to_addr;
@@ -376,8 +381,9 @@ namespace green {
 
         // Create a new socket, set up callbacks and enable notification bits
         m_b_conn = bufferevent_ptr(bufferevent_socket_new(m_base, -1, BEV_OPT_CLOSE_ON_FREE), bufferevent_free);
-        if (!m_b_conn)
+        if (!m_b_conn) {
             return false;
+        }
         bufferevent_setcb(
             m_b_conn.get(), tor_control_connection::readcb, nullptr, tor_control_connection::eventcb, this);
         bufferevent_enable(m_b_conn.get(), EV_READ | EV_WRITE);
@@ -395,17 +401,20 @@ namespace green {
     void tor_control_connection::disconnect()
     {
         m_b_conn.reset();
-        if (m_disconnected)
+        if (m_disconnected) {
             m_disconnected(*this);
+        }
     }
 
     bool tor_control_connection::command(const std::string& cmd, const ReplyHandlerCB& reply_handler)
     {
-        if (!m_b_conn)
+        if (!m_b_conn) {
             return false;
+        }
         struct evbuffer* buf = bufferevent_get_output(m_b_conn.get());
-        if (!buf)
+        if (!buf) {
             return false;
+        }
         evbuffer_add(buf, cmd.data(), cmd.size());
         evbuffer_add(buf, "\r\n", 2);
         m_reply_handlers.push_back(reply_handler);
@@ -570,10 +579,12 @@ namespace green {
             if (l.first == "AUTH") {
                 std::map<std::string, std::string> m = parse_tor_reply_mapping(l.second);
                 std::map<std::string, std::string>::iterator i;
-                if ((i = m.find("METHODS")) != m.end())
+                if ((i = m.find("METHODS")) != m.end()) {
                     boost::split(methods, i->second, boost::is_any_of(","));
-                if ((i = m.find("COOKIEFILE")) != m.end())
+                }
+                if ((i = m.find("COOKIEFILE")) != m.end()) {
                     cookiefile = i->second;
+                }
             }
         }
         auto status_cookie = read_file(cookiefile.c_str());

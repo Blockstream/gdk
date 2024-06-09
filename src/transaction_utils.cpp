@@ -1017,8 +1017,9 @@ namespace green {
 
     uint32_t get_single_subaccount(const std::set<uint32_t>& subaccounts)
     {
-        if (subaccounts.size() != 1)
+        if (subaccounts.size() != 1) {
             throw user_error("Cannot determine subaccount");
+        }
         return *subaccounts.begin();
     }
 

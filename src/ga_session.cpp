@@ -2500,8 +2500,9 @@ namespace green {
         if (!old_watch_only) {
             // Old (non client blob) watch only sessions cannot generate prevout_script
             for (auto& utxo : utxos) {
-                if (!utxo.contains("prevout_script"))
+                if (!utxo.contains("prevout_script")) {
                     utxo["prevout_script"] = b2h(output_script_from_utxo(locker, utxo));
+                }
             }
         }
         return utxos;

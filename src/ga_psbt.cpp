@@ -230,8 +230,9 @@ namespace green {
         result["network_fee"] = 0;
         update_tx_info(session, tx, result);
         result["txhash"] = b2h_rev(tx.get_txid());
-        if (use_error)
+        if (use_error) {
             result.emplace("error", std::move(error));
+        }
         /* Make PSBT details more consistent with create_transaction */
         result["fee_rate"] = j_uint32ref(result, "calculated_fee_rate");
         if (m_is_liquid) {
