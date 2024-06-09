@@ -1513,7 +1513,7 @@ namespace green {
                 }
             } else {
                 // Subaccount
-                GDK_RUNTIME_ASSERT(m_user_pubkeys.get()); // Subaccount 0 must be first in 'pointers'
+                GDK_RUNTIME_ASSERT(m_user_pubkeys); // Subaccount 0 must be first in 'pointers'
                 m_user_pubkeys->add_subaccount(pointer, xpub);
             }
         }
@@ -1815,7 +1815,7 @@ namespace green {
     void ga_session::load_local_signer_xpubs(session_impl::locker_t& locker, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(signer.get());
+        GDK_RUNTIME_ASSERT(signer);
         m_cache->get_key_value("xpubs", { [this, &locker, &signer](const auto& db_blob) {
             if (db_blob.has_value()) {
                 try {

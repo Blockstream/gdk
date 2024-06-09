@@ -834,7 +834,7 @@ namespace green {
         : m_tx(tx)
         , m_is_liquid(is_liquid)
     {
-        GDK_RUNTIME_ASSERT(m_tx.get());
+        GDK_RUNTIME_ASSERT(m_tx);
     }
 
     void Tx::swap(Tx& rhs)

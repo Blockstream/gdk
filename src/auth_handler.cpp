@@ -40,7 +40,7 @@ namespace green {
     void auth_handler::add_next_handler(auth_handler* next)
     {
         GDK_RUNTIME_ASSERT(next);
-        GDK_RUNTIME_ASSERT(!m_next_handler.get());
+        GDK_RUNTIME_ASSERT(!m_next_handler);
         m_next_handler = std::unique_ptr<auth_handler>(next);
     }
 
@@ -197,7 +197,7 @@ namespace green {
     void auth_handler_impl::operator()()
     {
         GDK_RUNTIME_ASSERT(m_state == state_type::make_call);
-        GDK_RUNTIME_ASSERT(m_session.get()); // Must be connected
+        GDK_RUNTIME_ASSERT(m_session); // Must be connected
         bool is_invalid_code = false;
         try {
 

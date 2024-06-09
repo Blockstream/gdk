@@ -143,7 +143,7 @@ namespace green {
     bool session_impl::set_signer(locker_t& locker, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (!m_signer.get()) {
+        if (!m_signer) {
             // Initial login: set the signer for the session
             m_signer = std::move(signer);
             return false;

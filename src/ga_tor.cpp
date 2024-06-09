@@ -789,7 +789,7 @@ namespace green {
 
         std::lock_guard<std::mutex> _(m_ctrl_mutex);
 
-        return m_ctrl.get() ? m_ctrl->wait_for_socks5(timeout, phase_cb) : std::string();
+        return m_ctrl ? m_ctrl->wait_for_socks5(timeout, phase_cb) : std::string();
     }
 
 } // namespace green

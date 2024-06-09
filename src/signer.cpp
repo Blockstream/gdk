@@ -294,14 +294,14 @@ namespace green {
             // Master xpub requested. encache and return it
             return cache_ext_key({}, m_master_key);
         }
-        if (!parent_path.empty() && !parent_key.get()) {
+        if (!parent_path.empty() && !parent_key) {
             // Derive and encache the parent key from the master key
-            GDK_RUNTIME_ASSERT(m_master_key.get());
+            GDK_RUNTIME_ASSERT(m_master_key);
             parent_key = derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC);
             cache_ext_key(parent_path, parent_key);
         }
-        auto& root_key = parent_key.get() ? parent_key : m_master_key;
-        GDK_RUNTIME_ASSERT(root_key.get());
+        auto& root_key = parent_key ? parent_key : m_master_key;
+        GDK_RUNTIME_ASSERT(root_key);
         if (child_path.empty()) {
             // Return our root key, which is already cached
             const auto key_data = bip32_key_serialize(*root_key, BIP32_FLAG_KEY_PUBLIC);
@@ -314,7 +314,7 @@ namespace green {
 
     bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
     {
-        if (m_master_key.get()) {
+        if (m_master_key) {
             return true; // We can derive any xpub we need
         }
         std::vector<uint32_t> parent_path{ path };
@@ -338,7 +338,7 @@ namespace green {
     std::string signer::cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey)
     {
         // Encache the derived key with the full path
-        GDK_RUNTIME_ASSERT(hdkey.get());
+        GDK_RUNTIME_ASSERT(hdkey);
         const auto key_data = bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC);
         auto xpub = base58check_from_bytes(key_data);
         cache_bip32_xpub(path, xpub);
@@ -374,14 +374,14 @@ namespace green {
 
     ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
     {
-        GDK_RUNTIME_ASSERT(m_master_key.get());
+        GDK_RUNTIME_ASSERT(m_master_key);
         wally_ext_key_ptr derived = derive(m_master_key, path);
         return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
     }
 
     ecdsa_sig_rec_t signer::sign_rec_hash(uint32_span_t path, byte_span_t hash)
     {
-        GDK_RUNTIME_ASSERT(m_master_key.get());
+        GDK_RUNTIME_ASSERT(m_master_key);
         wally_ext_key_ptr derived = derive(m_master_key, path);
         return ec_sig_rec_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
     }
