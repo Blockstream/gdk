@@ -1,5 +1,14 @@
 # Changelog
 
+## Release 0.71.3 - 24-06-11
+
+### Added
+
+### Changed
+
+### Fixed
+- Network: Update certificates for SSL certificate pinning validation.
+
 ## Release 0.71.2 - 24-06-01
 
 ### Added
