@@ -161,6 +161,12 @@ static std::vector<std::string> default_wamp_cert_pins = {
     // not before: 'Aug 13 00:00:42 2020 GMT'
     // not after: 'Sep 30 00:00:42 2027 GMT'
     "64e286b76063602a372efd60cde8db2656a49ee15e84254b3d6eb5fe38f4288b",
+
+    // Subject: C=US, O=Google Trust Services, CN=WR3
+    // Issuer: C=US, O=Google Trust Services LLC, CN=GTS Root R1
+    // Not Before: Dec 13 09:00:00 2023 GMT
+    // Not After : Feb 20 14:00:00 2029 GMT
+    "2fe357db13751ff9160e87354975b3407498f41c9bd16a48657866e6e5a9b4c7",
 };
 
 static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_networks = {
