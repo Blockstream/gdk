@@ -47,6 +47,15 @@
 - GA_set_watch_only: This call has been removed. Users should use GA_register_user to
   create watch only sessions as documented above.
 
+## Release 0.71.3 - 24-06-11
+
+### Added
+
+### Changed
+
+### Fixed
+- Network: Update certificates for SSL certificate pinning validation.
+
 ## Release 0.71.2 - 24-06-01
 
 ### Added
