@@ -489,23 +489,26 @@ namespace green {
         }
 
         const auto& inputs = j_arrayref(details, "transaction_inputs");
-        if (m_is_liquid) {
-            for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
-                const auto& input = inputs.at(i);
-                const auto& psbt_input = get_input(i);
+        for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
+            const auto& input = inputs.at(i);
+            const auto& psbt_input = get_input(i);
+            amount::value_type satoshi;
+            std::vector<unsigned char> asset_id;
 
+            if (m_is_liquid) {
                 // Add the input asset and amount
-                const auto asset_id = j_rbytesref(input, "asset_id");
+                asset_id = j_rbytesref(input, "asset_id");
                 GDK_VERIFY(wally_psbt_set_input_asset(m_psbt.get(), i, asset_id.data(), asset_id.size()));
-                const auto satoshi = j_amountref(input).value();
+                satoshi = j_amountref(input).value();
                 GDK_VERIFY(wally_psbt_set_input_amount(m_psbt.get(), i, satoshi));
-
-                if (!psbt_input.utxo && !psbt_input.witness_utxo) {
-                    // Add the input UTXO
-                    const auto vout = j_uint32ref(input, "pt_idx");
-                    auto utxo_tx = session.get_raw_transaction_details(j_strref(input, "txhash"));
-                    GDK_VERIFY(wally_psbt_set_input_witness_utxo_from_tx(m_psbt.get(), i, utxo_tx.get(), vout));
-                }
+            }
+            if (!psbt_input.utxo && !psbt_input.witness_utxo) {
+                // Add the input UTXO
+                const auto vout = j_uint32ref(input, "pt_idx");
+                auto utxo_tx = session.get_raw_transaction_details(j_strref(input, "txhash"));
+                GDK_VERIFY(wally_psbt_set_input_witness_utxo_from_tx(m_psbt.get(), i, utxo_tx.get(), vout));
+            }
+            if (m_is_liquid) {
                 // Create asset and value explicit proofs
                 const auto abf = j_rbytesref(input, "assetblinder");
                 const auto nonce = get_random_bytes<32>();
