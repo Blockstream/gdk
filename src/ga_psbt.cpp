@@ -287,6 +287,15 @@ namespace green {
                 }
             }
 
+            const struct wally_tx_output* txin_utxo;
+            GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
+            if (!txin_utxo) {
+                auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
+                GDK_VERIFY(wally_psbt_set_input_utxo(m_psbt.get(), i, utxo_tx.get()));
+                GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
+            }
+            GDK_RUNTIME_ASSERT(txin_utxo);
+
             if (is_wallet_utxo) {
                 // Wallet UTXO
                 wallet_assets.insert(j_assetref(m_is_liquid, utxo));
@@ -311,14 +320,6 @@ namespace green {
             } else {
                 // Non-wallet UTXO
                 utxo["skip_signing"] = true;
-                const struct wally_tx_output* txin_utxo;
-                GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
-                if (!txin_utxo) {
-                    auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
-                    GDK_VERIFY(wally_psbt_set_input_utxo(m_psbt.get(), i, utxo_tx.get()));
-                    GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
-                }
-                GDK_RUNTIME_ASSERT(txin_utxo);
                 if (!m_is_liquid) {
                     utxo["satoshi"] = txin_utxo->satoshi;
                 } else {
