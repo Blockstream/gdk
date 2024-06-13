@@ -20,6 +20,7 @@
 #include <fstream>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include <boost/algorithm/string/classification.hpp>
@@ -69,35 +70,38 @@ namespace green {
     static std::map<std::string, std::string> parse_tor_reply_mapping(const std::string& s)
     {
         std::map<std::string, std::string> mapping;
-        size_t ptr = 0;
-        while (ptr < s.size()) {
-            std::string key, value;
-            while (ptr < s.size() && s[ptr] != '=' && s[ptr] != ' ') {
-                key.push_back(s[ptr]);
-                ++ptr;
+        std::string_view source(s);
+        size_t cursor = 0;
+        while (cursor < source.size()) {
+            std::string_view key;
+            const size_t key_end_idx = source.find_first_of("= ", cursor);
+            if (key_end_idx == std::string_view::npos) {
+                // unexpected end of line
+                return {};
             }
-            if (ptr == s.size()) { // unexpected end of line
-                return std::map<std::string, std::string>();
-            }
-            if (s[ptr] == ' ') { // The remaining string is an OptArguments
-                mapping[key] = key;
-                ++ptr; // skip the ' '
+            key = source.substr(0, key_end_idx);
+            cursor = key_end_idx;
+            if (source[cursor] == ' ') { // The remaining string is an OptArguments
+                mapping[std::string(key)] = key;
+                ++cursor; // skip the ' '
                 continue;
             }
-            ++ptr; // skip '='
-            if (ptr < s.size() && s[ptr] == '"') { // Quoted string
-                ++ptr; // skip opening '"'
-                bool escape_next = false;
-                while (ptr < s.size() && (escape_next || s[ptr] != '"')) {
-                    // Repeated backslashes must be interpreted as pairs
-                    escape_next = (s[ptr] == '\\' && !escape_next);
-                    value.push_back(s[ptr]);
-                    ++ptr;
+            ++cursor; // skip '='
+            std::string_view value;
+            if (cursor < source.size() && source[cursor] == '"') { // Quoted string
+
+                // skip opening '"'
+                size_t end_of_value_idx = 0;
+                do {
+                    end_of_value_idx = source.find_first_of('"', cursor + end_of_value_idx + 1);
+                } while (end_of_value_idx != std::string_view::npos && source[end_of_value_idx - 1] == '\\'
+                    && source[end_of_value_idx - 2] != '\\');
+                if (end_of_value_idx == std::string_view::npos) {
+                    // unexpected end of line
+                    return {};
                 }
-                if (ptr == s.size()) { // unexpected end of line
-                    return std::map<std::string, std::string>();
-                }
-                ++ptr; // skip closing '"'
+                value = source.substr(cursor, end_of_value_idx);
+                cursor += end_of_value_idx + 1; // skip closing '"'
                 /**
                  * Unescape value. Per https://spec.torproject.org/control-spec section 2.1.1:
                  *
@@ -109,54 +113,56 @@ namespace green {
                  *     Treat a backslash followed by any other character as that character.
                  */
                 std::string escaped_value;
-                for (size_t i = 0; i < value.size(); ++i) {
-                    if (value[i] == '\\') {
-                        // This will always be valid, because if the QuotedString
-                        // ended in an odd number of backslashes, then the parser
-                        // would already have returned above, due to a missing
-                        // terminating double-quote.
-                        ++i;
-                        if (value[i] == 'n') {
-                            escaped_value.push_back('\n');
-                        } else if (value[i] == 't') {
-                            escaped_value.push_back('\t');
-                        } else if (value[i] == 'r') {
-                            escaped_value.push_back('\r');
-                        } else if ('0' <= value[i] && value[i] <= '7') {
-                            size_t j;
-                            // Octal escape sequences have a limit of three octal digits,
-                            // but terminate at the first character that is not a valid
-                            // octal digit if encountered sooner.
-                            for (j = 1; j < 3 && (i + j) < value.size() && '0' <= value[i + j] && value[i + j] <= '7';
-                                 ++j) {
-                            }
-                            // Tor restricts first digit to 0-3 for three-digit octals.
-                            // A leading digit of 4-7 would therefore be interpreted as
-                            // a two-digit octal.
-                            if (j == 3 && value[i] > '3') {
-                                j--;
-                            }
-                            escaped_value.push_back(strtol(value.substr(i, j).c_str(), nullptr, 8));
-                            // Account for automatic incrementing at loop end
-                            i += j - 1;
-                        } else {
-                            escaped_value.push_back(value[i]);
+                size_t value_cursor = 0;
+                while (value_cursor < value.size()) {
+                    size_t slash_token_idx = value.find_first_of('\\', value_cursor);
+                    if (slash_token_idx == std::string::npos) {
+                        escaped_value.append(value.substr(value_cursor));
+                        break;
+                    }
+                    escaped_value.append(value.substr(value_cursor, slash_token_idx - value_cursor));
+                    value_cursor = slash_token_idx + 1;
+                    switch (value[value_cursor]) {
+                    case 'n':
+                        escaped_value.push_back('\n');
+                        value_cursor++;
+                        break;
+                    case 't':
+                        escaped_value.push_back('\t');
+                        value_cursor++;
+                        break;
+                    case 'r':
+                        escaped_value.push_back('\r');
+                        value_cursor++;
+                        break;
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7': {
+                        std::string_view number_str = value.substr(value_cursor, 3);
+                        if (number_str[0] > '3') {
+                            number_str = number_str.substr(0, 2);
                         }
-                    } else {
-                        escaped_value.push_back(value[i]);
+                        while (number_str.back() < '0' || number_str.back() > '7') {
+                            number_str = number_str.substr(0, number_str.size() - 1);
+                        }
+                        uint8_t number = static_cast<uint8_t>(std::stoi(std::string(number_str), nullptr, 8));
+                        escaped_value.push_back(number);
+                        value_cursor += number_str.size();
+                    }
                     }
                 }
                 value = escaped_value;
             } else { // Unquoted value. Note that values can contain '=' at will, just no spaces
-                while (ptr < s.size() && s[ptr] != ' ') {
-                    value.push_back(s[ptr]);
-                    ++ptr;
-                }
+                size_t value_end_idx = source.find(' ', cursor);
+                value = source.substr(cursor, value_end_idx - cursor);
+                cursor = value_end_idx;
             }
-            if (ptr < s.size() && s[ptr] == ' ') {
-                ++ptr; // skip ' ' after key=value
-            }
-            mapping[key] = value;
+            mapping[std::string(key)] = value;
         }
         return mapping;
     }
@@ -242,8 +248,10 @@ namespace green {
         // We give `tor_control_connection` our `connected_cb` and `disconnected_cb`, so these are the two
         // possible "entry points" that start the chain of callbacks on our side.
         //
-        // `connected_cb`: As soon as the control connection is ready, our `connected_cb` gets called: first thing it
-        //     does is asking Tor which protocols it supports, and sets `protocolinfo_cb` as the handler for the reply
+        // `connected_cb`: As soon as the control connection is ready, our `connected_cb` gets called: first thing
+        // it
+        //     does is asking Tor which protocols it supports, and sets `protocolinfo_cb` as the handler for the
+        //     reply
         // `protocolinfo_cb`: This callback reads the AUTHCOOKIE from disk and starts the authentication challenge
         //     protocol.
         // `authchallenge_cb`: This callback does all the crypto stuff (HMACs, etc) and then tries to authenticate
@@ -252,12 +260,14 @@ namespace green {
         //     bootstrap phase, to see whether it is already connected or not.
         // `bootstrap_phase_cb`: This callback receives the result of a bootstrap phase query. It has two possible
         //     outcomes:
-        //         if the "progress" has reached 100, it asks tor for the socks5 port and sets `socks_cb` as callback
-        //         otherwise it sleeps for 250ms and then asks for the bootstrap phase again
-        // `socks_cb`: This is the last callback, which copies the socks5 listener into our internal field and finally
+        //         if the "progress" has reached 100, it asks tor for the socks5 port and sets `socks_cb` as
+        //         callback otherwise it sleeps for 250ms and then asks for the bootstrap phase again
+        // `socks_cb`: This is the last callback, which copies the socks5 listener into our internal field and
+        // finally
         //     completes the "chain reaction.
         //
-        // There's also `disconnected_cb` which is called by `tor_control_connection` when the connection on the control
+        // There's also `disconnected_cb` which is called by `tor_control_connection` when the connection on the
+        // control
         //     port is dropped.
         // `stopped_cb` is called when the `HALT` command is acknowledged by Tor, meaning that it is shutting down
 
