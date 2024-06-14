@@ -1,15 +1,15 @@
 
 ####### DOCKER IMAGES
 .debian-image:
-  image: blockstream/gdk-debian-ci@sha256:9d500da50a907c002814a94fe08a1e66e1400c45e973f2e9c994e14c2e592ad3
+  image: blockstream/gdk-debian-ci@sha256:d2d1cefa9b539309b4b53eba602c7c49c308a2e065eba767c0c7a130955d9945
   tags: [ ga ]
 
 .android-image:
-  image: blockstream/gdk-android-builder@sha256:9cd011f833aecd1039cd72bcd383b69ed6dc74f553de048aaf1169b6eb8a32d3
+  image: blockstream/gdk-android-builder@sha256:574adedfee92b2d3379a75a244d353f8090dcadfaa93375dafe718a4a2ba010b
   tags: [ ga ]
 
 .python-image:
-  image: blockstream/gdk-python-builder@sha256:3318231c804384090062da56e2e28dddb95d05207257c41d74133a49a8175624
+  image: blockstream/gdk-python-builder@sha256:c4af4f45b5bc4a0a1883d677089e34b1603dd0e9f8e2c3a4e6fe302d146233e3
   tags: [ ga ]
 
 .ubuntu-image:
