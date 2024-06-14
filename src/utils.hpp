@@ -44,8 +44,9 @@ namespace green {
         size_t m_index;
     };
 
+    // example: [0,1,2,3] --> binary_op(0,1), binary_op(2,3)
     template <typename InputIt, typename OutputIt, typename BinaryOperation>
-    void adjacent_transform(InputIt first, InputIt last, OutputIt d_first, BinaryOperation binary_op)
+    void pair_and_transform(InputIt first, InputIt last, OutputIt d_first, BinaryOperation binary_op)
     {
         auto next = first;
         while (next != last) {

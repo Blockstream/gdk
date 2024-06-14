@@ -335,7 +335,7 @@ namespace green {
         auto path_bytes = get_random_bytes<8>();
 
         std::vector<uint32_t> path(4);
-        adjacent_transform(std::begin(path_bytes), std::end(path_bytes), std::begin(path),
+        pair_and_transform(std::begin(path_bytes), std::end(path_bytes), std::begin(path),
             [](auto first, auto second) { return uint32_t((first << 8) + second); });
 
         const auto challenge_hash = uint256_to_base256(challenge);
@@ -475,7 +475,7 @@ namespace green {
         decltype(m_gait_path) gait_path;
         const auto gait_path_bytes = j_bytesref(m_login_data, "gait_path");
         GDK_RUNTIME_ASSERT(gait_path_bytes.size() == gait_path.size() * 2);
-        adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
+        pair_and_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
             [](auto first, auto second) { return uint32_t((first << 8u) + second); });
         if (is_relogin) {
             GDK_RUNTIME_ASSERT(m_gait_path == gait_path);
