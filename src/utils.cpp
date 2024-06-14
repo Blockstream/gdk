@@ -19,13 +19,11 @@
 #include <thread>
 
 #include <boost/algorithm/string/case_conv.hpp>
-#include <boost/algorithm/string/classification.hpp>
-#include <boost/algorithm/string/erase.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <boost/algorithm/string/predicate.hpp>
-#include <boost/algorithm/string/split.hpp>
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/exception/diagnostic_information.hpp>
+#include <boost/url.hpp>
 #include <nlohmann/json.hpp>
 
 #ifdef __x86_64
@@ -507,23 +505,25 @@ namespace green {
     // onion urls are ignored if use_tor is false
     nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor)
     {
-        std::vector<nlohmann::json> https_urls, insecure_urls;
-        for (const auto& url_json : urls) {
-            auto url = parse_url(url_json);
-            if (j_boolref(url, "is_onion")) {
-                if (use_tor) {
-                    return url;
-                }
-            } else if (j_boolref(url, "is_secure")) {
-                https_urls.emplace_back(std::move(url));
-            } else {
-                insecure_urls.emplace_back(std::move(url));
+        std::vector<nlohmann::json> parsed_urls;
+        std::transform(urls.begin(), urls.end(), std::back_inserter(parsed_urls), parse_url);
+        if (use_tor) {
+            auto it = std::find_if(parsed_urls.begin(), parsed_urls.end(),
+                [](const nlohmann::json& url) { return j_boolref(url, "is_onion"); });
+            if (it != parsed_urls.end()) {
+                return *it;
             }
         }
 
+        std::vector<nlohmann::json> https_urls;
+        std::vector<nlohmann::json> insecure_urls;
+        std::partition_copy(parsed_urls.begin(), parsed_urls.end(), std::back_inserter(https_urls),
+            std::back_inserter(insecure_urls), [](const nlohmann::json& url) { return j_boolref(url, "is_secure"); });
+
         if (!https_urls.empty()) {
             return std::move(https_urls.front());
-        } else if (insecure_urls.empty()) {
+        }
+        if (insecure_urls.empty()) {
             throw user_error("No URL provided");
         }
         return std::move(insecure_urls.front());
@@ -548,38 +548,30 @@ namespace green {
         return trimmed;
     }
 
-    nlohmann::json parse_url(const std::string& url)
+    nlohmann::json parse_url(const std::string& endpoint)
     {
-        nlohmann::json retval;
-
         namespace algo = boost::algorithm;
-        auto endpoint = url;
-        const bool use_tls = algo::starts_with(endpoint, "wss://") || algo::starts_with(endpoint, "https://");
-        if (use_tls) {
-            algo::erase_all(endpoint, "wss://");
-            algo::erase_all(endpoint, "https://");
+        namespace urls = boost::urls;
+        boost::system::result<urls::url_view> url = urls::parse_uri(endpoint);
+        GDK_RUNTIME_ASSERT(url);
+        urls::url_view parsed_url = url.value();
+        nlohmann::json retval;
+        bool is_secure = false;
+        if (parsed_url.scheme() == "wss" || parsed_url.scheme() == "https") {
             retval["is_secure"] = true;
+            is_secure = true;
         } else {
-            algo::erase_all(endpoint, "ws://");
-            algo::erase_all(endpoint, "http://");
             retval["is_secure"] = false;
         }
-        std::vector<std::string> endpoint_parts;
-        algo::split(endpoint_parts, endpoint, algo::is_any_of("/"));
-        GDK_RUNTIME_ASSERT(!endpoint_parts.empty());
-        std::string target;
-        if (endpoint_parts.size() > 1) {
-            target = "/"
-                + algo::join(std::vector<std::string>(std::begin(endpoint_parts) + 1, std::end(endpoint_parts)), "/");
+        GDK_RUNTIME_ASSERT(!parsed_url.host().empty());
+        retval["target"] = parsed_url.path();
+        std::string_view port = parsed_url.port();
+        if (port.empty()) {
+            retval["port"] = is_secure ? "443" : "80";
         }
-        retval["target"] = target;
-        std::vector<std::string> host_parts;
-        algo::split(host_parts, endpoint_parts[0], algo::is_any_of(":"));
-        GDK_RUNTIME_ASSERT(!host_parts.empty());
-        retval["port"] = host_parts.size() > 1 ? host_parts[1] : use_tls ? "443" : "80";
-        retval["is_onion"] = algo::ends_with(host_parts[0], ".onion");
-        retval["host"] = host_parts[0];
-
+        retval["port"] = port;
+        retval["is_onion"] = algo::ends_with(parsed_url.host(), ".onion");
+        retval["host"] = parsed_url.host();
         return retval;
     }
 

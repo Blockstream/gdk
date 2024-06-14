@@ -1,6 +1,5 @@
 #ifndef GDK_UTILS_HPP
 #define GDK_UTILS_HPP
-#include <string_view>
 #pragma once
 
 #include <cstddef>
@@ -82,7 +81,7 @@ namespace green {
     // If the uri passed is not a bitcoin uri returns an empty json object
     nlohmann::json parse_bitcoin_uri(const network_parameters& net_params, const std::string& uri);
 
-    nlohmann::json parse_url(const std::string& url);
+    nlohmann::json parse_url(const std::string& endpoint);
     nlohmann::json select_url(const std::vector<nlohmann::json>& urls, bool use_tor);
     std::string socksify(const std::string& proxy);
     std::string unsocksify(const std::string& proxy);

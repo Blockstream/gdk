@@ -121,6 +121,7 @@ target_link_libraries(
             Boost::boost
             Boost::log
             Boost::thread
+            Boost::url
             OpenSSL::SSL
             $<$<PLATFORM_ID:Android>:log>
             ZLIB::ZLIB
