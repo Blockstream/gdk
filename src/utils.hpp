@@ -44,16 +44,6 @@ namespace green {
         size_t m_index;
     };
 
-    template <typename InputIt, typename OutputIt, typename BinaryOperation>
-    void adjacent_transform(InputIt first, InputIt last, OutputIt d_first, BinaryOperation binary_op)
-    {
-        auto next = first;
-        while (next != last) {
-            auto prev = next++;
-            *d_first++ = binary_op(*prev, *next++);
-        }
-    }
-
     bool nsee_log_info(std::string message, const char* context);
     std::string get_diagnostic_information(const boost::exception& e);
 

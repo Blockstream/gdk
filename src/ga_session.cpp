@@ -255,6 +255,16 @@ namespace green {
             }
             return user_agent;
         }
+
+        static std::vector<uint32_t> bytes_to_bip32_path(byte_span_t bytes)
+        {
+            GDK_RUNTIME_ASSERT(bytes.size() % 2 == 0);
+            std::vector<uint32_t> ret(bytes.size() / 2);
+            for (size_t i = 0; i < bytes.size(); i += 2) {
+                ret[i / 2] = (bytes[i] << 8) | bytes[i + 1];
+            }
+            return ret;
+        }
     } // namespace
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -344,14 +354,10 @@ namespace green {
         session_impl::locker_t& locker, const std::string& challenge)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_signer != nullptr);
+        GDK_RUNTIME_ASSERT(m_signer);
 
-        auto path_bytes = get_random_bytes<8>();
-
-        std::vector<uint32_t> path(4);
-        adjacent_transform(std::begin(path_bytes), std::end(path_bytes), std::begin(path),
-            [](auto first, auto second) { return uint32_t((first << 8) + second); });
-
+        const auto path_bytes = get_random_bytes<8>();
+        const auto path = bytes_to_bip32_path(path_bytes);
         const auto challenge_hash = uint256_to_base256(challenge);
 
         return { sig_only_to_der_hex(m_signer->sign_hash(path, challenge_hash)), b2h(path_bytes) };
@@ -479,16 +485,14 @@ namespace green {
         m_login_data.swap(login_data);
         auto warnings = j_array(m_login_data, "warnings").value_or(nlohmann::json::array());
 
-        // Parse gait_path into a derivation path
-        decltype(m_gait_path) gait_path;
-        const auto gait_path_bytes = j_bytesref(m_login_data, "gait_path");
-        GDK_RUNTIME_ASSERT(gait_path_bytes.size() == gait_path.size() * 2);
-        adjacent_transform(gait_path_bytes.begin(), gait_path_bytes.end(), gait_path.begin(),
-            [](auto first, auto second) { return uint32_t((first << 8u) + second); });
+        // Parse gait_path into a derivation path.
+        // Each pair of bytes is interpreted as a 16 bit child number.
+        const auto gait_path_bytes = j_bytesref(m_login_data, "gait_path", m_gait_path.size() * 2);
+        const auto gait_path = bytes_to_bip32_path(gait_path_bytes);
         if (is_relogin) {
-            GDK_RUNTIME_ASSERT(m_gait_path == gait_path);
+            GDK_RUNTIME_ASSERT(std::equal(m_gait_path.begin(), m_gait_path.end(), gait_path.begin()));
         } else {
-            m_gait_path = gait_path;
+            std::copy(gait_path.begin(), gait_path.end(), m_gait_path.begin());
         }
 
         if (!m_green_pubkeys) {

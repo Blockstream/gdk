@@ -34,6 +34,7 @@ namespace green {
     using wally_ext_key_ptr = std::unique_ptr<struct ext_key>;
 
     using byte_span_t = gsl::span<const unsigned char>;
+    using uint16_span_t = gsl::span<const uint16_t>;
     using uint32_span_t = gsl::span<const uint32_t>;
     using uint64_span_t = gsl::span<const uint64_t>;
 
