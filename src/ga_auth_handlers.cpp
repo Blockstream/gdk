@@ -373,10 +373,6 @@ namespace green {
             const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
             m_master_bip32_xpub = xpubs.at(0);
 
-            // Set the cache keys for the wallet, loading/creating the
-            // local cache as needed.
-            m_session->set_local_encryption_keys(make_xpub(xpubs.at(1)).second, m_signer);
-
             if (is_electrum) {
                 // Skip the challenge/response steps since we have no server
                 // to authenticate to.

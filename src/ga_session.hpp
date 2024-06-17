@@ -53,7 +53,7 @@ namespace green {
         nlohmann::json create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(const nlohmann::json& details);
-        void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer);
+        void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
         nlohmann::json get_available_currencies() const;
         bool is_rbf_enabled() const;
 
@@ -145,8 +145,6 @@ namespace green {
         void reset_cached_session_data(locker_t& locker);
         void delete_reorg_block_txs(locker_t& locker, bool from_latest_cached);
         void reset_all_session_data(bool in_dtor);
-        void set_local_encryption_keys_impl(
-            locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
         void derive_wallet_identifiers(
             locker_t& locker, nlohmann::json& login_data, const std::vector<unsigned char>& entropy, bool is_relogin);

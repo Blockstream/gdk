@@ -65,8 +65,10 @@ namespace green {
         rust_call("disconnect", {}, m_session);
     }
 
-    void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
+    void ga_rust::set_local_encryption_keys(
+        session_impl::locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
         const bool is_watch_only = signer->is_watch_only();
 
         // Load the cache on the rust side
@@ -100,8 +102,6 @@ namespace green {
                 signer->set_master_blinding_key(blinding_key_hex);
             }
         }
-
-        locker_t locker(m_mutex);
 
         // Compute client blob id from the privately derived pubkey
         m_blob->compute_client_id(m_net_params.network(), public_key);
@@ -167,6 +167,15 @@ namespace green {
         locker_t locker(m_mutex);
         set_signer(locker, signer);
         m_watch_only = signer->is_watch_only();
+        pub_key_t public_key;
+        if (m_watch_only) {
+            const auto credentials = signer->get_credentials();
+            public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+        } else {
+            public_key
+                = signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() }).second;
+        }
+        set_local_encryption_keys(locker, public_key, signer);
 
         // Load any cached blob data
         get_cached_local_client_blob(locker, std::string());
@@ -271,7 +280,6 @@ namespace green {
         }
 
         m_blob->set_key(blob_key);
-        set_local_encryption_keys(public_key, signer);
 
         authenticate(std::string(), signer);
 

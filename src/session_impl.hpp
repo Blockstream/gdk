@@ -205,7 +205,6 @@ namespace green {
         virtual nlohmann::json get_spending_limits() const;
         virtual bool is_spending_limits_decrease(const nlohmann::json& limit_details) = 0;
 
-        virtual void set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer) = 0;
         virtual void save_cache();
         virtual void disable_all_pin_logins() = 0;
 

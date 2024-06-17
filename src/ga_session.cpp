@@ -1012,7 +1012,7 @@ namespace green {
             }
 
             m_blob->set_key(blob_key);
-            set_local_encryption_keys_impl(locker, public_key, m_signer);
+            set_local_encryption_keys(locker, public_key, m_signer);
 
             // Compute client blob id from the privately derived pubkey
             m_blob->compute_client_id(m_net_params.network(), public_key);
@@ -1030,7 +1030,7 @@ namespace green {
                     m_blob->compute_client_id(m_net_params.network(), encryption_key);
                 }
             }
-            set_local_encryption_keys_impl(locker, encryption_key, m_signer);
+            set_local_encryption_keys(locker, encryption_key, m_signer);
             const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
             if (!wo_blob_key_hex.empty()) {
                 m_blob->set_key(decrypt_wo_blob_key(entropy, wo_blob_key_hex));
@@ -1227,13 +1227,7 @@ namespace green {
         m_cache->save_db();
     }
 
-    void ga_session::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
-    {
-        locker_t locker(m_mutex);
-        set_local_encryption_keys_impl(locker, public_key, signer);
-    }
-
-    void ga_session::set_local_encryption_keys_impl(
+    void ga_session::set_local_encryption_keys(
         locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
