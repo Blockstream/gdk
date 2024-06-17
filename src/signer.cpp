@@ -25,16 +25,7 @@ namespace green {
             }
 
             if (auto username = j_str(credentials, "username"); username) {
-                // Green old-style watch-only login, or blobserver rich watch-only login
-                const auto& password = j_strref(credentials, "password");
-                nlohmann::json ret = { { "username", std::move(*username) }, { "password", password } };
-                // FIXME: don't use the pubkey directly, store keys in one json value,
-                // encrypt with username and password
-                if (auto public_key = j_str_or_empty(credentials, "public_key"); !public_key.empty()) {
-                    ret["public_key"] = std::move(public_key);
-                    ret["blob_key"] = j_strref(credentials, "blob_key");
-                }
-                return ret;
+                return signer::normalize_watch_only_credentials(credentials);
             }
 
             if (auto user_mnemonic = j_str(credentials, "mnemonic"); user_mnemonic) {
@@ -212,6 +203,33 @@ namespace green {
             return encrypt_mnemonic(*mnemonic, password); // Mnemonic
         }
         return j_strref(m_credentials, "seed") + "X"; // Hex seed
+    }
+
+    nlohmann::json signer::normalize_watch_only_credentials(const nlohmann::json& credentials)
+    {
+        const auto& username = j_strref(credentials, "username");
+        const auto& password = j_strref(credentials, "password");
+        nlohmann::json ret = { { "username", username }, { "password", password } };
+        auto raw_data = j_str_or_empty(credentials, "raw_watch_only_data");
+        auto data = j_str_or_empty(credentials, "watch_only_data");
+        if (!raw_data.empty() || !data.empty()) {
+            // Blobserver rich watch-only login
+            const auto entropy = compute_watch_only_entropy(username, password);
+            if (raw_data.empty()) {
+                raw_data = b2h(decrypt_watch_only_data(entropy, data));
+            } else if (data.empty()) {
+                data = encrypt_watch_only_data(entropy, h2b(raw_data));
+            }
+            constexpr auto expected_size = (pub_key_t().size() + pbkdf2_hmac256_t().size()) * 2;
+            if (raw_data.size() != expected_size) {
+                // Decrypted to the wrong length: invalid username, password
+                // or watch-only data.
+                throw user_error(res::id_user_not_found_or_invalid);
+            }
+            ret["raw_watch_only_data"] = std::move(raw_data);
+            ret["watch_only_data"] = std::move(data);
+        }
+        return ret;
     }
 
     bool signer::supports_low_r() const

@@ -56,6 +56,9 @@ namespace green {
         // Return the mnemonic associated with this signer (empty if none available)
         std::string get_mnemonic(const std::string& password);
 
+        // Normalize watch only credentials (encrypts/decrypts any rich watch only data)
+        static nlohmann::json normalize_watch_only_credentials(const nlohmann::json& credentials);
+
         // Returns true if this signer produces only low-r signatures
         bool supports_low_r() const;
 

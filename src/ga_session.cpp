@@ -999,18 +999,7 @@ namespace green {
 
         if (m_blobserver && m_signer->is_watch_only()) {
             // Blobserver watch only login.
-            pub_key_t public_key;
-            pbkdf2_hmac256_t blob_key;
-            try {
-                const auto credentials = m_signer->get_credentials();
-                public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
-                blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key"));
-            } catch (const std::exception& e) {
-                GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
-                throw user_error("Invalid credentials");
-            }
-
-            m_blob->set_key(blob_key);
+            const auto public_key = set_blob_key_from_credentials(locker);
             set_local_encryption_keys(locker, public_key, m_signer);
 
             // Compute client blob id from the privately derived pubkey

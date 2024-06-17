@@ -682,11 +682,15 @@ namespace green {
         nlohmann::json ret = nlohmann::json::object();
         if (!m_net_params.get_blob_server_url().empty()) {
             // Add the client blob credentials
-            // FIXME: don't use the pubkey directly, store keys in one json value,
-            // encrypt with username and password
-            auto xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
-            ret["public_key"] = b2h(xpub.second);
-            ret["blob_key"] = b2h(m_blob->get_key());
+            // FIXME: don't use the pubkey directly
+            const auto xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
+            auto data = b2h(xpub.second) + b2h(m_blob->get_key());
+
+            nlohmann::json wo
+                = { { "username", username }, { "password", password }, { "raw_watch_only_data", std::move(data) } };
+            wo = signer::normalize_watch_only_credentials(wo);
+            ret["watch_only_data"] = std::move(wo["watch_only_data"]);
+            ret["raw_watch_only_data"] = std::move(wo["raw_watch_only_data"]);
         }
 
         // Set watch only data in the client blob. Blanks the username if disabling.
@@ -694,6 +698,28 @@ namespace green {
         update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
         // FIXME: if not saved, fail
         return ret;
+    }
+
+    pub_key_t session_impl::set_blob_key_from_credentials(locker_t& locker)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        GDK_RUNTIME_ASSERT(m_signer->is_watch_only());
+
+        pub_key_t public_key;
+        pbkdf2_hmac256_t blob_key;
+        try {
+            GDK_RUNTIME_ASSERT_MSG(m_blobserver, "blobserver must be enabled for rich watch only");
+            const auto credentials = m_signer->get_credentials();
+            const auto& raw_data = j_strref(credentials, "raw_watch_only_data");
+            const auto pubkey_hex_size = public_key.size() * 2;
+            public_key = h2b_array<EC_PUBLIC_KEY_LEN>(raw_data.substr(0, pubkey_hex_size));
+            blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(raw_data.substr(pubkey_hex_size, blob_key.size() * 2));
+        } catch (const std::exception& e) {
+            GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
+            throw user_error("Invalid credentials");
+        }
+        m_blob->set_key(blob_key);
+        return public_key;
     }
 
     void session_impl::start_sync_threads()

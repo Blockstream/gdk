@@ -169,8 +169,7 @@ namespace green {
         m_watch_only = signer->is_watch_only();
         pub_key_t public_key;
         if (m_watch_only) {
-            const auto credentials = signer->get_credentials();
-            public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+            public_key = set_blob_key_from_credentials(locker);
         } else {
             public_key = signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
         }
@@ -267,18 +266,6 @@ namespace green {
             m_blobserver.reset(); // No blobserver for descriptor wallets
             return rust_call("login_wo", credentials, m_session);
         }
-
-        pub_key_t public_key;
-        pbkdf2_hmac256_t blob_key;
-        try {
-            public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
-            blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key"));
-        } catch (const std::exception& e) {
-            GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
-            throw user_error("Invalid credentials");
-        }
-
-        m_blob->set_key(blob_key);
 
         authenticate(std::string(), signer);
 
