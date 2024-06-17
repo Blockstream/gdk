@@ -210,6 +210,7 @@ namespace green {
         virtual void disable_all_pin_logins() = 0;
 
         const network_parameters& get_network_parameters() const { return m_net_params; }
+        std::shared_ptr<signer> get_nonnull_signer(locker_t& locker);
         std::shared_ptr<signer> get_nonnull_signer();
         std::shared_ptr<signer> get_signer();
         virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
@@ -221,7 +222,8 @@ namespace green {
 
         // Cached data
         virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
-        virtual void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+        void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+        virtual void set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex);
 
         virtual bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         virtual std::string get_service_xpub(uint32_t subaccount);

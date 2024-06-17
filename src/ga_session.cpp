@@ -1796,10 +1796,10 @@ namespace green {
         return std::make_pair(blinding_key_hex, denied);
     }
 
-    void ga_session::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
+    void ga_session::set_cached_master_blinding_key_impl(
+        session_impl::locker_t& locker, const std::string& master_blinding_key_hex)
     {
-        session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
-        locker_t locker(m_mutex);
+        session_impl::set_cached_master_blinding_key_impl(locker, master_blinding_key_hex);
         if (have_writable_client_blob(locker)) {
             // Note: this update is a no-op if the key is already cached
             update_client_blob(

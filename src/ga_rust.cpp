@@ -124,7 +124,7 @@ namespace green {
         // Tx memos
         m_blob->update_tx_memos(rust_call("get_memos", {}, m_session));
         // Master blinding key (Liquid)
-        if (m_signer->has_master_blinding_key()) {
+        if (m_net_params.is_liquid() && m_signer->has_master_blinding_key()) {
             m_blob->set_master_blinding_key(b2h(m_signer->get_master_blinding_key()));
         }
         m_blob->set_user_version(1); // Initial version
@@ -157,8 +157,6 @@ namespace green {
             { "hmac", hmac }, { "requires_merge", m_blob->get_requires_merge() } };
         rust_call("save_blob", args, m_session);
     }
-
-    void ga_rust::start_sync_threads() { rust_call("start_threads", {}, m_session); }
 
     std::string ga_rust::get_challenge(const pub_key_t& /*public_key*/) { throw std::runtime_error("not implemented"); }
 
@@ -212,12 +210,6 @@ namespace green {
 
         // Load any xpubs from the blob into our signer
         load_signer_xpubs(locker, m_blob->get_xpubs(), signer);
-        if (!signer->has_master_blinding_key()) {
-            // Load the master blinding key from the blob if available
-            if (auto key_hex = m_blob->get_master_blinding_key(); !key_hex.empty()) {
-                signer->set_master_blinding_key(key_hex);
-            }
-        }
 
         // Set the master xpub fingerprint in the store
         GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
@@ -232,6 +224,42 @@ namespace green {
 
         subscribe_all(locker);
         return m_login_data;
+    }
+
+    void ga_rust::on_post_login()
+    {
+        locker_t locker(m_mutex);
+        const auto version = m_blob->get_user_version();
+        if (m_net_params.is_liquid()) {
+            // Pass the master blinding key to the rust side, and update
+            // it in the blob/signer if not present,i.e. if this is an initial
+            // login with no blob and no local cache.
+            // Full sessions have the blinding key in the signer, while
+            // watch only sessions have it in the client blob.
+            std::string master_blinding_key_hex;
+            if (m_signer->has_master_blinding_key()) {
+                master_blinding_key_hex = b2h(m_signer->get_master_blinding_key());
+                m_blob->set_master_blinding_key(master_blinding_key_hex);
+            } else {
+                master_blinding_key_hex = m_blob->get_master_blinding_key();
+            }
+            GDK_RUNTIME_ASSERT(!master_blinding_key_hex.empty());
+            set_cached_master_blinding_key_impl(locker, master_blinding_key_hex);
+        }
+        // Update the blob with our now-loaded subaccount xpubs
+        m_blob->set_xpubs(m_signer->get_cached_bip32_xpubs_json());
+
+        if (m_blob->get_user_version() != version) {
+            // Blob has been modified, save it
+            m_blob->set_user_version(version + 1);
+            save_client_blob(locker, m_blob->get_hmac());
+        }
+    }
+
+    void ga_rust::start_sync_threads()
+    {
+        on_post_login();
+        rust_call("start_threads", {}, m_session);
     }
 
     void ga_rust::register_subaccount_xpubs(
@@ -269,13 +297,21 @@ namespace green {
 
         authenticate(std::string(), signer);
 
+        // For watch only we must call on_post_login before creating our
+        // subaccounts, in order to load the master blinding key for liquid
+        // (which register_subaccount_xpubs requires).
+        on_post_login();
+
         // FIXME: load the actual subaccounts from the blob
         std::vector<uint32_t> pointers;
         pointers.push_back(0);
         std::vector<std::string> xpubs;
         xpubs.push_back(signer->get_bip32_xpub(get_subaccount_root_path(0)));
         register_subaccount_xpubs(pointers, xpubs);
-        start_sync_threads();
+
+        // Call the rust start_threads directly to avoid repeating the call to
+        // on_post_login in this class's start_threads method
+        rust_call("start_threads", {}, m_session);
         return m_login_data;
     }
 
@@ -339,11 +375,12 @@ namespace green {
         return { ret.value("master_blinding_key", std::string()), is_denied };
     }
 
-    void ga_rust::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
+    void ga_rust::set_cached_master_blinding_key_impl(
+        session_impl::locker_t& locker, const std::string& master_blinding_key_hex)
     {
         GDK_RUNTIME_ASSERT_MSG(
             !master_blinding_key_hex.empty(), "HWW must enable host unblinding for singlesig wallets");
-        session_impl::set_cached_master_blinding_key(master_blinding_key_hex);
+        session_impl::set_cached_master_blinding_key_impl(locker, master_blinding_key_hex);
         rust_call("set_master_blinding_key", { { "master_blinding_key", master_blinding_key_hex } }, m_session);
     }
 

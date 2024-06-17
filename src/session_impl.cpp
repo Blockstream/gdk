@@ -825,10 +825,16 @@ namespace green {
 
     void session_impl::set_cached_master_blinding_key(const std::string& master_blinding_key_hex)
     {
+        locker_t locker(m_mutex);
+        return set_cached_master_blinding_key_impl(locker, master_blinding_key_hex);
+    }
+
+    void session_impl::set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex)
+    {
         if (!master_blinding_key_hex.empty()) {
             // Add the master blinding key to the signer to allow it to unblind.
             // This validates the key is of the correct format
-            get_nonnull_signer()->set_master_blinding_key(master_blinding_key_hex);
+            get_nonnull_signer(locker)->set_master_blinding_key(master_blinding_key_hex);
         }
     }
 
@@ -884,14 +890,20 @@ namespace green {
         // Only needed for multisig until singlesig supports HWW
     }
 
-    std::shared_ptr<signer> session_impl::get_nonnull_signer()
+    std::shared_ptr<signer> session_impl::get_nonnull_signer(locker_t& locker)
     {
-        auto signer = get_signer();
-        if (!signer) {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (!m_signer) {
             // The session is not logged in
             throw user_error("Authentication required");
         }
-        return signer;
+        return m_signer;
+    }
+
+    std::shared_ptr<signer> session_impl::get_nonnull_signer()
+    {
+        locker_t locker(m_mutex);
+        return get_nonnull_signer(locker);
     }
 
     std::shared_ptr<signer> session_impl::get_signer()

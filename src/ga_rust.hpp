@@ -30,13 +30,13 @@ namespace green {
         // Get the master blinding key from the rust cache if available.
         // If the master blinding key is missing,
         // The caller should obtain it from the signer and set it with
-        // set_cached_master_blinding_key
+        // set_cached_master_blinding_key_impl
         std::pair<std::string, bool> get_cached_master_blinding_key();
 
         // Set the master blinding key in the rust cache.
         // If the cache has already a master blinding key,
         // attempting to set a different key results in an error.
-        void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
+        void set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex);
 
         // Start the rust sync threads.
         // This must be done once the store is loaded
@@ -133,6 +133,8 @@ namespace green {
     private:
         static void GDKRUST_notif_handler(void* self_context, char* json);
         void set_notification_handler(GA_notification_handler handler, void* context);
+
+        void on_post_login();
 
         nlohmann::json get_local_subaccounts_data();
 
