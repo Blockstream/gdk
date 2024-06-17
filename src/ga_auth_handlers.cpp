@@ -1178,11 +1178,15 @@ namespace green {
         }
 
         // Singlesig: We have been requested to perform BIP44 account discovery
-        // Singlesig watch only sessions cannot derive xpubs for finding accounts
-        m_session->ensure_full_session();
+        auto signer = get_signer();
+        GDK_RUNTIME_ASSERT(signer);
+        if (signer->is_descriptor_watch_only()) {
+            // Descriptor watch only sessions cannot derive xpubs for finding accounts
+            throw user_error("Authentication required");
+        }
+        const bool is_watch_only = m_session->is_watch_only();
 
         nlohmann::json::array_t paths;
-        auto signer = get_signer();
         using namespace address_type;
         const nlohmann::json sa_details = { { "name", std::string() }, { "discovered", true } };
         for (const auto& addr_type : { p2sh_p2wpkh, p2wpkh, p2pkh }) {
@@ -1195,20 +1199,26 @@ namespace green {
                 auto subaccount = m_session->get_last_empty_subaccount(addr_type);
                 auto path = m_session->get_subaccount_root_path(subaccount);
                 if (!signer->has_bip32_xpub(path)) {
-                    // Request the xpub for this subaccount so we can discover it
-                    paths.emplace_back(std::move(path));
-                    break;
-                } else {
-                    // Discover whether the subaccount exists
-                    const auto xpub = signer->get_bip32_xpub(path);
-                    if (m_session->discover_subaccount(xpub, addr_type)) {
-                        // Subaccount exists. Add it and loop to try the next one
-                        m_session->create_subaccount(sa_details, subaccount, xpub);
-                    } else {
-                        // Reached the last discoverable subaccount of this type
+                    if (is_watch_only) {
+                        // Watch only sessions can only discover subaccounts where
+                        // the client blob (and thus signer) has the xpub (i.e. the
+                        // subaccount was created or discovered by a full session).
                         m_found.push_back(addr_type);
-                        break;
+                    } else {
+                        // Request the xpub for the subaccount so we can discover it
+                        paths.emplace_back(std::move(path));
                     }
+                    break;
+                }
+                // Discover whether the subaccount exists
+                const auto xpub = signer->get_bip32_xpub(path);
+                if (m_session->discover_subaccount(xpub, addr_type)) {
+                    // Subaccount exists. Add it and loop to try the next one
+                    m_session->create_subaccount(sa_details, subaccount, xpub);
+                } else {
+                    // Reached the last discoverable subaccount of this type
+                    m_found.push_back(addr_type);
+                    break;
                 }
             }
         }
