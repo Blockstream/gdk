@@ -60,11 +60,12 @@
     # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
 .osx_env:
   variables:
-    BUILD_IDX: "1"
+    BUILD_IDX: "0"
     GDK_KEEP_DOWNLOADS: "1"
     PYTHON_VERSION: "3.9"
   before_script:
     - idx=($(shasum tools/* cmake/profiles/* | shasum))
     - export PREBUILT_SUBDIR="prebuilt-${idx}-${BUILD_IDX}"
+    - echo "prebuild subdir is ${PREBUILT_SUBDIR}"
     - mkdir -p $CI_BUILDS_DIR/downloads # Global shared download directory
     - ln -s $CI_BUILDS_DIR/downloads downloads
