@@ -260,9 +260,17 @@ namespace green {
             return rust_call("login_wo", credentials, m_session);
         }
 
-        const auto public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+        pub_key_t public_key;
+        pbkdf2_hmac256_t blob_key;
+        try {
+            public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+            blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key"));
+        } catch (const std::exception& e) {
+            GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
+            throw user_error("Invalid credentials");
+        }
 
-        m_blob->set_key(h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key")));
+        m_blob->set_key(blob_key);
         set_local_encryption_keys(public_key, signer);
 
         authenticate(std::string(), signer);
