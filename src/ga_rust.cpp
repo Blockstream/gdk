@@ -265,15 +265,17 @@ namespace green {
     void ga_rust::register_subaccount_xpubs(
         const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs)
     {
-        // Note we only register each loaded subaccount once.
-        // Subaccount to register has already been created, so we
-        // set a flag to avoid the checks on the (sub)account gaps.
-        const nlohmann::json details({ { "name", std::string() }, { "is_already_created", true } });
+        // We only register subaccounts that the rust session has told us
+        // exist, so pass is_already_created to avoid new subaccount checks
+        nlohmann::json details({ { "name", std::string() }, { "is_already_created", true } });
         for (size_t i = 0; i < pointers.size(); ++i) {
             const auto pointer = pointers.at(i);
             if (!m_user_pubkeys->have_subaccount(pointer)) {
                 const auto& bip32_xpub = bip32_xpubs.at(i);
-                create_subaccount(details, pointer, bip32_xpub);
+                details["subaccount"] = pointer;
+                details["xpub"] = bip32_xpub;
+                rust_call("create_subaccount", details, m_session);
+                m_user_pubkeys->add_subaccount(pointer, make_xpub(bip32_xpub));
             }
         }
     }
@@ -364,16 +366,14 @@ namespace green {
         details["xpub"] = xpub;
         auto ret = rust_call("create_subaccount", details, m_session);
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
-        if (!j_bool_or_false(details, "is_already_created")) {
-            // Creating a new subaccount, set its metadata
-            locker_t locker(m_mutex);
-            if (have_writable_client_blob(locker)) {
-                nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
-                nlohmann::json subaccounts = { { std::to_string(subaccount), std::move(sa_data) } };
-                const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
-                update_client_blob(
-                    locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
-            }
+        // Creating a new subaccount, set its metadata
+        locker_t locker(m_mutex);
+        if (have_writable_client_blob(locker)) {
+            nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
+            nlohmann::json subaccounts = { { std::to_string(subaccount), std::move(sa_data) } };
+            const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
+            update_client_blob(
+                locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, signer_xpubs));
         }
         return ret;
     }
