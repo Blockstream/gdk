@@ -10,6 +10,7 @@
 
 #include "client_blob.hpp"
 #include "exception.hpp"
+#include "ga_cache.hpp"
 #include "ga_rust.hpp"
 #include "ga_strings.hpp"
 #include "ga_tx.hpp"
@@ -66,15 +67,27 @@ namespace green {
 
     void ga_rust::set_local_encryption_keys(const pub_key_t& public_key, std::shared_ptr<signer> signer)
     {
-        GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
-        auto master_xpub = signer->get_master_bip32_xpub();
+        const bool is_watch_only = signer->is_watch_only();
 
         // Load the cache on the rust side
         nlohmann::json store_details;
-        {
-            auto master_hdkey = bip32_public_key_from_bip32_xpub(master_xpub);
-            auto fingerprint = bip32_key_get_fingerprint(master_hdkey);
-            store_details = { { "master_xpub", master_xpub }, { "master_xpub_fingerprint", b2h(fingerprint) } };
+        if (is_watch_only) {
+            // Create a cache filename and encryption key
+            uint32_t type;
+            std::string filename;
+            std::array<unsigned char, SHA256_LEN> encryption_key;
+            auto local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
+            // Use a network name unique to rich watch only, so in the future
+            // we can use ga_cache for singlesig caching without conflict.
+            auto network_name = m_net_params.network() + "RWO";
+            std::tie(filename, type, encryption_key)
+                = cache::get_name_type_and_key(local_encryption_key, network_name, signer);
+            store_details = { { "filename", std::move(filename) }, { "encryption_key_hex", b2h(encryption_key) } };
+        } else {
+            // Use the master xpub to derive the cache filename and encryption key
+            GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
+            auto master_xpub = signer->get_master_bip32_xpub();
+            store_details = { { "master_xpub", std::move(master_xpub) } };
         }
         rust_call("load_store", store_details, m_session);
 
@@ -89,14 +102,17 @@ namespace green {
         }
 
         locker_t locker(m_mutex);
-        m_login_data = get_wallet_hash_ids({ { "name", m_net_params.network() } }, { { "master_xpub", master_xpub } });
-        m_login_data["warnings"] = nlohmann::json::array();
 
-        // FIXME: enable blob for watch-only sessions
-
-        // Compute client blob keys and client id
+        // Compute client blob id from the privately derived pubkey
         m_blob->compute_client_id(m_net_params.network(), public_key);
-        m_blob->compute_keys(public_key);
+
+        if (is_watch_only) {
+            // The client blob encryption key must be provided from credentials
+            GDK_RUNTIME_ASSERT_MSG(m_blob->has_key(), "watch_only_data must be provided for singlesig watch only");
+        } else {
+            // Compute client blob encryption key
+            m_blob->compute_keys(public_key);
+        }
     }
 
     void ga_rust::populate_initial_client_blob(session_impl::locker_t& locker)
@@ -156,7 +172,7 @@ namespace green {
         get_cached_local_client_blob(locker, std::string());
         const auto cached_hmac = m_blob->get_hmac();
         const bool had_cached_blob = !cached_hmac.empty();
-        if (!had_cached_blob) {
+        if (!had_cached_blob && !m_watch_only) {
             // We don't have a local client blob. Create one for merging
             populate_initial_client_blob(locker);
         }
@@ -165,13 +181,26 @@ namespace green {
         // newer, this updates our locally cached blob data to it,
         // and merges any local data if required.
         bool had_server_blob = load_client_blob(locker, true);
-        if (!had_server_blob && have_client_blob_server(locker) && !m_blob->get_server_has_failure()) {
-            // No server blob, but a working blobserver is configured: save it
-            // FIXME: handle race on initial blob creation
-            save_client_blob(locker, client_blob::get_zero_hmac());
+        if (!had_cached_blob && !had_server_blob && m_watch_only) {
+            // The user has entered the wrong credentials or the
+            // client blob is not on the server or in the local cache.
+            // The user must either:
+            // - Login with correct credentials, or
+            // - Perform some action in the full session that will re-create
+            //   the client blob on the blobserver.
+            GDK_LOG(error) << "Client blob not found for watch-only login credentials";
+            throw user_error(res::id_user_not_found_or_invalid);
         }
-        if (m_blob->is_modified() || cached_hmac != m_blob->get_hmac()) {
-            save_client_blob(locker, m_blob->get_hmac());
+
+        if (!m_watch_only) {
+            if (!had_server_blob && have_client_blob_server(locker) && !m_blob->get_server_has_failure()) {
+                // No server blob, but a working blobserver is configured: save it
+                // FIXME: handle race on initial blob creation
+                save_client_blob(locker, client_blob::get_zero_hmac());
+            }
+            if (m_blob->is_modified() || cached_hmac != m_blob->get_hmac()) {
+                save_client_blob(locker, m_blob->get_hmac());
+            }
         }
 
         // Load any xpubs from the blob into our signer
@@ -182,6 +211,17 @@ namespace green {
                 signer->set_master_blinding_key(key_hex);
             }
         }
+
+        // Set the master xpub fingerprint in the store
+        GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
+        auto master_xpub = signer->get_master_bip32_xpub();
+        auto master_hdkey = bip32_public_key_from_bip32_xpub(master_xpub);
+        auto fingerprint = bip32_key_get_fingerprint(master_hdkey);
+        rust_call("set_fingerprint", nlohmann::json(b2h(fingerprint)), m_session);
+
+        m_login_data = get_wallet_hash_ids(
+            { { "name", m_net_params.network() } }, { { "master_xpub", std::move(master_xpub) } });
+        m_login_data["warnings"] = nlohmann::json::array();
 
         subscribe_all(locker);
         return m_login_data;
@@ -226,12 +266,32 @@ namespace green {
             m_blobserver.reset(); // No blobserver for descriptor wallets
             return rust_call("login_wo", signer->get_credentials(false), m_session);
         }
-        throw user_error("Rich watch only is not yet implemented");
+
+        constexpr bool with_blinding_key = false;
+        auto credentials = signer->get_credentials(with_blinding_key);
+        const auto public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+
+        m_blob->set_key(h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key")));
+        set_local_encryption_keys(public_key, signer);
+
+        authenticate(std::string(), signer);
+
+        // FIXME: load the actual subaccounts from the blob
+        std::vector<uint32_t> pointers;
+        pointers.push_back(0);
+        std::vector<std::string> xpubs;
+        xpubs.push_back(signer->get_bip32_xpub(get_subaccount_root_path(0)));
+        register_subaccount_xpubs(pointers, xpubs);
+        start_sync_threads();
+        return m_login_data;
     }
 
     bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
     {
-        throw user_error("Rich watch only is not yet implemented");
+        if (!session_impl::set_wo_credentials(username, password)) {
+            return false;
+        }
+        return true;
     }
 
     std::string ga_rust::get_wo_username()
