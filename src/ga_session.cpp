@@ -232,6 +232,18 @@ namespace green {
             return wo_appearance;
         }
 
+        // Get username/password for using the Green backend as our blobserver
+        static std::pair<std::string, std::string> get_green_wo_credentials(byte_span_t entropy)
+        {
+            // Generate the watch only server username/password. Unlike non-blob
+            // watch only logins, we don't want the server to know the original
+            // username/password, since we use these to encrypt the client blob
+            // decryption key.
+            const auto u_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U);
+            const auto p_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P);
+            return { b2h(u_blob), b2h(p_blob) };
+        }
+
         std::string get_user_agent(bool supports_csv, const std::string& version)
         {
             constexpr auto max_len = 64;
@@ -1402,7 +1414,7 @@ namespace green {
 
         // First, try using client blob
         const auto entropy = get_wo_entropy(username, password);
-        const auto u_p = get_wo_credentials(entropy);
+        const auto u_p = get_green_wo_credentials(entropy);
         auto login_data = authenticate_wo(locker, u_p.first, u_p.second, user_agent, true);
         if (login_data.empty()) {
             // Client blob login failed: try a non-blob watch only login
@@ -1613,7 +1625,7 @@ namespace green {
             // Enabling watch only login.
             // Derive the username/password to use, encrypt the client blob key for upload
             const auto entropy = get_wo_entropy(u_p.first, u_p.second);
-            u_p = get_wo_credentials(entropy);
+            u_p = get_green_wo_credentials(entropy);
             wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob->get_key());
         }
         bool ok = wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));

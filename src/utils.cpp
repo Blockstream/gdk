@@ -365,17 +365,6 @@ namespace green {
         return scrypt(entropy, signer::WATCH_ONLY_SALT);
     }
 
-    std::pair<std::string, std::string> get_wo_credentials(byte_span_t entropy)
-    {
-        // Generate the watch only server username/password. Unlike non-blob
-        // watch only logins, we don't want the server to know the original
-        // username/password, since we use these to encrypt the client blob
-        // decryption key.
-        const auto u_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U);
-        const auto p_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P);
-        return { b2h(u_blob), b2h(p_blob) };
-    }
-
     static pbkdf2_hmac256_t get_wo_blob_aes_key(byte_span_t entropy)
     {
         return pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_K);
