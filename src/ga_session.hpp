@@ -148,7 +148,8 @@ namespace green {
         void set_local_encryption_keys_impl(
             locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
 
-        void derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin);
+        void derive_wallet_identifiers(
+            locker_t& locker, nlohmann::json& login_data, const std::vector<unsigned char>& entropy, bool is_relogin);
         nlohmann::json load_client_blob_impl(locker_t& locker);
         nlohmann::json save_client_blob_impl(
             locker_t& locker, const std::string& old_hmac, const std::string& blob_b64, const std::string& hmac);

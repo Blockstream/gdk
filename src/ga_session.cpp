@@ -981,7 +981,8 @@ namespace green {
         }
     }
 
-    void ga_session::derive_wallet_identifiers(locker_t& locker, nlohmann::json& login_data, bool is_relogin)
+    void ga_session::derive_wallet_identifiers(
+        locker_t& locker, nlohmann::json& login_data, const std::vector<unsigned char>& entropy, bool is_relogin)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -996,16 +997,44 @@ namespace green {
             // Set the newly computed ID
             login_data[key] = value;
         }
-        if (m_blobserver) {
-            // FIXME: Multisig watch-only doesn't have the xpub to make a
-            // secret blobserver client id. Since we aren't enabling the
-            // blobserver for multisig in production, use the wallet hash id
-            // for internal testing for now.
-            // To enable the external blobserver for multisig, we need to
-            // update register_user to store the client id on the server
-            // and return it to watch only logins.
-            const auto& wallet_hash_id = j_strref(login_data, "wallet_hash_id");
-            m_blob->compute_client_id(m_net_params.network(), ustring_span(wallet_hash_id));
+
+        if (m_blobserver && m_signer->is_watch_only()) {
+            // Blobserver watch only login.
+            pub_key_t public_key;
+            pbkdf2_hmac256_t blob_key;
+            try {
+                const auto credentials = m_signer->get_credentials();
+                public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
+                blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key"));
+            } catch (const std::exception& e) {
+                GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
+                throw user_error("Invalid credentials");
+            }
+
+            m_blob->set_key(blob_key);
+            set_local_encryption_keys_impl(locker, public_key, m_signer);
+
+            // Compute client blob id from the privately derived pubkey
+            m_blob->compute_client_id(m_net_params.network(), public_key);
+        } else {
+            pub_key_t encryption_key;
+            if (m_signer->is_watch_only()) {
+                // Non-blobserver watch only login
+                encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
+            } else {
+                // Full login, with or without a blobserver
+                auto xpub
+                    = m_signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() });
+                encryption_key = xpub.second;
+                if (m_blobserver) {
+                    m_blob->compute_client_id(m_net_params.network(), encryption_key);
+                }
+            }
+            set_local_encryption_keys_impl(locker, encryption_key, m_signer);
+            const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
+            if (!wo_blob_key_hex.empty()) {
+                m_blob->set_key(decrypt_wo_blob_key(entropy, wo_blob_key_hex));
+            }
         }
     }
 
@@ -1032,7 +1061,7 @@ namespace green {
         }
 
         // Compute wallet identifiers
-        derive_wallet_identifiers(locker, login_data, is_relogin);
+        derive_wallet_identifiers(locker, login_data, {}, is_relogin);
 
         const bool reset_2fa_active = j_bool_or_false(login_data, "reset_2fa_active");
         const std::string server_hmac = login_data["client_blob_hmac"];
@@ -1426,15 +1455,7 @@ namespace green {
         }
 
         // Compute wallet identifiers
-        derive_wallet_identifiers(locker, login_data, is_relogin);
-
-        const auto encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
-
-        set_local_encryption_keys_impl(locker, encryption_key, signer);
-        const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
-        if (!wo_blob_key_hex.empty()) {
-            m_blob->set_key(decrypt_wo_blob_key(entropy, wo_blob_key_hex));
-        }
+        derive_wallet_identifiers(locker, login_data, entropy, is_relogin);
 
         const std::string server_hmac = login_data["client_blob_hmac"];
         bool is_blob_on_server = server_hmac != client_blob::get_zero_hmac();
