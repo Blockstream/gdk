@@ -324,10 +324,28 @@ namespace green {
         return true;
     }
 
-    bool ga_rust::discover_subaccount(const std::string& xpub, const std::string& type)
+    bool ga_rust::discover_subaccount(uint32_t subaccount, const std::string& xpub, const std::string& type)
     {
-        const auto details = nlohmann::json({ { "type", type }, { "xpub", xpub } });
-        return rust_call("discover_subaccount", details, m_session);
+        nlohmann::json details = { { "type", type }, { "xpub", xpub } };
+        if (!rust_call("discover_subaccount", details, m_session)) {
+            return false;
+        }
+        details = { { "name", std::string() }, { "subaccount", subaccount }, { "xpub", xpub }, { "discovered", true } };
+        {
+            locker_t locker(m_mutex);
+            if (m_blobserver) {
+                // Provide any metadata we may already have for the subaccount
+                // from another session that created it
+                sync_client_blob(locker);
+                auto sa_data = m_blob->get_subaccount_data(subaccount);
+                details["name"] = j_str_or_empty(sa_data, "name");
+                details["hidden"] = j_bool_or_false(sa_data, "hidden");
+            }
+        }
+        rust_call("create_subaccount", details, m_session);
+        locker_t locker(m_mutex);
+        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        return true;
     }
 
     uint32_t ga_rust::get_next_subaccount(const std::string& type)
@@ -344,17 +362,6 @@ namespace green {
     {
         details["subaccount"] = subaccount;
         details["xpub"] = xpub;
-        if (j_bool_or_false(details, "discovered")) {
-            // A subaccount found through discovery. Provide any metadata
-            // we may already have for it from another session that created it
-            locker_t locker(m_mutex);
-            if (m_blobserver) {
-                sync_client_blob(locker);
-                auto sa_data = m_blob->get_subaccount_data(subaccount);
-                details["name"] = j_str_or_empty(sa_data, "name");
-                details["hidden"] = j_bool_or_false(sa_data, "hidden");
-            }
-        }
         auto ret = rust_call("create_subaccount", details, m_session);
         m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
         if (!j_bool_or_false(details, "is_already_created")) {

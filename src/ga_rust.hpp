@@ -22,7 +22,7 @@ namespace green {
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
         bool remove_account(const nlohmann::json& twofactor_data);
 
-        bool discover_subaccount(const std::string& xpub, const std::string& type);
+        bool discover_subaccount(uint32_t subaccount, const std::string& xpub, const std::string& type);
         uint32_t get_next_subaccount(const std::string& type);
         uint32_t get_last_empty_subaccount(const std::string& type);
         nlohmann::json create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub);

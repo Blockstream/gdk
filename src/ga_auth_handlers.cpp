@@ -1188,7 +1188,6 @@ namespace green {
 
         nlohmann::json::array_t paths;
         using namespace address_type;
-        const nlohmann::json sa_details = { { "name", std::string() }, { "discovered", true } };
         for (const auto& addr_type : { p2sh_p2wpkh, p2wpkh, p2pkh }) {
             if (std::find(m_found.begin(), m_found.end(), addr_type) != m_found.end()) {
                 // Already discovered all subaccounts for this type
@@ -1212,10 +1211,7 @@ namespace green {
                 }
                 // Discover whether the subaccount exists
                 const auto xpub = signer->get_bip32_xpub(path);
-                if (m_session->discover_subaccount(xpub, addr_type)) {
-                    // Subaccount exists. Add it and loop to try the next one
-                    m_session->create_subaccount(sa_details, subaccount, xpub);
-                } else {
+                if (!m_session->discover_subaccount(subaccount, xpub, addr_type)) {
                     // Reached the last discoverable subaccount of this type
                     m_found.push_back(addr_type);
                     break;

@@ -779,7 +779,8 @@ namespace green {
         update_client_blob(locker, std::bind(&client_blob::update_subaccounts_data, m_blob.get(), subaccounts, empty));
     }
 
-    bool session_impl::discover_subaccount(const std::string& /*xpub*/, const std::string& /*type*/)
+    bool session_impl::discover_subaccount(
+        uint32_t /*subaccount*/, const std::string& /*xpub*/, const std::string& /*type*/)
     {
         // Overriden for ga_rust
         return false;
