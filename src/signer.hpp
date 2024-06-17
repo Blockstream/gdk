@@ -99,7 +99,7 @@ namespace green {
         const nlohmann::json& get_device() const;
 
         // Get the login credentials for this signer (empty for hardware signers)
-        nlohmann::json get_credentials(bool with_master_key) const;
+        nlohmann::json get_credentials() const;
 
         // Get the master xpub. Equivalent to calling `get_bip32_xpub` with an
         // empty path.

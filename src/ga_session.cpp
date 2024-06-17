@@ -420,7 +420,7 @@ namespace green {
         const bool registering_watch_only = signer->is_watch_only();
 
         if (registering_watch_only) {
-            const auto credentials = signer->get_credentials(false);
+            const auto credentials = signer->get_credentials();
             wallet_hash_ids.update(set_wo_credentials(credentials));
         } else {
             // Get our gait path xpub and compute gait_path from it
@@ -1407,7 +1407,7 @@ namespace green {
         const bool is_relogin = set_signer(locker, signer);
 
         const bool is_liquid = m_net_params.is_liquid();
-        const auto credentials = m_signer->get_credentials(false);
+        const auto credentials = signer->get_credentials();
         const auto& username = j_strref(credentials, "username");
         const auto& password = j_strref(credentials, "password");
         const auto user_agent = get_user_agent(true, m_user_agent);

@@ -193,7 +193,14 @@ namespace green {
 
     bool signer::is_compatible_with(std::shared_ptr<signer> other) const
     {
-        return get_credentials(false) == other->get_credentials(false) && get_device() == other->get_device();
+        if (get_device() != other->get_device()) {
+            return false;
+        }
+        auto my_credentials = get_credentials();
+        my_credentials.erase("master_blinding_key");
+        auto other_credentials = other->get_credentials();
+        other_credentials.erase("master_blinding_key");
+        return my_credentials == other_credentials;
     }
 
     std::string signer::get_mnemonic(const std::string& password)
@@ -241,10 +248,10 @@ namespace green {
 
     const nlohmann::json& signer::get_device() const { return m_device; }
 
-    nlohmann::json signer::get_credentials(bool with_blinding_key) const
+    nlohmann::json signer::get_credentials() const
     {
         auto credentials = m_credentials;
-        if (m_is_liquid && with_blinding_key) {
+        if (m_is_liquid) {
             // Return the master blinding key if we have one
             std::unique_lock<std::mutex> locker{ m_mutex };
             if (m_master_blinding_key.has_value()) {

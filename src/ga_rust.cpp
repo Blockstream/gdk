@@ -254,13 +254,12 @@ namespace green {
             set_signer(locker, signer);
             m_watch_only = true;
         }
+        const auto credentials = signer->get_credentials();
         if (signer->is_descriptor_watch_only()) {
             m_blobserver.reset(); // No blobserver for descriptor wallets
-            return rust_call("login_wo", signer->get_credentials(false), m_session);
+            return rust_call("login_wo", credentials, m_session);
         }
 
-        constexpr bool with_blinding_key = false;
-        auto credentials = signer->get_credentials(with_blinding_key);
         const auto public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
 
         m_blob->set_key(h2b_array<PBKDF2_HMAC_SHA256_LEN>(j_strref(credentials, "blob_key")));
