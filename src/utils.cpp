@@ -766,6 +766,9 @@ namespace green {
 
     bool is_valid_utf8(const std::string& str)
     {
+        if (str.empty()) {
+            return true; // Trivially valid
+        }
         try {
             // using nlohmann::json::dump() as shortcut for utf-8 validity check
             (void)nlohmann::json(str).dump();
