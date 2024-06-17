@@ -552,7 +552,8 @@ namespace green {
             // Fall through to create the subaccount
         }
 
-        // This is an actual subaccount creation, do not allow the caller to set this flag
+        // Prevent the caller passing internal flags
+        m_details.erase("discovered");
         m_details.erase("is_already_created");
         // Create the subaccount
         m_result = m_session->create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
