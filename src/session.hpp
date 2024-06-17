@@ -44,7 +44,7 @@ namespace green {
         nlohmann::json get_assets(const nlohmann::json& params);
         nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
 
-        std::string get_wo_username();
+        std::string get_watch_only_username();
 
         void set_notification_handler(GA_notification_handler handler, void* context);
 

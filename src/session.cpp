@@ -295,11 +295,11 @@ namespace green {
         });
     }
 
-    std::string session::get_wo_username()
+    std::string session::get_watch_only_username()
     {
         return exception_wrapper([&] {
             auto p = get_nonnull_impl();
-            return p->get_wo_username();
+            return p->get_watch_only_username();
         });
     }
 

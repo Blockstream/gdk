@@ -20,7 +20,6 @@ namespace green {
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
         nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data);
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
-        std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
         bool discover_subaccount(const std::string& xpub, const std::string& type);

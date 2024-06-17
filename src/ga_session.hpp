@@ -41,7 +41,7 @@ namespace green {
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
 
         nlohmann::json set_wo_credentials(const nlohmann::json& credentials);
-        std::string get_wo_username();
+        std::string get_watch_only_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);

@@ -1632,23 +1632,17 @@ namespace green {
         return ret;
     }
 
-    std::string ga_session::get_wo_username()
+    std::string ga_session::get_watch_only_username()
     {
-        locker_t locker(m_mutex);
-        if (m_blob->has_key()) {
-            // Client blob watch only; return from the client blob,
-            // since the server doesn't know our real username.
-            const auto username = m_blob->get_wo_username();
-            if (m_watch_only || m_net_params.is_liquid() || !username.empty()) {
-                return username;
-            }
+        auto username = session_impl::get_watch_only_username();
+        if (username.empty()) {
             // If the username is blank, attempt to fetch from the
             // server, we have a non-client blob watch only (or no
             // watch only set up).
+            const auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
+            username = j_str_or_empty(result, "username");
         }
-        locker.unlock();
-        const auto result = wamp_cast_json(m_wamp->call("addressbook.get_sync_status"));
-        return j_str_or_empty(result, "username");
+        return username;
     }
 
     // Idempotent

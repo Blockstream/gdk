@@ -94,8 +94,8 @@ namespace green {
         virtual nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data) = 0;
         virtual nlohmann::json login_wo(std::shared_ptr<signer> signer) = 0;
         virtual nlohmann::json set_wo_credentials(const nlohmann::json& credentials);
+        virtual std::string get_watch_only_username();
         pub_key_t set_blob_key_from_credentials(locker_t& locker);
-        virtual std::string get_wo_username() = 0;
         virtual bool remove_account(const nlohmann::json& twofactor_data) = 0;
 
         // Returns true if the subaccount was discovered

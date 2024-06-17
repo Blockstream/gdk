@@ -279,12 +279,6 @@ namespace green {
         return m_login_data;
     }
 
-    std::string ga_rust::get_wo_username()
-    {
-        // FIXME: return the username when rich watch only is implemented
-        return std::string();
-    }
-
     bool ga_rust::remove_account(const nlohmann::json& twofactor_data)
     {
         rust_call("remove_account", {}, m_session);

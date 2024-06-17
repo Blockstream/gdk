@@ -82,7 +82,7 @@ namespace green {
 
         bool set_wo_data(const std::string& username, const nlohmann::json& xpubs);
         bool set_xpubs(const nlohmann::json& xpubs);
-        std::string get_wo_username() const;
+        std::string get_watch_only_username() const;
         nlohmann::json get_xpubs() const;
 
         void load(byte_span_t data, const std::string& hmac);

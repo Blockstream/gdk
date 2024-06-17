@@ -307,7 +307,7 @@ GDK_DEFINE_C_FUNCTION_4(GA_login_user, struct GA_session*, session, GA_json*, hw
     { *call = make_call(new green::login_user_call(*session, json_move(hw_device), json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_watch_only_username, struct GA_session*, session, char**, username,
-    { *username = to_c_string(session->get_wo_username()); })
+    { *username = to_c_string(session->get_watch_only_username()); })
 
 GDK_DEFINE_C_FUNCTION_2(GA_get_fee_estimates, struct GA_session*, session, GA_json**, estimates,
     { *json_cast(estimates) = new nlohmann::json(session->get_fee_estimates()); })

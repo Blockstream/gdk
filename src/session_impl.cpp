@@ -700,6 +700,12 @@ namespace green {
         return ret;
     }
 
+    std::string session_impl::get_watch_only_username()
+    {
+        locker_t locker(m_mutex);
+        return m_blob->has_key() ? m_blob->get_watch_only_username() : std::string();
+    }
+
     pub_key_t session_impl::set_blob_key_from_credentials(locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());

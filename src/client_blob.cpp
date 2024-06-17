@@ -283,7 +283,7 @@ namespace green {
         return changed ? increment_version(m_data) : changed;
     }
 
-    std::string client_blob::get_wo_username() const
+    std::string client_blob::get_watch_only_username() const
     {
         return j_str_or_empty(m_data[WATCHONLY], "username"); // Blank if unset
     }
