@@ -24,56 +24,51 @@ namespace green {
                 return {};
             }
 
-            const auto username_p = credentials.find("username");
-            if (username_p != credentials.end()) {
-                // Watch-only login
-                return { { "username", *username_p }, { "password", credentials.at("password") } };
+            if (auto username = j_str(credentials, "username"); username) {
+                // Green old-style watch-only login, or blobserver rich watch-only login
+                const auto& password = j_strref(credentials, "password");
+                return { { "username", std::move(*username) }, { "password", password } };
             }
 
-            const auto mnemonic_p = credentials.find("mnemonic");
-            if (mnemonic_p != credentials.end()) {
+            if (auto user_mnemonic = j_str(credentials, "mnemonic"); user_mnemonic) {
                 // Mnemonic, or a hex seed
-                std::string mnemonic = *mnemonic_p;
+                const auto bip39_passphrase = j_str(credentials, "bip39_passphrase");
+                std::string mnemonic = *user_mnemonic;
                 if (mnemonic.find(' ') != std::string::npos) {
                     // Mnemonic, possibly encrypted
-                    const auto password_p = credentials.find("password");
-                    if (password_p != credentials.end()) {
-                        GDK_RUNTIME_ASSERT_MSG(
-                            !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and password");
+                    if (auto password = j_str(credentials, "password"); password) {
+                        GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and password");
                         // Encrypted; decrypt it
-                        mnemonic = decrypt_mnemonic(mnemonic, *password_p);
+                        mnemonic = decrypt_mnemonic(mnemonic, *password);
                     }
-                    const auto passphrase = j_str_or_empty(credentials, "bip39_passphrase");
-                    nlohmann::json ret
-                        = { { "mnemonic", mnemonic }, { "seed", b2h(bip39_mnemonic_to_seed(mnemonic, passphrase)) } };
+                    auto passphrase = bip39_passphrase.value_or(std::string{});
+                    auto seed = b2h(bip39_mnemonic_to_seed(mnemonic, passphrase));
+                    nlohmann::json ret = { { "mnemonic", std::move(mnemonic) }, { "seed", std::move(seed) } };
                     if (!passphrase.empty()) {
-                        ret["bip39_passphrase"] = passphrase;
+                        ret["bip39_passphrase"] = std::move(passphrase);
                     }
                     return ret;
                 }
                 if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
-                    GDK_RUNTIME_ASSERT_MSG(
-                        !credentials.contains("bip39_passphrase"), "cannot use bip39_passphrase and hex seed");
-                    // Hex seed (a 512 bits bip32 seed encoding in hex with 'X' appended)
+                    // Hex seed (a 512 bit bip32 seed encoding in hex with 'X' appended)
+                    GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and hex seed");
                     mnemonic.pop_back();
-                    return { { "seed", mnemonic } };
+                    return { { "seed", std::move(mnemonic) } };
                 }
             }
 
-            const auto core_descriptors_p = credentials.find("core_descriptors");
-            const auto slip132_extended_pubkeys_p = credentials.find("slip132_extended_pubkeys");
-            if (core_descriptors_p != credentials.end()) {
-                if (slip132_extended_pubkeys_p != credentials.end()) {
-                    throw user_error(
-                        "You can only provide either 'core_descriptors' or 'slip132_extended_pubkeys', not both");
+            const auto slip132_pubkeys = j_array(credentials, "slip132_extended_pubkeys");
+            if (auto descriptors = j_array(credentials, "core_descriptors"); descriptors) {
+                // Descriptor watch-only login
+                if (slip132_pubkeys) {
+                    throw user_error("cannot use slip132_extended_pubkeys and core_descriptors");
                 }
-                // Watch-only login
-                return { { "core_descriptors", *core_descriptors_p } };
+                return { { "core_descriptors", std::move(*descriptors) } };
             }
 
-            if (slip132_extended_pubkeys_p != credentials.end()) {
-                // Watch-only login
-                return { { "slip132_extended_pubkeys", *slip132_extended_pubkeys_p } };
+            if (slip132_pubkeys) {
+                // Descriptor watch-only login
+                return { { "slip132_extended_pubkeys", std::move(*slip132_pubkeys) } };
             }
 
             throw user_error("Invalid credentials");
@@ -171,10 +166,9 @@ namespace green {
             throw user_error(res::id_the_hardware_wallet_you_are);
         }
 
-        auto seed_p = m_credentials.find("seed");
-        if (seed_p != m_credentials.end()) {
+        if (const auto seed_hex = j_str(m_credentials, "seed"); seed_hex) {
             // FIXME: Allocate m_master_key in mlocked memory
-            std::vector<unsigned char> seed = h2b(*seed_p);
+            std::vector<unsigned char> seed = h2b(*seed_hex);
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
@@ -191,7 +185,7 @@ namespace green {
         }
     }
 
-    bool signer::is_compatible_with(std::shared_ptr<signer> other) const
+    bool signer::is_compatible_with(const std::shared_ptr<signer>& other) const
     {
         if (get_device() != other->get_device()) {
             return false;
@@ -208,43 +202,42 @@ namespace green {
         if (is_hardware() || is_watch_only() || is_remote()) {
             return std::string();
         }
-        const auto mnemonic_p = m_credentials.find("mnemonic");
-        if (mnemonic_p != m_credentials.end()) {
-            return encrypt_mnemonic(*mnemonic_p, password); // Mnemonic
+        if (const auto mnemonic = j_str(m_credentials, "mnemonic"); mnemonic) {
+            return encrypt_mnemonic(*mnemonic, password); // Mnemonic
         }
-        return m_credentials.at("seed").get<std::string>() + "X"; // Hex seed
+        return j_strref(m_credentials, "seed") + "X"; // Hex seed
     }
 
     bool signer::supports_low_r() const
     {
         // Note we always use AE if the HW supports it
-        return !use_ae_protocol() && m_device["supports_low_r"];
+        return !use_ae_protocol() && j_boolref(m_device, "supports_low_r");
     }
 
-    bool signer::supports_arbitrary_scripts() const { return m_device["supports_arbitrary_scripts"]; }
+    bool signer::supports_arbitrary_scripts() const { return j_boolref(m_device, "supports_arbitrary_scripts"); }
 
-    liquid_support_level signer::get_liquid_support() const { return m_device["supports_liquid"]; }
+    liquid_support_level signer::get_liquid_support() const { return m_device.at("supports_liquid"); }
 
-    bool signer::supports_host_unblinding() const { return m_device["supports_host_unblinding"]; }
+    bool signer::supports_host_unblinding() const { return j_boolref(m_device, "supports_host_unblinding"); }
 
-    bool signer::supports_external_blinding() const { return m_device["supports_external_blinding"]; }
+    bool signer::supports_external_blinding() const { return j_boolref(m_device, "supports_external_blinding"); }
 
-    ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device["supports_ae_protocol"]; }
+    ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device.at("supports_ae_protocol"); }
 
     bool signer::use_ae_protocol() const { return get_ae_protocol_support() != ae_protocol_support_level::none; }
 
-    bool signer::is_remote() const { return m_device["device_type"] == "green-backend"; }
+    bool signer::is_remote() const { return j_strref(m_device, "device_type") == "green-backend"; }
 
     bool signer::is_liquid() const { return m_is_liquid; }
 
-    bool signer::is_watch_only() const { return m_device["device_type"] == "watch-only"; }
+    bool signer::is_watch_only() const { return j_strref(m_device, "device_type") == "watch-only"; }
+
+    bool signer::is_hardware() const { return j_strref(m_device, "device_type") == "hardware"; }
 
     bool signer::is_descriptor_watch_only() const
     {
         return m_credentials.contains("core_descriptors") || m_credentials.contains("slip132_extended_pubkeys");
     }
-
-    bool signer::is_hardware() const { return m_device["device_type"] == "hardware"; }
 
     const nlohmann::json& signer::get_device() const { return m_device; }
 
