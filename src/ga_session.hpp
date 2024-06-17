@@ -40,7 +40,7 @@ namespace green {
         nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data);
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
 
-        bool set_wo_credentials(const std::string& username, const std::string& password);
+        nlohmann::json set_wo_credentials(const nlohmann::json& credentials);
         std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 

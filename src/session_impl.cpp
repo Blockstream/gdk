@@ -641,9 +641,12 @@ namespace green {
         return ret;
     }
 
-    bool session_impl::set_wo_credentials(const std::string& username, const std::string& password)
+    nlohmann::json session_impl::set_wo_credentials(const nlohmann::json& credentials)
     {
         ensure_full_session();
+        const auto& username = j_strref(credentials, "username");
+        const auto& password = j_strref(credentials, "password");
+
         GDK_RUNTIME_ASSERT(username.empty() == password.empty());
         if (!username.empty() && username.size() < 8u) {
             throw user_error("Watch-only username must be at least 8 characters long");
@@ -659,9 +662,9 @@ namespace green {
 
         locker_t locker(m_mutex);
         if (!have_writable_client_blob(locker)) {
-            // The wallet doesn't have a writable client blob: can only happen
-            // when a 2FA reset is in progress and the wallet was
-            // created before client blobs were enabled.
+            // The wallet doesn't have a writable client blob: either
+            // 1) A 2FA reset is in progress for a pre-client blob wallet, or
+            // 2) This is a singlesig session with no blobserver enabled.
             std::string err;
             if (m_net_params.is_electrum()) {
                 err = "Client blob must be enabled to enable watch-only";
@@ -675,7 +678,7 @@ namespace green {
         const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
         update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
         // FIXME: if not saved, fail
-        return true;
+        return nlohmann::json::object();
     }
 
     void session_impl::start_sync_threads()

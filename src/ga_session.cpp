@@ -406,11 +406,10 @@ namespace green {
         auto wallet_hash_ids = session_impl::register_user(signer);
 
         const bool registering_watch_only = signer->is_watch_only();
-        bool ok;
 
         if (registering_watch_only) {
             const auto credentials = signer->get_credentials(false);
-            ok = set_wo_credentials(j_strref(credentials, "username"), j_strref(credentials, "password"));
+            wallet_hash_ids.update(set_wo_credentials(credentials));
         } else {
             // Get our gait path xpub and compute gait_path from it
             std::vector register_path(signer::REGISTER_PATH.begin(), signer::REGISTER_PATH.end());
@@ -422,9 +421,8 @@ namespace green {
 
             // Register the full session with the Green backend
             auto result = m_wamp->call("login.register", b2h(master.second), b2h(master.first), agent, gait_path);
-            ok = wamp_cast<bool>(result);
+            GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
         }
-        GDK_RUNTIME_ASSERT(ok);
 
         return wallet_hash_ids;
     }
@@ -1605,22 +1603,24 @@ namespace green {
         return amount::convert_fiat_cents(fiat_cents, m_fiat_currency);
     }
 
-    bool ga_session::set_wo_credentials(const std::string& username, const std::string& password)
+    nlohmann::json ga_session::set_wo_credentials(const nlohmann::json& credentials)
     {
-        if (!session_impl::set_wo_credentials(username, password)) {
-            return false;
-        }
-        std::pair<std::string, std::string> u_p{ username, password };
+        auto ret = session_impl::set_wo_credentials(credentials);
+        std::pair<std::string, std::string> u_p{ j_strref(credentials, "username"), j_strref(credentials, "password") };
         std::string wo_blob_key_hex;
 
-        if (!username.empty()) {
+        if (!u_p.first.empty()) {
             // Enabling watch only login.
             // Derive the username/password to use, encrypt the client blob key for upload
-            const auto entropy = get_wo_entropy(username, password);
+            const auto entropy = get_wo_entropy(u_p.first, u_p.second);
             u_p = get_wo_credentials(entropy);
             wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob->get_key());
         }
-        return wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
+        bool ok = wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
+        if (!ok) {
+            throw user_error("failed to create watch only session");
+        }
+        return ret;
     }
 
     std::string ga_session::get_wo_username()

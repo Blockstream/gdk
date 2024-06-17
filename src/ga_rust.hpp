@@ -14,15 +14,12 @@ namespace green {
         void connect_session();
         void disconnect_session();
 
-        nlohmann::json register_user(std::shared_ptr<signer> signer);
-
         std::string get_challenge(const pub_key_t& public_key);
         nlohmann::json authenticate(const std::string& sig_der_hex, std::shared_ptr<signer> signer);
         void register_subaccount_xpubs(
             const std::vector<uint32_t>& pointers, const std::vector<std::string>& bip32_xpubs);
         nlohmann::json credentials_from_pin_data(const nlohmann::json& pin_data);
         nlohmann::json login_wo(std::shared_ptr<signer> signer);
-        bool set_wo_credentials(const std::string& username, const std::string& password);
         std::string get_wo_username();
         bool remove_account(const nlohmann::json& twofactor_data);
 

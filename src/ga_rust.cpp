@@ -247,14 +247,6 @@ namespace green {
         return rust_call("credentials_from_pin_data", pin_data, m_session);
     }
 
-    nlohmann::json ga_rust::register_user(std::shared_ptr<signer> signer)
-    {
-        if (signer->is_watch_only()) {
-            throw user_error("Rich watch only is not yet implemented");
-        }
-        return session_impl::register_user(signer);
-    }
-
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
         {
@@ -284,14 +276,6 @@ namespace green {
         register_subaccount_xpubs(pointers, xpubs);
         start_sync_threads();
         return m_login_data;
-    }
-
-    bool ga_rust::set_wo_credentials(const std::string& username, const std::string& password)
-    {
-        if (!session_impl::set_wo_credentials(username, password)) {
-            return false;
-        }
-        return true;
     }
 
     std::string ga_rust::get_wo_username()
