@@ -27,7 +27,14 @@ namespace green {
             if (auto username = j_str(credentials, "username"); username) {
                 // Green old-style watch-only login, or blobserver rich watch-only login
                 const auto& password = j_strref(credentials, "password");
-                return { { "username", std::move(*username) }, { "password", password } };
+                nlohmann::json ret = { { "username", std::move(*username) }, { "password", password } };
+                // FIXME: don't use the pubkey directly, store keys in one json value,
+                // encrypt with username and password
+                if (auto public_key = j_str_or_empty(credentials, "public_key"); !public_key.empty()) {
+                    ret["public_key"] = std::move(public_key);
+                    ret["blob_key"] = j_strref(credentials, "blob_key");
+                }
+                return ret;
             }
 
             if (auto user_mnemonic = j_str(credentials, "mnemonic"); user_mnemonic) {

@@ -638,6 +638,11 @@ namespace green {
         const auto master = full_signer->get_master_xpub();
         auto ret = get_wallet_hash_ids(m_net_params, b2h(master.first), b2h(master.second));
         ret["warnings"] = nlohmann::json::array();
+
+        if (signer->is_watch_only()) {
+            const auto credentials = signer->get_credentials();
+            ret.update(set_wo_credentials(credentials));
+        }
         return ret;
     }
 
@@ -674,11 +679,21 @@ namespace green {
             throw user_error(err);
         }
 
+        nlohmann::json ret = nlohmann::json::object();
+        if (!m_net_params.get_blob_server_url().empty()) {
+            // Add the client blob credentials
+            // FIXME: don't use the pubkey directly, store keys in one json value,
+            // encrypt with username and password
+            auto xpub = m_signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() });
+            ret["public_key"] = b2h(xpub.second);
+            ret["blob_key"] = b2h(m_blob->get_key());
+        }
+
         // Set watch only data in the client blob. Blanks the username if disabling.
         const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();
         update_client_blob(locker, std::bind(&client_blob::set_wo_data, m_blob.get(), username, signer_xpubs));
         // FIXME: if not saved, fail
-        return nlohmann::json::object();
+        return ret;
     }
 
     void session_impl::start_sync_threads()

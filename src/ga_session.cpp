@@ -417,12 +417,7 @@ namespace green {
     {
         auto wallet_hash_ids = session_impl::register_user(signer);
 
-        const bool registering_watch_only = signer->is_watch_only();
-
-        if (registering_watch_only) {
-            const auto credentials = signer->get_credentials();
-            wallet_hash_ids.update(set_wo_credentials(credentials));
-        } else {
+        if (!signer->is_watch_only()) {
             // Get our gait path xpub and compute gait_path from it
             std::vector register_path(signer::REGISTER_PATH.begin(), signer::REGISTER_PATH.end());
             const auto gait_xpub = signer->get_xpub(register_path);
