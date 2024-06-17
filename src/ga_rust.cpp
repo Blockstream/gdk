@@ -172,8 +172,7 @@ namespace green {
             const auto credentials = signer->get_credentials();
             public_key = h2b_array<EC_PUBLIC_KEY_LEN>(j_strref(credentials, "public_key"));
         } else {
-            public_key
-                = signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() }).second;
+            public_key = signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
         }
         set_local_encryption_keys(locker, public_key, signer);
 

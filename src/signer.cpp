@@ -138,7 +138,6 @@ namespace green {
         }
     } // namespace
 
-    const std::array<uint32_t, 0> signer::EMPTY_PATH{};
     const std::array<uint32_t, 1> signer::LOGIN_PATH{ { 0x4741b11e } };
     const std::array<uint32_t, 1> signer::REGISTER_PATH{ { harden(0x4741) } }; // 'GA'
     const std::array<uint32_t, 1> signer::CLIENT_SECRET_PATH{ { harden(0x70617373) } }; // 'pass'
@@ -268,9 +267,9 @@ namespace green {
 
     xpub_t signer::get_master_xpub() { return get_xpub({}); }
 
-    std::string signer::get_bip32_xpub(const std::vector<uint32_t>& path)
+    std::string signer::get_bip32_xpub(uint32_span_t path)
     {
-        std::vector<uint32_t> parent_path{ path }, child_path;
+        std::vector<uint32_t> parent_path{ path.begin(), path.end() }, child_path;
         child_path.reserve(path.size());
         wally_ext_key_ptr parent_key;
 
@@ -319,12 +318,12 @@ namespace green {
         return cache_ext_key(path, child_key); // Cache with the full path
     }
 
-    bool signer::has_bip32_xpub(const std::vector<uint32_t>& path)
+    bool signer::has_bip32_xpub(uint32_span_t path)
     {
         if (m_master_key) {
             return true; // We can derive any xpub we need
         }
-        std::vector<uint32_t> parent_path{ path };
+        std::vector<uint32_t> parent_path{ path.begin(), path.end() };
         std::unique_lock<std::mutex> locker{ m_mutex };
         for (;;) {
             auto cached = m_cached_bip32_xpubs.find(parent_path);
@@ -340,9 +339,9 @@ namespace green {
         }
     }
 
-    xpub_t signer::get_xpub(const std::vector<uint32_t>& path) { return make_xpub(get_bip32_xpub(path)); }
+    xpub_t signer::get_xpub(uint32_span_t path) { return make_xpub(get_bip32_xpub(path)); }
 
-    std::string signer::cache_ext_key(const std::vector<uint32_t>& path, const wally_ext_key_ptr& hdkey)
+    std::string signer::cache_ext_key(uint32_span_t path, const wally_ext_key_ptr& hdkey)
     {
         // Encache the derived key with the full path
         GDK_RUNTIME_ASSERT(hdkey);
@@ -352,10 +351,11 @@ namespace green {
         return xpub;
     }
 
-    bool signer::cache_bip32_xpub(const std::vector<uint32_t>& path, const std::string& bip32_xpub)
+    bool signer::cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub)
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
-        auto ret = m_cached_bip32_xpubs.emplace(path, bip32_xpub);
+        cache_t::key_type parent_path{ path.begin(), path.end() };
+        auto ret = m_cached_bip32_xpubs.emplace(std::move(parent_path), bip32_xpub);
         // If already present, verify that the value matches
         GDK_RUNTIME_ASSERT(ret.second || ret.first->second == bip32_xpub);
         return ret.second; // Return whether or not the xpub was already present

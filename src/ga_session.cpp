@@ -419,8 +419,7 @@ namespace green {
 
         if (!signer->is_watch_only()) {
             // Get our gait path xpub and compute gait_path from it
-            std::vector register_path(signer::REGISTER_PATH.begin(), signer::REGISTER_PATH.end());
-            const auto gait_xpub = signer->get_xpub(register_path);
+            const auto gait_xpub = signer->get_xpub(signer::REGISTER_PATH);
             const auto gait_path = b2h(ga_pubkeys::get_gait_path_bytes(gait_xpub));
             const bool supports_csv = signer->supports_arbitrary_scripts();
             const auto agent = get_user_agent(supports_csv, m_user_agent);
@@ -1023,9 +1022,7 @@ namespace green {
                 encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
             } else {
                 // Full login, with or without a blobserver
-                auto xpub
-                    = m_signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() });
-                encryption_key = xpub.second;
+                encryption_key = m_signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
                 if (m_blobserver) {
                     m_blob->compute_client_id(m_net_params.network(), encryption_key);
                 }
@@ -1482,7 +1479,8 @@ namespace green {
             const auto blob_xpubs = m_blob->get_xpubs();
             for (auto& item : blob_xpubs.items()) {
                 // Inverted: See encache_signer_xpubs()
-                m_signer->cache_bip32_xpub(item.value(), item.key());
+                const auto path = item.value().get<std::vector<uint32_t>>();
+                m_signer->cache_bip32_xpub(path, item.key());
             }
             GDK_RUNTIME_ASSERT(m_signer->has_master_bip32_xpub());
             root_bip32_xpub = m_signer->get_master_bip32_xpub();
@@ -1732,8 +1730,8 @@ namespace green {
         if (subaccount != 0) {
             // Add user and recovery pubkeys for the subaccount
             if (m_user_pubkeys && !m_user_pubkeys->have_subaccount(subaccount)) {
-                const std::vector<uint32_t> path{ harden(3), harden(subaccount) };
                 // TODO: Investigate whether this code path can ever execute
+                const std::array<uint32_t, 2> path{ harden(3), harden(subaccount) };
                 m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
             }
 

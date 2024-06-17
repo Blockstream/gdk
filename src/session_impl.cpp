@@ -684,7 +684,7 @@ namespace green {
             // Add the client blob credentials
             // FIXME: don't use the pubkey directly, store keys in one json value,
             // encrypt with username and password
-            auto xpub = m_signer->get_xpub({ signer::CLIENT_SECRET_PATH.begin(), signer::CLIENT_SECRET_PATH.end() });
+            auto xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
             ret["public_key"] = b2h(xpub.second);
             ret["blob_key"] = b2h(m_blob->get_key());
         }
@@ -923,7 +923,8 @@ namespace green {
             // Cached xpub JSON is inverted: See signer->get_cached_bip32_xpubs_json().
             // This call will throw if any xpub for a given path mismatches
             // what the signer has already cached
-            signer->cache_bip32_xpub(item.value(), item.key());
+            const auto path = item.value().get<std::vector<uint32_t>>();
+            signer->cache_bip32_xpub(path, item.key());
         }
         GDK_LOG(debug) << "Loaded " << xpubs.size() << " cached xpubs";
     }

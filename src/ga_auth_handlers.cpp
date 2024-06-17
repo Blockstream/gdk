@@ -290,7 +290,7 @@ namespace green {
         // Fetch the xpubs needed for registration
         auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
         // We need the master xpub to identify the wallet
-        paths.emplace_back(signer::EMPTY_PATH);
+        paths.emplace_back(uint32_span_t{}); // Master xpub
         if (registering_watch_only) {
             // We need the client secret path to generate blobserver credentials
             paths.emplace_back(signer::CLIENT_SECRET_PATH);
@@ -353,7 +353,7 @@ namespace green {
 
             try {
                 auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
-                paths.emplace_back(signer::EMPTY_PATH); // Master xpub
+                paths.emplace_back(uint32_span_t{}); // Master xpub
                 paths.emplace_back(signer::CLIENT_SECRET_PATH);
                 if (!is_electrum) {
                     // Multisig: fetch the xpubs for login authentication
@@ -397,8 +397,8 @@ namespace green {
                 const auto& hw_reply = get_hw_reply();
                 if (m_signer->use_ae_protocol()) {
                     // Anti-Exfil protocol: verify the signature
-                    const auto login_bip32_xpub = m_signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
-                    verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
+                    const auto login_bip32_xpub = m_signer->get_bip32_xpub(signer::LOGIN_PATH);
+                    verify_ae_message(m_twofactor_data, login_bip32_xpub, {}, hw_reply);
                 }
                 sig_der_hex = hw_reply.at("signature");
             }
@@ -506,7 +506,7 @@ namespace green {
 
             if (missing_recovery_xpub) {
                 // Derive recovery_xpub from recovery_mnemonic
-                const std::vector<uint32_t> mnemonic_path{ harden(3), harden(m_subaccount) };
+                const std::array<uint32_t, 2> mnemonic_path{ harden(3), harden(m_subaccount) };
                 const nlohmann::json credentials = { { "mnemonic", std::move(recovery_mnemonic) } };
                 m_details["recovery_xpub"] = signer{ m_net_params, {}, credentials }.get_bip32_xpub(mnemonic_path);
                 m_details.erase("recovery_mnemonic");
@@ -544,8 +544,8 @@ namespace green {
             const auto& hw_reply = get_hw_reply();
             if (signer->use_ae_protocol()) {
                 // Anti-Exfil protocol: verify the signature
-                auto login_bip32_xpub = signer->get_bip32_xpub(make_vector(signer::LOGIN_PATH));
-                verify_ae_message(m_twofactor_data, login_bip32_xpub, signer::EMPTY_PATH, hw_reply);
+                auto login_bip32_xpub = signer->get_bip32_xpub(signer::LOGIN_PATH);
+                verify_ae_message(m_twofactor_data, login_bip32_xpub, {}, hw_reply);
             }
 
             m_details["recovery_key_sig"] = b2h(ec_sig_from_der(j_bytesref(hw_reply, "signature"), false));
@@ -596,7 +596,7 @@ namespace green {
         const auto& hw_reply = get_hw_reply();
         auto signer = get_signer();
         if (signer->use_ae_protocol()) {
-            const auto master_bip32_xpub = signer->get_bip32_xpub(make_vector(signer::EMPTY_PATH));
+            const auto master_bip32_xpub = signer->get_master_bip32_xpub();
             verify_ae_message(m_twofactor_data, master_bip32_xpub, m_message_info.second, hw_reply);
         }
         m_session->ack_system_message(m_message_info.first, hw_reply.at("signature"));
@@ -2141,7 +2141,8 @@ namespace green {
         // Caller has provided the signed message.
         GDK_RUNTIME_ASSERT(m_hw_request == hw_request::sign_message);
         const auto& hw_reply = get_hw_reply();
-        auto bip32_xpub = signer->get_bip32_xpub(m_address_data.at("user_path"));
+        const auto& user_path = m_address_data.at("user_path");
+        auto bip32_xpub = signer->get_bip32_xpub(user_path.get<std::vector<uint32_t>>());
         auto xpub_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
 
         // Get the compact and recoverable signatures from the DER/compact/recoverable signature
