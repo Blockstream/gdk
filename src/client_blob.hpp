@@ -31,7 +31,7 @@ namespace green {
         auto get_client_id() const { return m_client_id; }
 
         // Set the encryption key
-        void set_key(pbkdf2_hmac256_t key);
+        void set_key(byte_span_t key);
         // Compute the encryption and HMAC keys from a privately derived public key
         void compute_keys(byte_span_t public_key);
 

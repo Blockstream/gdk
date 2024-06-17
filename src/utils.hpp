@@ -92,17 +92,28 @@ namespace green {
     std::string encrypt_mnemonic(const std::string& plaintext_mnemonic, const std::string& password);
     std::string decrypt_mnemonic(const std::string& encrypted_mnemonic, const std::string& password);
 
-    // Compute base entropy for a client blob watch only login
-    std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password);
+    // Watch only keys/encryption
 
-    // Compute a local cache password for a client blob watch only login
-    pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy);
+    // Compute base entropy from a watch only username and password using:
+    // scrypt(len(username) + username + password, "_wo_salt")
+    // The resulting entropy is used to derive keys for local encryption
+    // of watch only data. The resistance of these keys to attack is directly
+    // related to the uniqueness/strength of the username and password chosen.
+    std::vector<unsigned char> compute_watch_only_entropy(const std::string& username, const std::string& password);
 
-    // Encrypt the client blob key to the watch only entropy, return as hex
-    std::string encrypt_wo_blob_key(byte_span_t entropy, const pbkdf2_hmac256_t& blob_key);
+    // Encrypt and hex encode data with a key derived from compute_watch_only_entropy()
+    // Used only to encrypt the watch only blob credentials for watch only login.
+    std::string encrypt_watch_only_data(byte_span_t entropy, byte_span_t data);
 
-    // Decrypt the encrypted client blob key with the watch only entropy
-    pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex);
+    // Hex decode and decrypt data with a key derived from compute_watch_only_entropy()
+    // Used only to decrypt the watch only blob credentials for watch only login.
+    std::vector<unsigned char> decrypt_watch_only_data(byte_span_t entropy, const std::string& data_hex);
+
+    // Compute a local encryption key from compute_watch_only_entropy() entropy
+    // and another source of random entropy.
+    // For multisig, extra_entropy is held and returned by by the Green
+    // backend server, and returned only on a successful watch only login.
+    pub_key_t get_watch_only_cache_encryption_key(byte_span_t entropy, const std::string& extra_entropy);
 
     // Encryption
     std::vector<unsigned char> aes_cbc_decrypt(const pbkdf2_hmac256_t& key, byte_span_t ciphertext);

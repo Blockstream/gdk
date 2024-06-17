@@ -92,7 +92,13 @@ namespace green {
         m_client_id = b2h(sha256(id_buffer));
     }
 
-    void client_blob::set_key(pbkdf2_hmac256_t key) { set_optional_variable(m_key, std::move(key)); }
+    void client_blob::set_key(byte_span_t key)
+    {
+        pbkdf2_hmac256_t k;
+        GDK_RUNTIME_ASSERT(k.size() == key.size());
+        std::copy(key.begin(), key.end(), k.begin());
+        set_optional_variable(m_key, std::move(k));
+    }
 
     void client_blob::compute_keys(byte_span_t public_key)
     {

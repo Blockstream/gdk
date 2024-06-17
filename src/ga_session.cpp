@@ -1019,7 +1019,7 @@ namespace green {
             pub_key_t encryption_key;
             if (m_signer->is_watch_only()) {
                 // Non-blobserver watch only login
-                encryption_key = get_wo_local_encryption_key(entropy, login_data.at("cache_password"));
+                encryption_key = get_watch_only_cache_encryption_key(entropy, login_data.at("cache_password"));
             } else {
                 // Full login, with or without a blobserver
                 encryption_key = m_signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
@@ -1030,7 +1030,7 @@ namespace green {
             set_local_encryption_keys(locker, encryption_key, m_signer);
             const std::string wo_blob_key_hex = j_str_or_empty(login_data, "wo_blob_key");
             if (!wo_blob_key_hex.empty()) {
-                m_blob->set_key(decrypt_wo_blob_key(entropy, wo_blob_key_hex));
+                m_blob->set_key(decrypt_watch_only_data(entropy, wo_blob_key_hex));
             }
         }
     }
@@ -1428,7 +1428,7 @@ namespace green {
         const auto user_agent = get_user_agent(true, m_user_agent);
 
         // First, try using client blob
-        const auto entropy = get_wo_entropy(username, password);
+        const auto entropy = compute_watch_only_entropy(username, password);
         const auto u_p = get_green_wo_credentials(entropy);
         auto login_data = authenticate_wo(locker, u_p.first, u_p.second, user_agent, true);
         if (login_data.empty()) {
@@ -1632,9 +1632,9 @@ namespace green {
         if (!u_p.first.empty()) {
             // Enabling watch only login.
             // Derive the username/password to use, encrypt the client blob key for upload
-            const auto entropy = get_wo_entropy(u_p.first, u_p.second);
+            const auto entropy = compute_watch_only_entropy(u_p.first, u_p.second);
             u_p = get_green_wo_credentials(entropy);
-            wo_blob_key_hex = encrypt_wo_blob_key(entropy, m_blob->get_key());
+            wo_blob_key_hex = encrypt_watch_only_data(entropy, m_blob->get_key());
         }
         bool ok = wamp_cast<bool>(m_wamp->call("addressbook.sync_custom", u_p.first, u_p.second, wo_blob_key_hex));
         if (!ok) {

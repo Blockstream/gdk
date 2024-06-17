@@ -354,9 +354,8 @@ namespace green {
         return bip39_mnemonic_from_bytes(ciphertext);
     }
 
-    std::vector<unsigned char> get_wo_entropy(const std::string& username, const std::string& password)
+    std::vector<unsigned char> compute_watch_only_entropy(const std::string& username, const std::string& password)
     {
-        // Initial entropy is scrypt(len(username) + username + password, "_wo_salt")
         const std::string u_p = username + password;
         std::vector<unsigned char> entropy;
         entropy.resize(sizeof(uint32_t) + u_p.size());
@@ -365,30 +364,26 @@ namespace green {
         return scrypt(entropy, signer::WATCH_ONLY_SALT);
     }
 
-    static pbkdf2_hmac256_t get_wo_blob_aes_key(byte_span_t entropy)
+    static pbkdf2_hmac256_t get_watch_only_aes_key(byte_span_t entropy)
     {
         return pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_K);
     }
 
-    std::string encrypt_wo_blob_key(byte_span_t entropy, const pbkdf2_hmac256_t& blob_key)
+    std::string encrypt_watch_only_data(byte_span_t entropy, byte_span_t data)
     {
-        return aes_cbc_encrypt_to_hex(get_wo_blob_aes_key(entropy), blob_key);
+        return aes_cbc_encrypt_to_hex(get_watch_only_aes_key(entropy), data);
     }
 
-    pbkdf2_hmac256_t decrypt_wo_blob_key(byte_span_t entropy, const std::string& wo_blob_key_hex)
+    std::vector<unsigned char> decrypt_watch_only_data(byte_span_t entropy, const std::string& data_hex)
     {
-        const auto decrypted = aes_cbc_decrypt_from_hex(get_wo_blob_aes_key(entropy), wo_blob_key_hex);
-        pbkdf2_hmac256_t encryption_key;
-        GDK_RUNTIME_ASSERT(decrypted.size() == encryption_key.size());
-        std::copy(decrypted.begin(), decrypted.end(), encryption_key.begin());
-        return encryption_key;
+        return aes_cbc_decrypt_from_hex(get_watch_only_aes_key(entropy), data_hex);
     }
 
-    pub_key_t get_wo_local_encryption_key(byte_span_t entropy, const std::string& server_entropy)
+    pub_key_t get_watch_only_cache_encryption_key(byte_span_t entropy, const std::string& extra_entropy)
     {
-        GDK_RUNTIME_ASSERT(!server_entropy.empty());
+        GDK_RUNTIME_ASSERT(!extra_entropy.empty());
         pub_key_t encryption_key;
-        const auto key_bytes = pbkdf2_hmac_sha512(entropy, ustring_span(server_entropy));
+        const auto key_bytes = pbkdf2_hmac_sha512(entropy, ustring_span(extra_entropy));
         std::copy(key_bytes.begin(), key_bytes.begin() + sizeof(pub_key_t), encryption_key.begin());
         // Note that the pubkey data we return does not have to be valid
         return encryption_key;
