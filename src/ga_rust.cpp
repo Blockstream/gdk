@@ -277,6 +277,7 @@ namespace green {
             }
         }
     }
+
     nlohmann::json ga_rust::credentials_from_pin_data(const nlohmann::json& pin_data)
     {
         return rust_call("credentials_from_pin_data", pin_data, m_session);
@@ -284,15 +285,16 @@ namespace green {
 
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
+        const auto credentials = signer->get_credentials();
         {
             locker_t locker(m_mutex);
             set_signer(locker, signer);
             m_watch_only = true;
-        }
-        const auto credentials = signer->get_credentials();
-        if (signer->is_descriptor_watch_only()) {
-            m_blobserver.reset(); // No blobserver for descriptor wallets
-            return rust_call("login_wo", credentials, m_session);
+            if (signer->is_descriptor_watch_only()) {
+                m_blobserver.reset(); // No blobserver for descriptor wallets
+                locker.unlock();
+                return rust_call("login_wo", credentials, m_session);
+            }
         }
 
         authenticate(std::string(), signer);
@@ -302,11 +304,12 @@ namespace green {
         // (which register_subaccount_xpubs requires).
         on_post_login();
 
-        // FIXME: load the actual subaccounts from the blob
-        std::vector<uint32_t> pointers;
-        pointers.push_back(0);
+        // Register the subaccounts using the blob data to identify them
+        const auto pointers = get_subaccount_pointers();
         std::vector<std::string> xpubs;
-        xpubs.push_back(signer->get_bip32_xpub(get_subaccount_root_path(0)));
+        for (const auto& pointer : pointers) {
+            xpubs.push_back(signer->get_bip32_xpub(get_subaccount_root_path(pointer)));
+        }
         register_subaccount_xpubs(pointers, xpubs);
 
         // Call the rust start_threads directly to avoid repeating the call to
