@@ -51,15 +51,17 @@ Notified when using the built-in Tor connection during connection establishment.
   {
     "event": "tor",
     "tor": {
+      "control_port": "127.0.0.1:64370",
       "progress": 20,
       "summary": "Establishing an encrypted directory connection",
       "tag": "onehop_create"
     }
   }
 
+:tor/control_port: Tor control port.
 :tor/progress: An integer from 0-100 indicating the progress percentage.
 :tor/summary: A human-readable summary of the current progress step.
-:tor/onehop_create: A fixed identifier string for the current progress step.
+:tor/tag: A fixed identifier string for the current progress step.
 
 
 
