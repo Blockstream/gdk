@@ -355,7 +355,8 @@ namespace green {
         // respecting the sessions connection preferences).
         if (m_tor_ctrl) {
             std::string tor_proxy = m_tor_ctrl->wait_for_socks5([&](std::shared_ptr<tor_bootstrap_phase> p) {
-                nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress } });
+                nlohmann::json tor_json({ { "tag", p->tag }, { "summary", p->summary }, { "progress", p->progress },
+                    { "control_port", p->control_port } });
                 emit_notification({ { "event", "tor" }, { "tor", std::move(tor_json) } }, true);
             });
             tor_proxy = socksify(tor_proxy);

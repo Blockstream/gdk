@@ -522,6 +522,7 @@ namespace green {
         m_conn = std::make_unique<tor_control_connection>(m_base, m_tor_control_port);
 
         m_bootstrap_phase = std::make_shared<tor_bootstrap_phase>();
+        m_bootstrap_phase->control_port = m_tor_control_port;
 
         GDK_RUNTIME_ASSERT(m_conn->connect(std::bind(&tor_controller_impl::connected_cb, this, std::placeholders::_1),
             std::bind(&tor_controller_impl::disconnected_cb, this)));

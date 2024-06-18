@@ -23,6 +23,7 @@ namespace green {
 
         std::string tag;
         std::string summary;
+        std::string control_port;
         uint32_t progress;
     };
 
