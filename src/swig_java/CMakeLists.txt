@@ -63,15 +63,15 @@ add_custom_command(TARGET green_gdk_java
 
 get_library_install_dir(_libInstallDir)
 add_custom_command(
-    OUTPUT libgreen_gdk.syms
-    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:green_gdk_java> libgreen_gdk.syms
+    OUTPUT libgreen_gdk_java.syms
+    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:green_gdk_java> libgreen_gdk_java.syms
     DEPENDS green_gdk_java
-    BYPRODUCTS libgreen_gdk.syms
+    BYPRODUCTS libgreen_gdk_java.syms
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )
-add_custom_target(green_gdk_syms ALL DEPENDS libgreen_gdk.syms)
+add_custom_target(green_gdk_syms ALL DEPENDS libgreen_gdk_java.syms)
 install(
-    FILES ${CMAKE_BINARY_DIR}/libgreen_gdk.syms
+    FILES ${CMAKE_BINARY_DIR}/libgreen_gdk_java.syms
     DESTINATION ${_libInstallDir}
     COMPONENT gdk-java
     EXCLUDE_FROM_ALL
