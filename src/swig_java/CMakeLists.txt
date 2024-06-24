@@ -1,4 +1,4 @@
-if (MINGW OR APPLE)
+if(MINGW OR APPLE)
     message("windows/macOS environment: skipping java bindings")
     return()
 endif()
@@ -34,26 +34,25 @@ endif()
 include(UseSWIG)
 
 set(_swig_package_option -package com.blockstream.green_gdk -DGDK_BUILD)
-set_source_files_properties(swig_green_gdk.i PROPERTIES
-    COMPILE_OPTIONS "${_swig_package_option}"
-    USE_SWIG_DEPENDENCIES TRUE
-    INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
+set_source_files_properties(
+    swig_green_gdk.i
+    PROPERTIES COMPILE_OPTIONS "${_swig_package_option}"
+               USE_SWIG_DEPENDENCIES TRUE
+               INCLUDE_DIRECTORIES "${CMAKE_SOURCE_DIR}/include"
 )
-swig_add_library(green_gdk_java
+swig_add_library(
+    green_gdk_java
     TYPE SHARED
-    LANGUAGE java
-    NO_PROXY
+    LANGUAGE java NO_PROXY
     SOURCES swig_green_gdk.i
 )
-target_include_directories(green_gdk_java
-    PRIVATE
-        ${JNI_INCLUDE_DIRS}
-)
+target_include_directories(green_gdk_java PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_options(green_gdk_java PRIVATE ${GDK_LINK_OPTIONS})
 
 swig_link_libraries(green_gdk_java PUBLIC green_gdk)
 
-add_custom_command(TARGET green_gdk_java
+add_custom_command(
+    TARGET green_gdk_java
     POST_BUILD
     COMMAND ${SED} -i 's/^}$$//g' GDK.java
     COMMAND grep "public final static" GDKModuleConstants.java >> GDK.java
