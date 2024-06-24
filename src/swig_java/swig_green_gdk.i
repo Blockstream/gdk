@@ -1,4 +1,4 @@
-%module GDK
+%module(jniclassname="GDK") GDK
 %{
 #include "gdk.h"
 #include <limits.h>
@@ -280,7 +280,7 @@ LOCALFUNC jbyteArray create_array(JNIEnv *jenv, const unsigned char* p, size_t l
 %pragma(java) jniclasscode=%{
     private static boolean loadLibrary() {
         try {
-            System.loadLibrary("green_gdk");
+            System.loadLibrary("green_gdk_java");
             return true;
         } catch (final UnsatisfiedLinkError e) {
             System.err.println("Native code library failed to load.\n" + e);

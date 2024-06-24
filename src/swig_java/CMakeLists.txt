@@ -56,7 +56,7 @@ swig_link_libraries(green_gdk_java PUBLIC green_gdk)
 add_custom_command(TARGET green_gdk_java
     POST_BUILD
     COMMAND ${SED} -i 's/^}$$//g' GDK.java
-    COMMAND grep "public final static" GDKConstants.java >> GDK.java
+    COMMAND grep "public final static" GDKModuleConstants.java >> GDK.java
     COMMAND cat ${CMAKE_CURRENT_SOURCE_DIR}/jni_extra.java_in >> GDK.java
     COMMAND echo "}" >> GDK.java
 )
