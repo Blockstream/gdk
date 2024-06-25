@@ -75,14 +75,11 @@ namespace green {
         nlohmann::json store_details;
         if (is_watch_only) {
             // Create a cache filename and encryption key
-            uint32_t type;
-            std::string filename;
-            std::array<unsigned char, SHA256_LEN> encryption_key;
             auto local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
             // Use a network name unique to rich watch only, so in the future
             // we can use ga_cache for singlesig caching without conflict.
             auto network_name = m_net_params.network() + "RWO";
-            std::tie(filename, type, encryption_key)
+            const auto [filename, type, encryption_key]
                 = cache::get_name_type_and_key(local_encryption_key, network_name, signer);
             store_details = { { "filename", std::move(filename) }, { "encryption_key_hex", b2h(encryption_key) } };
         } else {

@@ -403,8 +403,7 @@ namespace green {
         // TODO: Take either the label or message and set the tx memo field with it if not set
         // FIXME: URL unescape the arguments before returning
         //
-        std::string scheme, tail;
-        std::tie(scheme, tail) = split(boost::trim_copy(uri), ':');
+        auto [scheme, tail] = split(boost::trim_copy(uri), ':');
 
         if (boost::to_lower_copy(scheme) == net_params.bip21_prefix()) {
             std::string address;
@@ -414,9 +413,9 @@ namespace green {
             }
             nlohmann::json params;
             while (!tail.empty()) {
-                std::string param, key, value;
+                std::string param;
                 std::tie(param, tail) = split(tail, '&');
-                std::tie(key, value) = split(param, '=');
+                auto [key, value] = split(param, '=');
                 if (boost::algorithm::starts_with(key, "req-")) {
                     throw user_error(res::id_unknown_bip21_parameter);
                 }

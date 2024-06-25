@@ -479,12 +479,10 @@ namespace green {
         if (request == hw_request::get_master_blinding_key) {
             // Host unblinding: fetch master blinding key
             // Allow the session to handle this request with cached data if it can
-            std::string blinding_key;
-            bool denied;
-            std::tie(blinding_key, denied) = get_session().get_cached_master_blinding_key();
+            auto [blinding_key, denied] = get_session().get_cached_master_blinding_key();
             if (!blinding_key.empty() || denied) {
                 // We have a cached blinding key or the user has denied access
-                result.emplace("master_blinding_key", blinding_key); // Blank if denied
+                result.emplace("master_blinding_key", std::move(blinding_key)); // Blank if denied
                 handler->resolve_hw_reply(std::move(result));
                 return true;
             }

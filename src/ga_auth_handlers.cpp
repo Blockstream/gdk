@@ -754,8 +754,7 @@ namespace green {
             return m_state;
         }
 
-        bool user_sign, server_sign;
-        std::tie(user_sign, server_sign) = get_sign_with(m_details, m_net_params.is_electrum());
+        const auto [user_sign, server_sign] = get_sign_with(m_details, m_net_params.is_electrum());
 
         if (user_sign && !m_user_signed) {
             // We haven't signed the users inputs yet, do so now

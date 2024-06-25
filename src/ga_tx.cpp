@@ -613,8 +613,7 @@ namespace green {
             }
 
             // Check for RBF/CPFP
-            bool is_rbf, is_cpfp;
-            std::tie(is_rbf, is_cpfp) = check_bump_tx(session, subaccounts, result);
+            const auto [is_rbf, is_cpfp] = check_bump_tx(session, subaccounts, result);
             if (is_rbf) {
                 result["randomize_inputs"] = false;
             }

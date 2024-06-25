@@ -1476,9 +1476,7 @@ namespace green {
         }
 
         if (is_liquid) {
-            std::string blinding_key_hex;
-            bool denied;
-            std::tie(blinding_key_hex, denied) = get_cached_master_blinding_key();
+            const auto [blinding_key_hex, denied] = get_cached_master_blinding_key();
             GDK_RUNTIME_ASSERT(!blinding_key_hex.empty() && !denied);
             m_signer->set_master_blinding_key(blinding_key_hex);
         }
