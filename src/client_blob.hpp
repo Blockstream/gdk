@@ -78,6 +78,7 @@ namespace green {
 
         bool set_master_blinding_key(const std::string& master_blinding_key_hex);
         std::string get_master_blinding_key() const;
+        bool has_master_blinding_key() const;
         bool is_master_blinding_key_denied() const;
 
         bool set_wo_data(const std::string& username, const nlohmann::json& xpubs);

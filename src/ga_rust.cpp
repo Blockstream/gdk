@@ -234,7 +234,7 @@ namespace green {
             // Full sessions have the blinding key in the signer, while
             // watch only sessions have it in the client blob.
             std::string master_blinding_key_hex;
-            if (m_signer->has_master_blinding_key()) {
+            if (m_signer->has_master_blinding_key() && !m_blob->has_master_blinding_key()) {
                 master_blinding_key_hex = b2h(m_signer->get_master_blinding_key());
                 m_blob->set_master_blinding_key(master_blinding_key_hex);
             } else {

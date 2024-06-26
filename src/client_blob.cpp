@@ -252,6 +252,8 @@ namespace green {
         return j_str_or_empty(m_data[SLIP77KEY], "key"); // Blank if denied
     }
 
+    bool client_blob::has_master_blinding_key() const { return !j_str_is_empty(m_data[SLIP77KEY], "key"); }
+
     bool client_blob::is_master_blinding_key_denied() const
     {
         return j_bool_or_false(m_data[SLIP77KEY], "denied"); // False if not explicitly denied
