@@ -21,11 +21,16 @@ namespace green {
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
         xpub_hdkey(xpub_hdkey&&) = default;
         xpub_hdkey& operator=(xpub_hdkey&&) = default;
+
+        explicit xpub_hdkey(const ext_key& ext_key) { m_ext_key = ext_key; }
+
         ~xpub_hdkey();
 
         pub_key_t derive(uint32_span_t path);
 
         xpub_t to_xpub_t() const;
+        pub_key_t get_public_key() const;
+
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;
 

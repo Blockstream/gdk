@@ -32,14 +32,17 @@ namespace green {
 
     pub_key_t xpub_hdkey::derive(uint32_span_t path)
     {
-        ext_key result = bip32_public_key_from_parent_path(m_ext_key, path);
-        pub_key_t ret;
-        std::copy(result.pub_key, result.pub_key + ret.size(), ret.begin());
-        wally_bzero(&result, sizeof(result));
-        return ret;
+        return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path)).get_public_key();
     }
 
     xpub_t xpub_hdkey::to_xpub_t() const { return make_xpub(&m_ext_key); }
+
+    pub_key_t xpub_hdkey::get_public_key() const
+    {
+        pub_key_t ret;
+        std::copy(m_ext_key.pub_key, m_ext_key.pub_key + ret.size(), ret.begin());
+        return ret;
+    }
 
     std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
 
