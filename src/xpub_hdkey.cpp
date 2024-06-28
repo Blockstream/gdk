@@ -1,6 +1,7 @@
 #include <cstring>
 
 #include "memory.hpp"
+#include "network_parameters.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
 
@@ -72,15 +73,13 @@ namespace green {
         {
         }
 
-        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer)
+        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
         {
-            std::array<uint32_t, 1> path{ { pointer } };
-            return get_subaccount(subaccount).derive(path);
-        }
-
-        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, bool is_internal)
-        {
-            std::array<uint32_t, 2> path{ { is_internal ? 1u : 0u, pointer } };
+            std::vector<uint32_t> path;
+            if (is_internal.has_value()) {
+                path.push_back(*is_internal ? 1u : 0u);
+            }
+            path.push_back(pointer);
             return get_subaccount(subaccount).derive(path);
         }
     } // namespace detail

@@ -3,11 +3,13 @@
 #pragma once
 
 #include <map>
+#include <optional>
 
 #include "ga_wally.hpp"
-#include "network_parameters.hpp"
 
 namespace green {
+
+    class network_parameters;
 
     //
     // Derives public keys from an xpub
@@ -55,10 +57,9 @@ namespace green {
             xpub_hdkeys_base& operator=(xpub_hdkeys_base&&) = default;
             virtual ~xpub_hdkeys_base() = default;
 
-            // Derive a Green pubkey for a subaccount and pointer
-            xpub_hdkey derive(uint32_t subaccount, uint32_t pointer);
-            // Derive a BIP44 pubkey for a subaccount and pointer, internal or not
-            xpub_hdkey derive(uint32_t subaccount, uint32_t pointer, bool is_internal);
+            // If is_internal is empty, derives a Green key for a subaccount and pointer.
+            // Otherwise, derives a BIP44 key for a subaccount and pointer, internal or not.
+            xpub_hdkey derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal = {});
 
             virtual xpub_hdkey get_subaccount(uint32_t subaccount) = 0;
 

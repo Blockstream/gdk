@@ -42,6 +42,7 @@
 #include "gsl_wrapper.hpp"
 #include "json_utils.hpp"
 #include "memory.hpp"
+#include "network_parameters.hpp"
 #include "signer.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"

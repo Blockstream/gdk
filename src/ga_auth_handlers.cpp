@@ -809,9 +809,11 @@ namespace green {
                 const uint32_t pointer = j_uint32ref(utxo, "pointer");
                 const uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
 
-                const auto user_key = is_electrum
-                    ? user_pubkeys.derive(subaccount, pointer, j_bool_or_false(utxo, "is_internal"))
-                    : user_pubkeys.derive(subaccount, pointer);
+                std::optional<bool> is_internal;
+                if (is_electrum) {
+                    is_internal = j_bool_or_false(utxo, "is_internal");
+                }
+                const auto user_key = user_pubkeys.derive(subaccount, pointer, is_internal);
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
                 const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
