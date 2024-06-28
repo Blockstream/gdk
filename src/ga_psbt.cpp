@@ -272,16 +272,15 @@ namespace green {
             const std::string txhash_hex = j_strref(utxo, "txhash"); // Note as-value
             const auto vout = psbt_input.index;
 
-            bool is_wallet_utxo = false;
+            bool belongs_to_wallet = false;
             if (utxos.is_array()) {
                 // utxos in a flat array (deprecated)
-                // is_wallet_utxo = match(utxos); // utxos are a flat array
-                is_wallet_utxo = take_matching_utxo(utxos, txhash_hex, vout, utxo);
+                belongs_to_wallet = take_matching_utxo(utxos, txhash_hex, vout, utxo);
             } else {
                 // utxos in the standard format "{ asset: [utxo, utxo. ,,,] }"
                 for (auto& it : utxos.items()) {
-                    is_wallet_utxo = take_matching_utxo(it.value(), txhash_hex, vout, utxo);
-                    if (is_wallet_utxo) {
+                    belongs_to_wallet = take_matching_utxo(it.value(), txhash_hex, vout, utxo);
+                    if (belongs_to_wallet) {
                         break;
                     }
                 }
@@ -296,7 +295,7 @@ namespace green {
             }
             GDK_RUNTIME_ASSERT(txin_utxo);
 
-            if (is_wallet_utxo) {
+            if (belongs_to_wallet) {
                 // Wallet UTXO
                 wallet_assets.insert(j_assetref(m_is_liquid, utxo));
                 if (psbt_input.sighash && psbt_input.sighash != WALLY_SIGHASH_ALL) {
