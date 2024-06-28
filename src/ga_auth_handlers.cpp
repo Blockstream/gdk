@@ -809,18 +809,15 @@ namespace green {
                 const uint32_t pointer = j_uint32ref(utxo, "pointer");
                 const uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
 
-                pub_key_t pubkey;
-                if (is_electrum) {
-                    pubkey = user_pubkeys.derive(subaccount, pointer, j_bool_or_false(utxo, "is_internal"));
-                } else {
-                    pubkey = user_pubkeys.derive(subaccount, pointer);
-                }
+                const auto user_key = is_electrum
+                    ? user_pubkeys.derive(subaccount, pointer, j_bool_or_false(utxo, "is_internal"))
+                    : user_pubkeys.derive(subaccount, pointer);
                 const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
                 const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
-                verify_ae_signature(
-                    pubkey, tx_signature_hash, j_bytesref(utxo, "ae_host_entropy"), h2b(signer_commitments[i]), sig);
+                verify_ae_signature(user_key.get_public_key(), tx_signature_hash, j_bytesref(utxo, "ae_host_entropy"),
+                    h2b(signer_commitments[i]), sig);
             }
         }
 

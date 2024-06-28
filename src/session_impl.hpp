@@ -24,6 +24,7 @@ namespace green {
     class Tx;
     struct tor_controller;
     class wamp_transport;
+    class xpub_hdkey;
 
     class session_impl {
     public:
@@ -230,7 +231,7 @@ namespace green {
         virtual std::string get_recovery_xpub(uint32_t subaccount);
 
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
-        std::vector<pub_key_t> pubkeys_from_utxo(const nlohmann::json& utxo);
+        std::vector<xpub_hdkey> keys_from_utxo(const nlohmann::json& utxo);
 
     protected:
         // Locking per-session assumes the following thread safety model:
@@ -292,7 +293,7 @@ namespace green {
         void subscribe_all(locker_t& locker);
 
         std::vector<unsigned char> output_script_from_utxo(locker_t& locker, const nlohmann::json& utxo);
-        std::vector<pub_key_t> pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
+        std::vector<xpub_hdkey> keys_from_utxo(locker_t& locker, const nlohmann::json& utxo);
 
         nlohmann::json get_proxy_settings(locker_t& locker);
         nlohmann::json get_net_call_params(locker_t& locker, uint32_t timeout_secs);

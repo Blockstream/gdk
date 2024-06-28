@@ -323,13 +323,13 @@ namespace green {
             // Service keys for legacy version 0 addresses are not derived from the user's GA path
             ga_pub_key = h2b<EC_PUBLIC_KEY_LEN>(net_params.pub_key());
         } else {
-            ga_pub_key = pubkeys.derive(subaccount, pointer);
+            ga_pub_key = pubkeys.derive(subaccount, pointer).get_public_key();
         }
-        const auto user_pub_key = usr_pubkeys.derive(subaccount, pointer);
+        const auto user_pub_key = usr_pubkeys.derive(subaccount, pointer).get_public_key();
 
         if (recovery_pubkeys.have_subaccount(subaccount)) {
             // 2of3
-            const auto recovery_pub_key = recovery_pubkeys.derive(subaccount, pointer);
+            const auto recovery_pub_key = recovery_pubkeys.derive(subaccount, pointer).get_public_key();
             return output_script(net_params, ga_pub_key, user_pub_key, recovery_pub_key, addr_type, subtype);
         }
         // 2of2
@@ -342,7 +342,7 @@ namespace green {
         const auto& net_params = session.get_network_parameters();
         const auto& addr_type = j_strref(utxo, "address_type");
         if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
-            const auto pub_key = session.pubkeys_from_utxo(utxo).at(0);
+            const auto pub_key = session.keys_from_utxo(utxo).at(0).get_public_key();
             if (addr_type == p2pkh) {
                 return base58_address(net_params.btc_version(), pub_key);
             }

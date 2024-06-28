@@ -318,7 +318,8 @@ namespace green {
                     const auto script = session.output_script_from_utxo(utxo);
                     utxo["prevout_script"] = b2h(script);
                     if (is_electrum) {
-                        utxo["public_key"] = b2h(session.pubkeys_from_utxo(utxo).at(0));
+                        const auto user_key = session.keys_from_utxo(utxo).at(0);
+                        utxo["public_key"] = b2h(user_key.get_public_key());
                     }
                     tx_inputs_map.emplace(i, std::move(utxo));
                 }
@@ -330,7 +331,7 @@ namespace green {
                     // from being modified. Also store the users sighash in
                     // case it wasn't SIGHASH_ALL.
                     const auto der_sigs = tx.get_input_signatures(net_params, item.second, item.first);
-                    const auto pubkeys = session.pubkeys_from_utxo(item.second);
+                    const auto keys = session.keys_from_utxo(item.second);
                     for (size_t i = 0; i < der_sigs.size(); ++i) {
                         const auto& der_sig = der_sigs.at(i);
                         if (!is_electrum && tx_version >= WALLY_TX_VERSION_2 && i == 0 && der_sig.empty()
@@ -347,7 +348,7 @@ namespace green {
                         const auto signature_hash = tx.get_signature_hash(item.second, item.first, sighash_flags);
                         constexpr bool has_sighash_byte = true;
                         const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
-                        GDK_RUNTIME_ASSERT(ec_sig_verify(pubkeys.at(i), signature_hash, sig));
+                        GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(i).get_public_key(), signature_hash, sig));
                     }
                     // Add to the used UTXOs
                     tx_inputs.emplace_back(std::move(item.second));

@@ -23,16 +23,21 @@ namespace green {
             m_ext_key = *master;
         }
     }
-    xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub)
-        : xpub_hdkey(is_main_net, xpub, {})
+
+    xpub_hdkey xpub_hdkey::from_public_key(bool is_main_net, byte_span_t public_key)
     {
+        GDK_RUNTIME_ASSERT(public_key.size() == EC_PUBLIC_KEY_LEN);
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
+        xpub_t xpub{ { 0 }, { 0 } };
+        memcpy(xpub.second.data(), public_key.data(), public_key.size());
+        return { is_main_net, xpub };
     }
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
 
-    pub_key_t xpub_hdkey::derive(uint32_span_t path)
+    xpub_hdkey xpub_hdkey::derive(uint32_span_t path)
     {
-        return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path)).get_public_key();
+        return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path));
     }
 
     xpub_t xpub_hdkey::to_xpub_t() const { return make_xpub(&m_ext_key); }
@@ -67,13 +72,13 @@ namespace green {
         {
         }
 
-        pub_key_t xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer)
+        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer)
         {
             std::array<uint32_t, 1> path{ { pointer } };
             return get_subaccount(subaccount).derive(path);
         }
 
-        pub_key_t xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, bool is_internal)
+        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, bool is_internal)
         {
             std::array<uint32_t, 2> path{ { is_internal ? 1u : 0u, pointer } };
             return get_subaccount(subaccount).derive(path);

@@ -1071,20 +1071,21 @@ namespace green {
 
         if (addr_type == p2pkh || m_net_params.is_electrum()) {
             // Sweep or singlesig UTXO
-            return scriptpubkey_p2pkh_from_public_key(pubkeys_from_utxo(locker, utxo).at(0));
+            const auto user_key = keys_from_utxo(locker, utxo).at(0);
+            return scriptpubkey_p2pkh_from_public_key(user_key.get_public_key());
         }
         // Multisig UTXO
         return multisig_output_script_from_utxo(
             m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
-    std::vector<pub_key_t> session_impl::pubkeys_from_utxo(const nlohmann::json& utxo)
+    std::vector<xpub_hdkey> session_impl::keys_from_utxo(const nlohmann::json& utxo)
     {
         locker_t locker(m_mutex);
-        return pubkeys_from_utxo(locker, utxo);
+        return keys_from_utxo(locker, utxo);
     }
 
-    std::vector<pub_key_t> session_impl::pubkeys_from_utxo(locker_t& locker, const nlohmann::json& utxo)
+    std::vector<xpub_hdkey> session_impl::keys_from_utxo(locker_t& locker, const nlohmann::json& utxo)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         using namespace address_type;
@@ -1094,9 +1095,8 @@ namespace green {
         if (addr_type == p2pkh) {
             if (!utxo.contains("subaccount")) {
                 // Sweep UTXO
-                auto pub_key = h2b<EC_PUBLIC_KEY_LEN>(j_strref(utxo, "public_key"));
-                GDK_VERIFY(wally_ec_public_key_verify(pub_key.data(), pub_key.size()));
-                return { std::move(pub_key) };
+                const bool is_main_net = m_net_params.is_main_net();
+                return { xpub_hdkey::from_public_key(is_main_net, j_bytesref(utxo, "public_key")) };
             }
             // Multisig doesn't support p2pkh except for sweep UTXOs
             GDK_RUNTIME_ASSERT(is_electrum);

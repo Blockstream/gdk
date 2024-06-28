@@ -14,8 +14,9 @@ namespace green {
     //
     class xpub_hdkey final {
     public:
-        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path);
-        xpub_hdkey(bool is_main_net, const xpub_t& xpub);
+        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path = {});
+
+        static xpub_hdkey from_public_key(bool is_main_net, byte_span_t public_key);
 
         xpub_hdkey(const xpub_hdkey&) = default;
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
@@ -26,7 +27,7 @@ namespace green {
 
         ~xpub_hdkey();
 
-        pub_key_t derive(uint32_span_t path);
+        xpub_hdkey derive(uint32_span_t path);
 
         xpub_t to_xpub_t() const;
         pub_key_t get_public_key() const;
@@ -55,9 +56,9 @@ namespace green {
             virtual ~xpub_hdkeys_base() = default;
 
             // Derive a Green pubkey for a subaccount and pointer
-            pub_key_t derive(uint32_t subaccount, uint32_t pointer);
+            xpub_hdkey derive(uint32_t subaccount, uint32_t pointer);
             // Derive a BIP44 pubkey for a subaccount and pointer, internal or not
-            pub_key_t derive(uint32_t subaccount, uint32_t pointer, bool is_internal);
+            xpub_hdkey derive(uint32_t subaccount, uint32_t pointer, bool is_internal);
 
             virtual xpub_hdkey get_subaccount(uint32_t subaccount) = 0;
 
