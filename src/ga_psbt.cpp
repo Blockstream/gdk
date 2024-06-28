@@ -4,8 +4,10 @@
 #include "json_utils.hpp"
 #include "logging.hpp"
 #include "session_impl.hpp"
+#include "signer.hpp"
 #include "transaction_utils.hpp"
 #include "utils.hpp"
+#include "xpub_hdkey.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -86,6 +88,41 @@ namespace green {
             }
             dst[key] = (do_reverse ? b2h_rev : b2h)(val.value());
         }
+
+        static void add_keypath(wally_map& keypaths, xpub_hdkeys& pubkeys, byte_span_t fingerprint,
+            const xpub_hdkey& key, uint32_t subaccount, uint32_t pointer, bool is_internal)
+        {
+            const auto public_key = key.get_public_key();
+            const auto path = pubkeys.get_full_path(subaccount, pointer, is_internal);
+            GDK_VERIFY(wally_map_keypath_add(&keypaths, public_key.data(), public_key.size(), fingerprint.data(),
+                fingerprint.size(), path.data(), path.size()));
+        }
+
+        static void add_keypaths(session_impl& session, wally_map& keypaths, const nlohmann::json& utxo)
+        {
+            const bool is_electrum = session.get_network_parameters().is_electrum();
+            auto keys = session.keys_from_utxo(utxo);
+            const auto master_xpub = xpub_hdkey(session.get_nonnull_signer()->get_master_bip32_xpub());
+            const auto fingerprint = master_xpub.get_fingerprint();
+            size_t user_key_index = 0;
+            const auto subaccount = j_uint32ref(utxo, "subaccount");
+            const auto pointer = j_uint32ref(utxo, "pointer");
+            const auto is_internal = j_bool_or_false(utxo, "is_internal");
+            if (!is_electrum) {
+                // First key returned is the Green key, add it
+                const auto& green_key = keys.at(user_key_index);
+                add_keypath(
+                    keypaths, session.get_green_pubkeys(), fingerprint, green_key, subaccount, pointer, is_internal);
+                user_key_index = 1;
+            }
+            // Add the user's pubkey
+            const auto& user_key = keys.at(user_key_index);
+            add_keypath(keypaths, session.get_user_pubkeys(), fingerprint, user_key, subaccount, pointer, is_internal);
+            if (!is_electrum && keys.size() > 2) {
+                // FIXME: Add the recovery pubkey
+            }
+        }
+
     } // namespace
 
     void Psbt::psbt_deleter::operator()(struct wally_psbt* p) { wally_psbt_free(p); }
@@ -490,10 +527,14 @@ namespace green {
         const auto& inputs = j_arrayref(details, "transaction_inputs");
         for (size_t i = 0; i < tx.get_num_inputs(); ++i) {
             const auto& input = inputs.at(i);
-            const auto& psbt_input = get_input(i);
+            auto& psbt_input = get_input(i);
             amount::value_type satoshi;
             std::vector<unsigned char> asset_id;
 
+            if (is_wallet_utxo(input)) {
+                // Wallet UTXO. Add the relevant keypaths
+                add_keypaths(session, psbt_input.keypaths, input);
+            }
             if (m_is_liquid) {
                 // Add the input asset and amount
                 asset_id = j_rbytesref(input, "asset_id");
