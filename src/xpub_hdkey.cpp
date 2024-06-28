@@ -50,6 +50,12 @@ namespace green {
         return ret;
     }
 
+    std::vector<unsigned char> xpub_hdkey::get_fingerprint() const
+    {
+        auto copy = m_ext_key;
+        return bip32_key_get_fingerprint(copy);
+    }
+
     std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
 
     std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const

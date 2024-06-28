@@ -33,6 +33,7 @@ namespace green {
 
         xpub_t to_xpub_t() const;
         pub_key_t get_public_key() const;
+        std::vector<unsigned char> get_fingerprint() const;
 
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;

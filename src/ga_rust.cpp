@@ -212,7 +212,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(signer->has_master_bip32_xpub());
         auto master_xpub = signer->get_master_bip32_xpub();
         auto master_hdkey = bip32_public_key_from_bip32_xpub(master_xpub);
-        auto fingerprint = bip32_key_get_fingerprint(master_hdkey);
+        auto fingerprint = bip32_key_get_fingerprint(*master_hdkey);
         rust_call("set_fingerprint", nlohmann::json(b2h(fingerprint)), m_session);
 
         m_login_data = get_wallet_hash_ids(
