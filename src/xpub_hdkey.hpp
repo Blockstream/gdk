@@ -45,16 +45,16 @@ namespace green {
     //
     // Base class for collections of xpubs
     //
-    class xpub_hdkeys_base {
+    class xpub_hdkeys {
     public:
-        explicit xpub_hdkeys_base(const network_parameters& net_params);
-        xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub);
+        explicit xpub_hdkeys(const network_parameters& net_params);
+        xpub_hdkeys(const network_parameters& net_params, const xpub_t& xpub);
 
-        xpub_hdkeys_base(const xpub_hdkeys_base&) = default;
-        xpub_hdkeys_base& operator=(const xpub_hdkeys_base&) = default;
-        xpub_hdkeys_base(xpub_hdkeys_base&&) = default;
-        xpub_hdkeys_base& operator=(xpub_hdkeys_base&&) = default;
-        virtual ~xpub_hdkeys_base() = default;
+        xpub_hdkeys(const xpub_hdkeys&) = default;
+        xpub_hdkeys& operator=(const xpub_hdkeys&) = default;
+        xpub_hdkeys(xpub_hdkeys&&) = default;
+        xpub_hdkeys& operator=(xpub_hdkeys&&) = default;
+        virtual ~xpub_hdkeys() = default;
 
         // If is_internal is empty, derives a Green key for a subaccount and pointer.
         // Otherwise, derives a BIP44 key for a subaccount and pointer, internal or not.
@@ -86,7 +86,7 @@ namespace green {
     // NOTE: This class cannot be used for v0 addresses, which must be handled
     // separately.
     //
-    class ga_pubkeys final : public xpub_hdkeys_base {
+    class ga_pubkeys final : public xpub_hdkeys {
     public:
         ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path);
 
@@ -121,9 +121,9 @@ namespace green {
     // Adds the ability to register (privately derived) subaccount xpubs,
     // and so derive user pubkeys from registered subaccounts.
     //
-    class user_pubkeys : public xpub_hdkeys_base {
+    class user_pubkeys : public xpub_hdkeys {
     public:
-        using xpub_hdkeys_base::xpub_hdkeys_base;
+        using xpub_hdkeys::xpub_hdkeys;
 
         virtual bool have_subaccount(uint32_t subaccount) = 0;
 

@@ -66,19 +66,19 @@ namespace green {
         return b2h(hashed);
     }
 
-    xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
+    xpub_hdkeys::xpub_hdkeys(const network_parameters& net_params)
         : m_is_main_net(net_params.is_main_net())
         , m_is_liquid(net_params.is_liquid())
     {
     }
 
-    xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub)
+    xpub_hdkeys::xpub_hdkeys(const network_parameters& net_params, const xpub_t& xpub)
         : m_is_main_net(net_params.is_main_net())
         , m_xpub(xpub)
     {
     }
 
-    xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
+    xpub_hdkey xpub_hdkeys::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
     {
         std::vector<uint32_t> path;
         if (is_internal.has_value()) {
@@ -89,7 +89,7 @@ namespace green {
     }
 
     ga_pubkeys::ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
-        : xpub_hdkeys_base(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
+        : xpub_hdkeys(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());
         std::copy(std::begin(gait_path), std::end(gait_path), m_gait_path.begin());
