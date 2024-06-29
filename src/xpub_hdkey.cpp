@@ -66,50 +66,66 @@ namespace green {
         return b2h(hashed);
     }
 
-    namespace detail {
-        xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
-            : m_is_main_net(net_params.is_main_net())
-            , m_is_liquid(net_params.is_liquid())
-        {
-        }
+    xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params)
+        : m_is_main_net(net_params.is_main_net())
+        , m_is_liquid(net_params.is_liquid())
+    {
+    }
 
-        xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub)
-            : m_is_main_net(net_params.is_main_net())
-            , m_xpub(xpub)
-        {
-        }
+    xpub_hdkeys_base::xpub_hdkeys_base(const network_parameters& net_params, const xpub_t& xpub)
+        : m_is_main_net(net_params.is_main_net())
+        , m_xpub(xpub)
+    {
+    }
 
-        xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
-        {
-            std::vector<uint32_t> path;
-            if (is_internal.has_value()) {
-                path.push_back(*is_internal ? 1u : 0u);
-            }
-            path.push_back(pointer);
-            return get_subaccount(subaccount).derive(path);
+    xpub_hdkey xpub_hdkeys_base::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
+    {
+        std::vector<uint32_t> path;
+        if (is_internal.has_value()) {
+            path.push_back(*is_internal ? 1u : 0u);
         }
-    } // namespace detail
+        path.push_back(pointer);
+        return get_subaccount(subaccount).derive(path);
+    }
 
     ga_pubkeys::ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
-        : detail::xpub_hdkeys_base(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
+        : xpub_hdkeys_base(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());
         std::copy(std::begin(gait_path), std::end(gait_path), m_gait_path.begin());
         get_subaccount(0); // Initialize main account
     }
 
-    xpub_hdkey ga_pubkeys::get_subaccount(uint32_t subaccount)
+    std::vector<uint32_t> ga_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
     {
-        const auto p = m_subaccounts.find(subaccount);
-        if (p != m_subaccounts.end()) {
-            return p->second;
-        }
+        // Note: This assumes address version v1+.
+        // Version 0 addresses are not derived from the users gait_path
         const uint32_t path_prefix = subaccount != 0 ? 3 : 1;
         std::vector<uint32_t> path(m_gait_path.size() + 1);
         init_container(path, gsl::make_span(&path_prefix, 1), m_gait_path);
         if (subaccount != 0) {
             path.push_back(subaccount);
         }
+        return path;
+    }
+
+    std::vector<uint32_t> ga_pubkeys::get_subaccount_full_path(
+        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/) const
+    {
+        auto path = get_subaccount_root_path(subaccount);
+        path.push_back(pointer);
+        return path;
+    }
+
+    xpub_hdkey ga_pubkeys::get_subaccount(uint32_t subaccount)
+    {
+        // Note unlike user pubkeys, the Green key is not privately derived,
+        // since the user must be able to derive it from the Green service xpub.
+        const auto p = m_subaccounts.find(subaccount);
+        if (p != m_subaccounts.end()) {
+            return p->second;
+        }
+        const auto path = get_subaccount_root_path(subaccount);
         return m_subaccounts.insert(std::make_pair(subaccount, xpub_hdkey(m_is_main_net, m_xpub, path))).first->second;
     }
 
