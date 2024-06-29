@@ -13,7 +13,7 @@
 
 namespace green {
 
-    class ga_pubkeys;
+    class green_pubkeys;
     class network_parameters;
     class session_impl;
     class user_pubkeys;
@@ -41,7 +41,7 @@ namespace green {
     std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo, bool verify_script = true);
 
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
-        ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
+        green_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo);
 
     // Get scriptpubkey from address (address is expected to be valid)
     std::vector<unsigned char> scriptpubkey_from_address(

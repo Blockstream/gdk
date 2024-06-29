@@ -88,7 +88,7 @@ namespace green {
         return get_subaccount(subaccount).derive(path);
     }
 
-    ga_pubkeys::ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
+    green_pubkeys::green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
         : xpub_hdkeys(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());
@@ -96,7 +96,7 @@ namespace green {
         get_subaccount(0); // Initialize main account
     }
 
-    std::vector<uint32_t> ga_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    std::vector<uint32_t> green_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
     {
         // Note: This assumes address version v1+.
         // Version 0 addresses are not derived from the users gait_path
@@ -109,7 +109,7 @@ namespace green {
         return path;
     }
 
-    std::vector<uint32_t> ga_pubkeys::get_subaccount_full_path(
+    std::vector<uint32_t> green_pubkeys::get_subaccount_full_path(
         uint32_t subaccount, uint32_t pointer, bool /*is_internal*/) const
     {
         auto path = get_subaccount_root_path(subaccount);
@@ -117,7 +117,7 @@ namespace green {
         return path;
     }
 
-    xpub_hdkey ga_pubkeys::get_subaccount(uint32_t subaccount)
+    xpub_hdkey green_pubkeys::get_subaccount(uint32_t subaccount)
     {
         // Note unlike user pubkeys, the Green key is not privately derived,
         // since the user must be able to derive it from the Green service xpub.
@@ -129,30 +129,30 @@ namespace green {
         return m_subaccounts.insert(std::make_pair(subaccount, xpub_hdkey(m_is_main_net, m_xpub, path))).first->second;
     }
 
-    std::array<uint32_t, 1> ga_pubkeys::get_gait_generation_path()
+    std::array<uint32_t, 1> green_pubkeys::get_gait_generation_path()
     {
         return std::array<uint32_t, 1>{ { GAIT_GENERATION_PATH } };
     }
 
-    std::array<unsigned char, HMAC_SHA512_LEN> ga_pubkeys::get_gait_path_bytes(const xpub_t& xpub)
+    std::array<unsigned char, HMAC_SHA512_LEN> green_pubkeys::get_gait_path_bytes(const xpub_t& xpub)
     {
         std::array<unsigned char, sizeof(chain_code_t) + sizeof(pub_key_t)> path_data;
         init_container(path_data, xpub.first, xpub.second);
         return hmac_sha512(GAIT_GENERATION_NONCE, path_data);
     }
 
-    ga_user_pubkeys::ga_user_pubkeys(const network_parameters& net_params)
+    green_user_pubkeys::green_user_pubkeys(const network_parameters& net_params)
         : user_pubkeys(net_params)
     {
     }
 
-    ga_user_pubkeys::ga_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub)
+    green_user_pubkeys::green_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub)
         : user_pubkeys(net_params, xpub)
     {
         add_subaccount(0, m_xpub);
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_root_path(uint32_t subaccount)
+    std::vector<uint32_t> green_user_pubkeys::get_green_subaccount_root_path(uint32_t subaccount)
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount) });
@@ -160,12 +160,12 @@ namespace green {
         return std::vector<uint32_t>();
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    std::vector<uint32_t> green_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
     {
-        return get_ga_subaccount_root_path(subaccount); // Defer to static impl
+        return get_green_subaccount_root_path(subaccount); // Defer to static impl
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_ga_subaccount_full_path(
+    std::vector<uint32_t> green_user_pubkeys::get_green_subaccount_full_path(
         uint32_t subaccount, uint32_t pointer, bool /*is_internal*/)
     {
         if (subaccount != 0u) {
@@ -174,18 +174,18 @@ namespace green {
         return std::vector<uint32_t>({ 1, pointer });
     }
 
-    std::vector<uint32_t> ga_user_pubkeys::get_subaccount_full_path(
+    std::vector<uint32_t> green_user_pubkeys::get_subaccount_full_path(
         uint32_t subaccount, uint32_t pointer, bool is_internal) const
     {
-        return get_ga_subaccount_full_path(subaccount, pointer, is_internal); // Defer to static impl
+        return get_green_subaccount_full_path(subaccount, pointer, is_internal); // Defer to static impl
     }
 
-    bool ga_user_pubkeys::have_subaccount(uint32_t subaccount)
+    bool green_user_pubkeys::have_subaccount(uint32_t subaccount)
     {
         return m_subaccounts.find(subaccount) != m_subaccounts.end();
     }
 
-    void ga_user_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
+    void green_user_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
     {
         std::array<uint32_t, 1> path{ { 1 } };
         auto user_key = xpub_hdkey(m_is_main_net, xpub, path);
@@ -196,14 +196,14 @@ namespace green {
         }
     }
 
-    void ga_user_pubkeys::remove_subaccount(uint32_t subaccount)
+    void green_user_pubkeys::remove_subaccount(uint32_t subaccount)
     {
         // Removing subaccounts is not supported for Green multisig wallets
         (void)subaccount;
         GDK_RUNTIME_ASSERT(false);
     }
 
-    xpub_hdkey ga_user_pubkeys::get_subaccount(uint32_t subaccount)
+    xpub_hdkey green_user_pubkeys::get_subaccount(uint32_t subaccount)
     {
         const auto p = m_subaccounts.find(subaccount);
         GDK_RUNTIME_ASSERT(p != m_subaccounts.end());

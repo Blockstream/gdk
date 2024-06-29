@@ -18,7 +18,7 @@ namespace green {
     using unique_pubkeys_and_scripts_t = std::set<pubkey_and_script_t>;
 
     class client_blob;
-    class ga_pubkeys;
+    class green_pubkeys;
     class user_pubkeys;
     class signer;
     class Tx;
@@ -217,7 +217,7 @@ namespace green {
         virtual void encache_signer_xpubs(std::shared_ptr<signer> signer);
         void load_signer_xpubs(locker_t& locker, const nlohmann::json& xpubs, std::shared_ptr<signer> signer);
 
-        virtual ga_pubkeys& get_ga_pubkeys();
+        virtual green_pubkeys& get_green_pubkeys();
         virtual user_pubkeys& get_user_pubkeys();
         virtual user_pubkeys& get_recovery_pubkeys();
 

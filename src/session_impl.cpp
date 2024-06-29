@@ -746,7 +746,7 @@ namespace green {
             const auto pointer = j_uint32ref(sa, "pointer");
             sa.update(m_blob->get_subaccount_data(pointer));
             if (!is_electrum) {
-                sa["user_path"] = ga_user_pubkeys::get_ga_subaccount_root_path(pointer);
+                sa["user_path"] = green_user_pubkeys::get_green_subaccount_root_path(pointer);
             }
             // Make sure we supply metdadata elements in the event they
             // weren't provided (e.g. not present in the client blob)
@@ -974,7 +974,7 @@ namespace green {
         GDK_LOG(debug) << "Loaded " << xpubs.size() << " cached xpubs";
     }
 
-    ga_pubkeys& session_impl::get_ga_pubkeys()
+    green_pubkeys& session_impl::get_green_pubkeys()
     {
         GDK_RUNTIME_ASSERT(false);
         __builtin_unreachable();
@@ -1076,7 +1076,7 @@ namespace green {
         }
         // Multisig UTXO
         return multisig_output_script_from_utxo(
-            m_net_params, get_ga_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
+            m_net_params, get_green_pubkeys(), get_user_pubkeys(), get_recovery_pubkeys(), utxo);
     }
 
     std::vector<xpub_hdkey> session_impl::keys_from_utxo(const nlohmann::json& utxo)
@@ -1113,7 +1113,7 @@ namespace green {
             return { get_user_pubkeys().derive(subaccount, pointer, is_internal) };
         }
         // TODO: consider returning the recovery key (2of3) as well
-        return { get_ga_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) };
+        return { get_green_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) };
     }
 
     nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)

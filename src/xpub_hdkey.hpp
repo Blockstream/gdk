@@ -86,15 +86,15 @@ namespace green {
     // NOTE: This class cannot be used for v0 addresses, which must be handled
     // separately.
     //
-    class ga_pubkeys final : public xpub_hdkeys {
+    class green_pubkeys final : public xpub_hdkeys {
     public:
-        ga_pubkeys(const network_parameters& net_params, uint32_span_t gait_path);
+        green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path);
 
-        ga_pubkeys(const ga_pubkeys&) = default;
-        ga_pubkeys& operator=(const ga_pubkeys&) = default;
-        ga_pubkeys(ga_pubkeys&&) = default;
-        ga_pubkeys& operator=(ga_pubkeys&&) = default;
-        ~ga_pubkeys() override = default;
+        green_pubkeys(const green_pubkeys&) = default;
+        green_pubkeys& operator=(const green_pubkeys&) = default;
+        green_pubkeys(green_pubkeys&&) = default;
+        green_pubkeys& operator=(green_pubkeys&&) = default;
+        ~green_pubkeys() override = default;
 
         // Return the path that must be used to deriving the gait_path xpub
         static std::array<uint32_t, 1> get_gait_generation_path();
@@ -141,25 +141,25 @@ namespace green {
     // passing the xpub of the m/3'/subaccount' key before calling derive()
     // on a subaccount.
     //
-    class ga_user_pubkeys final : public user_pubkeys {
+    class green_user_pubkeys final : public user_pubkeys {
     public:
-        explicit ga_user_pubkeys(const network_parameters& net_params);
-        ga_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub);
+        explicit green_user_pubkeys(const network_parameters& net_params);
+        green_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub);
 
-        ga_user_pubkeys(const ga_user_pubkeys&) = default;
-        ga_user_pubkeys& operator=(const ga_user_pubkeys&) = default;
-        ga_user_pubkeys(ga_user_pubkeys&&) = default;
-        ga_user_pubkeys& operator=(ga_user_pubkeys&&) = default;
-        ~ga_user_pubkeys() override = default;
+        green_user_pubkeys(const green_user_pubkeys&) = default;
+        green_user_pubkeys& operator=(const green_user_pubkeys&) = default;
+        green_user_pubkeys(green_user_pubkeys&&) = default;
+        green_user_pubkeys& operator=(green_user_pubkeys&&) = default;
+        ~green_user_pubkeys() override = default;
 
         // Note: The static implementations below are used for old-style
         // Green watch only logins (i.e. those without a client blob).
         // For those sessions, the users subaccount xpubs aren't available.
 
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
-        static std::vector<uint32_t> get_ga_subaccount_root_path(uint32_t subaccount);
+        static std::vector<uint32_t> get_green_subaccount_root_path(uint32_t subaccount);
         // Get the full path to a key in a subaccount
-        static std::vector<uint32_t> get_ga_subaccount_full_path(
+        static std::vector<uint32_t> get_green_subaccount_full_path(
             uint32_t subaccount, uint32_t pointer, bool is_internal);
 
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'

@@ -120,7 +120,7 @@ namespace green {
         void set_local_encryption_keys(locker_t& locker, const pub_key_t& public_key, std::shared_ptr<signer> signer);
         void populate_initial_client_blob(locker_t& locker);
 
-        ga_pubkeys& get_ga_pubkeys();
+        green_pubkeys& get_green_pubkeys();
         user_pubkeys& get_recovery_pubkeys();
 
         void disable_all_pin_logins();

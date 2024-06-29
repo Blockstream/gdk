@@ -16,7 +16,7 @@
 namespace green {
 
     struct cache;
-    class ga_user_pubkeys;
+    class green_user_pubkeys;
 
     class ga_session final : public session_impl {
     public:
@@ -123,7 +123,7 @@ namespace green {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
-        ga_pubkeys& get_ga_pubkeys();
+        green_pubkeys& get_green_pubkeys();
         user_pubkeys& get_recovery_pubkeys();
         bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
         std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
@@ -237,8 +237,8 @@ namespace green {
         nlohmann::json m_assets;
 
         std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main
-        std::unique_ptr<ga_pubkeys> m_ga_pubkeys;
-        std::unique_ptr<ga_user_pubkeys> m_recovery_pubkeys;
+        std::unique_ptr<green_pubkeys> m_green_pubkeys;
+        std::unique_ptr<green_user_pubkeys> m_recovery_pubkeys;
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
         std::chrono::system_clock::time_point m_fee_estimates_ts;

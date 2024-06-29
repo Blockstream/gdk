@@ -300,7 +300,7 @@ namespace green {
     }
 
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
-        ga_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
+        green_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, user_pubkeys& recovery_pubkeys, const nlohmann::json& utxo)
     {
         using namespace address_type;
         const auto& addr_type = j_strref(utxo, "address_type");
