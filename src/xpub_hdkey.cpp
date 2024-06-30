@@ -215,34 +215,22 @@ namespace green {
     {
     }
 
-    std::vector<uint32_t> bip44_pubkeys::get_bip44_subaccount_root_path(
-        bool is_main_net, bool is_liquid, uint32_t subaccount)
+    std::vector<uint32_t> bip44_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
     {
         const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
         const uint32_t purpose = purpose_lookup.at(subaccount % 16);
-        const uint32_t coin_type = is_main_net ? (is_liquid ? 1776 : 0) : 1;
+        const uint32_t coin_type = m_is_main_net ? (m_is_liquid ? 1776 : 0) : 1;
         const uint32_t account = subaccount / 16;
         return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
-    }
-
-    std::vector<uint32_t> bip44_pubkeys::get_bip44_subaccount_full_path(
-        bool is_main_net, bool is_liquid, uint32_t subaccount, uint32_t pointer, bool is_internal)
-    {
-        auto path = get_bip44_subaccount_root_path(is_main_net, is_liquid, subaccount);
-        path.emplace_back(is_internal ? 1 : 0);
-        path.emplace_back(pointer);
-        return path;
-    }
-
-    std::vector<uint32_t> bip44_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
-    {
-        return get_bip44_subaccount_root_path(m_is_main_net, m_is_liquid, subaccount);
     }
 
     std::vector<uint32_t> bip44_pubkeys::get_subaccount_full_path(
         uint32_t subaccount, uint32_t pointer, bool is_internal) const
     {
-        return get_bip44_subaccount_full_path(m_is_main_net, m_is_liquid, subaccount, pointer, is_internal);
+        auto path = get_subaccount_root_path(subaccount);
+        path.emplace_back(is_internal ? 1 : 0);
+        path.emplace_back(pointer);
+        return path;
     }
 
     bool bip44_pubkeys::have_subaccount(uint32_t subaccount)

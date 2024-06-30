@@ -209,11 +209,6 @@ namespace green {
         bip44_pubkeys& operator=(bip44_pubkeys&&) = default;
         ~bip44_pubkeys() override = default;
 
-        static std::vector<uint32_t> get_bip44_subaccount_root_path(
-            bool is_main_net, bool is_liquid, uint32_t subaccount);
-        static std::vector<uint32_t> get_bip44_subaccount_full_path(
-            bool is_main_net, bool is_liquid, uint32_t subaccount, uint32_t pointer, bool is_internal);
-
         // Get the path to the subaccount parent, i.e. m/[44|49|84]'/[0|1|1776]'/mapped subaccount'
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
 
