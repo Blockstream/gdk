@@ -25,6 +25,9 @@
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
   and cheaper recovery path, which requires only a single signature and does not
   require two-factor authentication.
+- GA_psbt_from_json: The returned PSBT now includes keypath elements for wallet
+  inputs and outputs. This allows output identification and signing of the PSBT
+  by external/offline signing devices.
 - C/C++: The name of the shared library has changed from from ``libgreenaddress``
   to ``libgreen_gdk``. Applications linking to the shared library should update
   their link commands accordingly.
