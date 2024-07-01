@@ -463,7 +463,7 @@ namespace green {
         nlohmann::json::array_t paths;
         paths.reserve(m_subaccount_pointers.size());
         for (const auto& pointer : m_subaccount_pointers) {
-            paths.emplace_back(m_session->get_path_to_subaccount(pointer));
+            paths.emplace_back(m_session->get_user_pubkeys().get_path_to_subaccount(pointer));
         }
         auto& request = signal_hw_request(hw_request::get_xpubs);
         request["paths"] = std::move(paths);
@@ -506,7 +506,7 @@ namespace green {
         }
 
         auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
-        paths.emplace_back(m_session->get_path_to_subaccount(m_subaccount));
+        paths.emplace_back(m_session->get_user_pubkeys().get_path_to_subaccount(m_subaccount));
     }
 
     auth_handler::state_type create_subaccount_call::call_impl()
@@ -1187,7 +1187,7 @@ namespace green {
             for (;;) {
                 // Find the last empty subaccount of this type
                 auto subaccount = m_session->get_last_empty_subaccount(addr_type);
-                auto path = m_session->get_path_to_subaccount(subaccount);
+                auto path = m_session->get_user_pubkeys().get_path_to_subaccount(subaccount);
                 if (!signer->has_bip32_xpub(path)) {
                     if (is_watch_only) {
                         // Watch only sessions can only discover subaccounts where

@@ -1493,7 +1493,8 @@ namespace green {
             std::vector<std::string> bip32_xpubs;
             bip32_xpubs.reserve(subaccount_pointers.size());
             for (const auto& pointer : subaccount_pointers) {
-                bip32_xpubs.emplace_back(m_signer->get_bip32_xpub(get_path_to_subaccount(pointer)));
+                const auto path = m_user_pubkeys->get_path_to_subaccount(pointer);
+                bip32_xpubs.emplace_back(signer->get_bip32_xpub(path));
             }
             register_subaccount_xpubs(subaccount_pointers, bip32_xpubs);
         }
@@ -3002,18 +3003,6 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
         return *m_recovery_pubkeys;
-    }
-
-    std::vector<uint32_t> ga_session::get_path_to_subaccount(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        return m_user_pubkeys->get_path_to_subaccount(subaccount);
-    }
-
-    std::vector<uint32_t> ga_session::get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
-    {
-        locker_t locker(m_mutex);
-        return m_user_pubkeys->get_full_path(subaccount, pointer, is_internal);
     }
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)

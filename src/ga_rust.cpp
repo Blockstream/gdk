@@ -304,12 +304,13 @@ namespace green {
         on_post_login();
 
         // Register the subaccounts using the blob data to identify them
-        const auto pointers = get_subaccount_pointers();
-        std::vector<std::string> xpubs;
-        for (const auto& pointer : pointers) {
-            xpubs.push_back(signer->get_bip32_xpub(get_path_to_subaccount(pointer)));
+        const auto subaccount_pointers = get_subaccount_pointers();
+        std::vector<std::string> bip32_xpubs;
+        for (const auto& pointer : subaccount_pointers) {
+            const auto path = m_user_pubkeys->get_path_to_subaccount(pointer);
+            bip32_xpubs.emplace_back(signer->get_bip32_xpub(path));
         }
-        register_subaccount_xpubs(pointers, xpubs);
+        register_subaccount_xpubs(subaccount_pointers, bip32_xpubs);
 
         // Call the rust start_threads directly to avoid repeating the call to
         // on_post_login in this class's start_threads method
@@ -479,16 +480,6 @@ namespace green {
         if (!m_watch_only) {
             session_impl::update_subaccount(subaccount, details);
         }
-    }
-
-    std::vector<uint32_t> ga_rust::get_path_to_subaccount(uint32_t subaccount)
-    {
-        return m_user_pubkeys->get_path_to_subaccount(subaccount);
-    }
-
-    std::vector<uint32_t> ga_rust::get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
-    {
-        return m_user_pubkeys->get_full_path(subaccount, pointer, is_internal);
     }
 
     nlohmann::json ga_rust::get_available_currencies() const

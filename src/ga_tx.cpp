@@ -1191,7 +1191,7 @@ namespace green {
 
         if (utxo.find("user_path") == utxo.end()) {
             // Populate the full user path for h/w signing
-            utxo["user_path"] = session.get_full_path(subaccount, pointer, is_internal);
+            utxo["user_path"] = session.get_user_pubkeys().get_full_path(subaccount, pointer, is_internal);
         }
 
         if (session.get_network_parameters().is_electrum()) {
@@ -1258,7 +1258,7 @@ namespace green {
             const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
             const uint32_t pointer = j_uint32_or_zero(utxo, "pointer");
             const bool is_internal = j_bool_or_false(utxo, "is_internal");
-            const auto path = session.get_full_path(subaccount, pointer, is_internal);
+            const auto path = session.get_user_pubkeys().get_full_path(subaccount, pointer, is_internal);
             const auto sig = session.get_nonnull_signer()->sign_hash(path, tx_signature_hash);
             sigs[i] = b2h(ec_sig_to_der(sig, sighash_flags));
         }
