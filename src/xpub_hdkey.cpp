@@ -8,7 +8,6 @@
 namespace green {
 
     namespace {
-        static const uint32_t GAIT_GENERATION_PATH = harden(0x4741); // 'GA'
         static const unsigned char GAIT_GENERATION_NONCE[30] = { 'G', 'r', 'e', 'e', 'n', 'A', 'd', 'd', 'r', 'e', 's',
             's', '.', 'i', 't', ' ', 'H', 'D', ' ', 'w', 'a', 'l', 'l', 'e', 't', ' ', 'p', 'a', 't', 'h' };
     } // namespace
@@ -132,11 +131,6 @@ namespace green {
         }
         const auto path = get_subaccount_root_path(subaccount);
         return m_subaccounts.emplace(subaccount, m_master_xpub.derive(path)).first->second;
-    }
-
-    std::array<uint32_t, 1> green_pubkeys::get_gait_generation_path()
-    {
-        return std::array<uint32_t, 1>{ { GAIT_GENERATION_PATH } };
     }
 
     std::array<unsigned char, HMAC_SHA512_LEN> green_pubkeys::get_gait_path_bytes(const xpub_t& xpub)

@@ -96,9 +96,6 @@ namespace green {
         green_pubkeys& operator=(green_pubkeys&&) = default;
         ~green_pubkeys() override = default;
 
-        // Return the path that must be used to deriving the gait_path xpub
-        static std::array<uint32_t, 1> get_gait_generation_path();
-
         // Return a gait path for registration. xpub must be the users m/0x4741' path.
         static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_t& xpub);
 
