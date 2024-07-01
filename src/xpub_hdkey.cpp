@@ -12,29 +12,21 @@ namespace green {
             's', '.', 'i', 't', ' ', 'H', 'D', ' ', 'w', 'a', 'l', 'l', 'e', 't', ' ', 'p', 'a', 't', 'h' };
     } // namespace
 
-    xpub_hdkey::xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path)
+    xpub_hdkey::xpub_hdkey(const std::string& xpub)
+        : m_ext_key(*bip32_public_key_from_bip32_xpub(xpub))
     {
-        const uint32_t version = is_main_net ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC;
-        wally_ext_key_ptr master = bip32_key_init_alloc(version, 0, 0, xpub.first, xpub.second);
-
-        if (!path.empty()) {
-            m_ext_key = bip32_public_key_from_parent_path(*master, path);
-        } else {
-            m_ext_key = *master;
-        }
     }
 
-    xpub_hdkey xpub_hdkey::from_public_key(bool is_main_net, byte_span_t public_key, byte_span_t chain_code)
+    xpub_hdkey::xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code)
     {
-        xpub_t xpub{ { 0 }, { 0 } };
-        GDK_RUNTIME_ASSERT(public_key.size() == xpub.second.size());
-        GDK_RUNTIME_ASSERT(chain_code.empty() || chain_code.size() == xpub.first.size());
-        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
-        memcpy(xpub.second.data(), public_key.data(), public_key.size());
-        if (!chain_code.empty()) {
-            memcpy(xpub.first.data(), chain_code.data(), chain_code.size());
+        std::array<unsigned char, WALLY_BIP32_CHAIN_CODE_LEN> empty;
+        if (chain_code.empty()) {
+            empty.fill(0);
+            chain_code = empty; // Wally requires the chain code, pass it as zeros
         }
-        return { is_main_net, xpub };
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
+        const uint32_t version = is_main_net ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC;
+        m_ext_key = *bip32_key_init_alloc(version, 0, 0, chain_code, public_key);
     }
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
@@ -92,8 +84,7 @@ namespace green {
 
     green_pubkeys::green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
         : xpub_hdkeys(net_params)
-        , m_master_xpub(
-              xpub_hdkey::from_public_key(m_is_main_net, h2b(net_params.pub_key()), h2b(net_params.chain_code())))
+        , m_master_xpub(m_is_main_net, h2b(net_params.pub_key()), h2b(net_params.chain_code()))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());
         std::copy(std::begin(gait_path), std::end(gait_path), m_gait_path.begin());
@@ -167,10 +158,10 @@ namespace green {
         return m_subaccounts.find(subaccount) != m_subaccounts.end();
     }
 
-    void green_user_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
+    void green_user_pubkeys::add_subaccount(uint32_t subaccount, const std::string& bip32_xpub)
     {
         std::array<uint32_t, 1> path{ { 1 } };
-        auto user_key = xpub_hdkey(m_is_main_net, xpub, path);
+        auto user_key = xpub_hdkey(bip32_xpub).derive(path);
         const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
@@ -220,9 +211,9 @@ namespace green {
         return m_subaccounts.find(subaccount) != m_subaccounts.end();
     }
 
-    void bip44_pubkeys::add_subaccount(uint32_t subaccount, const xpub_t& xpub)
+    void bip44_pubkeys::add_subaccount(uint32_t subaccount, const std::string& bip32_xpub)
     {
-        auto user_key = xpub_hdkey(m_is_main_net, xpub);
+        xpub_hdkey user_key(bip32_xpub);
         const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there

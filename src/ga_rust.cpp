@@ -273,7 +273,7 @@ namespace green {
                 details["xpub"] = bip32_xpub;
                 rust_call("create_subaccount", details, m_session);
                 locker_t locker(m_mutex);
-                m_user_pubkeys->add_subaccount(pointer, make_xpub(bip32_xpub));
+                m_user_pubkeys->add_subaccount(pointer, bip32_xpub);
             }
         }
     }
@@ -344,7 +344,7 @@ namespace green {
         }
         rust_call("create_subaccount", details, m_session);
         locker_t locker(m_mutex);
-        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        m_user_pubkeys->add_subaccount(subaccount, xpub);
         return true;
     }
 
@@ -365,7 +365,7 @@ namespace green {
         auto ret = rust_call("create_subaccount", details, m_session);
         // Creating a new subaccount, set its metadata
         locker_t locker(m_mutex);
-        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        m_user_pubkeys->add_subaccount(subaccount, xpub);
         if (have_writable_client_blob(locker)) {
             nlohmann::json sa_data = { { "name", j_strref(details, "name") }, { "hidden", false } };
             nlohmann::json subaccounts = { { std::to_string(subaccount), std::move(sa_data) } };

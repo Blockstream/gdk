@@ -1091,7 +1091,7 @@ namespace green {
             if (!utxo.contains("subaccount")) {
                 // Sweep UTXO
                 const bool is_main_net = m_net_params.is_main_net();
-                return { xpub_hdkey::from_public_key(is_main_net, j_bytesref(utxo, "public_key")) };
+                return { { is_main_net, j_bytesref(utxo, "public_key") } };
             }
             // Multisig doesn't support p2pkh except for sweep UTXOs
             GDK_RUNTIME_ASSERT(is_electrum);

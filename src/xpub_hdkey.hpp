@@ -16,9 +16,9 @@ namespace green {
     //
     class xpub_hdkey final {
     public:
-        xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path = {});
+        xpub_hdkey(const std::string& xpub);
 
-        static xpub_hdkey from_public_key(bool is_main_net, byte_span_t public_key, byte_span_t chain_code = {});
+        xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code = {});
 
         xpub_hdkey(const xpub_hdkey&) = default;
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
@@ -31,10 +31,10 @@ namespace green {
 
         xpub_hdkey derive(uint32_span_t path) const;
 
-        xpub_t to_xpub_t() const;
         pub_key_t get_public_key() const;
         std::vector<unsigned char> get_fingerprint() const;
 
+        xpub_t to_xpub_t() const;
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;
 
@@ -125,7 +125,7 @@ namespace green {
 
         virtual bool have_subaccount(uint32_t subaccount) = 0;
 
-        virtual void add_subaccount(uint32_t subaccount, const xpub_t& xpub) = 0;
+        virtual void add_subaccount(uint32_t subaccount, const std::string& bip32_xpub) = 0;
         virtual void remove_subaccount(uint32_t subaccount) = 0;
     };
 
@@ -158,7 +158,7 @@ namespace green {
 
         virtual bool have_subaccount(uint32_t subaccount) override;
 
-        virtual void add_subaccount(uint32_t subaccount, const xpub_t& xpub) override;
+        virtual void add_subaccount(uint32_t subaccount, const std::string& bip32_xpub) override;
         virtual void remove_subaccount(uint32_t subaccount) override;
 
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) override;
@@ -205,7 +205,7 @@ namespace green {
 
         virtual bool have_subaccount(uint32_t subaccount) override;
 
-        virtual void add_subaccount(uint32_t subaccount, const xpub_t& xpub) override;
+        virtual void add_subaccount(uint32_t subaccount, const std::string& bip32_xpub) override;
         virtual void remove_subaccount(uint32_t subaccount) override;
 
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) override;

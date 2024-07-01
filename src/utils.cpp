@@ -681,9 +681,7 @@ namespace green {
     std::string get_wallet_hash_id(const std::string& chain_code_hex, const std::string& public_key_hex,
         bool is_mainnet, const std::string& network)
     {
-        const chain_code_t main_chaincode{ h2b_array<32>(chain_code_hex) };
-        const pub_key_t main_pubkey{ h2b_array<EC_PUBLIC_KEY_LEN>(public_key_hex) };
-        const xpub_hdkey main_hdkey(is_mainnet, std::make_pair(main_chaincode, main_pubkey));
+        const xpub_hdkey main_hdkey(is_mainnet, h2b(public_key_hex), h2b(chain_code_hex));
         return main_hdkey.to_hashed_identifier(network);
     }
 

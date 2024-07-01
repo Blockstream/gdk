@@ -1510,7 +1510,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
 
         for (size_t i = 0; i < pointers.size(); ++i) {
-            m_user_pubkeys->add_subaccount(pointers.at(i), make_xpub(bip32_xpubs.at(i)));
+            m_user_pubkeys->add_subaccount(pointers.at(i), bip32_xpubs.at(i));
         }
     }
 
@@ -1703,11 +1703,12 @@ namespace green {
             if (!m_user_pubkeys->have_subaccount(subaccount)) {
                 // TODO: Investigate whether this code path can ever execute
                 const std::array<uint32_t, 2> path{ harden(3), harden(subaccount) };
-                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
+                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_bip32_xpub(path));
             }
 
             if (m_recovery_pubkeys && !recovery_chain_code.empty()) {
-                m_recovery_pubkeys->add_subaccount(subaccount, make_xpub(recovery_chain_code, recovery_pub_key));
+                xpub_hdkey recovery_key(m_net_params.is_main_net(), h2b(recovery_pub_key), h2b(recovery_chain_code));
+                m_recovery_pubkeys->add_subaccount(subaccount, recovery_key.to_base58());
             }
         }
 
@@ -1752,7 +1753,7 @@ namespace green {
             = wamp_cast(m_wamp->call("txs.create_subaccount_v2", subaccount, std::string(), type, xpubs, sigs));
 
         locker_t locker(m_mutex);
-        m_user_pubkeys->add_subaccount(subaccount, make_xpub(xpub));
+        m_user_pubkeys->add_subaccount(subaccount, xpub);
         constexpr uint32_t required_ca = 0;
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
             recovery_chain_code, recovery_bip32_xpub, type, required_ca);
