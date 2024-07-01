@@ -559,11 +559,16 @@ namespace green {
         }
 
         const auto& outputs = j_arrayref(details, "transaction_outputs");
-        if (m_is_liquid) {
-            for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
-                const auto& output = outputs.at(i);
-                const auto& psbt_output = get_output(i);
+        for (size_t i = 0; i < tx.get_num_outputs(); ++i) {
+            const auto& output = outputs.at(i);
+            auto& psbt_output = get_output(i);
 
+            if (is_wallet_utxo(output)) {
+                // Wallet UTXO. Add the relevant keypaths
+                add_keypaths(session, psbt_output.keypaths, output);
+            }
+
+            if (m_is_liquid) {
                 // Add the output asset and amount
                 const auto asset_id = j_rbytesref(output, "asset_id");
                 GDK_VERIFY(wally_psbt_set_output_asset(m_psbt.get(), i, asset_id.data(), asset_id.size()));
