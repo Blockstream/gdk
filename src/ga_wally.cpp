@@ -78,6 +78,69 @@ namespace green {
     //
     // BIP 32
     //
+    xpub_hdkey::xpub_hdkey(const std::string& xpub)
+        : m_ext_key(*bip32_public_key_from_bip32_xpub(xpub))
+    {
+    }
+
+    xpub_hdkey::xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code)
+    {
+        std::array<unsigned char, WALLY_BIP32_CHAIN_CODE_LEN> empty;
+        if (chain_code.empty()) {
+            empty.fill(0);
+            chain_code = empty; // Wally requires the chain code, pass it as zeros
+        }
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
+        const uint32_t version = is_main_net ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC;
+        m_ext_key = *bip32_key_init_alloc(version, 0, 0, chain_code, public_key);
+    }
+
+    xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
+
+    bool xpub_hdkey::operator==(const xpub_hdkey& rhs) const
+    {
+        return !memcmp(m_ext_key.pub_key, rhs.m_ext_key.pub_key, sizeof(m_ext_key.pub_key))
+            && !memcmp(m_ext_key.chain_code, rhs.m_ext_key.chain_code, sizeof(m_ext_key.chain_code));
+    }
+
+    xpub_hdkey xpub_hdkey::derive(uint32_span_t path) const
+    {
+        if (path.empty()) {
+            return *this;
+        }
+        return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path));
+    }
+
+    pub_key_t xpub_hdkey::get_public_key() const
+    {
+        pub_key_t ret;
+        std::copy(m_ext_key.pub_key, m_ext_key.pub_key + ret.size(), ret.begin());
+        return ret;
+    }
+
+    chain_code_t xpub_hdkey::get_chain_code() const
+    {
+        chain_code_t ret;
+        std::copy(m_ext_key.chain_code, m_ext_key.chain_code + ret.size(), ret.begin());
+        return ret;
+    }
+
+    std::vector<unsigned char> xpub_hdkey::get_fingerprint() const
+    {
+        auto copy = m_ext_key;
+        return bip32_key_get_fingerprint(copy);
+    }
+
+    std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
+
+    std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const
+    {
+        // Return a hashed id from which the xpub cannot be extracted
+        const auto key_data = bip32_key_serialize(m_ext_key, BIP32_FLAG_KEY_PUBLIC);
+        const auto hashed = pbkdf2_hmac_sha512_256(key_data, ustring_span(network));
+        return b2h(hashed);
+    }
+
     std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags)
     {
         std::array<unsigned char, BIP32_SERIALIZED_LEN> ret;

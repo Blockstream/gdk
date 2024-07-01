@@ -82,6 +82,40 @@ namespace green {
     //
     // BIP 32
     //
+
+    //
+    // A bip32 extended key for public key derivation.
+    //
+    class xpub_hdkey final {
+    public:
+        xpub_hdkey(const std::string& xpub);
+
+        xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code = {});
+
+        xpub_hdkey(const xpub_hdkey&) = default;
+        xpub_hdkey& operator=(const xpub_hdkey&) = default;
+        xpub_hdkey(xpub_hdkey&&) = default;
+        xpub_hdkey& operator=(xpub_hdkey&&) = default;
+
+        explicit xpub_hdkey(const ext_key& ext_key) { m_ext_key = ext_key; }
+
+        ~xpub_hdkey();
+
+        bool operator==(const xpub_hdkey& rhs) const;
+
+        xpub_hdkey derive(uint32_span_t path) const;
+
+        chain_code_t get_chain_code() const;
+        pub_key_t get_public_key() const;
+        std::vector<unsigned char> get_fingerprint() const;
+
+        std::string to_base58() const;
+        std::string to_hashed_identifier(const std::string& network) const;
+
+    private:
+        ext_key m_ext_key;
+    };
+
     std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags);
 
     wally_ext_key_ptr bip32_key_unserialize_alloc(byte_span_t data);
