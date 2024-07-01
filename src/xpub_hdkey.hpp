@@ -29,12 +29,14 @@ namespace green {
 
         ~xpub_hdkey();
 
+        bool operator==(const xpub_hdkey& rhs) const;
+
         xpub_hdkey derive(uint32_span_t path) const;
 
+        chain_code_t get_chain_code() const;
         pub_key_t get_public_key() const;
         std::vector<unsigned char> get_fingerprint() const;
 
-        xpub_t to_xpub_t() const;
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;
 
@@ -97,7 +99,7 @@ namespace green {
         ~green_pubkeys() override = default;
 
         // Return a gait path for registration. xpub must be the users m/0x4741' path.
-        static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_t& xpub);
+        static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_hdkey& gait_key);
 
         // Get the path to the subaccount root, i.e. m/1/gait_path or m/3/gait_path/subaccount
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;

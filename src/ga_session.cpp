@@ -421,8 +421,8 @@ namespace green {
 
         if (!signer->is_watch_only()) {
             // Get our gait path xpub and compute gait_path from it
-            const auto gait_xpub = signer->get_xpub(signer::REGISTER_PATH);
-            const auto gait_path = b2h(green_pubkeys::get_gait_path_bytes(gait_xpub));
+            const auto gait_bip32_xpub = signer->get_bip32_xpub(signer::REGISTER_PATH);
+            const auto gait_path = b2h(green_pubkeys::get_gait_path_bytes(gait_bip32_xpub));
             const bool supports_csv = signer->supports_arbitrary_scripts();
             const auto agent = get_user_agent(supports_csv, m_user_agent);
             const auto master = signer->get_master_xpub();

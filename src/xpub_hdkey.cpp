@@ -31,6 +31,12 @@ namespace green {
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
 
+    bool xpub_hdkey::operator==(const xpub_hdkey& rhs) const
+    {
+        return !memcmp(m_ext_key.pub_key, rhs.m_ext_key.pub_key, sizeof(m_ext_key.pub_key))
+            && !memcmp(m_ext_key.chain_code, rhs.m_ext_key.chain_code, sizeof(m_ext_key.chain_code));
+    }
+
     xpub_hdkey xpub_hdkey::derive(uint32_span_t path) const
     {
         if (path.empty()) {
@@ -39,12 +45,17 @@ namespace green {
         return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path));
     }
 
-    xpub_t xpub_hdkey::to_xpub_t() const { return make_xpub(&m_ext_key); }
-
     pub_key_t xpub_hdkey::get_public_key() const
     {
         pub_key_t ret;
         std::copy(m_ext_key.pub_key, m_ext_key.pub_key + ret.size(), ret.begin());
+        return ret;
+    }
+
+    chain_code_t xpub_hdkey::get_chain_code() const
+    {
+        chain_code_t ret;
+        std::copy(m_ext_key.chain_code, m_ext_key.chain_code + ret.size(), ret.begin());
         return ret;
     }
 
@@ -124,10 +135,10 @@ namespace green {
         return m_subaccounts.emplace(subaccount, m_master_xpub.derive(path)).first->second;
     }
 
-    std::array<unsigned char, HMAC_SHA512_LEN> green_pubkeys::get_gait_path_bytes(const xpub_t& xpub)
+    std::array<unsigned char, HMAC_SHA512_LEN> green_pubkeys::get_gait_path_bytes(const xpub_hdkey& gait_key)
     {
         std::array<unsigned char, sizeof(chain_code_t) + sizeof(pub_key_t)> path_data;
-        init_container(path_data, xpub.first, xpub.second);
+        init_container(path_data, gait_key.get_chain_code(), gait_key.get_public_key());
         return hmac_sha512(GAIT_GENERATION_NONCE, path_data);
     }
 
@@ -165,7 +176,7 @@ namespace green {
         const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
-            GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
+            GDK_RUNTIME_ASSERT(ret.first->second == user_key);
         }
     }
 
@@ -217,7 +228,7 @@ namespace green {
         const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
-            GDK_RUNTIME_ASSERT(ret.first->second.to_xpub_t() == user_key.to_xpub_t());
+            GDK_RUNTIME_ASSERT(ret.first->second == user_key);
         }
     }
 
