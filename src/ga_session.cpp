@@ -551,10 +551,8 @@ namespace green {
                 GDK_RUNTIME_ASSERT(b2h(recovery_key.get_public_key()) == recovery_pub_key);
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-                auto parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
-                ext_key derived = bip32_public_key_from_parent_path(*parent, signer::LOGIN_PATH);
-                pub_key_t login_pubkey;
-                memcpy(login_pubkey.begin(), derived.pub_key, sizeof(derived.pub_key));
+                const auto login_key = xpub_hdkey(root_bip32_xpub).derive(signer::LOGIN_PATH);
+                const auto login_pubkey = login_key.get_public_key();
                 GDK_RUNTIME_ASSERT(ec_sig_verify(login_pubkey, message_hash, recovery_xpub_sig));
             }
 

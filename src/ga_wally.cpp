@@ -92,7 +92,10 @@ namespace green {
         }
         GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
         const uint32_t version = is_main_net ? BIP32_VER_MAIN_PUBLIC : BIP32_VER_TEST_PUBLIC;
-        m_ext_key = *bip32_key_init_alloc(version, 0, 0, chain_code, public_key);
+        constexpr uint32_t depth = 0;
+        constexpr uint32_t child_num = 0;
+        GDK_VERIFY(::bip32_key_init(version, depth, child_num, chain_code.data(), chain_code.size(), public_key.data(),
+            public_key.size(), nullptr, 0, nullptr, 0, nullptr, 0, &m_ext_key));
     }
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
@@ -108,7 +111,10 @@ namespace green {
         if (path.empty()) {
             return *this;
         }
-        return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path));
+        const uint32_t flags = BIP32_FLAG_KEY_PUBLIC | BIP32_FLAG_SKIP_HASH;
+        ext_key key;
+        GDK_VERIFY(::bip32_key_from_parent_path(&m_ext_key, path.data(), path.size(), flags, &key));
+        return xpub_hdkey{ key };
     }
 
     pub_key_t xpub_hdkey::get_public_key() const
@@ -127,11 +133,19 @@ namespace green {
 
     std::vector<unsigned char> xpub_hdkey::get_fingerprint() const
     {
+        std::vector<unsigned char> fp;
+        fp.resize(BIP32_KEY_FINGERPRINT_LEN);
         auto copy = m_ext_key;
-        return bip32_key_get_fingerprint(copy);
+        GDK_VERIFY(::bip32_key_get_fingerprint(&copy, fp.data(), fp.size()));
+        return fp;
     }
 
-    std::string xpub_hdkey::to_base58() const { return bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC); }
+    std::string xpub_hdkey::to_base58() const
+    {
+        char* s;
+        GDK_VERIFY(::bip32_key_to_base58(&m_ext_key, BIP32_FLAG_KEY_PUBLIC, &s));
+        return make_string(s);
+    }
 
     std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const
     {
@@ -148,29 +162,12 @@ namespace green {
         return ret;
     }
 
-    wally_ext_key_ptr bip32_key_unserialize_alloc(byte_span_t data)
+    wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub)
     {
+        const auto data = base58check_to_bytes(bip32_xpub);
         ext_key* p;
         GDK_VERIFY(::bip32_key_unserialize_alloc(data.data(), data.size(), &p));
         return wally_ext_key_ptr{ p };
-    }
-
-    ext_key bip32_public_key_from_parent_path(const ext_key& parent, uint32_span_t path)
-    {
-        const uint32_t flags = BIP32_FLAG_KEY_PUBLIC | BIP32_FLAG_SKIP_HASH;
-        ext_key key;
-        GDK_VERIFY(::bip32_key_from_parent_path(&parent, path.data(), path.size(), flags, &key));
-        return key;
-    }
-
-    ext_key bip32_public_key_from_parent(const ext_key& parent, uint32_t pointer)
-    {
-        return bip32_public_key_from_parent_path(parent, { &pointer, 1u });
-    }
-
-    wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub)
-    {
-        return bip32_key_unserialize_alloc(base58check_to_bytes(bip32_xpub));
     }
 
     wally_ext_key_ptr bip32_key_from_parent_path_alloc(
@@ -181,29 +178,11 @@ namespace green {
         return wally_ext_key_ptr{ p };
     }
 
-    wally_ext_key_ptr bip32_key_init_alloc(uint32_t version, uint32_t depth, uint32_t child_num, byte_span_t chain_code,
-        byte_span_t public_key, byte_span_t private_key, byte_span_t hash, byte_span_t parent)
-    {
-        ext_key* p;
-        GDK_VERIFY(::bip32_key_init_alloc(version, depth, child_num, chain_code.data(), chain_code.size(),
-            public_key.data(), public_key.size(), private_key.data(), private_key.size(), hash.data(), hash.size(),
-            parent.data(), parent.size(), &p));
-        return wally_ext_key_ptr{ p };
-    }
-
     wally_ext_key_ptr bip32_key_from_seed_alloc(byte_span_t seed, uint32_t version, uint32_t flags)
     {
         ext_key* p;
         GDK_VERIFY(::bip32_key_from_seed_alloc(seed.data(), seed.size(), version, flags, &p));
         return wally_ext_key_ptr{ p };
-    }
-
-    std::vector<unsigned char> bip32_key_get_fingerprint(ext_key& hdkey)
-    {
-        std::vector<unsigned char> fp;
-        fp.resize(BIP32_KEY_FINGERPRINT_LEN);
-        GDK_VERIFY(::bip32_key_get_fingerprint(&hdkey, fp.data(), fp.size()));
-        return fp;
     }
 
     //
@@ -947,13 +926,6 @@ namespace green {
         uint64_t satoshi;
         GDK_VERIFY(wally_tx_confidential_value_to_satoshi(ct_value.data(), ct_value.size(), &satoshi));
         return satoshi;
-    }
-
-    std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags)
-    {
-        char* s;
-        GDK_VERIFY(::bip32_key_to_base58(hdkey, flags, &s));
-        return make_string(s);
     }
 
 } // namespace green

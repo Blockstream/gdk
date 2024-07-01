@@ -95,15 +95,7 @@ namespace green {
         {
             // Note that you must pass a non-hardened path here; root_bip32_xpub should be
             // the root or last hardened key for this public bip32 derivation to work.
-            wally_ext_key_ptr parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
-            pub_key_t pubkey;
-            if (path.empty()) {
-                memcpy(pubkey.begin(), parent->pub_key, pubkey.size());
-            } else {
-                ext_key derived = bip32_public_key_from_parent_path(*parent, path);
-                memcpy(pubkey.begin(), derived.pub_key, pubkey.size());
-            }
-
+            const auto pubkey = xpub_hdkey(root_bip32_xpub).derive(path).get_public_key();
             constexpr bool has_sighash_byte = false;
             const auto compact_sig = ec_sig_from_der(j_bytesref(hw_reply, "signature"), has_sighash_byte);
             return verify_ae_message(twofactor_data, pubkey, j_bytesref(hw_reply, "signer_commitment"), compact_sig);
@@ -2148,7 +2140,7 @@ namespace green {
         const auto& hw_reply = get_hw_reply();
         const auto& user_path = m_address_data.at("user_path");
         auto bip32_xpub = signer->get_bip32_xpub(user_path.get<std::vector<uint32_t>>());
-        auto xpub_hdkey = bip32_public_key_from_bip32_xpub(bip32_xpub);
+        const auto signing_pubkey = xpub_hdkey(bip32_xpub).get_public_key();
 
         // Get the compact and recoverable signatures from the DER/compact/recoverable signature
         const auto sig = j_bytesref(hw_reply, "signature");
@@ -2165,7 +2157,7 @@ namespace green {
             }
             const auto& message = j_strref(m_twofactor_data, "message");
             const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
-            recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, xpub_hdkey->pub_key);
+            recoverable_sig = ec_sig_rec_from_compact(compact_sig, message_hash, signing_pubkey);
         } else if (sig.size() == 65) {
             // Recoverable format
             std::copy(sig.begin(), sig.end(), recoverable_sig.begin());
@@ -2176,7 +2168,7 @@ namespace green {
 
         if (signer->use_ae_protocol()) {
             const auto signer_commitment = j_bytesref(hw_reply, "signer_commitment");
-            verify_ae_message(m_twofactor_data, xpub_hdkey->pub_key, signer_commitment, compact_sig);
+            verify_ae_message(m_twofactor_data, signing_pubkey, signer_commitment, compact_sig);
         }
 
         m_result["signature"] = base64_from_bytes(recoverable_sig);

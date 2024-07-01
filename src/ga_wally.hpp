@@ -118,27 +118,13 @@ namespace green {
 
     std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags);
 
-    wally_ext_key_ptr bip32_key_unserialize_alloc(byte_span_t data);
-
-    ext_key bip32_public_key_from_parent_path(const ext_key& parent, uint32_span_t path);
-
-    ext_key bip32_public_key_from_parent(const ext_key& parent, uint32_t pointer);
-
     wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub);
 
     wally_ext_key_ptr bip32_key_from_parent_path_alloc(
         const wally_ext_key_ptr& parent, uint32_span_t path, uint32_t flags);
 
-    wally_ext_key_ptr bip32_key_init_alloc(uint32_t version, uint32_t depth, uint32_t child_num, byte_span_t chain_code,
-        byte_span_t public_key, byte_span_t private_key = byte_span_t(), byte_span_t hash = byte_span_t(),
-        byte_span_t parent = byte_span_t());
-
     wally_ext_key_ptr bip32_key_from_seed_alloc(
         byte_span_t seed, uint32_t version, uint32_t flags = BIP32_FLAG_SKIP_HASH);
-
-    std::vector<unsigned char> bip32_key_get_fingerprint(ext_key& hdkey);
-
-    std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags);
 
     constexpr uint32_t harden(uint32_t pointer) { return pointer | 0x80000000; }
     constexpr uint32_t unharden(uint32_t pointer) { return pointer & 0x7fffffff; }
