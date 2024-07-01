@@ -326,8 +326,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(root_key);
         if (child_path.empty()) {
             // Return our root key, which is already cached
-            const auto key_data = bip32_key_serialize(*root_key, BIP32_FLAG_KEY_PUBLIC);
-            return base58check_from_bytes(key_data);
+            return xpub_hdkey(*root_key).to_base58();
         }
         // Derive, encache and return the child key from the root key
         auto child_key = derive(root_key, child_path, BIP32_FLAG_KEY_PUBLIC);
@@ -359,10 +358,9 @@ namespace green {
     {
         // Encache the derived key with the full path
         GDK_RUNTIME_ASSERT(hdkey);
-        const auto key_data = bip32_key_serialize(*hdkey, BIP32_FLAG_KEY_PUBLIC);
-        auto xpub = base58check_from_bytes(key_data);
-        cache_bip32_xpub(path, xpub);
-        return xpub;
+        auto bip32_xpub = xpub_hdkey(*hdkey).to_base58();
+        cache_bip32_xpub(path, bip32_xpub);
+        return bip32_xpub;
     }
 
     bool signer::cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub)

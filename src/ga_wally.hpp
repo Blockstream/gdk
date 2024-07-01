@@ -88,7 +88,9 @@ namespace green {
     //
     class xpub_hdkey final {
     public:
-        xpub_hdkey(const std::string& xpub);
+        explicit xpub_hdkey(const std::string& bip32_xpub);
+
+        explicit xpub_hdkey(const ext_key& src);
 
         xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code = {});
 
@@ -96,8 +98,6 @@ namespace green {
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
         xpub_hdkey(xpub_hdkey&&) = default;
         xpub_hdkey& operator=(xpub_hdkey&&) = default;
-
-        explicit xpub_hdkey(const ext_key& ext_key) { m_ext_key = ext_key; }
 
         ~xpub_hdkey();
 
@@ -115,8 +115,6 @@ namespace green {
     private:
         ext_key m_ext_key;
     };
-
-    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags);
 
     wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub);
 

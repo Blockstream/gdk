@@ -78,9 +78,16 @@ namespace green {
     //
     // BIP 32
     //
-    xpub_hdkey::xpub_hdkey(const std::string& xpub)
-        : m_ext_key(*bip32_public_key_from_bip32_xpub(xpub))
+    xpub_hdkey::xpub_hdkey(const std::string& bip32_xpub)
+        : m_ext_key(*bip32_public_key_from_bip32_xpub(bip32_xpub))
     {
+    }
+
+    xpub_hdkey::xpub_hdkey(const ext_key& src)
+        : m_ext_key(src)
+    {
+        // Strip our private key in case src is an extended private key
+        GDK_VERIFY(::bip32_key_strip_private_key(&m_ext_key));
     }
 
     xpub_hdkey::xpub_hdkey(bool is_main_net, byte_span_t public_key, byte_span_t chain_code)
@@ -150,16 +157,9 @@ namespace green {
     std::string xpub_hdkey::to_hashed_identifier(const std::string& network) const
     {
         // Return a hashed id from which the xpub cannot be extracted
-        const auto key_data = bip32_key_serialize(m_ext_key, BIP32_FLAG_KEY_PUBLIC);
-        const auto hashed = pbkdf2_hmac_sha512_256(key_data, ustring_span(network));
-        return b2h(hashed);
-    }
-
-    std::array<unsigned char, BIP32_SERIALIZED_LEN> bip32_key_serialize(const ext_key& hdkey, uint32_t flags)
-    {
-        std::array<unsigned char, BIP32_SERIALIZED_LEN> ret;
-        GDK_VERIFY(::bip32_key_serialize(&hdkey, flags, ret.data(), ret.size()));
-        return ret;
+        std::array<unsigned char, BIP32_SERIALIZED_LEN> key_data;
+        GDK_VERIFY(::bip32_key_serialize(&m_ext_key, BIP32_FLAG_KEY_PUBLIC, key_data.data(), key_data.size()));
+        return b2h(pbkdf2_hmac_sha512_256(key_data, ustring_span(network)));
     }
 
     wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub)
