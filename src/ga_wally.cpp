@@ -79,8 +79,9 @@ namespace green {
     // BIP 32
     //
     xpub_hdkey::xpub_hdkey(const std::string& bip32_xpub)
-        : m_ext_key(*bip32_public_key_from_bip32_xpub(bip32_xpub))
+        : m_ext_key{}
     {
+        GDK_VERIFY(::bip32_key_from_base58_n(bip32_xpub.data(), bip32_xpub.size(), &m_ext_key));
     }
 
     xpub_hdkey::xpub_hdkey(const ext_key& src)
@@ -160,14 +161,6 @@ namespace green {
         std::array<unsigned char, BIP32_SERIALIZED_LEN> key_data;
         GDK_VERIFY(::bip32_key_serialize(&m_ext_key, BIP32_FLAG_KEY_PUBLIC, key_data.data(), key_data.size()));
         return b2h(pbkdf2_hmac_sha512_256(key_data, ustring_span(network)));
-    }
-
-    wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub)
-    {
-        const auto data = base58check_to_bytes(bip32_xpub);
-        ext_key* p;
-        GDK_VERIFY(::bip32_key_unserialize_alloc(data.data(), data.size(), &p));
-        return wally_ext_key_ptr{ p };
     }
 
     wally_ext_key_ptr bip32_key_from_parent_path_alloc(

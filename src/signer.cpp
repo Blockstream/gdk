@@ -287,7 +287,7 @@ namespace green {
     {
         std::vector<uint32_t> parent_path{ path.begin(), path.end() }, child_path;
         child_path.reserve(path.size());
-        wally_ext_key_ptr parent_key;
+        std::optional<xpub_hdkey> parent_key;
 
         {
             // Search for the cached xpub or a parent we can derive it from
@@ -300,7 +300,7 @@ namespace green {
                         return cached->second;
                     }
                     // Found a parent of the key we are looking for
-                    parent_key = bip32_public_key_from_bip32_xpub(cached->second);
+                    parent_key = xpub_hdkey(cached->second);
                     break;
                 }
                 if (parent_path.empty() || is_hardened(parent_path.back())) {
@@ -314,23 +314,25 @@ namespace green {
         }
         if (path.empty()) {
             // Master xpub requested. encache and return it
-            return cache_ext_key({}, m_master_key);
+            return cache_bip32_xpub({}, xpub_hdkey(*m_master_key).to_base58()).first;
         }
         if (!parent_path.empty() && !parent_key) {
             // Derive and encache the parent key from the master key
             GDK_RUNTIME_ASSERT(m_master_key);
-            parent_key = derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC);
-            cache_ext_key(parent_path, parent_key);
+            parent_key = xpub_hdkey(*derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC));
+            cache_bip32_xpub(parent_path, parent_key->to_base58());
         }
-        auto& root_key = parent_key ? parent_key : m_master_key;
-        GDK_RUNTIME_ASSERT(root_key);
+        if (!parent_key) {
+            GDK_RUNTIME_ASSERT(m_master_key);
+            parent_key = xpub_hdkey(*m_master_key);
+        }
         if (child_path.empty()) {
             // Return our root key, which is already cached
-            return xpub_hdkey(*root_key).to_base58();
+            return xpub_hdkey(*parent_key).to_base58();
         }
-        // Derive, encache and return the child key from the root key
-        auto child_key = derive(root_key, child_path, BIP32_FLAG_KEY_PUBLIC);
-        return cache_ext_key(path, child_key); // Cache with the full path
+        // Derive, encache and return the child key from its parent,
+        // using the full path as our cache key
+        return cache_bip32_xpub(path, parent_key->derive(child_path).to_base58()).first;
     }
 
     bool signer::has_bip32_xpub(uint32_span_t path)
@@ -354,23 +356,14 @@ namespace green {
         }
     }
 
-    std::string signer::cache_ext_key(uint32_span_t path, const wally_ext_key_ptr& hdkey)
-    {
-        // Encache the derived key with the full path
-        GDK_RUNTIME_ASSERT(hdkey);
-        auto bip32_xpub = xpub_hdkey(*hdkey).to_base58();
-        cache_bip32_xpub(path, bip32_xpub);
-        return bip32_xpub;
-    }
-
-    bool signer::cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub)
+    std::pair<std::string, bool> signer::cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub)
     {
         std::unique_lock<std::mutex> locker{ m_mutex };
         cache_t::key_type parent_path{ path.begin(), path.end() };
         auto ret = m_cached_bip32_xpubs.emplace(std::move(parent_path), bip32_xpub);
         // If already present, verify that the value matches
         GDK_RUNTIME_ASSERT(ret.second || ret.first->second == bip32_xpub);
-        return ret.second; // Return whether or not the xpub was already present
+        return { bip32_xpub, ret.second }; // Returns true if the xpub was inserted
     }
 
     signer::cache_t signer::get_cached_bip32_xpubs()

@@ -447,8 +447,9 @@ namespace green {
                 const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs", paths.size());
                 bool updated = false;
                 size_t i = 0;
-                for (const auto& path : paths) {
-                    updated |= signer->cache_bip32_xpub(path.get<std::vector<uint32_t>>(), xpubs.at(i));
+                for (const auto& p : paths) {
+                    const auto path = p.get<std::vector<uint32_t>>();
+                    updated |= signer->cache_bip32_xpub(path, xpubs.at(i)).second;
                     ++i;
                 }
                 if (updated) {

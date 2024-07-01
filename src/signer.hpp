@@ -6,6 +6,7 @@
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <optional>
+#include <utility>
 
 namespace green {
 
@@ -118,8 +119,9 @@ namespace green {
         // Whether this signer has a pre-computed cached xpub for the given path
         bool has_bip32_xpub(uint32_span_t path);
 
-        // Cache an xpub for a given path
-        bool cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub);
+        // Cache an xpub for a given path.
+        // Returns the xpub and whether or not it was inserted.
+        std::pair<std::string, bool> cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub);
 
         // Get cached xpubs and paths from a signer as a cacheable json format
         nlohmann::json get_cached_bip32_xpubs_json();
@@ -139,9 +141,6 @@ namespace green {
         void set_master_blinding_key(const std::string& blinding_key_hex);
 
     private:
-        // Compute the xpub from an hdkey and encache it
-        std::string cache_ext_key(uint32_span_t path, const wally_ext_key_ptr& hdkey);
-
         // Get all cached xpubs and their paths
         cache_t get_cached_bip32_xpubs();
 

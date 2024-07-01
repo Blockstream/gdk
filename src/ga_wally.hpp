@@ -116,8 +116,6 @@ namespace green {
         ext_key m_ext_key;
     };
 
-    wally_ext_key_ptr bip32_public_key_from_bip32_xpub(const std::string& bip32_xpub);
-
     wally_ext_key_ptr bip32_key_from_parent_path_alloc(
         const wally_ext_key_ptr& parent, uint32_span_t path, uint32_t flags);
 
