@@ -39,7 +39,7 @@ namespace green {
 
     using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
     using ecdsa_sig_rec_t = std::array<unsigned char, EC_SIGNATURE_RECOVERABLE_LEN>;
-    using chain_code_t = std::array<unsigned char, 32>;
+    using chain_code_t = std::array<unsigned char, WALLY_BIP32_CHAIN_CODE_LEN>;
     using pbkdf2_hmac256_t = std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>;
     using pbkdf2_hmac512_t = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>;
     using pub_key_t = std::array<unsigned char, EC_PUBLIC_KEY_LEN>;

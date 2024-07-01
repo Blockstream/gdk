@@ -737,7 +737,6 @@ namespace green {
     {
         // TODO: implement refreshing for multisig
         locker_t locker(m_mutex);
-        const bool is_electrum = m_net_params.is_electrum();
 
         sync_client_blob(locker);
 
@@ -745,8 +744,8 @@ namespace green {
         for (auto& sa : subaccounts) {
             const auto pointer = j_uint32ref(sa, "pointer");
             sa.update(m_blob->get_subaccount_data(pointer));
-            if (!is_electrum) {
-                sa["user_path"] = green_user_pubkeys::get_green_subaccount_root_path(pointer);
+            if (!sa.contains("user_path")) {
+                sa["user_path"] = m_user_pubkeys->get_subaccount_root_path(pointer);
             }
             // Make sure we supply metdadata elements in the event they
             // weren't provided (e.g. not present in the client blob)
@@ -976,19 +975,15 @@ namespace green {
 
     green_pubkeys& session_impl::get_green_pubkeys()
     {
-        GDK_RUNTIME_ASSERT(false);
+        GDK_RUNTIME_ASSERT(false); // Implemented for multisig only
         __builtin_unreachable();
     }
 
-    user_pubkeys& session_impl::get_user_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT_MSG(m_user_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
-        return *m_user_pubkeys;
-    }
+    user_pubkeys& session_impl::get_user_pubkeys() { return *m_user_pubkeys; }
 
     user_pubkeys& session_impl::get_recovery_pubkeys()
     {
-        GDK_RUNTIME_ASSERT(false);
+        GDK_RUNTIME_ASSERT(false); // Implemented for multisig only
         __builtin_unreachable();
     }
 

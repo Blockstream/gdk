@@ -12,13 +12,13 @@ namespace green {
     class network_parameters;
 
     //
-    // Derives public keys from an xpub
+    // A bip32 extended key for public key derivation.
     //
     class xpub_hdkey final {
     public:
         xpub_hdkey(bool is_main_net, const xpub_t& xpub, uint32_span_t path = {});
 
-        static xpub_hdkey from_public_key(bool is_main_net, byte_span_t public_key);
+        static xpub_hdkey from_public_key(bool is_main_net, byte_span_t public_key, byte_span_t chain_code = {});
 
         xpub_hdkey(const xpub_hdkey&) = default;
         xpub_hdkey& operator=(const xpub_hdkey&) = default;
@@ -29,7 +29,7 @@ namespace green {
 
         ~xpub_hdkey();
 
-        xpub_hdkey derive(uint32_span_t path);
+        xpub_hdkey derive(uint32_span_t path) const;
 
         xpub_t to_xpub_t() const;
         pub_key_t get_public_key() const;
@@ -43,12 +43,11 @@ namespace green {
     };
 
     //
-    // Base class for collections of xpubs
+    // Base class for collections of bip32 extended key
     //
     class xpub_hdkeys {
     public:
         explicit xpub_hdkeys(const network_parameters& net_params);
-        xpub_hdkeys(const network_parameters& net_params, const xpub_t& xpub);
 
         xpub_hdkeys(const xpub_hdkeys&) = default;
         xpub_hdkeys& operator=(const xpub_hdkeys&) = default;
@@ -56,11 +55,13 @@ namespace green {
         xpub_hdkeys& operator=(xpub_hdkeys&&) = default;
         virtual ~xpub_hdkeys() = default;
 
+        void clear();
+
         // If is_internal is empty, derives a Green key for a subaccount and pointer.
         // Otherwise, derives a BIP44 key for a subaccount and pointer, internal or not.
         xpub_hdkey derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal = {});
 
-        // Get the path to a subaccount parent
+        // Get the path to a subaccount root
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const = 0;
 
         // Get the full path to a key in a subaccount
@@ -70,10 +71,9 @@ namespace green {
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) = 0;
 
     protected:
+        std::map<uint32_t, xpub_hdkey> m_subaccounts;
         bool m_is_main_net;
         bool m_is_liquid;
-        xpub_t m_xpub;
-        std::map<uint32_t, xpub_hdkey> m_subaccounts;
     };
 
     //
@@ -102,7 +102,7 @@ namespace green {
         // Return a gait path for registration. xpub must be the users m/0x4741' path.
         static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_t& xpub);
 
-        // Get the path to the subaccount parent, i.e. m/1/gait_path or m/3/gait_path/subaccount
+        // Get the path to the subaccount root, i.e. m/1/gait_path or m/3/gait_path/subaccount
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
 
         // Get the full path to a key in a subaccount
@@ -113,6 +113,7 @@ namespace green {
 
     private:
         std::array<uint32_t, 32> m_gait_path;
+        xpub_hdkey m_master_xpub;
     };
 
     //
@@ -144,23 +145,12 @@ namespace green {
     class green_user_pubkeys final : public user_pubkeys {
     public:
         explicit green_user_pubkeys(const network_parameters& net_params);
-        green_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub);
 
         green_user_pubkeys(const green_user_pubkeys&) = default;
         green_user_pubkeys& operator=(const green_user_pubkeys&) = default;
         green_user_pubkeys(green_user_pubkeys&&) = default;
         green_user_pubkeys& operator=(green_user_pubkeys&&) = default;
         ~green_user_pubkeys() override = default;
-
-        // Note: The static implementations below are used for old-style
-        // Green watch only logins (i.e. those without a client blob).
-        // For those sessions, the users subaccount xpubs aren't available.
-
-        // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
-        static std::vector<uint32_t> get_green_subaccount_root_path(uint32_t subaccount);
-        // Get the full path to a key in a subaccount
-        static std::vector<uint32_t> get_green_subaccount_full_path(
-            uint32_t subaccount, uint32_t pointer, bool is_internal);
 
         // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
@@ -209,7 +199,7 @@ namespace green {
         bip44_pubkeys& operator=(bip44_pubkeys&&) = default;
         ~bip44_pubkeys() override = default;
 
-        // Get the path to the subaccount parent, i.e. m/[44|49|84]'/[0|1|1776]'/mapped subaccount'
+        // Get the path to the subaccount root, i.e. m/[44|49|84]'/[0|1|1776]'/mapped subaccount'
         virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
 
         // Get the full path to a key in a subaccount

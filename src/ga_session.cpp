@@ -274,6 +274,8 @@ namespace green {
         , m_spv_thread_done(false)
         , m_spv_thread_stop(false)
     {
+        m_user_pubkeys = std::make_unique<green_user_pubkeys>(m_net_params);
+
         constexpr bool is_mandatory = true;
         m_wamp = std::make_shared<wamp_transport>(
             m_net_params, *session_impl::m_strand,
@@ -1257,7 +1259,7 @@ namespace green {
             swap_with_default(m_twofactor_config);
             swap_with_default(m_subaccounts);
             m_green_pubkeys.reset();
-            m_user_pubkeys.reset();
+            m_user_pubkeys->clear();
             m_recovery_pubkeys.reset();
             const auto now = std::chrono::system_clock::now();
             m_fee_estimates_ts = now;
@@ -1504,23 +1506,11 @@ namespace green {
 
         GDK_RUNTIME_ASSERT(!m_subaccounts.empty());
         GDK_RUNTIME_ASSERT(pointers.size() == m_subaccounts.size());
+        GDK_RUNTIME_ASSERT(pointers.at(0) == 0); // Subaccount 0 must be first
         GDK_RUNTIME_ASSERT(bip32_xpubs.size() == m_subaccounts.size());
 
         for (size_t i = 0; i < pointers.size(); ++i) {
-            auto xpub = make_xpub(bip32_xpubs.at(i));
-            const auto pointer = pointers.at(i);
-            if (pointer == 0) {
-                // Main account
-                if (m_user_pubkeys) {
-                    m_user_pubkeys->add_subaccount(pointer, xpub);
-                } else {
-                    m_user_pubkeys = std::make_unique<green_user_pubkeys>(m_net_params, std::move(xpub));
-                }
-            } else {
-                // Subaccount
-                GDK_RUNTIME_ASSERT(m_user_pubkeys); // Subaccount 0 must be first in 'pointers'
-                m_user_pubkeys->add_subaccount(pointer, xpub);
-            }
+            m_user_pubkeys->add_subaccount(pointers.at(i), make_xpub(bip32_xpubs.at(i)));
         }
     }
 
@@ -1710,13 +1700,13 @@ namespace green {
 
         if (subaccount != 0) {
             // Add user and recovery pubkeys for the subaccount
-            if (m_user_pubkeys && !m_user_pubkeys->have_subaccount(subaccount)) {
+            if (!m_user_pubkeys->have_subaccount(subaccount)) {
                 // TODO: Investigate whether this code path can ever execute
                 const std::array<uint32_t, 2> path{ harden(3), harden(subaccount) };
                 m_user_pubkeys->add_subaccount(subaccount, m_signer->get_xpub(path));
             }
 
-            if (m_recovery_pubkeys != nullptr && !recovery_chain_code.empty()) {
+            if (m_recovery_pubkeys && !recovery_chain_code.empty()) {
                 m_recovery_pubkeys->add_subaccount(subaccount, make_xpub(recovery_chain_code, recovery_pub_key));
             }
         }
@@ -1767,7 +1757,7 @@ namespace green {
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
             recovery_chain_code, recovery_bip32_xpub, type, required_ca);
         subaccount_details["hidden"] = false;
-        subaccount_details["user_path"] = green_user_pubkeys::get_green_subaccount_root_path(subaccount);
+        subaccount_details["user_path"] = m_user_pubkeys->get_subaccount_root_path(subaccount);
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
@@ -3014,20 +3004,14 @@ namespace green {
 
     std::vector<uint32_t> ga_session::get_subaccount_root_path(uint32_t subaccount)
     {
-        if (m_user_pubkeys) {
-            locker_t locker(m_mutex);
-            return m_user_pubkeys->get_subaccount_root_path(subaccount);
-        }
-        return green_user_pubkeys::get_green_subaccount_root_path(subaccount);
+        locker_t locker(m_mutex);
+        return m_user_pubkeys->get_subaccount_root_path(subaccount);
     }
 
     std::vector<uint32_t> ga_session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
-        if (m_user_pubkeys) {
-            locker_t locker(m_mutex);
-            return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
-        }
-        return green_user_pubkeys::get_green_subaccount_full_path(subaccount, pointer, is_internal);
+        locker_t locker(m_mutex);
+        return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
     }
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)

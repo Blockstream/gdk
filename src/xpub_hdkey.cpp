@@ -25,19 +25,26 @@ namespace green {
         }
     }
 
-    xpub_hdkey xpub_hdkey::from_public_key(bool is_main_net, byte_span_t public_key)
+    xpub_hdkey xpub_hdkey::from_public_key(bool is_main_net, byte_span_t public_key, byte_span_t chain_code)
     {
-        GDK_RUNTIME_ASSERT(public_key.size() == EC_PUBLIC_KEY_LEN);
-        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
         xpub_t xpub{ { 0 }, { 0 } };
+        GDK_RUNTIME_ASSERT(public_key.size() == xpub.second.size());
+        GDK_RUNTIME_ASSERT(chain_code.empty() || chain_code.size() == xpub.first.size());
+        GDK_VERIFY(wally_ec_public_key_verify(public_key.data(), public_key.size()));
         memcpy(xpub.second.data(), public_key.data(), public_key.size());
+        if (!chain_code.empty()) {
+            memcpy(xpub.first.data(), chain_code.data(), chain_code.size());
+        }
         return { is_main_net, xpub };
     }
 
     xpub_hdkey::~xpub_hdkey() { wally_bzero(&m_ext_key, sizeof(m_ext_key)); }
 
-    xpub_hdkey xpub_hdkey::derive(uint32_span_t path)
+    xpub_hdkey xpub_hdkey::derive(uint32_span_t path) const
     {
+        if (path.empty()) {
+            return *this;
+        }
         return xpub_hdkey(bip32_public_key_from_parent_path(m_ext_key, path));
     }
 
@@ -72,11 +79,7 @@ namespace green {
     {
     }
 
-    xpub_hdkeys::xpub_hdkeys(const network_parameters& net_params, const xpub_t& xpub)
-        : m_is_main_net(net_params.is_main_net())
-        , m_xpub(xpub)
-    {
-    }
+    void xpub_hdkeys::clear() { m_subaccounts.clear(); }
 
     xpub_hdkey xpub_hdkeys::derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal)
     {
@@ -89,7 +92,9 @@ namespace green {
     }
 
     green_pubkeys::green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
-        : xpub_hdkeys(net_params, make_xpub(net_params.chain_code(), net_params.pub_key()))
+        : xpub_hdkeys(net_params)
+        , m_master_xpub(
+              xpub_hdkey::from_public_key(m_is_main_net, h2b(net_params.pub_key()), h2b(net_params.chain_code())))
     {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(gait_path.size()) == m_gait_path.size());
         std::copy(std::begin(gait_path), std::end(gait_path), m_gait_path.begin());
@@ -126,7 +131,7 @@ namespace green {
             return p->second;
         }
         const auto path = get_subaccount_root_path(subaccount);
-        return m_subaccounts.insert(std::make_pair(subaccount, xpub_hdkey(m_is_main_net, m_xpub, path))).first->second;
+        return m_subaccounts.emplace(subaccount, m_master_xpub.derive(path)).first->second;
     }
 
     std::array<uint32_t, 1> green_pubkeys::get_gait_generation_path()
@@ -146,13 +151,7 @@ namespace green {
     {
     }
 
-    green_user_pubkeys::green_user_pubkeys(const network_parameters& net_params, const xpub_t& xpub)
-        : user_pubkeys(net_params, xpub)
-    {
-        add_subaccount(0, m_xpub);
-    }
-
-    std::vector<uint32_t> green_user_pubkeys::get_green_subaccount_root_path(uint32_t subaccount)
+    std::vector<uint32_t> green_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount) });
@@ -160,24 +159,13 @@ namespace green {
         return std::vector<uint32_t>();
     }
 
-    std::vector<uint32_t> green_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
-    {
-        return get_green_subaccount_root_path(subaccount); // Defer to static impl
-    }
-
-    std::vector<uint32_t> green_user_pubkeys::get_green_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/)
+    std::vector<uint32_t> green_user_pubkeys::get_subaccount_full_path(
+        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/) const
     {
         if (subaccount != 0u) {
             return std::vector<uint32_t>({ harden(3), harden(subaccount), 1, pointer });
         }
         return std::vector<uint32_t>({ 1, pointer });
-    }
-
-    std::vector<uint32_t> green_user_pubkeys::get_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool is_internal) const
-    {
-        return get_green_subaccount_full_path(subaccount, pointer, is_internal); // Defer to static impl
     }
 
     bool green_user_pubkeys::have_subaccount(uint32_t subaccount)
