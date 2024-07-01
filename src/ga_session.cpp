@@ -425,10 +425,11 @@ namespace green {
             const auto gait_path = b2h(green_pubkeys::get_gait_path_bytes(gait_bip32_xpub));
             const bool supports_csv = signer->supports_arbitrary_scripts();
             const auto agent = get_user_agent(supports_csv, m_user_agent);
-            const auto master = signer->get_master_xpub();
+            const auto master_key = xpub_hdkey(signer->get_master_bip32_xpub());
 
             // Register the full session with the Green backend
-            auto result = m_wamp->call("login.register", b2h(master.second), b2h(master.first), agent, gait_path);
+            auto result = m_wamp->call(
+                "login.register", b2h(master_key.get_public_key()), b2h(master_key.get_chain_code()), agent, gait_path);
             GDK_RUNTIME_ASSERT(wamp_cast<bool>(result));
         }
 
@@ -545,7 +546,9 @@ namespace green {
             //       signature of the corresponding backup/recovery key.
             if (!recovery_xpub_sig.empty() && !root_bip32_xpub.empty()) {
                 recovery_xpub = j_str_or_empty(sa, "2of3_backup_xpub");
-                GDK_RUNTIME_ASSERT(make_xpub(recovery_xpub) == make_xpub(recovery_chain_code, recovery_pub_key));
+                auto recovery_key = xpub_hdkey(recovery_xpub);
+                GDK_RUNTIME_ASSERT(b2h(recovery_key.get_chain_code()) == recovery_chain_code);
+                GDK_RUNTIME_ASSERT(b2h(recovery_key.get_public_key()) == recovery_pub_key);
                 const auto message = format_recovery_key_message(recovery_xpub, subaccount);
                 const auto message_hash = format_bitcoin_message_hash(ustring_span(message));
                 auto parent = bip32_public_key_from_bip32_xpub(root_bip32_xpub);
@@ -1013,7 +1016,7 @@ namespace green {
                 encryption_key = get_watch_only_cache_encryption_key(entropy, login_data.at("cache_password"));
             } else {
                 // Full login, with or without a blobserver
-                encryption_key = m_signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
+                encryption_key = xpub_hdkey(m_signer->get_bip32_xpub(signer::CLIENT_SECRET_PATH)).get_public_key();
                 if (m_blobserver) {
                     m_blob->compute_client_id(m_net_params.network(), encryption_key);
                 }
@@ -1744,9 +1747,9 @@ namespace green {
             xpubs.emplace_back(recovery_bip32_xpub);
             sigs.emplace_back(j_strref(details, "recovery_key_sig"));
 
-            const xpub_t recovery_xpub = make_xpub(recovery_bip32_xpub);
-            recovery_chain_code = b2h(recovery_xpub.first);
-            recovery_pub_key = b2h(recovery_xpub.second);
+            const xpub_hdkey recovery_key(recovery_bip32_xpub);
+            recovery_chain_code = b2h(recovery_key.get_chain_code());
+            recovery_pub_key = b2h(recovery_key.get_public_key());
         }
 
         const auto recv_id

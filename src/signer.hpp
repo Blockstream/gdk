@@ -110,9 +110,6 @@ namespace green {
         // Returns true if we have the master xpub
         bool has_master_bip32_xpub();
 
-        // Get the master xpub as a {chain code, public key} pair
-        xpub_t get_master_xpub();
-
         // Get the xpub for 'm/<path>'. This should only be used to derive
         // the master xpub for privately derived keys such as subaccounts.
         // Use xpub_hdkeys to quickly derive from the resulting key.
@@ -120,9 +117,6 @@ namespace green {
 
         // Whether this signer has a pre-computed cached xpub for the given path
         bool has_bip32_xpub(uint32_span_t path);
-
-        // Get an xpub as a {chain code, public key} pair.
-        xpub_t get_xpub(uint32_span_t path);
 
         // Cache an xpub for a given path
         bool cache_bip32_xpub(uint32_span_t path, const std::string& bip32_xpub);

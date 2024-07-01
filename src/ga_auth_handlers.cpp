@@ -380,7 +380,7 @@ namespace green {
             }
 
             // Compute the login challenge with the master pubkey
-            const auto public_key = make_xpub(m_master_bip32_xpub).second;
+            const auto public_key = xpub_hdkey(m_master_bip32_xpub).get_public_key();
             m_challenge = m_session->get_challenge(public_key);
             // Ask the caller to sign the challenge
             auto& request = signal_hw_request(hw_request::sign_message);

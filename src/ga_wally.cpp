@@ -886,30 +886,6 @@ namespace green {
         return satoshi;
     }
 
-    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex)
-    {
-        size_t written;
-        xpub_t xpub;
-        GDK_VERIFY(wally_hex_to_bytes(chain_code_hex.c_str(), xpub.first.data(), xpub.first.size(), &written));
-        GDK_RUNTIME_ASSERT(written == xpub.first.size());
-        GDK_VERIFY(wally_hex_to_bytes(public_key_hex.c_str(), xpub.second.data(), xpub.second.size(), &written));
-        GDK_RUNTIME_ASSERT(written == xpub.second.size());
-        return xpub;
-    }
-
-    xpub_t make_xpub(const ext_key* hdkey)
-    {
-        xpub_t xpub;
-        std::copy(std::begin(hdkey->chain_code), std::end(hdkey->chain_code), std::begin(xpub.first));
-        std::copy(std::begin(hdkey->pub_key), std::end(hdkey->pub_key), std::begin(xpub.second));
-        return xpub;
-    }
-
-    xpub_t make_xpub(const std::string& bip32_xpub)
-    {
-        return make_xpub(bip32_public_key_from_bip32_xpub(bip32_xpub).get());
-    }
-
     std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags)
     {
         char* s;

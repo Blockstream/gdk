@@ -635,8 +635,9 @@ namespace green {
     {
         auto& full_signer = signer->is_watch_only() ? m_signer : signer;
         // Default impl just returns the wallet hash ids
-        const auto master = full_signer->get_master_xpub();
-        auto ret = get_wallet_hash_ids(m_net_params, b2h(master.first), b2h(master.second));
+        const auto master_key = xpub_hdkey(full_signer->get_master_bip32_xpub());
+        auto ret
+            = get_wallet_hash_ids(m_net_params, b2h(master_key.get_chain_code()), b2h(master_key.get_public_key()));
         ret["warnings"] = nlohmann::json::array();
 
         if (signer->is_watch_only()) {
@@ -683,8 +684,8 @@ namespace green {
         if (!m_net_params.get_blob_server_url().empty()) {
             // Add the client blob credentials
             // FIXME: don't use the pubkey directly
-            const auto xpub = m_signer->get_xpub(signer::CLIENT_SECRET_PATH);
-            auto data = b2h(xpub.second) + b2h(m_blob->get_key());
+            const auto key = xpub_hdkey(m_signer->get_bip32_xpub(signer::CLIENT_SECRET_PATH));
+            auto data = b2h(key.get_public_key()) + b2h(m_blob->get_key());
 
             nlohmann::json wo
                 = { { "username", username }, { "password", password }, { "raw_watch_only_data", std::move(data) } };

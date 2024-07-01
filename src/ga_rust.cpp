@@ -166,7 +166,7 @@ namespace green {
         if (m_watch_only) {
             public_key = set_blob_key_from_credentials(locker);
         } else {
-            public_key = signer->get_xpub(signer::CLIENT_SECRET_PATH).second;
+            public_key = xpub_hdkey(signer->get_bip32_xpub(signer::CLIENT_SECRET_PATH)).get_public_key();
         }
         set_local_encryption_keys(locker, public_key, signer);
 

@@ -711,9 +711,9 @@ namespace green {
                 bip32_xpub = params.value("master_xpub", std::string());
             }
             if (!bip32_xpub.empty()) {
-                const auto master_xpub = make_xpub(bip32_xpub);
-                chain_code_hex = b2h(master_xpub.first);
-                public_key_hex = b2h(master_xpub.second);
+                const auto master_key = xpub_hdkey(bip32_xpub);
+                chain_code_hex = b2h(master_key.get_chain_code());
+                public_key_hex = b2h(master_key.get_public_key());
             }
         } catch (const std::exception&) {
             // Fall through...

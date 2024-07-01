@@ -44,7 +44,6 @@ namespace green {
     using pbkdf2_hmac512_t = std::array<unsigned char, PBKDF2_HMAC_SHA512_LEN>;
     using pub_key_t = std::array<unsigned char, EC_PUBLIC_KEY_LEN>;
     using priv_key_t = std::array<unsigned char, EC_PRIVATE_KEY_LEN>;
-    using xpub_t = std::pair<chain_code_t, pub_key_t>;
 
     using asset_id_t = std::array<unsigned char, ASSET_TAG_LEN>;
     using vbf_t = std::array<unsigned char, 32>;
@@ -105,9 +104,6 @@ namespace green {
 
     std::vector<unsigned char> bip32_key_get_fingerprint(ext_key& hdkey);
 
-    xpub_t make_xpub(const ext_key* hdkey);
-    xpub_t make_xpub(const std::string& chain_code_hex, const std::string& public_key_hex);
-    xpub_t make_xpub(const std::string& bip32_xpub);
     std::string bip32_key_to_base58(const struct ext_key* hdkey, uint32_t flags);
 
     constexpr uint32_t harden(uint32_t pointer) { return pointer | 0x80000000; }
