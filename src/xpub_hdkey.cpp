@@ -30,6 +30,14 @@ namespace green {
         return get_subaccount(subaccount).derive(path);
     }
 
+    std::vector<uint32_t> xpub_hdkeys::get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal) const
+    {
+        auto path = get_path_to_subaccount(subaccount);
+        auto post = get_path_from_subaccount(subaccount, pointer, is_internal);
+        path.insert(path.end(), post.begin(), post.end());
+        return path;
+    }
+
     green_pubkeys::green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
         : xpub_hdkeys(net_params)
         , m_master_xpub(m_is_main_net, h2b(net_params.pub_key()), h2b(net_params.chain_code()))
@@ -39,7 +47,7 @@ namespace green {
         get_subaccount(0); // Initialize main account
     }
 
-    std::vector<uint32_t> green_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    std::vector<uint32_t> green_pubkeys::get_path_to_subaccount(uint32_t subaccount) const
     {
         // Note: This assumes address version v1+.
         // Version 0 addresses are not derived from the users gait_path
@@ -52,12 +60,10 @@ namespace green {
         return path;
     }
 
-    std::vector<uint32_t> green_pubkeys::get_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/) const
+    std::vector<uint32_t> green_pubkeys::get_path_from_subaccount(
+        uint32_t /*subaccount*/, uint32_t pointer, bool /*is_internal*/) const
     {
-        auto path = get_subaccount_root_path(subaccount);
-        path.push_back(pointer);
-        return path;
+        return { pointer };
     }
 
     xpub_hdkey green_pubkeys::get_subaccount(uint32_t subaccount)
@@ -68,7 +74,7 @@ namespace green {
         if (p != m_subaccounts.end()) {
             return p->second;
         }
-        const auto path = get_subaccount_root_path(subaccount);
+        const auto path = get_path_to_subaccount(subaccount);
         return m_subaccounts.emplace(subaccount, m_master_xpub.derive(path)).first->second;
     }
 
@@ -84,21 +90,18 @@ namespace green {
     {
     }
 
-    std::vector<uint32_t> green_user_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    std::vector<uint32_t> green_user_pubkeys::get_path_to_subaccount(uint32_t subaccount) const
     {
         if (subaccount != 0u) {
-            return std::vector<uint32_t>({ harden(3), harden(subaccount) });
+            return { harden(3), harden(subaccount) };
         }
-        return std::vector<uint32_t>();
+        return {};
     }
 
-    std::vector<uint32_t> green_user_pubkeys::get_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool /*is_internal*/) const
+    std::vector<uint32_t> green_user_pubkeys::get_path_from_subaccount(
+        uint32_t /*subaccount*/, uint32_t pointer, bool /*is_internal*/) const
     {
-        if (subaccount != 0u) {
-            return std::vector<uint32_t>({ harden(3), harden(subaccount), 1, pointer });
-        }
-        return std::vector<uint32_t>({ 1, pointer });
+        return { 1, pointer };
     }
 
     bool green_user_pubkeys::have_subaccount(uint32_t subaccount)
@@ -136,7 +139,7 @@ namespace green {
     {
     }
 
-    std::vector<uint32_t> bip44_pubkeys::get_subaccount_root_path(uint32_t subaccount) const
+    std::vector<uint32_t> bip44_pubkeys::get_path_to_subaccount(uint32_t subaccount) const
     {
         const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
         const uint32_t purpose = purpose_lookup.at(subaccount % 16);
@@ -145,13 +148,10 @@ namespace green {
         return std::vector<uint32_t>{ harden(purpose), harden(coin_type), harden(account) };
     }
 
-    std::vector<uint32_t> bip44_pubkeys::get_subaccount_full_path(
-        uint32_t subaccount, uint32_t pointer, bool is_internal) const
+    std::vector<uint32_t> bip44_pubkeys::get_path_from_subaccount(
+        uint32_t /*subaccount*/, uint32_t pointer, bool is_internal) const
     {
-        auto path = get_subaccount_root_path(subaccount);
-        path.emplace_back(is_internal ? 1 : 0);
-        path.emplace_back(pointer);
-        return path;
+        return { is_internal ? 1u : 0u, pointer };
     }
 
     bool bip44_pubkeys::have_subaccount(uint32_t subaccount)

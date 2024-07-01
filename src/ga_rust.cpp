@@ -307,7 +307,7 @@ namespace green {
         const auto pointers = get_subaccount_pointers();
         std::vector<std::string> xpubs;
         for (const auto& pointer : pointers) {
-            xpubs.push_back(signer->get_bip32_xpub(get_subaccount_root_path(pointer)));
+            xpubs.push_back(signer->get_bip32_xpub(get_path_to_subaccount(pointer)));
         }
         register_subaccount_xpubs(pointers, xpubs);
 
@@ -481,14 +481,14 @@ namespace green {
         }
     }
 
-    std::vector<uint32_t> ga_rust::get_subaccount_root_path(uint32_t subaccount)
+    std::vector<uint32_t> ga_rust::get_path_to_subaccount(uint32_t subaccount)
     {
-        return m_user_pubkeys->get_subaccount_root_path(subaccount);
+        return m_user_pubkeys->get_path_to_subaccount(subaccount);
     }
 
-    std::vector<uint32_t> ga_rust::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
+    std::vector<uint32_t> ga_rust::get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
-        return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
+        return m_user_pubkeys->get_full_path(subaccount, pointer, is_internal);
     }
 
     nlohmann::json ga_rust::get_available_currencies() const

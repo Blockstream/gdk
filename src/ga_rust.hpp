@@ -55,8 +55,8 @@ namespace green {
         nlohmann::json get_previous_addresses(const nlohmann::json& details);
         nlohmann::json get_subaccounts_impl(locker_t& locker);
         void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
-        std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount);
-        std::vector<uint32_t> get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal);
+        std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount);
+        std::vector<uint32_t> get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal);
 
         nlohmann::json get_available_currencies() const;
 

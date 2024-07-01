@@ -12,7 +12,7 @@ namespace green {
     class network_parameters;
 
     //
-    // Base class for collections of bip32 extended key
+    // Base class for collections of bip32 extended keys
     //
     class xpub_hdkeys {
     public:
@@ -31,11 +31,14 @@ namespace green {
         xpub_hdkey derive(uint32_t subaccount, uint32_t pointer, std::optional<bool> is_internal = {});
 
         // Get the path to a subaccount root
-        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const = 0;
+        virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const = 0;
+
+        // Get the path from the subaccount root to a key in a subaccount
+        virtual std::vector<uint32_t> get_path_from_subaccount(
+            uint32_t subaccount, uint32_t pointer, bool is_internal) const = 0;
 
         // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(
-            uint32_t subaccount, uint32_t pointer, bool is_internal) const = 0;
+        std::vector<uint32_t> get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal) const;
 
         virtual xpub_hdkey get_subaccount(uint32_t subaccount) = 0;
 
@@ -69,10 +72,10 @@ namespace green {
         static std::array<unsigned char, HMAC_SHA512_LEN> get_gait_path_bytes(const xpub_hdkey& gait_key);
 
         // Get the path to the subaccount root, i.e. m/1/gait_path or m/3/gait_path/subaccount
-        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
+        virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const override;
 
-        // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(
+        // Get the path from the subaccount root, i.e. /pointer
+        virtual std::vector<uint32_t> get_path_from_subaccount(
             uint32_t subaccount, uint32_t pointer, bool is_internal) const override;
 
         xpub_hdkey get_subaccount(uint32_t subaccount) override;
@@ -118,11 +121,11 @@ namespace green {
         green_user_pubkeys& operator=(green_user_pubkeys&&) = default;
         ~green_user_pubkeys() override = default;
 
-        // Get the path to the subaccount parent, i.e. m or m/3'/subaccount'
-        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
+        // Get the path to the subaccount root, i.e. m or m/3'/subaccount'
+        virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const override;
 
-        // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(
+        // Get the path from the subaccount root, i.e. /1/pointer
+        virtual std::vector<uint32_t> get_path_from_subaccount(
             uint32_t subaccount, uint32_t pointer, bool is_internal) const override;
 
         virtual bool have_subaccount(uint32_t subaccount) override;
@@ -166,10 +169,10 @@ namespace green {
         ~bip44_pubkeys() override = default;
 
         // Get the path to the subaccount root, i.e. m/[44|49|84]'/[0|1|1776]'/mapped subaccount'
-        virtual std::vector<uint32_t> get_subaccount_root_path(uint32_t subaccount) const override;
+        virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const override;
 
-        // Get the full path to a key in a subaccount
-        virtual std::vector<uint32_t> get_subaccount_full_path(
+        // Get the path from the subaccount root, i.e. /1/pointer
+        virtual std::vector<uint32_t> get_path_from_subaccount(
             uint32_t subaccount, uint32_t pointer, bool is_internal) const override;
 
         virtual bool have_subaccount(uint32_t subaccount) override;

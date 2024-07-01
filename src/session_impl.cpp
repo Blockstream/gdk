@@ -746,7 +746,7 @@ namespace green {
             const auto pointer = j_uint32ref(sa, "pointer");
             sa.update(m_blob->get_subaccount_data(pointer));
             if (!sa.contains("user_path")) {
-                sa["user_path"] = m_user_pubkeys->get_subaccount_root_path(pointer);
+                sa["user_path"] = m_user_pubkeys->get_path_to_subaccount(pointer);
             }
             // Make sure we supply metdadata elements in the event they
             // weren't provided (e.g. not present in the client blob)

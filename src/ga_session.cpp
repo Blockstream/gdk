@@ -1493,7 +1493,7 @@ namespace green {
             std::vector<std::string> bip32_xpubs;
             bip32_xpubs.reserve(subaccount_pointers.size());
             for (const auto& pointer : subaccount_pointers) {
-                bip32_xpubs.emplace_back(m_signer->get_bip32_xpub(get_subaccount_root_path(pointer)));
+                bip32_xpubs.emplace_back(m_signer->get_bip32_xpub(get_path_to_subaccount(pointer)));
             }
             register_subaccount_xpubs(subaccount_pointers, bip32_xpubs);
         }
@@ -1759,7 +1759,7 @@ namespace green {
         nlohmann::json subaccount_details = insert_subaccount(locker, subaccount, name, recv_id, recovery_pub_key,
             recovery_chain_code, recovery_bip32_xpub, type, required_ca);
         subaccount_details["hidden"] = false;
-        subaccount_details["user_path"] = m_user_pubkeys->get_subaccount_root_path(subaccount);
+        subaccount_details["user_path"] = m_user_pubkeys->get_path_to_subaccount(subaccount);
         if (type == "2of3") {
             subaccount_details["recovery_xpub"] = recovery_bip32_xpub;
         }
@@ -3004,16 +3004,16 @@ namespace green {
         return *m_recovery_pubkeys;
     }
 
-    std::vector<uint32_t> ga_session::get_subaccount_root_path(uint32_t subaccount)
+    std::vector<uint32_t> ga_session::get_path_to_subaccount(uint32_t subaccount)
     {
         locker_t locker(m_mutex);
-        return m_user_pubkeys->get_subaccount_root_path(subaccount);
+        return m_user_pubkeys->get_path_to_subaccount(subaccount);
     }
 
-    std::vector<uint32_t> ga_session::get_subaccount_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
+    std::vector<uint32_t> ga_session::get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal)
     {
         locker_t locker(m_mutex);
-        return m_user_pubkeys->get_subaccount_full_path(subaccount, pointer, is_internal);
+        return m_user_pubkeys->get_full_path(subaccount, pointer, is_internal);
     }
 
     bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)
