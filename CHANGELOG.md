@@ -26,8 +26,9 @@
   and cheaper recovery path, which requires only a single signature and does not
   require two-factor authentication.
 - GA_psbt_from_json: The returned PSBT now includes keypath elements for wallet
-  inputs and outputs. This allows output identification and signing of the PSBT
-  by external/offline signing devices.
+  inputs and outputs, correct witness and redeem scripts, and appropriate input
+  utxos. This allows wallet input/output identification and signing of the
+  resulting PSBT/PSET by external or offline signing devices.
 - C/C++: The name of the shared library has changed from from ``libgreenaddress``
   to ``libgreen_gdk``. Applications linking to the shared library should update
   their link commands accordingly.
