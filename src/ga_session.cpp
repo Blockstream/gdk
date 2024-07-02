@@ -2991,20 +2991,6 @@ namespace green {
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 
-    // Post-login idempotent
-    green_pubkeys& ga_session::get_green_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT(m_green_pubkeys != nullptr);
-        return *m_green_pubkeys;
-    }
-
-    // Post-login idempotent
-    user_pubkeys& ga_session::get_recovery_pubkeys()
-    {
-        GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys != nullptr, "Cannot derive keys in watch-only mode");
-        return *m_recovery_pubkeys;
-    }
-
     nlohmann::json ga_session::service_sign_transaction(const nlohmann::json& details,
         const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts)
     {

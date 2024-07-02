@@ -313,7 +313,9 @@ namespace green {
         // Immutable post-login
         nlohmann::json m_login_data;
         std::shared_ptr<signer> m_signer;
+        std::unique_ptr<green_pubkeys> m_green_pubkeys;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
+        std::unique_ptr<user_pubkeys> m_recovery_pubkeys;
         bool m_watch_only;
 
         // Mutable

@@ -123,9 +123,6 @@ namespace green {
         nlohmann::json get_spending_limits() const;
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
-        green_pubkeys& get_green_pubkeys();
-        user_pubkeys& get_recovery_pubkeys();
-
         std::pair<std::string, bool> get_cached_master_blinding_key();
         void set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex);
 
@@ -232,8 +229,6 @@ namespace green {
         nlohmann::json m_assets;
 
         std::map<uint32_t, nlohmann::json> m_subaccounts; // Includes 0 for main
-        std::unique_ptr<green_pubkeys> m_green_pubkeys;
-        std::unique_ptr<green_user_pubkeys> m_recovery_pubkeys;
         uint32_t m_next_subaccount;
         std::vector<uint32_t> m_fee_estimates;
         std::chrono::system_clock::time_point m_fee_estimates_ts;
