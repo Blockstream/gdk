@@ -149,6 +149,17 @@ namespace green {
             }
         }
 
+        static void add_input_utxo(session_impl& session, struct wally_psbt* psbt, size_t i,
+            const std::string& txhash_hex, uint32_t vout, bool add_full_utxo, bool add_witness_utxo)
+        {
+            const auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
+            if (add_full_utxo) {
+                GDK_VERIFY(wally_psbt_set_input_utxo(psbt, i, utxo_tx.get()));
+            }
+            if (add_witness_utxo) {
+                GDK_VERIFY(wally_psbt_set_input_witness_utxo_from_tx(psbt, i, utxo_tx.get(), vout));
+            }
+        }
     } // namespace
 
     void Psbt::psbt_deleter::operator()(struct wally_psbt* p) { wally_psbt_free(p); }
@@ -349,13 +360,17 @@ namespace green {
                 }
             }
 
+            if (!psbt_input.utxo && !psbt_input.witness_utxo) {
+                // Add a witness UTXO if we know this input is segwit.
+                // Add a full UTXO for Bitcoin txs (to mitigate fee attacks), or
+                // if we havent added a witness utxo.
+                const bool add_witness_utxo
+                    = belongs_to_wallet && address_type_is_segwit(j_strref(utxo, "address_type"));
+                const bool add_full_utxo = !m_is_liquid || !add_witness_utxo;
+                add_input_utxo(session, m_psbt.get(), i, txhash_hex, vout, add_full_utxo, add_witness_utxo);
+            }
             const struct wally_tx_output* txin_utxo;
             GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
-            if (!txin_utxo) {
-                auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
-                GDK_VERIFY(wally_psbt_set_input_utxo(m_psbt.get(), i, utxo_tx.get()));
-                GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
-            }
             GDK_RUNTIME_ASSERT(txin_utxo);
 
             if (belongs_to_wallet) {
@@ -557,7 +572,8 @@ namespace green {
             amount::value_type satoshi;
             std::vector<unsigned char> asset_id;
 
-            if (is_wallet_utxo(input)) {
+            const bool belongs_to_wallet = is_wallet_utxo(input);
+            if (belongs_to_wallet) {
                 // Wallet UTXO. Add the relevant keypaths
                 auto keys = add_keypaths(session, psbt_input.keypaths, input);
                 add_input_scripts(psbt_input.psbt_fields, input, keys);
@@ -570,10 +586,15 @@ namespace green {
                 GDK_VERIFY(wally_psbt_set_input_amount(m_psbt.get(), i, satoshi));
             }
             if (!psbt_input.utxo && !psbt_input.witness_utxo) {
-                // Add the input UTXO
-                const auto vout = j_uint32ref(input, "pt_idx");
-                auto utxo_tx = session.get_raw_transaction_details(j_strref(input, "txhash"));
-                GDK_VERIFY(wally_psbt_set_input_witness_utxo_from_tx(m_psbt.get(), i, utxo_tx.get(), vout));
+                // Add a witness UTXO if we know this input is segwit.
+                // Add a full UTXO for Bitcoin txs (to mitigate fee attacks), or
+                // if we havent added a witness utxo.
+                const auto& txhash_hex = j_strref(input, "txhash");
+                const auto vout = psbt_input.index;
+                const bool add_witness_utxo
+                    = belongs_to_wallet && address_type_is_segwit(j_strref(input, "address_type"));
+                const bool add_full_utxo = !m_is_liquid || !add_witness_utxo;
+                add_input_utxo(session, m_psbt.get(), i, txhash_hex, vout, add_full_utxo, add_witness_utxo);
             }
             if (m_is_liquid) {
                 // Create asset and value explicit proofs
