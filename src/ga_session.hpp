@@ -125,9 +125,6 @@ namespace green {
 
         green_pubkeys& get_green_pubkeys();
         user_pubkeys& get_recovery_pubkeys();
-        bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
-        std::string get_service_xpub(uint32_t subaccount);
-        std::string get_recovery_xpub(uint32_t subaccount);
 
         std::pair<std::string, bool> get_cached_master_blinding_key();
         void set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex);

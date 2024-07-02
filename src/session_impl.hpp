@@ -223,10 +223,6 @@ namespace green {
         void set_cached_master_blinding_key(const std::string& master_blinding_key_hex);
         virtual void set_cached_master_blinding_key_impl(locker_t& locker, const std::string& master_blinding_key_hex);
 
-        virtual bool has_recovery_pubkeys_subaccount(uint32_t subaccount);
-        virtual std::string get_service_xpub(uint32_t subaccount);
-        virtual std::string get_recovery_xpub(uint32_t subaccount);
-
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<xpub_hdkey> keys_from_utxo(const nlohmann::json& utxo);
 

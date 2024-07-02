@@ -3005,24 +3005,6 @@ namespace green {
         return *m_recovery_pubkeys;
     }
 
-    bool ga_session::has_recovery_pubkeys_subaccount(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        return get_recovery_pubkeys().have_subaccount(subaccount);
-    }
-
-    std::string ga_session::get_service_xpub(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        return get_green_pubkeys().get_subaccount(subaccount).to_base58();
-    }
-
-    std::string ga_session::get_recovery_xpub(uint32_t subaccount)
-    {
-        locker_t locker(m_mutex);
-        return get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
-    }
-
     nlohmann::json ga_session::service_sign_transaction(const nlohmann::json& details,
         const nlohmann::json& twofactor_data, std::vector<std::vector<unsigned char>>& old_scripts)
     {

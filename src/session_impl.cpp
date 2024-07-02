@@ -1047,12 +1047,6 @@ namespace green {
         update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
     }
 
-    bool session_impl::has_recovery_pubkeys_subaccount(uint32_t /*subaccount*/) { return false; }
-
-    std::string session_impl::get_service_xpub(uint32_t /*subaccount*/) { return std::string(); }
-
-    std::string session_impl::get_recovery_xpub(uint32_t /*subaccount*/) { return std::string(); }
-
     std::vector<unsigned char> session_impl::output_script_from_utxo(const nlohmann::json& utxo)
     {
         locker_t locker(m_mutex);
