@@ -702,9 +702,6 @@ namespace green {
         throw std::runtime_error("is_spending_limits_decrease not implemented");
     }
 
-    green_pubkeys& ga_rust::get_green_pubkeys() { throw std::runtime_error("get_green_pubkeys not implemented"); }
-    user_pubkeys& ga_rust::get_recovery_pubkeys() { throw std::runtime_error("get_recovery_pubkeys not implemented"); }
-
     void ga_rust::upload_confidential_addresses(
         uint32_t subaccount, const std::vector<std::string>& confidential_addresses)
     {
