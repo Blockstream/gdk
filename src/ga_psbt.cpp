@@ -20,6 +20,7 @@ namespace green {
         // PSBT input/output field constants from
         // https://github.com/bitcoin/bips/blob/master/bip-0174.mediawiki
         constexpr uint32_t in_redeem_script = 0x04;
+        constexpr uint32_t in_witness_script = 0x05;
 
         // PSET input/output field constants from
         // https://github.com/ElementsProject/elements/blob/master/doc/pset.mediawiki
@@ -59,9 +60,14 @@ namespace green {
 
         using optional_bytes_t = std::optional<gsl::span<const unsigned char>>;
 
-        static optional_bytes_t get_field(const struct wally_map* m, uint32_t k)
+        static void set_field(struct wally_map& m, uint32_t k, byte_span_t value)
         {
-            const auto p = wally_map_get_integer(m, k);
+            GDK_VERIFY(wally_map_add_integer(&m, k, value.data(), value.size()));
+        }
+
+        static optional_bytes_t get_field(const struct wally_map& m, uint32_t k)
+        {
+            const auto p = wally_map_get_integer(&m, k);
             if (p) {
                 return gsl::make_span(p->value, p->value_len);
             }
@@ -70,12 +76,12 @@ namespace green {
 
         template <typename T> static inline optional_bytes_t psbt_field(const T& src, uint32_t k)
         {
-            return get_field(&src.psbt_fields, k);
+            return get_field(src.psbt_fields, k);
         }
 
         template <typename T> static inline optional_bytes_t pset_field(const T& src, uint32_t k)
         {
-            return get_field(&src.pset_fields, k);
+            return get_field(src.pset_fields, k);
         }
 
         template <typename T>
@@ -98,7 +104,7 @@ namespace green {
                 fingerprint.size(), path.data(), path.size()));
         }
 
-        static void add_keypaths(session_impl& session, wally_map& keypaths, const nlohmann::json& utxo)
+        static auto add_keypaths(session_impl& session, wally_map& keypaths, const nlohmann::json& utxo)
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
             auto keys = session.keys_from_utxo(utxo);
@@ -120,6 +126,26 @@ namespace green {
             add_keypath(keypaths, session.get_user_pubkeys(), fingerprint, user_key, subaccount, pointer, is_internal);
             if (!is_electrum && keys.size() > 2) {
                 // FIXME: Add the recovery pubkey
+            }
+            return keys;
+        }
+
+        static void add_input_scripts(
+            wally_map& psbt_fields, const nlohmann::json& utxo, const std::vector<xpub_hdkey>& keys)
+        {
+            std::optional<std::vector<unsigned char>> redeem_script;
+            const auto& addr_type = j_strref(utxo, "address_type");
+
+            if (addr_type == address_type::p2sh_p2wpkh) {
+                const auto pub_key = keys.at(0).get_public_key();
+                redeem_script = witness_script(pub_key, WALLY_SCRIPT_HASH160);
+            } else if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+                const auto prevout_script = j_bytesref(utxo, "prevout_script");
+                set_field(psbt_fields, in_witness_script, prevout_script);
+                redeem_script = witness_script(prevout_script, WALLY_SCRIPT_SHA256);
+            }
+            if (redeem_script) {
+                set_field(psbt_fields, in_redeem_script, *redeem_script);
             }
         }
 
@@ -533,7 +559,8 @@ namespace green {
 
             if (is_wallet_utxo(input)) {
                 // Wallet UTXO. Add the relevant keypaths
-                add_keypaths(session, psbt_input.keypaths, input);
+                auto keys = add_keypaths(session, psbt_input.keypaths, input);
+                add_input_scripts(psbt_input.psbt_fields, input, keys);
             }
             if (m_is_liquid) {
                 // Add the input asset and amount
