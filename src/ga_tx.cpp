@@ -1201,12 +1201,12 @@ namespace green {
 
         if (utxo.find("service_xpub") == utxo.end()) {
             // Populate the service xpub for h/w signing
-            utxo["service_xpub"] = session.get_service_xpub(subaccount);
+            utxo["service_xpub"] = session.get_green_pubkeys().get_subaccount(subaccount).to_base58();
         }
 
-        if (utxo.find("recovery_xpub") == utxo.end() && session.has_recovery_pubkeys_subaccount(subaccount)) {
+        if (utxo.find("recovery_xpub") == utxo.end() && session.get_recovery_pubkeys().have_subaccount(subaccount)) {
             // Populate the recovery xpub for h/w signing
-            utxo["recovery_xpub"] = session.get_recovery_xpub(subaccount);
+            utxo["recovery_xpub"] = session.get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
         }
     }
 
