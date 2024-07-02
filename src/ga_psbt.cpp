@@ -123,6 +123,22 @@ namespace green {
             }
         }
 
+        static void add_input_scripts(session_impl& session, wally_map& psbt_fields, const nlohmann::json& utxo)
+        {
+            const bool is_electrum = session.get_network_parameters().is_electrum();
+            const auto& addr_type = j_strref(utxo, "address_type");
+            if (is_electrum) {
+                if (addr_type == address_type::p2sh_p2wpkh) {
+                    const auto pub_key = session.keys_from_utxo(utxo).at(0).get_public_key();
+                    const auto witness_program = witness_script(pub_key, WALLY_SCRIPT_HASH160);
+                    GDK_VERIFY(wally_map_add_integer(
+                        &psbt_fields, in_redeem_script, witness_program.data(), witness_program.size()));
+                }
+                return;
+            }
+            // FIXME: 'csv', 'p2wsh'
+        }
+
     } // namespace
 
     void Psbt::psbt_deleter::operator()(struct wally_psbt* p) { wally_psbt_free(p); }
@@ -534,6 +550,7 @@ namespace green {
             if (is_wallet_utxo(input)) {
                 // Wallet UTXO. Add the relevant keypaths
                 add_keypaths(session, psbt_input.keypaths, input);
+                add_input_scripts(session, psbt_input.psbt_fields, input);
             }
             if (m_is_liquid) {
                 // Add the input asset and amount
