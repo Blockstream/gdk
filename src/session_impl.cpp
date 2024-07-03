@@ -984,7 +984,7 @@ namespace green {
     user_pubkeys& session_impl::get_user_pubkeys() { return *m_user_pubkeys; }
 
     // Post-login idempotent
-    user_pubkeys& session_impl::get_recovery_pubkeys()
+    green_recovery_pubkeys& session_impl::get_recovery_pubkeys()
     {
         GDK_RUNTIME_ASSERT_MSG(m_recovery_pubkeys, "Session cannot provide multisig recovery pubkeys");
         return *m_recovery_pubkeys;

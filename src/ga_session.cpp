@@ -494,7 +494,7 @@ namespace green {
         if (!m_green_pubkeys) {
             // Create our GA and recovery pubkey collections
             m_green_pubkeys = std::make_unique<green_pubkeys>(m_net_params, m_gait_path);
-            m_recovery_pubkeys = std::make_unique<green_user_pubkeys>(m_net_params);
+            m_recovery_pubkeys = std::make_unique<green_recovery_pubkeys>(m_net_params);
         }
 
         const uint32_t min_fee_rate = m_login_data["min_fee"];

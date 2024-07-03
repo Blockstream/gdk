@@ -38,6 +38,9 @@ namespace green {
         return path;
     }
 
+    //
+    // Green Service Keys
+    //
     green_pubkeys::green_pubkeys(const network_parameters& net_params, uint32_span_t gait_path)
         : xpub_hdkeys(net_params)
         , m_master_xpub(m_is_main_net, h2b(net_params.pub_key()), h2b(net_params.chain_code()))
@@ -87,6 +90,9 @@ namespace green {
 
     xpub_hdkey green_pubkeys::get_master_xpub() const { return m_master_xpub; }
 
+    //
+    // User Keys
+    //
     green_user_pubkeys::green_user_pubkeys(const network_parameters& net_params)
         : user_pubkeys(net_params)
     {
@@ -136,6 +142,19 @@ namespace green {
         return p->second;
     }
 
+    //
+    // User Recovery Keys
+    //
+    green_recovery_pubkeys::green_recovery_pubkeys(const network_parameters& net_params)
+        : green_user_pubkeys(net_params)
+    {
+    }
+
+    std::vector<uint32_t> green_recovery_pubkeys::get_path_to_subaccount(uint32_t /*subaccount*/) const { return {}; }
+
+    //
+    // BIP44-style User Keys (Singlesig)
+    //
     bip44_pubkeys::bip44_pubkeys(const network_parameters& net_params)
         : user_pubkeys(net_params)
     {

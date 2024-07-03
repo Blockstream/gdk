@@ -20,6 +20,7 @@ namespace green {
     class client_blob;
     class green_pubkeys;
     class user_pubkeys;
+    class green_recovery_pubkeys;
     class signer;
     class Tx;
     struct tor_controller;
@@ -216,7 +217,7 @@ namespace green {
 
         virtual green_pubkeys& get_green_pubkeys();
         virtual user_pubkeys& get_user_pubkeys();
-        virtual user_pubkeys& get_recovery_pubkeys();
+        virtual green_recovery_pubkeys& get_recovery_pubkeys();
 
         // Cached data
         virtual std::pair<std::string, bool> get_cached_master_blinding_key() = 0;
@@ -315,7 +316,7 @@ namespace green {
         std::shared_ptr<signer> m_signer;
         std::unique_ptr<green_pubkeys> m_green_pubkeys;
         std::unique_ptr<user_pubkeys> m_user_pubkeys;
-        std::unique_ptr<user_pubkeys> m_recovery_pubkeys;
+        std::unique_ptr<green_recovery_pubkeys> m_recovery_pubkeys;
         bool m_watch_only;
 
         // Mutable

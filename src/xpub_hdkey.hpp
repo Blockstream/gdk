@@ -113,7 +113,7 @@ namespace green {
     // passing the xpub of the m/3'/subaccount' key before calling derive()
     // on a subaccount.
     //
-    class green_user_pubkeys final : public user_pubkeys {
+    class green_user_pubkeys : public user_pubkeys {
     public:
         explicit green_user_pubkeys(const network_parameters& net_params);
 
@@ -147,6 +147,19 @@ namespace green {
     // representing "m". Where a recovery mnemonic is generated on the client
     // side, it encodes "m" directly.
     //
+    class green_recovery_pubkeys final : public green_user_pubkeys {
+    public:
+        explicit green_recovery_pubkeys(const network_parameters& net_params);
+
+        green_recovery_pubkeys(const green_recovery_pubkeys&) = default;
+        green_recovery_pubkeys& operator=(const green_recovery_pubkeys&) = default;
+        green_recovery_pubkeys(green_recovery_pubkeys&&) = default;
+        green_recovery_pubkeys& operator=(green_recovery_pubkeys&&) = default;
+        ~green_recovery_pubkeys() override = default;
+
+        // Get the path to the subaccount root, i.e. m (always an empty path)
+        virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const override;
+    };
 
     //
     // Derives BIP44/BIP49/BIP84 public keys for the given network:
