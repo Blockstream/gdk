@@ -340,9 +340,8 @@ as the array elements of `GA_get_subaccounts`.
 :name: The name of the subaccount.
 :pointer: The subaccount number.
 :receiving_id: The Green receiving ID for the subaccount.
-:recovery_chain_code: For ``"2of3"`` subaccounts, the BIP32 chain code of the users recovery key.
-:recovery_pub_key: For ``"2of3"`` subaccounts, the BIP32 public key of the users recovery key.
-:recovery_xpub: For ``"2of3"`` subaccounts, the BIP32 xpub of the users recovery key.
+:recovery_xpub: For ``"2of3"`` subaccounts, the BIP32 xpub of the users recovery
+    key. For all other subaccount types this value is empty.
 :required_ca: For ``"2of2_no_recovery"`` subaccounts, the number of confidential addresses
     that the user must upload to the server before transacting.
 :type: For multisig subaccounts, one of ``"2of2"``, ``"2of3"`` or ``"2of2_no_recovery"``.

@@ -29,6 +29,10 @@
 - GA_sign_transaction: Spending expired CSV outputs now always uses the smaller
   and cheaper recovery path, which requires only a single signature and does not
   require two-factor authentication.
+- GA_get_subaccount/GA_get_subaccounts: The elements``"recovery_chain_code"``
+  and ``"recovery_pub_key"`` are no longer returned. The ``"recovery_xpub"``
+  element for ``2of3`` subaccounts now always contains an xpub with the
+  recovery pubkey and chain code.
 - GA_psbt_from_json: The returned PSBT now includes keypath elements for wallet
   inputs and outputs, correct witness and redeem scripts, and appropriate input
   utxos. This allows wallet input/output identification and signing of the

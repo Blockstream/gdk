@@ -10,8 +10,6 @@
     "name": "Example subaccount name",
     "pointer": 0,
     "receiving_id": "GA2G8fjDNWvZiJP8Y5iV2ywTAQeZeo",
-    "recovery_chain_code": "",
-    "recovery_pub_key": "",
     "recovery_xpub": "",
     "required_ca": 0,
     "type": "2of2",
