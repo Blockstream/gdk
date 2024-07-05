@@ -120,7 +120,9 @@ namespace green {
     void green_user_pubkeys::add_subaccount(uint32_t subaccount, const std::string& bip32_xpub)
     {
         std::array<uint32_t, 1> path{ { 1 } };
-        auto user_key = xpub_hdkey(bip32_xpub).derive(path);
+        const auto subaccount_key = xpub_hdkey(bip32_xpub);
+        auto user_key = subaccount_key.derive(path);
+        user_key.set_parent_fingerprint(subaccount_key.get_fingerprint());
         const auto ret = m_subaccounts.emplace(subaccount, user_key);
         if (!ret.second) {
             // Subaccount is already present; xpub must match whats already there
