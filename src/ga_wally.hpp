@@ -108,6 +108,8 @@ namespace green {
         chain_code_t get_chain_code() const;
         pub_key_t get_public_key() const;
         std::vector<unsigned char> get_fingerprint() const;
+        std::vector<unsigned char> get_parent_fingerprint() const;
+        void set_parent_fingerprint(byte_span_t fingerprint);
 
         std::string to_base58() const;
         std::string to_hashed_identifier(const std::string& network) const;

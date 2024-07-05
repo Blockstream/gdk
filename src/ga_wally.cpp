@@ -148,6 +148,19 @@ namespace green {
         return fp;
     }
 
+    std::vector<unsigned char> xpub_hdkey::get_parent_fingerprint() const
+    {
+        // wally doesn't yet expose an API for fetching the parent fingerprint
+        return { m_ext_key.parent160, m_ext_key.parent160 + BIP32_KEY_FINGERPRINT_LEN };
+    }
+
+    void xpub_hdkey::set_parent_fingerprint(byte_span_t fingerprint)
+    {
+        GDK_RUNTIME_ASSERT(fingerprint.size() == BIP32_KEY_FINGERPRINT_LEN);
+        memset(m_ext_key.parent160, 0, sizeof(m_ext_key.parent160));
+        memcpy(m_ext_key.parent160, fingerprint.data(), fingerprint.size());
+    }
+
     std::string xpub_hdkey::to_base58() const
     {
         char* s;
