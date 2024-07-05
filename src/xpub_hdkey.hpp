@@ -80,6 +80,8 @@ namespace green {
 
         xpub_hdkey get_subaccount(uint32_t subaccount) override;
 
+        xpub_hdkey get_master_xpub() const;
+
     private:
         std::array<uint32_t, 32> m_gait_path;
         xpub_hdkey m_master_xpub;

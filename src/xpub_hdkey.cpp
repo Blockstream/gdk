@@ -85,6 +85,8 @@ namespace green {
         return hmac_sha512(GAIT_GENERATION_NONCE, path_data);
     }
 
+    xpub_hdkey green_pubkeys::get_master_xpub() const { return m_master_xpub; }
+
     green_user_pubkeys::green_user_pubkeys(const network_parameters& net_params)
         : user_pubkeys(net_params)
     {
