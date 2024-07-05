@@ -48,7 +48,7 @@
   their import references and wheel installation commands accordingly.
 - Build: The scripts for building library dependencies have been simplified, and
   an example Dockerfile for Android builds using Debian Bookworm is now included.
-- update tor to 0.4.8.9
+- Dependencies: Update tor to 0.4.8.9, update libwally to 1.3.0.
 
 ### Fixed
 
