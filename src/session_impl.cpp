@@ -1104,8 +1104,15 @@ namespace green {
             const auto is_internal = j_boolref(utxo, "is_internal");
             return { get_user_pubkeys().derive(subaccount, pointer, is_internal) };
         }
-        // TODO: consider returning the recovery key (2of3) as well
-        return { get_green_pubkeys().derive(subaccount, pointer), get_user_pubkeys().derive(subaccount, pointer) };
+        auto green_key{ get_green_pubkeys().derive(subaccount, pointer) };
+        auto user_key{ get_user_pubkeys().derive(subaccount, pointer) };
+        std::vector<xpub_hdkey> keys{ std::move(green_key), std::move(user_key) };
+
+        if (get_recovery_pubkeys().have_subaccount(subaccount)) {
+            // 2of3: Return the recovery key
+            keys.emplace_back(get_recovery_pubkeys().derive(subaccount, pointer));
+        }
+        return keys;
     }
 
     nlohmann::json session_impl::decrypt_with_pin(const nlohmann::json& /*details*/)
