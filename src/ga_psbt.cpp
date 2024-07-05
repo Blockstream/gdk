@@ -108,22 +108,25 @@ namespace green {
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
             auto keys = session.keys_from_utxo(utxo);
-            const auto master_xpub = xpub_hdkey(session.get_nonnull_signer()->get_master_bip32_xpub());
-            const auto fingerprint = master_xpub.get_fingerprint();
             size_t user_key_index = 0;
             const auto subaccount = j_uint32ref(utxo, "subaccount");
             const auto pointer = j_uint32ref(utxo, "pointer");
             const auto is_internal = j_bool_or_false(utxo, "is_internal");
             if (!is_electrum) {
                 // First key returned is the Green key, add it
+                const auto green_fp = session.get_green_pubkeys().get_master_xpub().get_fingerprint();
                 const auto& green_key = keys.at(user_key_index);
                 add_keypath(
-                    keypaths, session.get_green_pubkeys(), fingerprint, green_key, subaccount, pointer, is_internal);
+                    keypaths, session.get_green_pubkeys(), green_fp, green_key, subaccount, pointer, is_internal);
                 user_key_index = 1;
             }
+
             // Add the user's pubkey
+            const auto master_bip32_xpub = session.get_nonnull_signer()->get_master_bip32_xpub();
+            const auto master_fp = xpub_hdkey(master_bip32_xpub).get_fingerprint();
             const auto& user_key = keys.at(user_key_index);
-            add_keypath(keypaths, session.get_user_pubkeys(), fingerprint, user_key, subaccount, pointer, is_internal);
+            add_keypath(keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer, is_internal);
+
             if (!is_electrum && keys.size() > 2) {
                 // FIXME: Add the recovery pubkey
             }
