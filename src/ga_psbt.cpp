@@ -128,7 +128,11 @@ namespace green {
             add_keypath(keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer, is_internal);
 
             if (!is_electrum && keys.size() > 2) {
-                // FIXME: Add the recovery pubkey
+                // 2of3: Add the recovery pubkey
+                auto& recovery_pubkeys = session.get_recovery_pubkeys();
+                const auto recovery_fp = recovery_pubkeys.get_subaccount(subaccount).get_parent_fingerprint();
+                const auto& recovery_key = keys.back();
+                add_keypath(keypaths, recovery_pubkeys, recovery_fp, recovery_key, subaccount, pointer, is_internal);
             }
             return keys;
         }
