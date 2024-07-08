@@ -679,6 +679,9 @@ namespace green {
     amount ga_session::get_min_fee_rate() const
     {
         locker_t locker(m_mutex);
+        if (auto fee_rate = m_net_params.get_min_fee_rate(); fee_rate) {
+            return amount(*fee_rate); // Overridden by the user for this session
+        }
         return amount(m_min_fee_rate);
     }
 

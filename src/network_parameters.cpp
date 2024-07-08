@@ -191,6 +191,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Localtest" },
             { "network", "localtest" },
             { "p2pkh_version", 111u },
@@ -234,6 +235,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Liquid" },
             { "network", "liquid" },
             { "p2pkh_version", 57u },
@@ -278,6 +280,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Localtest Liquid" },
             { "network", "localtest-liquid" },
             { "p2pkh_version", 235u },
@@ -322,6 +325,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Testnet Liquid" },
             { "network", "testnet-liquid" },
             { "p2pkh_version", 36u },
@@ -362,6 +366,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Bitcoin" },
             { "network", "mainnet" },
             { "p2pkh_version", 0u },
@@ -401,6 +406,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Testnet" },
             { "network", "testnet" },
             { "p2pkh_version", 111u },
@@ -444,6 +450,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", true },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Liquid (Electrum)" },
             { "network", "electrum-liquid" },
             { "p2pkh_version", 57u },
@@ -488,6 +495,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Localtest Liquid (Electrum)" },
             { "network", "electrum-localtest-liquid" },
             { "p2pkh_version", 235u },
@@ -528,6 +536,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", true },
             { "max_reorg_blocks", 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Bitcoin (Electrum)" },
             { "network", "electrum-mainnet" },
             { "p2pkh_version", 0u },
@@ -567,6 +576,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Testnet (Electrum)" },
             { "network", "electrum-testnet" },
             { "p2pkh_version", 111u },
@@ -606,6 +616,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Signet (Electrum)" },
             { "network", "electrum-signet" },
             { "p2pkh_version", 111u },
@@ -645,6 +656,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", false },
             { "mainnet", false },
             { "max_reorg_blocks", 7 * 144u },
+            { "min_fee_rate", nullptr },
             { "name", "Localtest (Electrum)" },
             { "network", "electrum-localtest" },
             { "p2pkh_version", 111u },
@@ -688,6 +700,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "liquid", true },
             { "mainnet", false },
             { "max_reorg_blocks", 2 },
+            { "min_fee_rate", nullptr },
             { "name", "Testnet Liquid (Electrum)" },
             { "network", "electrum-testnet-liquid" },
             { "p2pkh_version", 36u },
@@ -764,6 +777,14 @@ namespace green {
             set_override(defaults, "tx_explorer_onion_url", user_overrides, empty);
 
             defaults["state_dir"] = gdk_config().value("datadir", empty) + "/state";
+
+            // Handle min fee rate specifically; it is null by default
+            auto fee_rate = j_uint32(user_overrides, "min_fee_rate");
+            if (fee_rate) {
+                defaults["min_fee_rate"] = *fee_rate; // User wants a value
+            } else if (user_overrides.contains("fee_rate") || !defaults.contains("min_fee_rate")) {
+                defaults["min_fee_rate"] = nullptr; // User wants null, or no default
+            }
             return defaults;
         }
     } // namespace
@@ -930,6 +951,7 @@ namespace green {
     // a weeks worth of blocks without cache deletion, and for testnet still allows cache finalization
     // testing while being unnaffected by normal chain operation.
     uint32_t network_parameters::get_max_reorg_blocks() const { return m_details.at("max_reorg_blocks"); }
+    std::optional<uint32_t> network_parameters::get_min_fee_rate() const { return j_uint32(m_details, "min_fee_rate"); }
     std::string network_parameters::get_price_url() const
     {
         return get_url(m_details, "price_url", "price_onion_url", use_tor());

@@ -689,7 +689,13 @@ namespace green {
         return amount::convert(amount_json, currency, fiat_rate);
     }
 
-    amount ga_rust::get_min_fee_rate() const { return rust_call("get_min_fee_rate", {}, m_session); }
+    amount ga_rust::get_min_fee_rate() const
+    {
+        if (auto fee_rate = m_net_params.get_min_fee_rate(); fee_rate) {
+            return amount(*fee_rate); // Overridden by the user for this session
+        }
+        return rust_call("get_min_fee_rate", {}, m_session);
+    }
     amount ga_rust::get_default_fee_rate() const
     {
         // TODO: Implement using a user block default setting when we have one

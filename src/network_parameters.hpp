@@ -3,6 +3,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -68,6 +69,7 @@ namespace green {
         bool is_valid_csv_value(uint32_t csv_blocks) const;
         uint32_t cert_expiry_threshold() const;
         uint32_t get_max_reorg_blocks() const;
+        std::optional<uint32_t> get_min_fee_rate() const;
         std::string get_price_url() const;
 
     private:
