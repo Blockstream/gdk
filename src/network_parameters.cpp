@@ -147,9 +147,6 @@ static std::vector<std::string> default_wamp_cert_pins = {
     // not after: Mon Sep 15 16:00:00 2025
     "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
 
-    // ??
-    "b42688d73bac5099d9cf4fdb7b05f5e54e98c5aa8ab56ee06c297a9a84d2d5f1",
-
     // subject: '/C=US/O=Let's Encrypt/CN=R3'
     // issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X1'
     // not before: Fri Sep  4 00:00:00 2020
