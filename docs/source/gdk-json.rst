@@ -50,6 +50,7 @@ Connection parameters JSON
       "use_tor": true,
       "user_agent": "green_android v2.33",
       "spv_enabled": false,
+      "min_fee_rate": 1000,
       "cert_expiry_threshold": 1
       "gap_limit": 20,
       "electrum_url", "blockstream.info:993",
@@ -64,6 +65,10 @@ Connection parameters JSON
           resolving ``".onion"`` domains.
 :user_agent: The user agent string to pass to the server for multisig connections.
 :spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
+:min_fee_rate: ``null`` to use the default minimum fee (which can change according to
+    the network conditions), or an integer giving the fee rate in satoshis per 1000 bytes.
+    Note that overriding the default fee rate only affects transaction construction; the
+    rates returned by fee notifications remain those of the underlying network.
 :cert_expiry_threshold: Ignore certificates expiring within this many days from today. Used to pre-empt problems with expiring embedded certificates.
 :gap_limit: Optional, singlesig only. Number of consecutive empty scripts/addresses to monitor. Defaults to 20.
 :electrum_url: Optional. For singlesig the Electrum server used to fetch blockchain data. For multisig the Electrum server used for SPV verification. Default value depends on the network.

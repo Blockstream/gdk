@@ -19,6 +19,10 @@
   watch only credentials (i.e. ``"username"`` and ``"password"``). This replaces
   the old call GA_set_watch_only and allows for returning more data when a
   watch only session is created.
+- Fees: Callers can now override the minimum network fee rate by setting the
+  ``"min_fee_rate"`` element in network parameters when calling GA_connect.
+  This can be used to create transactions that pay less than the minimum
+  fee (for example, for broadcasting later as part of a package).
 - Singlesig: Add Signet support.
 
 ### Changed
