@@ -140,16 +140,19 @@ namespace green {
         static void add_input_scripts(
             wally_map& psbt_fields, const nlohmann::json& utxo, const std::vector<xpub_hdkey>& keys)
         {
+            using namespace address_type;
             std::optional<std::vector<unsigned char>> redeem_script;
             const auto& addr_type = j_strref(utxo, "address_type");
 
-            if (addr_type == address_type::p2sh_p2wpkh) {
+            if (addr_type == p2sh_p2wpkh) {
                 const auto pub_key = keys.at(0).get_public_key();
                 redeem_script = witness_script(pub_key, WALLY_SCRIPT_HASH160);
-            } else if (addr_type == address_type::csv || addr_type == address_type::p2wsh) {
+            } else if (addr_type == csv || addr_type == p2wsh) {
                 const auto prevout_script = j_bytesref(utxo, "prevout_script");
                 set_field(psbt_fields, in_witness_script, prevout_script);
                 redeem_script = witness_script(prevout_script, WALLY_SCRIPT_SHA256);
+            } else if (addr_type == p2sh) {
+                redeem_script = j_bytesref(utxo, "prevout_script");
             }
             if (redeem_script) {
                 set_field(psbt_fields, in_redeem_script, *redeem_script);
