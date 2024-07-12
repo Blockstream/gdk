@@ -1,7 +1,7 @@
 # Debian (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-debian-ci -f docker/debian/Dockerfile
 #
-FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de as base
+FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
@@ -23,7 +23,7 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
-FROM rust:1.68-bullseye as builderrust
+FROM rust:1.68-bullseye AS builderrust
 WORKDIR /root
 COPY ./docker/debian/install_rust_tools.sh ./docker/debian/install_rust_tools.sh
 RUN ./docker/debian/install_rust_tools.sh
@@ -31,7 +31,7 @@ RUN ./docker/debian/install_rust_tools.sh
 FROM blockstream/esplora@sha256:dabc2501137dea9db6107e6c5c4d6d575616b2274dc278647f91ab9a4f75a848 AS esplora-base-image
 
 
-FROM base as final
+FROM base AS final
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 
