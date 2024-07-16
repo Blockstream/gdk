@@ -963,9 +963,8 @@ namespace green {
         const auto& input = get_input(index);
 
         // TODO: handle backup paths:
-        // - 2of3 p2sh, backup key signing
-        // - 2of3 p2wsh, backup key signing
-        // - 2of2 csv, csv path
+        // - 2of3 p2sh, user + backup key signing
+        // - 2of3 p2wsh, user + backup key signing
         if (addr_type == p2pkh) {
             // p2pkh: script sig: <user_sig> <pubkey>
             return { der_from_push({ input.script, input.script_len }) };
