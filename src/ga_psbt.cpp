@@ -104,7 +104,8 @@ namespace green {
                 fingerprint.size(), path.data(), path.size()));
         }
 
-        static auto add_keypaths(session_impl& session, wally_map& keypaths, const nlohmann::json& utxo)
+        static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input, wally_map& keypaths,
+            const nlohmann::json& details, const nlohmann::json& utxo)
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
             auto keys = session.keys_from_utxo(utxo);
@@ -112,12 +113,26 @@ namespace green {
             const auto subaccount = j_uint32ref(utxo, "subaccount");
             const auto pointer = j_uint32ref(utxo, "pointer");
             const auto is_internal = j_bool_or_false(utxo, "is_internal");
+            bool is_expired_csv = false;
+
             if (!is_electrum) {
-                // First key returned is the Green key, add it
-                const auto green_fp = session.get_green_pubkeys().get_master_xpub().get_fingerprint();
-                const auto& green_key = keys.at(user_key_index);
-                add_keypath(
-                    keypaths, session.get_green_pubkeys(), green_fp, green_key, subaccount, pointer, is_internal);
+                if (psbt_input && j_strref(utxo, "address_type") == address_type::csv
+                    && j_uint32ref(details, "transaction_version") >= WALLY_TX_VERSION_2) {
+                    const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
+                    if (expiry_height && expiry_height <= session.get_block_height()
+                        && session.get_network_parameters().is_valid_csv_value(psbt_input->sequence)) {
+                        GDK_RUNTIME_ASSERT(psbt_input->sequence == j_uint32ref(utxo, "sequence"));
+                        is_expired_csv = true;
+                    }
+                }
+
+                if (!is_expired_csv) {
+                    // First key returned is the Green key, add it
+                    const auto green_fp = session.get_green_pubkeys().get_master_xpub().get_fingerprint();
+                    const auto& green_key = keys.at(user_key_index);
+                    add_keypath(
+                        keypaths, session.get_green_pubkeys(), green_fp, green_key, subaccount, pointer, is_internal);
+                }
                 user_key_index = 1;
             }
 
@@ -585,7 +600,7 @@ namespace green {
             const bool belongs_to_wallet = is_wallet_utxo(input);
             if (belongs_to_wallet) {
                 // Wallet UTXO. Add the relevant keypaths
-                auto keys = add_keypaths(session, psbt_input.keypaths, input);
+                auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, details, input);
                 add_input_scripts(psbt_input.psbt_fields, input, keys);
             }
             if (m_is_liquid) {
@@ -623,7 +638,7 @@ namespace green {
 
             if (is_wallet_utxo(output)) {
                 // Wallet UTXO. Add the relevant keypaths
-                add_keypaths(session, psbt_output.keypaths, output);
+                add_keypaths(session, nullptr, psbt_output.keypaths, details, output);
             }
 
             if (m_is_liquid) {
