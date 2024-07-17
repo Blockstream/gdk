@@ -55,6 +55,8 @@
 - Dependencies: Update tor to 0.4.8.9, update libwally to 1.3.0.
 
 ### Fixed
+- Fixed signing of RBF transactions where one or more expired CSV inputs are
+  present to use the optimized signing path, resulting in lower bumping fees.
 
 ### Removed
 - GA_set_watch_only: This call has been removed. Users should use GA_register_user to
