@@ -326,6 +326,7 @@ namespace green {
                 GDK_RUNTIME_ASSERT(tx_inputs_map.size() == tx.get_num_inputs());
                 std::vector<nlohmann::json> tx_inputs;
                 tx_inputs.reserve(tx_inputs_map.size());
+                const auto block_height = session.get_block_height();
                 for (auto& item : tx_inputs_map) {
                     // Verify the transaction signatures to prevent outputs
                     // from being modified. Also store the users sighash in
@@ -340,6 +341,13 @@ namespace green {
                             // ensure we have a user sig to verify/get the sighash.
                             GDK_LOG(debug) << "RBF tx input " << item.first << " spent via expiry";
                             GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
+                            // We must set a block and expiry height in order to
+                            // recognise the input as expired when signing. Note
+                            // the sequence is what is set in the tx so the actual
+                            // values don't matter; just that the expiry height is
+                            // at least sequence blocks before the block height.
+                            item.second["block_height"] = block_height;
+                            item.second["expiry_height"] = block_height - tx.get_input(i).sequence;
                             continue;
                         }
                         GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
