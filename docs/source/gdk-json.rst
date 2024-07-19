@@ -53,8 +53,8 @@ Connection parameters JSON
       "min_fee_rate": 1000,
       "cert_expiry_threshold": 1
       "gap_limit": 20,
-      "electrum_url", "blockstream.info:993",
-      "electrum_onion_url", "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
+      "electrum_url": "blockstream.info:993",
+      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
