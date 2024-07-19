@@ -235,7 +235,7 @@ namespace green {
 
     std::string Psbt::to_base64(bool include_redundant) const
     {
-        std::unique_ptr<struct wally_psbt> tmp;
+        decltype(m_psbt) tmp;
         struct wally_psbt* psbt = m_psbt.get();
         if (m_original_version != WALLY_PSBT_VERSION_2) {
             // Clone and downgrade the PSBT
