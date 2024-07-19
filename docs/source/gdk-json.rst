@@ -55,6 +55,7 @@ Connection parameters JSON
       "gap_limit": 20,
       "electrum_url": "blockstream.info:993",
       "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
+      "electrum_tls": true,
    }
 
 :name: The name of the network to connect to. Must match a key from :ref:`networks-list`.
@@ -73,6 +74,7 @@ Connection parameters JSON
 :gap_limit: Optional, singlesig only. Number of consecutive empty scripts/addresses to monitor. Defaults to 20.
 :electrum_url: Optional. For singlesig the Electrum server used to fetch blockchain data. For multisig the Electrum server used for SPV verification. Default value depends on the network.
 :electrum_onion_url: Optional. If ``"use_tor"`` is ``true``, this value is used instead of ``"electrum_url"``. Default value depends on the network.
+:electrum_tls: Optional. Use TLS to connect to the Electrum server. Default value depends on the network (``false`` for local networks, ``true`` otherwise).
 
 .. note:: When ``"use_tor"`` is ``true``, the caller should pass ``"with_shutdown"`` as ``true`` in
    the :ref:`init-config-arg` passed to `GA_init`, and call `GA_shutdown` on application
