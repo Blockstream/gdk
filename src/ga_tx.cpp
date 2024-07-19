@@ -82,12 +82,12 @@ namespace green {
                 // redeem script in the inputs witness data. The user can change
                 // their CSV time at any time, so we must use the value that was
                 // originally used in the tx rather than the users current setting.
-                const auto& witness = tx.get_input(i).witness;
-                GDK_RUNTIME_ASSERT(witness != nullptr && witness->num_items != 0);
+                const auto* witness = tx.get_input(i).witness;
+                GDK_RUNTIME_ASSERT(witness && witness->num_items != 0);
                 // The redeem script is the last witness item
                 const auto& witness_item = witness->items[witness->num_items - 1];
-                GDK_RUNTIME_ASSERT(witness_item.witness != nullptr && witness_item.witness_len != 0);
-                subtype = get_csv_blocks_from_csv_redeem_script({ witness_item.witness, witness_item.witness_len });
+                GDK_RUNTIME_ASSERT(witness_item.witness && witness_item.witness_len != 0);
+                subtype = get_csv_blocks_from_csv_script({ witness_item.witness, witness_item.witness_len });
             }
             utxo["subtype"] = subtype;
         }

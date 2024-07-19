@@ -2610,7 +2610,7 @@ namespace green {
         if (j_strref(address, "address_type") == address_type::csv) {
             // Make sure the csv value used is in our csv buckets. If it
             // isn't, coins held in such scripts may not be recoverable.
-            uint32_t addr_csv_blocks = get_csv_blocks_from_csv_redeem_script(server_script);
+            const auto addr_csv_blocks = get_csv_blocks_from_csv_script(server_script);
             GDK_RUNTIME_ASSERT(m_net_params.is_valid_csv_value(addr_csv_blocks));
             if (!is_historic) {
                 // For new addresses, ensure that the csvtime is the users

@@ -223,36 +223,10 @@ namespace green {
         out.resize(written);
     }
 
-    uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script)
+    uint32_t get_csv_blocks_from_csv_script(byte_span_t script)
     {
-        size_t csv_blocks_offset;
-
-        if (redeem_script[0] == OP_DEPTH && redeem_script[1] == OP_1SUB && redeem_script[2] == OP_IF) {
-            // 2of2 redeem script, with csv_blocks at:
-            // OP_DEPTH OP_1SUB OP_IF <main_pubkey> OP_CHECKSIGVERIFY OP_ELSE <csv_blocks>
-            csv_blocks_offset = 1 + 1 + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1;
-        } else if (redeem_script[0] == EC_PUBLIC_KEY_LEN && redeem_script[EC_PUBLIC_KEY_LEN + 1] == OP_CHECKSIGVERIFY
-            && redeem_script[EC_PUBLIC_KEY_LEN + 2] == EC_PUBLIC_KEY_LEN
-            && redeem_script[EC_PUBLIC_KEY_LEN * 2 + 3] == OP_CHECKSIG
-            && redeem_script[EC_PUBLIC_KEY_LEN * 2 + 4] == OP_IFDUP) {
-            // 2of2 optimized redeem script, with csv_blocks at:
-            // <recovery_pubkey> OP_CHECKSIGVERIFY <main_pubkey> OP_CHECKSIG OP_IFDUP OP_NOTIF <csv_blocks>
-            csv_blocks_offset = (EC_PUBLIC_KEY_LEN + 1) + 1 + (EC_PUBLIC_KEY_LEN + 1) + 1 + 1 + 1;
-        } else {
-            GDK_RUNTIME_ASSERT_MSG(false, "Invalid CSV redeem script");
-            __builtin_unreachable();
-        }
-        // TODO: Move script integer parsing to wally and generalize
-        size_t len = redeem_script[csv_blocks_offset];
-        GDK_RUNTIME_ASSERT(len <= 4);
-        // Negative CSV blocks are not allowed
-        GDK_RUNTIME_ASSERT((redeem_script[csv_blocks_offset + len] & 0x80) == 0);
-
-        uint32_t csv_blocks = 0;
-        for (size_t i = 0; i < len; ++i) {
-            uint32_t b = redeem_script[csv_blocks_offset + 1 + i];
-            csv_blocks |= (b << (8 * i));
-        }
+        uint32_t csv_blocks;
+        GDK_VERIFY(wally_scriptpubkey_csv_blocks_from_csv_2of2_then_1(script.data(), script.size(), &csv_blocks));
         return csv_blocks;
     }
 

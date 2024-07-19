@@ -138,7 +138,7 @@ namespace green {
     void scriptpubkey_csv_2of2_then_1_from_bytes(
         byte_span_t keys, uint32_t csv_blocks, bool optimize, std::vector<unsigned char>& out);
 
-    uint32_t get_csv_blocks_from_csv_redeem_script(byte_span_t redeem_script);
+    uint32_t get_csv_blocks_from_csv_script(byte_span_t script);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
 
