@@ -2114,6 +2114,12 @@ namespace green {
 
     auth_handler::state_type broadcast_transaction_call::call_impl()
     {
+        if (!m_details.contains("transaction")) {
+            // If there is no tx hex, a PSBT must be present
+            Psbt psbt(j_strref(m_details, "psbt"), m_net_params.is_liquid());
+            psbt.finalize(); // Throws if the PSBT cannot be finalized
+            m_details["transaction"] = psbt.extract().to_hex();
+        }
         m_result = m_session->broadcast_transaction(m_details);
         return state_type::done;
     }
