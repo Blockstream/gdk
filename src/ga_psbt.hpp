@@ -32,6 +32,10 @@ namespace green {
         std::string to_base64(bool include_redundant) const;
         nlohmann::json to_json(session_impl& session, nlohmann::json utxos) const;
 
+        // Finalize the PSBT for extraction. Assumes all finalization data
+        // is already present in the PSBT, and throws if not.
+        void finalize();
+
         Tx extract() const;
 
         nlohmann::json get_details(session_impl& session, nlohmann::json details) const;
