@@ -3078,11 +3078,20 @@ namespace green {
         return result;
     }
 
-    std::string ga_session::broadcast_transaction(const std::string& tx_hex)
+    nlohmann::json ga_session::broadcast_transaction(const nlohmann::json& details)
     {
-        const auto txhash_hex = wamp_cast(m_wamp->call("vault.broadcast_raw_tx", tx_hex));
+        const auto& tx_hex = j_strref(details, "transaction");
+        auto txhash_hex = wamp_cast(m_wamp->call("vault.broadcast_raw_tx", tx_hex));
         purge_tx_notification(txhash_hex);
-        return txhash_hex;
+        auto result = details;
+        locker_t locker(m_mutex);
+        if (have_writable_client_blob(locker)) {
+            if (auto memo = j_str_or_empty(details, "memo"); !memo.empty()) {
+                update_client_blob(locker, std::bind(&client_blob::set_tx_memo, m_blob.get(), txhash_hex, memo));
+            }
+        }
+        result["txhash"] = std::move(txhash_hex);
+        return result;
     }
 
     // Idempotent

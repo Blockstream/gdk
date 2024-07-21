@@ -402,13 +402,8 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_send_transaction)
     }
 
-    public func broadcastTransaction(tx_hex: String) throws -> String {
-        var buff: UnsafeMutablePointer<Int8>? = nil
-        try callWrapper(fun: GA_broadcast_transaction(session, tx_hex, &buff))
-        defer {
-            GA_destroy_string(buff)
-        }
-        return String(cString: buff!)
+    public func broadcastTransaction(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_broadcast_transaction)
      }
 
     public func signMessage(details: [String: Any]) throws -> TwoFactorCall {

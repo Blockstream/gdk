@@ -59,8 +59,6 @@ namespace green {
 
         nlohmann::json get_transaction_details(const std::string& txhash_hex);
 
-        std::string broadcast_transaction(const std::string& tx_hex);
-
         void send_nlocktimes();
 
         void set_transaction_memo(const std::string& txhash_hex, const std::string& memo);

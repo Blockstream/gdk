@@ -339,6 +339,16 @@ namespace green {
         bool m_initialized;
     };
 
+    class broadcast_transaction_call final : public auth_handler_impl {
+    public:
+        broadcast_transaction_call(session& session, nlohmann::json details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
     class sign_message_call : public auth_handler_impl {
     public:
         sign_message_call(session& session, nlohmann::json details);

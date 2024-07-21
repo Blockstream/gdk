@@ -623,14 +623,17 @@ GDK_API int GA_psbt_from_json(struct GA_session* session, GA_json* details, stru
 GDK_API int GA_psbt_get_details(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Broadcast a fully signed transaction to the P2P network.
+ * Broadcast a fully signed transaction, PSBT or PSET to the network.
  *
  * :param session: The session to use.
- * :param transaction_hex: The signed transaction in hex to broadcast.
- * :param tx_hash: Destination for the resulting transactions hash.
- *|     Returned string should be freed using `GA_destroy_string`.
+ * :param details: The :ref:`broadcast-transaction-details` giving the transaction to broadcast.
+ * :param call: Destination for the resulting GA_auth_handler to broadcast the transaction.
+ *|     The call handlers result is :ref:`broadcast-transaction-result`.
+ *|     Returned GA_auth_handler should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
  */
-GDK_API int GA_broadcast_transaction(struct GA_session* session, const char* transaction_hex, char** tx_hash);
+GDK_API int GA_broadcast_transaction(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
 /**
  * Send a transaction created by GA_create_transaction and signed by GA_sign_transaction.

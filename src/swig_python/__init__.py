@@ -244,11 +244,11 @@ class Session(object):
     def psbt_get_details(self, details):
         return Call(psbt_get_details(self.session_obj, self._to_json(details)))
 
-    def send_transaction(self, transaction_details):
-        return Call(send_transaction(self.session_obj, self._to_json(transaction_details)))
+    def send_transaction(self, details):
+        return Call(send_transaction(self.session_obj, self._to_json(details)))
 
-    def broadcast_transaction(self, tx_hex):
-        return broadcast_transaction(self.session_obj, tx_hex)
+    def broadcast_transaction(self, details):
+        return Call(broadcast_transaction(self.session_obj, self._to_json(details)))
 
     def sign_message(self, details):
         return Call(sign_message(self.session_obj, self._to_json(details)))

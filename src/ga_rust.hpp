@@ -93,7 +93,7 @@ namespace green {
 
         nlohmann::json get_scriptpubkey_data(byte_span_t scriptpubkey);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
-        std::string broadcast_transaction(const std::string& tx_hex);
+        nlohmann::json broadcast_transaction(const nlohmann::json& details);
 
         void send_nlocktimes();
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);

@@ -499,12 +499,12 @@ GDK_DEFINE_C_FUNCTION_3(
 GDK_DEFINE_C_FUNCTION_2(GA_twofactor_cancel_reset, struct GA_session*, session, struct GA_auth_handler**, call,
     { *call = make_call(new green::twofactor_cancel_reset_call(*session)); })
 
-GDK_DEFINE_C_FUNCTION_3(GA_broadcast_transaction, struct GA_session*, session, const char*, transaction_hex, char**,
-    tx_hash, { *tx_hash = to_c_string(session->broadcast_transaction(transaction_hex)); })
-
-GDK_DEFINE_C_FUNCTION_3(GA_send_transaction, struct GA_session*, session, GA_json*, transaction_details,
+GDK_DEFINE_C_FUNCTION_3(GA_broadcast_transaction, struct GA_session*, session, GA_json*, details,
     struct GA_auth_handler**, call,
-    { *call = make_call(new green::send_transaction_call(*session, json_move(transaction_details))); })
+    { *call = make_call(new green::broadcast_transaction_call(*session, json_move(details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_send_transaction, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**,
+    call, { *call = make_call(new green::send_transaction_call(*session, json_move(details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_sign_message, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
     { *call = make_call(new green::sign_message_call(*session, json_move(details))); })

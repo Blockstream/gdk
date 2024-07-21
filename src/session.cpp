@@ -369,14 +369,6 @@ namespace green {
         });
     }
 
-    std::string session::broadcast_transaction(const std::string& tx_hex)
-    {
-        return exception_wrapper([&] {
-            auto p = get_nonnull_impl();
-            return p->broadcast_transaction(tx_hex);
-        });
-    }
-
     void session::send_nlocktimes()
     {
         exception_wrapper([&] {

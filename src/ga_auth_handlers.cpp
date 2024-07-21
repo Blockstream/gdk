@@ -2104,6 +2104,21 @@ namespace green {
     }
 
     //
+    // Broadcast transaction
+    //
+    broadcast_transaction_call::broadcast_transaction_call(session& session, nlohmann::json details)
+        : auth_handler_impl(session, "broadcast_transaction_call")
+        , m_details(std::move(details))
+    {
+    }
+
+    auth_handler::state_type broadcast_transaction_call::call_impl()
+    {
+        m_result = m_session->broadcast_transaction(m_details);
+        return state_type::done;
+    }
+
+    //
     // Sign Message
     //
     sign_message_call::sign_message_call(session& session, nlohmann::json details)

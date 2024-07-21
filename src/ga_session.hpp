@@ -96,7 +96,7 @@ namespace green {
         nlohmann::json service_sign_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data,
             std::vector<std::vector<unsigned char>>& old_scripts);
         nlohmann::json send_transaction(const nlohmann::json& details, const nlohmann::json& twofactor_data);
-        std::string broadcast_transaction(const std::string& tx_hex);
+        nlohmann::json broadcast_transaction(const nlohmann::json& details);
 
         void send_nlocktimes();
         void set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data);

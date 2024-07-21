@@ -591,19 +591,21 @@ namespace green {
 
     nlohmann::json ga_rust::send_transaction(const nlohmann::json& details, const nlohmann::json& /*twofactor_data*/)
     {
-        auto txhash_hex = broadcast_transaction(details.at("transaction"));
-        auto result = details;
-        if (details.contains("memo")) {
-            set_transaction_memo(txhash_hex, details.at("memo"));
-        }
-        result["txhash"] = std::move(txhash_hex);
-        return result;
+        return broadcast_transaction(details);
     }
 
-    std::string ga_rust::broadcast_transaction(const std::string& tx_hex)
+    nlohmann::json ga_rust::broadcast_transaction(const nlohmann::json& details)
     {
         try {
-            return rust_call("broadcast_transaction", nlohmann::json(tx_hex), m_session).get<std::string>();
+            const auto& tx_hex = j_strref(details, "transaction");
+            const auto ret = rust_call("broadcast_transaction", tx_hex, m_session);
+            auto txhash_hex = ret.get<std::string>();
+            if (auto memo = j_str_or_empty(details, "memo"); !memo.empty()) {
+                set_transaction_memo(txhash_hex, memo);
+            }
+            auto result = details;
+            result["txhash"] = std::move(txhash_hex);
+            return result;
         } catch (const std::exception& e) {
             // Translate core rpc/electrum errors where possible for i18n
             const std::string what = e.what();
