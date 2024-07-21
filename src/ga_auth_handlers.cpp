@@ -2114,13 +2114,33 @@ namespace green {
 
     auth_handler::state_type broadcast_transaction_call::call_impl()
     {
+        std::unique_ptr<Psbt> psbt;
+        const bool is_liquid = m_net_params.is_liquid();
+
         if (!m_details.contains("transaction")) {
             // If there is no tx hex, a PSBT must be present
-            Psbt psbt(j_strref(m_details, "psbt"), m_net_params.is_liquid());
-            psbt.finalize(); // Throws if the PSBT cannot be finalized
-            m_details["transaction"] = psbt.extract().to_hex();
+            psbt = std::make_unique<Psbt>(j_strref(m_details, "psbt"), is_liquid);
+            psbt->finalize(); // Throws if the PSBT cannot be finalized
+            m_details["transaction"] = psbt->extract().to_hex();
         }
-        m_result = m_session->broadcast_transaction(m_details);
+        if (j_bool_or_false(m_details, "simulate_only")) {
+            // Do not actually broadcast. Just make sure the tx can be parsed,
+            // returning the finalized PSBT (if provided), the final tx and
+            // its txid.
+            // TODO: Add further validation, e.g. tx is fully populated
+            Tx tx(j_strref(m_details, "transaction"), is_liquid);
+            m_result.swap(m_details);
+            m_result["txhash"] = b2h_rev(tx.get_txid());
+        } else {
+            m_result = m_session->broadcast_transaction(m_details);
+        }
+        if (psbt) {
+            // Return the finalized PSBT in the results.
+            // As our PSBT is final, we don't need to include redundant
+            // data for Green backend signing.
+            const bool include_redundant = false;
+            m_result["psbt"] = psbt->to_base64(include_redundant);
+        }
         return state_type::done;
     }
 
