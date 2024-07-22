@@ -17,7 +17,8 @@ def output_func(docs, func):
     for l in docs:
         ret.extend(get_doc_lines(l))
     if is_normal_ret:
-        ret.append('   :return: GA_OK or an error code.')  # FIXME: Link
+        ret.append('')
+        ret.append('   :return: ``GA_OK`` or an error code.')  # FIXME: Link
         ret.append('   :rtype: int')
     ret.append('')
     ret.append('')
