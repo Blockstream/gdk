@@ -1,6 +1,22 @@
 # Changelog
 
-## Release 0.72.1 - 24-07-31
+## Release 0.73.0
+
+### Added
+- GA_broadcast_transaction: Added support for setting a memo when broadcasting.
+- GA_broadcast_transaction: Added support for broadcasting a PSBT/PSET directly.
+  The PSBT is automatically finalized; callers no longer need to manually
+  finalize and extract before sending a signed PSBT.
+- GA_broadcast_transaction: Add support for simulating broadcast. This allows
+  the caller to use the library to finalize/extract PSBTs for broadcast elsewhere.
+
+### Changed
+- GA_broadcast_transaction: This call has changed to run via an auth handler,
+  in order to allow extending its functionality.
+
+### Fixed
+
+## Release 0.72.2 - 24-07-31
 
 ### Fixed
 
