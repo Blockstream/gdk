@@ -566,6 +566,58 @@ any inputs that require service signatures before broadcasting.
 All fields are not user-editable and should be passed unchanged.
 
 
+.. _broadcast-transaction-details:
+
+Broadcast transaction JSON
+--------------------------
+
+Contains the details of a caller-generated and fully signed transaction
+to send to the network via `GA_broadcast_transaction`.
+
+Unlike `GA_send_transaction`, this call does not sign the server side of
+Green multisig inputs before broadcasting. The caller must ensure the
+transaction/PSBT is fully signed before calling.
+
+This call can be used to broadcast transactions that are not related to the
+users wallet. The ``"memo"`` element should be ommitted or blank in this case.
+
+.. code-block:: json
+
+  {
+    "transaction": "<transaction hex>",
+    "psbt": "<base64 PSBT>",
+    "memo": "sample memo",
+    "simulate_only": false
+  }
+
+:transaction: Optional. The fully signed transaction to broadcast, hex
+    encoded. If not given, the ``"psbt"`` element must be present.
+:psbt: Optional. The fully signed PSBT or PSET representing the transaction to
+    broadcast. If not given, the ``"transaction"`` element must be present.
+:memo: Optional. A transaction memo to store with the transaction. Should only be
+    provided for transactions which include at least one wallet input or output.
+:simulate_only: Optional, defaults to ``false``. If set to ``true``, any PSBT given
+    is finalized and extracted to populate the resulting ``"transaction"`` element.
+    The ``"transaction"`` element is then parsed, and if valid, is returned (along
+    with the finalized PSBT in the resulting ``"psbt"`` element if one was provided).
+
+
+.. _broadcast-transaction-result:
+
+Broadcast transaction result JSON
+---------------------------------
+
+Contains the result of calling `GA_broadcast_transaction`.
+
+The returned data is a copy of the :ref:`broadcast-transaction-details` given
+when calling `GA_broadcast_transaction`, modified as follows:
+
+- The ``"txhash"`` element is populated with the txid of the transaction.
+- If a ``"psbt"`` element was given, the value is updated to contain the
+  given PSBT after finalization, and a ``"transaction"`` element is added
+  containing the extracted final transaction hex.
+
+
 .. _create-swap-tx-details:
 
 Create Swap Transaction JSON
