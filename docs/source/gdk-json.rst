@@ -146,7 +146,7 @@ To authenticate with a PIN:
 :pin: The PIN entered by the user to unlock the wallet.
 :pin_data: See :ref:`pin-data`.
 
-To authenticate a watch-only user (multisig only):
+To authenticate a watch-only user:
 
 .. code-block:: json
 
@@ -155,7 +155,7 @@ To authenticate a watch-only user (multisig only):
       "password": "my_watch_only_password"
    }
 
-To authenticate a watch-only wallet (singlesig and Bitcoin only):
+To authenticate a descriptor watch-only wallet (singlesig only):
 
 .. code-block:: json
 
@@ -172,7 +172,7 @@ Or alternatively:
    }
 
 The values to use for ``"core_descriptors"`` and ``"slip132_extended_pubkeys"`` can be
-obtained from `GA_get_subaccount`.
+obtained by calling `GA_get_subaccount` from a non-descriptor watch-only session.
 
 
 .. _login-result:
