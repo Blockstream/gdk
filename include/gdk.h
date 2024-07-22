@@ -241,8 +241,7 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call
- *completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -258,8 +257,7 @@ GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
  * .. note:: When registering a watch only session, the calling session must be logged in.
- * .. note:: When calling from C/C++, the parameters ``hw_device`` and ``details`` will be emptied when the call
- *completes.
+ * .. note:: ``hw_device`` and ``details`` are emptied when called directly from C or C++.
  */
 GDK_API int GA_register_user(
     struct GA_session* session, GA_json* hw_device, GA_json* details, struct GA_auth_handler** call);
@@ -280,8 +278,7 @@ GDK_API int GA_register_user(
  * this case, the caller can pass empty JSON for both ``hw_device`` and
  * ``details`` to login using the previously passed credentials and device.
  *
- * .. note:: When calling from C/C++, the parameters ``hw_device`` and ``details`` will be emptied when the call
- *completes.
+ * .. note:: ``hw_device`` and ``details`` are emptied when called directly from C or C++.
  */
 GDK_API int GA_login_user(
     struct GA_session* session, GA_json* hw_device, GA_json* details, struct GA_auth_handler** call);
@@ -333,7 +330,7 @@ GDK_API int GA_remove_account(struct GA_session* session, struct GA_auth_handler
  *|     passphrase if one was generated. These values must be stored safely by the
  *|     caller as they will not be returned again by any call such as `GA_get_subaccounts`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_create_subaccount(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -370,7 +367,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, s
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_update_subaccount(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -383,7 +380,7 @@ GDK_API int GA_update_subaccount(struct GA_session* session, GA_json* details, s
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  *
  * .. note:: Transactions are returned as :ref:`tx-list` from newest to oldest with up to 30 transactions per page.
  */
@@ -399,7 +396,7 @@ GDK_API int GA_get_transactions(struct GA_session* session, GA_json* details, st
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_get_receive_address(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -413,7 +410,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, GA_json* details,
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  *
  * .. note:: Iteration of all addresses is complete when 'last_pointer' is not
  *|     present in the results.
@@ -430,7 +427,7 @@ GDK_API int GA_get_previous_addresses(struct GA_session* session, GA_json* detai
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_get_unspent_outputs(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -458,7 +455,7 @@ GDK_API int GA_get_unspent_outputs_for_private_key(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_set_unspent_outputs_status(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -482,7 +479,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_get_balance(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -515,7 +512,7 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_encrypt_with_pin(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -529,7 +526,7 @@ GDK_API int GA_encrypt_with_pin(struct GA_session* session, GA_json* details, st
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_decrypt_with_pin(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -552,7 +549,7 @@ GDK_API int GA_disable_all_pin_logins(struct GA_session* session);
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``transaction_details`` will be emptied when the call completes.
+ * .. note:: ``transaction_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_create_transaction(
     struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
@@ -566,7 +563,7 @@ GDK_API int GA_create_transaction(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``transaction_details`` will be emptied when the call completes.
+ * .. note:: ``transaction_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_blind_transaction(
     struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
@@ -581,7 +578,7 @@ GDK_API int GA_blind_transaction(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``transaction_details`` will be emptied when the call completes.
+ * .. note:: ``transaction_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_sign_transaction(
     struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
@@ -622,7 +619,7 @@ GDK_API int GA_complete_swap_transaction(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  *
  * .. note:: EXPERIMENTAL warning: this call may be changed in future releases.
  */
@@ -641,7 +638,7 @@ GDK_API int GA_psbt_from_json(struct GA_session* session, GA_json* details, stru
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  *
  * .. note:: EXPERIMENTAL warning: this call may be changed in future releases.
  */
@@ -657,7 +654,7 @@ GDK_API int GA_psbt_get_details(struct GA_session* session, GA_json* details, st
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_broadcast_transaction(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -670,7 +667,7 @@ GDK_API int GA_broadcast_transaction(struct GA_session* session, GA_json* detail
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``transaction_details`` will be emptied when the call completes.
+ * .. note:: ``transaction_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_send_transaction(
     struct GA_session* session, GA_json* transaction_details, struct GA_auth_handler** call);
@@ -685,7 +682,7 @@ GDK_API int GA_send_transaction(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_sign_message(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -705,7 +702,7 @@ GDK_API int GA_send_nlocktimes(struct GA_session* session);
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``locktime_details`` will be emptied when the call completes.
+ * .. note:: ``locktime_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_set_csvtime(struct GA_session* session, GA_json* locktime_details, struct GA_auth_handler** call);
 
@@ -761,7 +758,7 @@ GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_get_credentials(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -808,7 +805,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``settings`` will be emptied when the call completes.
+ * .. note:: ``settings`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_change_settings(struct GA_session* session, GA_json* settings, struct GA_auth_handler** call);
 
@@ -938,7 +935,7 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``twofactor_details`` will be emptied when the call completes.
+ * .. note:: ``twofactor_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_change_settings_twofactor(
     struct GA_session* session, const char* method, GA_json* twofactor_details, struct GA_auth_handler** call);
@@ -1003,7 +1000,7 @@ GDK_API int GA_twofactor_cancel_reset(struct GA_session* session, struct GA_auth
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``limit_details`` will be emptied when the call completes.
+ * .. note:: ``limit_details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_twofactor_change_limits(
     struct GA_session* session, GA_json* limit_details, struct GA_auth_handler** call);
@@ -1018,7 +1015,7 @@ GDK_API int GA_twofactor_change_limits(
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
@@ -1037,7 +1034,7 @@ GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct 
  * details on the general mechanism and `bcur-decode-auth-handler-status` for
  * details on the data passed to and expected from the auth handler.
  *
- * .. note:: When calling from C/C++, the parameter ``details`` will be emptied when the call completes.
+ * .. note:: ``details`` is emptied when called directly from C or C++.
  */
 GDK_API int GA_bcur_decode(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
