@@ -15,6 +15,7 @@
   in order to allow extending its functionality.
 
 ### Fixed
+- Documentation: Various formatting and consistency fixes.
 
 ## Release 0.72.2 - 24-07-31
 
