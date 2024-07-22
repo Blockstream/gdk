@@ -180,7 +180,7 @@ GDK_API int GA_get_wallet_identifier(const GA_json* net_params, const GA_json* p
  *
  * :param session: The session to use.
  * :param details: The :ref:`cache-control-request` giving the operation to perform.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the operation.
  *|     The call handlers result is :ref:`cache-control-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -236,7 +236,7 @@ GDK_API int GA_validate_asset_domain_name(struct GA_session* session, const GA_j
  *
  * :param session: The session to use.
  * :param details: The :ref:`validate-details` to validate.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the validation.
  *|     The call handlers result is :ref:`validate-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -249,21 +249,21 @@ GDK_API int GA_validate(struct GA_session* session, GA_json* details, struct GA_
  * Create a new user wallet or watch only session.
  *
  * :param session: The session to use.
- * :param hw_device: :ref:`hw-device` or empty JSON for software wallet/watch only registration.
- * :param details: The :ref:`login-credentials` for software wallet/watch only registration.
- * :param call: Destination for the resulting ``GA_auth_handler`` to perform the registration.
+ * :param hw_device: :ref:`hw-device` or empty JSON for software wallet/watch only creation.
+ * :param details: The :ref:`login-credentials` for software wallet/watch only creation.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the creation.
  *|     The call handlers result is :ref:`login-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
- * .. note:: When registering a watch only session, the calling session must be logged in.
+ * .. note:: When creation a watch only session, the calling session must be logged in.
  * .. note:: ``hw_device`` and ``details`` are emptied when called directly from C or C++.
  */
 GDK_API int GA_register_user(
     struct GA_session* session, GA_json* hw_device, GA_json* details, struct GA_auth_handler** call);
 
 /**
- * Authenticate to a user's wallet.
+ * Login to a user's wallet.
  *
  * :param session: The session to use.
  * :param hw_device: :ref:`hw-device` or empty JSON for software wallet login.
@@ -339,7 +339,7 @@ GDK_API int GA_create_subaccount(struct GA_session* session, GA_json* details, s
  *
  * :param session: The session to use.
  * :param details: the :ref:`get-subaccounts-params-data` controlling the request.
- * :param call: Destination for the resulting ``GA_auth_handler`` to perform the creation.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`subaccount-list`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -351,7 +351,7 @@ GDK_API int GA_get_subaccounts(struct GA_session* session, const GA_json* detail
  *
  * :param session: The session to use.
  * :param subaccount: The value of ``"pointer"`` from :ref:`subaccount-list` for the subaccount.
- * :param call: Destination for the resulting ``GA_auth_handler`` to perform the creation.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`subaccount-detail`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -363,7 +363,7 @@ GDK_API int GA_get_subaccount(struct GA_session* session, uint32_t subaccount, s
  *
  * :param session: The session to use.
  * :param details: :ref:`subaccount-update` giving the details to update.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the update.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -376,7 +376,7 @@ GDK_API int GA_update_subaccount(struct GA_session* session, GA_json* details, s
  *
  * :param session: The session to use.
  * :param details: :ref:`transactions-details` giving the details to get the transactions for.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -391,7 +391,7 @@ GDK_API int GA_get_transactions(struct GA_session* session, GA_json* details, st
  *
  * :param session: The session to use.
  * :param details: :ref:`receive-address-request`.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`receive-address-details`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -405,7 +405,7 @@ GDK_API int GA_get_receive_address(struct GA_session* session, GA_json* details,
  *
  * :param session: The session to use.
  * :param details: :ref:`previous-addresses-request` detailing the previous addresses to fetch.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`previous-addresses`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -422,7 +422,7 @@ GDK_API int GA_get_previous_addresses(struct GA_session* session, GA_json* detai
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to fetch.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`unspent-outputs`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -436,7 +436,7 @@ GDK_API int GA_get_unspent_outputs(struct GA_session* session, GA_json* details,
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-private-request` detailing the private key to check.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`unspent-outputs`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -451,7 +451,7 @@ GDK_API int GA_get_unspent_outputs_for_private_key(
  *
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-status` detailing the unspent transaction outputs status to set.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the change.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -475,7 +475,7 @@ GDK_API int GA_get_transaction_details(struct GA_session* session, const char* t
  * :param session: The session to use.
  * :param details: :ref:`unspent-outputs-request` detailing the unspent transaction outputs to
  *|    compute the balance from.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -507,7 +507,7 @@ GDK_API int GA_convert_amount(struct GA_session* session, const GA_json* value_d
  *
  * :param session: The session to use.
  * :param details: The :ref:`encrypt-with-pin-details` to encrypt.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the encryption.
  *|     The call handlers result is :ref:`encrypt-with-pin-result` which the caller should persist.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -521,7 +521,7 @@ GDK_API int GA_encrypt_with_pin(struct GA_session* session, GA_json* details, st
  *
  * :param session: The session to use.
  * :param details: The :ref:`decrypt-with-pin-details` to decrypt.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the decryption.
  *|     The call handlers result is the decrypted JSON.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -545,7 +545,7 @@ GDK_API int GA_disable_all_pin_logins(struct GA_session* session);
  *
  * :param session: The session to use.
  * :param transaction_details: The :ref:`create-tx-details` for constructing.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the construction.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -559,7 +559,7 @@ GDK_API int GA_create_transaction(
  *
  * :param session: The session to use.
  * :param transaction_details: The :ref:`create-tx-details` for blinding.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the blinding.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -588,7 +588,7 @@ GDK_API int GA_sign_transaction(
  *
  * :param session: The session to use.
  * :param swap_details: The :ref:`create-swap-tx-details` for constructing.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the construction.
  *|     The call handlers result is :ref:`create-swap-tx-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -601,7 +601,7 @@ GDK_API int GA_create_swap_transaction(
  *
  * :param session: The session to use.
  * :param swap_details: The :ref:`complete-swap-tx-details` for completing.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to complete the construction.
  *|     The call handlers result is :ref:`complete-swap-tx-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -633,7 +633,7 @@ GDK_API int GA_psbt_from_json(struct GA_session* session, GA_json* details, stru
  *
  * :param session: The session to use.
  * :param details: The :ref:`psbt-wallet-details` for getting the wallet details.
- * :param call: Destination for the resulting ``GA_auth_handler`` to get the wallet details.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`psbt-get-details-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -649,7 +649,7 @@ GDK_API int GA_psbt_get_details(struct GA_session* session, GA_json* details, st
  *
  * :param session: The session to use.
  * :param details: The :ref:`broadcast-transaction-details` giving the transaction to broadcast.
- * :param call: Destination for the resulting ``GA_auth_handler`` to broadcast the transaction.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the broadcast.
  *|     The call handlers result is :ref:`broadcast-transaction-result`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -698,7 +698,7 @@ GDK_API int GA_send_nlocktimes(struct GA_session* session);
  *
  * :param session: The session to use.
  * :param locktime_details: The :ref:`set-locktime-details` for setting the block value.
- * :param call: Destination for the resulting ``GA_auth_handler`` to change the locktime.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the change.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -714,7 +714,7 @@ GDK_API int GA_set_csvtime(struct GA_session* session, GA_json* locktime_details
  *
  * :param session: The session to use.
  * :param locktime_details: The :ref:`set-locktime-details` for setting the block value.
- * :param call: Destination for the resulting ``GA_auth_handler`` to change the locktime.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the change.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  */
@@ -753,7 +753,7 @@ GDK_API int GA_get_fee_estimates(struct GA_session* session, GA_json** estimates
  *
  * :param session: The session to use.
  * :param details: The :ref:`get-credentials-details` to get the credentials.
- * :param call: Destination for the resulting ``GA_auth_handler`` to get the user's credentials.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the fetch.
  *|     The call handlers result is :ref:`login-credentials`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -781,7 +781,7 @@ GDK_API int GA_get_system_message(struct GA_session* session, char** message_tex
  *
  * :param session: The session to use.
  * :param message_text: UTF-8 encoded message text being acknowledged.
- * :param call: Destination for the resulting ``GA_auth_handler`` to acknowledge the message.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the acknowledgement.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  */
@@ -801,7 +801,7 @@ GDK_API int GA_get_twofactor_config(struct GA_session* session, GA_json** config
  *
  * :param session: The session to use.
  * :param settings: The new :ref:`settings` values.
- * :param call: Destination for the resulting ``GA_auth_handler``.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the change.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -931,7 +931,7 @@ GDK_API int GA_destroy_auth_handler(struct GA_auth_handler* call);
  * :param session: The session to use
  * :param method: The two factor method to enable/disable, e.g. ``"email"``, ``"sms"``, ``"phone"``, ``"gauth"``
  * :param twofactor_details: :ref:`twofactor-detail` giving the two factor method and associated data.
- * :param call: Destination for the resulting ``GA_auth_handler`` to perform the action
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the enablement/disablement.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -949,7 +949,7 @@ GDK_API int GA_change_settings_twofactor(
  * :param session: The session to use.
  * :param email: The new email address to enable once the reset waiting period expires.
  * :param is_dispute: GA_TRUE if the reset request is disputed, GA_FALSE otherwise.
- * :param call: Destination for the resulting ``GA_auth_handler`` to request the reset.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the request.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  */
@@ -965,7 +965,7 @@ GDK_API int GA_twofactor_reset(
  * :param session: The session to use.
  * :param email: The email address to cancel the reset request for. Must be
  *|     the email previously passed to `GA_twofactor_reset`.
- * :param call: Destination for the resulting ``GA_auth_handler`` to request the reset.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the undo.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  *
@@ -984,7 +984,7 @@ GDK_API int GA_twofactor_undo_reset(struct GA_session* session, const char* emai
  * the GA_auth_handler result.
  *
  * :param session: The session to use.
- * :param call: Destination for the resulting ``GA_auth_handler`` to cancel the reset.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the cancel.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
  */
@@ -1010,7 +1010,7 @@ GDK_API int GA_twofactor_change_limits(
  *
  * :param session: The session to use.
  * :param details: :ref:`bcur-encode` containing the CBOR data to encode.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the encoding.
  *|     The call handlers result is :ref:`bcur-encoded`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
@@ -1024,7 +1024,7 @@ GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct 
  *
  * :param session: The session to use.
  * :param details: :ref:`bcur-decode` containing the the first URI to decode.
- * :param call: Destination for the resulting ``GA_auth_handler`` to complete the action.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the decoding.
  *|     The call handlers result is :ref:`bcur-decoded`.
  *
  * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
