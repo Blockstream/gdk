@@ -73,7 +73,9 @@ namespace green {
         static nlohmann::json liquidex_get_maker_input(const Tx& tx, const nlohmann::json& proposal_input)
         {
             auto maker_input = tx.input_to_json(0);
-            GDK_RUNTIME_ASSERT_MSG(maker_input.contains("witness"), "Maker input is not segwit");
+            if (!maker_input.contains("witness")) {
+                throw user_error("Maker input is not segwit");
+            }
             if (!maker_input.contains("script_sig")) {
                 maker_input["script_sig"] = std::string_view{};
             }
