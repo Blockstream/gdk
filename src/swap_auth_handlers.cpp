@@ -243,6 +243,7 @@ namespace green {
             }
             m_result[LIQUIDEX_STR] = nlohmann::json::object();
             m_result[LIQUIDEX_STR]["proposal"] = std::move(proposal);
+            m_result["error"] = std::string_view{};
             m_is_signed = true;
         } else {
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown next handler called");
