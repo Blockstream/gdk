@@ -188,9 +188,9 @@ namespace green {
             return false;
         }
         auto my_credentials = get_credentials();
-        my_credentials.erase("master_blinding_key");
+        j_erase(my_credentials, "master_blinding_key");
         auto other_credentials = other->get_credentials();
-        other_credentials.erase("master_blinding_key");
+        j_erase(other_credentials, "master_blinding_key");
         return my_credentials == other_credentials;
     }
 

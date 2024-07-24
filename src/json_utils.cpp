@@ -225,4 +225,10 @@ namespace green {
         return true;
     }
 
+    void j_erase(nlohmann::json& data, std::string_view key)
+    {
+        if (!data.is_null() && !data.empty()) {
+            data.erase(key);
+        }
+    }
 } // namespace green

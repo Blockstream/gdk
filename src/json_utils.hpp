@@ -68,5 +68,7 @@ namespace green {
     // Rename from_key to to_key in the given JSON object
     bool j_rename(nlohmann::json& data, std::string_view from_key, std::string_view to_key);
 
+    // Erase an element, do not throw if data is null
+    void j_erase(nlohmann::json& data, std::string_view key);
 } // namespace green
 #endif
