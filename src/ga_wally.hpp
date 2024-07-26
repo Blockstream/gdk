@@ -102,6 +102,7 @@ namespace green {
         ~xpub_hdkey();
 
         bool operator==(const xpub_hdkey& rhs) const;
+        inline bool operator!=(const xpub_hdkey& rhs) const { return !(*this == rhs); }
 
         xpub_hdkey derive(uint32_span_t path) const;
 

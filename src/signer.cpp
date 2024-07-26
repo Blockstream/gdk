@@ -361,8 +361,20 @@ namespace green {
         std::unique_lock<std::mutex> locker{ m_mutex };
         cache_t::key_type parent_path{ path.begin(), path.end() };
         auto ret = m_cached_bip32_xpubs.emplace(std::move(parent_path), bip32_xpub);
-        // If already present, verify that the value matches
-        GDK_RUNTIME_ASSERT(ret.second || ret.first->second == bip32_xpub);
+        if (!ret.second && ret.first->second != bip32_xpub) {
+            // The already cached xpub does not match the one we have been
+            // asked to cache. This could be a trivial mismatch such as on
+            // the parent fingerprint, or may be a consequential mismatch.
+            const xpub_hdkey existing_xpub(ret.first->second);
+            const xpub_hdkey new_xpub(bip32_xpub);
+            if (existing_xpub != new_xpub) {
+                // Consequential: mismatch on the pubkey or chaincode.
+                // Either our cache is invalid, or the signer has
+                // returned an invalid xpub. Both are fatal errors.
+                GDK_LOG(error) << "xpub mismatch: " << ret.first->second << " != " << bip32_xpub;
+                throw user_error("signer provided xpub does not match cached xpub");
+            }
+        }
         return { bip32_xpub, ret.second }; // Returns true if the xpub was inserted
     }
 
