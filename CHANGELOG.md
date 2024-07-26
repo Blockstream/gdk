@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.72.0
+## Release 0.72.0 - 24-07-26
 
 ### Added
 - Added GA_shutdown for explicit shutdown of library resources. When callers
