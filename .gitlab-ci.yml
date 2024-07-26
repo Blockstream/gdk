@@ -130,7 +130,8 @@ build_gcc_ubuntu2004_arm64:
   extends: .ubuntu-arm64-image
   stage: build
   needs: [ test_format ]
-  when: manual
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == "release_.*"
   script:
     - source /root/.cargo/env
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 4 --static
@@ -207,6 +208,8 @@ jumbo-release:
   extends: .debian-image
   stage: release
   needs: [build-android, build_clang_bullseye, build_gcc_ubuntu2004_arm64]
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH && $CI_COMMIT_TAG == "release_.*"
   artifacts:
     expire_in: 7 days
     when: on_success
