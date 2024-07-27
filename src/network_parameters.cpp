@@ -811,6 +811,8 @@ namespace green {
     network_parameters::network_parameters(const nlohmann::json& details)
         : m_details(details)
     {
+        GDK_RUNTIME_ASSERT_MSG(
+            !is_main_net() || get_blob_server_url().empty(), "Blobserver is not yet enabled on mainnet");
     }
 
     network_parameters::network_parameters(const nlohmann::json& user_overrides, nlohmann::json& defaults)
