@@ -502,7 +502,7 @@ namespace green {
 
         if (utxo.contains("script_sig") && utxo.contains("witness")) {
             // An external or already finalized input
-            scriptsig = j_bytesref(utxo, "script_sig");
+            scriptsig = j_bytes_or_empty(utxo, "script_sig");
             const auto& witness_items = j_arrayref(utxo, "witness");
             witness = witness_stack({}, witness_items.size());
             for (const auto& item : witness_items) {
