@@ -922,14 +922,15 @@ namespace green {
         const struct wally_tx_witness_stack* witness)
     {
         constexpr uint32_t flags = 0;
+        const unsigned char* script_p = script.empty() ? nullptr : script.data();
         if (!m_is_liquid) {
-            GDK_VERIFY(wally_tx_add_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence, script.data(),
-                script.size(), witness, flags));
+            GDK_VERIFY(wally_tx_add_raw_input(
+                m_tx.get(), txhash.data(), txhash.size(), index, sequence, script_p, script.size(), witness, flags));
             return;
         }
-        GDK_VERIFY(wally_tx_add_elements_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence,
-            script.data(), script.size(), witness, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr,
-            0, nullptr, flags));
+        GDK_VERIFY(wally_tx_add_elements_raw_input(m_tx.get(), txhash.data(), txhash.size(), index, sequence, script_p,
+            script.size(), witness, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr, 0, nullptr,
+            flags));
     }
 
     void Tx::set_input_script(size_t index, byte_span_t script)
