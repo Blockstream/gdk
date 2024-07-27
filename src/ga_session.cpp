@@ -545,7 +545,7 @@ namespace green {
                 // 2of3 subaccount: Fetch and validate the recovery key
                 const auto& pub_key = j_strref(sa, "2of3_backup_pubkey");
                 const auto& chain_code = j_strref(sa, "2of3_backup_chaincode");
-                const auto& xpub = j_strref(sa, "2of3_backup_xpub");
+                const auto xpub = j_str_or_empty(sa, "2of3_backup_xpub");
                 if (xpub.empty()) {
                     // Old style: only the pubkey/chaincode are given
                     recovery_key = xpub_hdkey(is_main_net, h2b(pub_key), h2b(chain_code));
@@ -559,6 +559,7 @@ namespace green {
                 if (!xpub_sig.empty() && !root_bip32_xpub.empty()) {
                     // Validate the recovery xpub signature to guard against a
                     // malicious backend substituting its own key
+                    GDK_RUNTIME_ASSERT(!xpub.empty());
                     GDK_RUNTIME_ASSERT(b2h(recovery_key->get_public_key()) == pub_key);
                     GDK_RUNTIME_ASSERT(b2h(recovery_key->get_chain_code()) == chain_code);
                     const auto message = format_recovery_key_message(xpub, subaccount);
