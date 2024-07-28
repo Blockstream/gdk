@@ -1,5 +1,26 @@
 # Changelog
 
+## Release 0.72.1 - 24-07-29
+
+### Added
+
+- Network: Add missing Google intermediate certificate pins, to mitigate
+  potential connection failures should the certificate chain change again.
+
+### Changed
+
+- Documentation: Minor documentation improvements.
+- Client blob: Prevent external blobserver use on mainnet while this feature
+  is finalized.
+
+### Fixed
+
+- Multisig: Fix login for wallets with very old 2of3 accounts.
+- Login: Fix login failures for wallets used with a mixture of hardware and
+  software signers.
+- GA_create_swap_transaction: Fix missing ``"error"`` element, improve errors.
+- LiquiDEX: Fix swap creation with `p2wpkh` maker inputs.
+
 ## Release 0.72.0 - 24-07-26
 
 ### Added
