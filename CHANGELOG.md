@@ -13,6 +13,7 @@
 ### Changed
 - GA_broadcast_transaction: This call has changed to run via an auth handler,
   in order to allow extending its functionality.
+- Dependencies: Update deps: ur-c to 0.5.0.
 
 ### Fixed
 - Documentation: Various formatting and consistency fixes.
