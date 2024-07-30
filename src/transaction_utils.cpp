@@ -353,20 +353,22 @@ namespace green {
             }
             return segwit_address(net_params, witness_program);
         }
-        const auto out_script = session.output_script_from_utxo(utxo);
+        auto script = j_bytes_or_empty(utxo, "script");
         if (verify_script) {
             // Verify the generated script must match the "script" element.
             // Used to validate scripts returned by the Green backend.
             // Once all sessions can generate addresses, the backend will
             // be simplified to not provide them. Hence, check for that here.
-            const auto script = j_bytes_or_empty(utxo, "script");
+            auto out_script = session.output_script_from_utxo(utxo);
             GDK_RUNTIME_ASSERT(script.empty() || script == out_script);
+            script = std::move(out_script);
         }
+        GDK_RUNTIME_ASSERT(!script.empty());
         if (addr_type == address_type::p2sh) {
-            return base58_address(net_params.btc_p2sh_version(), out_script);
+            return base58_address(net_params.btc_p2sh_version(), script);
         }
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
-        const auto witness_program = witness_script(out_script, WALLY_SCRIPT_SHA256);
+        const auto witness_program = witness_script(script, WALLY_SCRIPT_SHA256);
         return base58_address(net_params.btc_p2sh_version(), witness_program);
     }
 
