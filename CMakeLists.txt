@@ -87,7 +87,7 @@ find_package(autobahn REQUIRED MODULE)
 ####################################################################
 create_gdkrust_target()
 add_subdirectory(src)
-if (Windows OR ENABLE_SWIFT)
+if (NOT BUILD_SHARED_LIBS)
     create_greengdkfull_target()
 endif()
 

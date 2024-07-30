@@ -143,7 +143,9 @@ install(
     EXPORT "green_gdk-target"
     RUNTIME EXCLUDE_FROM_ALL
     OBJECTS EXCLUDE_FROM_ALL
-    ARCHIVE EXCLUDE_FROM_ALL
+    ARCHIVE
+        COMPONENT gdk-dev
+        EXCLUDE_FROM_ALL
     LIBRARY DESTINATION ${_libInstallDir}
             COMPONENT gdk-runtime
             OPTIONAL
