@@ -1714,17 +1714,9 @@ namespace green {
         };
         m_subaccounts[subaccount] = sa;
 
-        if (subaccount != 0) {
-            // Add user and recovery pubkeys for the subaccount
-            if (!m_user_pubkeys->have_subaccount(subaccount)) {
-                // TODO: Investigate whether this code path can ever execute
-                const std::array<uint32_t, 2> path{ harden(3), harden(subaccount) };
-                m_user_pubkeys->add_subaccount(subaccount, m_signer->get_bip32_xpub(path));
-            }
-
-            if (m_recovery_pubkeys && !recovery_xpub.empty()) {
-                m_recovery_pubkeys->add_subaccount(subaccount, recovery_xpub);
-            }
+        if (subaccount && m_recovery_pubkeys && !recovery_xpub.empty()) {
+            // Add recovery pubkeys for the subaccount
+            m_recovery_pubkeys->add_subaccount(subaccount, recovery_xpub);
         }
 
         return sa;
