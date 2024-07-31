@@ -1,5 +1,12 @@
 # Changelog
 
+## Release 0.72.1 - 24-07-31
+
+### Fixed
+
+- Multisig: Fix further issues logging in with old watch only sessions/hardware wallets.
+- Build: Re-enable full static library builds.
+
 ## Release 0.72.1 - 24-07-29
 
 ### Added
