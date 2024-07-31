@@ -23,6 +23,10 @@ namespace green {
     // j_foo:         get an optional<foo>, empty if not found.
     // j_foo_or_bar:  get a foo, or bar if not found
 
+    // JSON (sub-object)
+    nlohmann::json& j_ref(nlohmann::json& src, std::string_view key);
+    const nlohmann::json& j_ref(const nlohmann::json& src, std::string_view key);
+
     // string
     const std::string& j_strref(const nlohmann::json& src, std::string_view key);
     std::optional<std::string> j_str(const nlohmann::json& src, std::string_view key);

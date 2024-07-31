@@ -22,12 +22,15 @@ namespace {
         }
         return it;
     }
+    [[noreturn]] static void throw_key_error(std::string_view key)
+    {
+        throw ::green::user_error(std::string("key ") + std::string(key) + " not found");
+    }
     static auto get_or_throw(const nlohmann::json& src, std::string_view key)
     {
         auto it = find(src, key);
         if (it == src.end()) {
-            std::string error_message = std::string("key ") + std::string(key) + " not found";
-            throw ::green::user_error(error_message);
+            throw_key_error(key);
         }
         return it;
     }
@@ -60,6 +63,24 @@ namespace green {
     nlohmann::json json_parse(gsl::span<const unsigned char> src)
     {
         return json_parse(std::string_view(reinterpret_cast<const char*>(src.data()), src.size()));
+    }
+
+    nlohmann::json& j_ref(nlohmann::json& src, std::string_view key)
+    {
+        try {
+            return src.at(key);
+        } catch (const std::exception&) {
+            throw_key_error(key);
+        }
+    }
+
+    const nlohmann::json& j_ref(const nlohmann::json& src, std::string_view key)
+    {
+        try {
+            return src.at(key);
+        } catch (const std::exception&) {
+            throw_key_error(key);
+        }
     }
 
     const std::string& j_strref(const nlohmann::json& src, std::string_view key)
