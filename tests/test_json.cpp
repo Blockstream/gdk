@@ -29,24 +29,28 @@ int main()
     GDK_RUNTIME_ASSERT(GA_destroy_json(json) == GA_OK);
 
     // Default-constructed JSON is both empty and null, and not an object
-    GDK_RUNTIME_ASSERT(nlohmann::json().empty());
-    GDK_RUNTIME_ASSERT(nlohmann::json().is_null());
-    GDK_RUNTIME_ASSERT(!nlohmann::json().is_object());
+    auto default_constructed = nlohmann::json();
+    GDK_RUNTIME_ASSERT(default_constructed.empty());
+    GDK_RUNTIME_ASSERT(default_constructed.is_null());
+    GDK_RUNTIME_ASSERT(!default_constructed.is_object());
 
     // Empty init list constructed JSON is empty but *not* null, and is an object
-    GDK_RUNTIME_ASSERT(nlohmann::json({}).empty());
-    GDK_RUNTIME_ASSERT(!nlohmann::json({}).is_null());
-    GDK_RUNTIME_ASSERT(nlohmann::json({}).is_object());
+    auto empty_init = nlohmann::json({});
+    GDK_RUNTIME_ASSERT(empty_init.empty());
+    GDK_RUNTIME_ASSERT(!empty_init.is_null());
+    GDK_RUNTIME_ASSERT(empty_init.is_object());
 
     // JSON constructed from an empty object is empty but *not* null, and is an object
-    GDK_RUNTIME_ASSERT(nlohmann::json(nlohmann::json::object()).empty());
-    GDK_RUNTIME_ASSERT(!nlohmann::json(nlohmann::json::object()).is_null());
-    GDK_RUNTIME_ASSERT(nlohmann::json(nlohmann::json::object()).is_object());
+    auto empty_object = nlohmann::json(nlohmann::json::object());
+    GDK_RUNTIME_ASSERT(empty_object.empty());
+    GDK_RUNTIME_ASSERT(!empty_object.is_null());
+    GDK_RUNTIME_ASSERT(empty_object.is_object());
 
     // Default-constructed JSON Object is empty but *not* null, and is an object
-    GDK_RUNTIME_ASSERT(nlohmann::json::object().empty());
-    GDK_RUNTIME_ASSERT(!nlohmann::json::object().is_null());
-    GDK_RUNTIME_ASSERT(nlohmann::json::object().is_object());
+    auto default_object = nlohmann::json::object();
+    GDK_RUNTIME_ASSERT(default_object.empty());
+    GDK_RUNTIME_ASSERT(!default_object.is_null());
+    GDK_RUNTIME_ASSERT(default_object.is_object());
 
     // An object with its keys erased is empty but *not* null, and is an object
     auto obj = nlohmann::json::object();
@@ -95,5 +99,17 @@ int main()
     GDK_RUNTIME_ASSERT(green::is_valid_utf8("Բարեւ աշխարհ") == true);
     GDK_RUNTIME_ASSERT(green::is_valid_utf8("\xa0\xa1") == false);
 
+    for (const auto& foo : default_constructed.items()) {
+        (void)foo;
+    }
+    for (const auto& foo : empty_init.items()) {
+        (void)foo;
+    }
+    for (const auto& foo : empty_object.items()) {
+        (void)foo;
+    }
+    for (const auto& foo : default_object.items()) {
+        (void)foo;
+    }
     return 0;
 }
