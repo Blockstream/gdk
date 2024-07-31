@@ -232,8 +232,14 @@ class Session(object):
     def create_swap_transaction(self, swap_details):
         return Call(create_swap_transaction(self.session_obj, self._to_json(swap_details)))
 
+    def create_redeposit_transaction(self, utxos_details):
+        return Call(create_redeposit_transaction(self.session_obj, self._to_json(utxos_details)))
+
     def complete_swap_transaction(self, swap_details):
         return Call(complete_swap_transaction(self.session_obj, self._to_json(swap_details)))
+
+    def create_redeposit_transaction(self, redeposit_details):
+        return Call(create_redeposit_transaction(self.session_obj, self._to_json(redeposit_details)))
 
     def psbt_sign(self, details):
         return Call(psbt_sign(self.session_obj, self._to_json(details)))

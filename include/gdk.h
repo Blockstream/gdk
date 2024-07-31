@@ -610,6 +610,20 @@ GDK_API int GA_complete_swap_transaction(
     struct GA_session* session, const GA_json* swap_details, struct GA_auth_handler** call);
 
 /**
+ * Construct a transaction re-depositing expiring UTXOs.
+ * Used to extend two factor protection for multisig UTXOs.
+ *
+ * :param session: The session to use.
+ * :param details: The :ref:`create-redeposit-tx-details` for constructing.
+ * :param call: Destination for the resulting GA_auth_handler to perform the construction.
+ *|     The call handlers result is :ref:`create-redeposit-tx-result`.
+ *
+ * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
+ */
+GDK_API int GA_create_redeposit_transaction(
+    struct GA_session* session, const GA_json* details, struct GA_auth_handler** call);
+
+/**
  * Sign one or more of a user's inputs in a PSBT or PSET.
  *
  * :param session: The session to use.

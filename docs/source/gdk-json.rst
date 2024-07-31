@@ -682,6 +682,34 @@ Complete Swap Transaction Result JSON
 If the ``"output_type"`` was ``"transaction"`` this field is :ref:`sign-tx-details`.
 
 
+.. _create-redeposit-tx-details:
+
+Create Redeposit Transaction JSON
+---------------------------------
+
+Passed to `GA_create_redeposit_transaction` to create a transaction that
+re-deposits expired UTXOs in order to maintain two factor protection.
+
+.. code-block:: json
+
+  {
+    "utxos": [],
+  }
+
+:utxos: Mandatory. The UTXOs that should be re-deposited, :ref:`unspent-outputs` as
+        returned by `GA_get_unspent_outputs`. Non-expired UTXOs will be ignored,
+        except for L-BTC UTXOs that may be required for fees when re-depositing assets.
+
+
+.. _create-redeposit-tx-result:
+
+Create Redeposit Transaction Result JSON
+----------------------------------------
+
+The result JSON is a complete transaction ready to be signed with `GA_sign_transaction`,
+(after blinding with `GA_blind_transaction` if creating a Liquid transaction).
+
+
 .. _sign-psbt-details:
 
 Sign PSBT JSON

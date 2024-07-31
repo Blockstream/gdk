@@ -11,6 +11,7 @@
 #include "gdk.h"
 #include "json_utils.hpp"
 #include "network_parameters.hpp"
+#include "redeposit_auth_handlers.hpp"
 #include "session.hpp"
 #include "swap_auth_handlers.hpp"
 #include "utils.hpp"
@@ -343,6 +344,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_create_swap_transaction, struct GA_session*, session,
 GDK_DEFINE_C_FUNCTION_3(GA_complete_swap_transaction, struct GA_session*, session, const GA_json*, swap_details,
     struct GA_auth_handler**, call,
     { *call = make_call(new green::complete_swap_transaction_call(*session, *json_cast(swap_details))); })
+
+GDK_DEFINE_C_FUNCTION_3(GA_create_redeposit_transaction, struct GA_session*, session, const GA_json*, redeposit_details,
+    struct GA_auth_handler**, call,
+    { *call = make_call(new green::create_redeposit_transaction_call(*session, *json_cast(redeposit_details))); })
 
 GDK_DEFINE_C_FUNCTION_3(GA_psbt_sign, struct GA_session*, session, GA_json*, details, struct GA_auth_handler**, call,
     { *call = make_call(new green::psbt_sign_call(*session, json_move(details))); })

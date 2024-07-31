@@ -34,6 +34,7 @@ target_sources(green_gdk PRIVATE
     io_runner.hpp io_container.cpp
     json_utils.cpp json_utils.hpp
     network_parameters.cpp network_parameters.hpp
+    redeposit_auth_handlers.cpp redeposit_auth_handlers.hpp
     session.cpp session.hpp
     session_impl.cpp session_impl.hpp
     signer.cpp signer.hpp
