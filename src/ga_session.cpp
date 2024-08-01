@@ -847,6 +847,7 @@ namespace green {
             } else {
                 // TODO: figure out what type is for liquid
             }
+            m_nlocktimes.reset();
             unique_unlock unlocker(locker);
             remove_cached_utxos(subaccounts);
             emit_notification({ { "event", "transaction" }, { "transaction", std::move(details) } }, false);
@@ -3098,11 +3099,14 @@ namespace green {
         return result;
     }
 
-    // Idempotent
     void ga_session::send_nlocktimes()
     {
         ensure_full_session();
         GDK_RUNTIME_ASSERT(wamp_cast<bool>(m_wamp->call("txs.send_nlocktime")));
+        remove_cached_utxos({});
+        // Clear cached UTXOs and nlocktimes, the backend may have generated new ones
+        locker_t locker(m_mutex);
+        m_nlocktimes.reset();
     }
 
     void ga_session::set_csvtime(const nlohmann::json& locktime_details, const nlohmann::json& twofactor_data)
