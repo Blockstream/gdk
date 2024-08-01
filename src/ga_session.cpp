@@ -340,10 +340,10 @@ namespace green {
         if (!m_nlocktimes && !m_watch_only) {
             auto nlocktime_json = wamp_cast_json(m_wamp->call(locker, "txs.upcoming_nlocktime"));
             m_nlocktimes = std::make_shared<nlocktime_t>();
-            for (const auto& v : nlocktime_json.at("list")) {
-                const uint32_t vout = j_uint32ref(v, "output_n");
-                const std::string k{ j_strref(v, "txhash") + ":" + std::to_string(vout) };
-                m_nlocktimes->emplace(std::make_pair(k, v));
+            for (auto& v : j_ref(nlocktime_json, "list")) {
+                const auto vout = j_uint32ref(v, "output_n");
+                auto k{ j_strref(v, "txhash") + ":" + std::to_string(vout) };
+                m_nlocktimes->emplace(std::make_pair(std::move(k), std::move(v)));
             }
         }
 
@@ -2450,9 +2450,9 @@ namespace green {
 
     nlohmann::json ga_session::get_unspent_outputs(const nlohmann::json& details, unique_pubkeys_and_scripts_t& missing)
     {
-        const uint32_t subaccount = details.at("subaccount");
-        const uint32_t num_confs = details.at("num_confs");
-        const bool all_coins = j_bool_or_false(details, "all_coins");
+        const auto subaccount = j_uint32ref(details, "subaccount");
+        const auto num_confs = j_uint32ref(details, "num_confs");
+        const auto all_coins = j_bool_or_false(details, "all_coins");
         bool old_watch_only = false;
 
         auto utxos
@@ -2468,28 +2468,29 @@ namespace green {
         bool need_nlocktime_info = false;
         for (auto& utxo : utxos) {
             if (j_strref(utxo, "address_type") != address_type::csv) {
-                // We must get the nlocktime information from the server for this UTXO
+                // Must get nlocktime info from the server for this UTXO.
+                // Liquid doesn't have nlocktimes, we check that once, below.
                 need_nlocktime_info = true;
             } else {
-                const uint32_t block_height = utxo["block_height"];
+                const auto block_height = j_uint32ref(utxo, "block_height");
                 if (block_height != 0) {
                     // CSV nlocktime is relative to the block the tx confirmed in
-                    const uint32_t csv_blocks = utxo["subtype"];
+                    const auto csv_blocks = j_uint32ref(utxo, "subtype");
                     GDK_RUNTIME_ASSERT(csv_blocks != 0);
                     utxo["expiry_height"] = block_height + csv_blocks;
                 }
             }
         }
 
-        if (need_nlocktime_info) {
+        if (need_nlocktime_info && !m_net_params.is_liquid()) {
             // For non-CSV UTXOs, use nlocktime data provided by the server
             const auto nlocktimes = update_nlocktime_info(locker);
             if (nlocktimes && !nlocktimes->empty()) {
                 for (auto& utxo : utxos) {
-                    const uint32_t vout = j_uint32ref(utxo, "pt_idx");
+                    const auto vout = j_uint32ref(utxo, "pt_idx");
                     const std::string k{ j_strref(utxo, "txhash") + ":" + std::to_string(vout) };
                     if (const auto it = nlocktimes->find(k); it != nlocktimes->end()) {
-                        utxo["expiry_height"] = it->second.at("nlocktime_at");
+                        utxo["expiry_height"] = j_uint32ref(it->second, "nlocktime_at");
                     }
                 }
             }
