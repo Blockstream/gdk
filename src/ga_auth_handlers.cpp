@@ -1465,9 +1465,8 @@ namespace green {
             // nlocktime is less than or equal to the block number in
             // 'expired_at'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
-            constexpr uint32_t max_ = 0xffffffff; // 81716 years from genesis
             filter_utxos(
-                outputs, [expired_at, max_](const auto& u) { return u.value("expiry_height", max_) > expired_at; });
+                outputs, [expired_at](const auto& u) { return j_uint32_or_zero(u, "expiry_height") > expired_at; });
         }
 
         const auto dust_limit = j_amount_or_zero(m_details, "dust_limit");
