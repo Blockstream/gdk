@@ -370,7 +370,7 @@ build ${name} ${BCUR_SRCDIR}
 
 # build tinyCBOR
 name="tinycbor"
-source_url="https://github.com/lightyear15/tinycbor/archive/refs/tags/v0.6.0-memfile-rc1.tar.gz"
+source_url="https://github.com/Blockstream/tinycbor/archive/refs/tags/v0.6.0-memfile-rc1.tar.gz"
 source_name="tinycbor-0.6.0-memfile-rc1"
 source_filename="tinycbor-0.6.0-memfile-rc1.tar.gz"
 source_hash="92a5c9c3622b823a54ba887889ffa90dea15493383f21a42fee02c652fa6e8af"
