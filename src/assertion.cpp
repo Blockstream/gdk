@@ -20,4 +20,6 @@ namespace green {
         throw assertion_error(msg);
     }
 
+    void throw_user_error(const std::string& error_message) { throw user_error(error_message); }
+
 } // namespace green

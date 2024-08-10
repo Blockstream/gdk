@@ -768,7 +768,7 @@ namespace green {
                 return std::move(sa);
             }
         }
-        throw user_error("Unknown subaccount");
+        throw_user_error("Unknown subaccount"); // FIXME: res::
     }
 
     void session_impl::update_subaccount(uint32_t subaccount, const nlohmann::json& details)

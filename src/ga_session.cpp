@@ -20,6 +20,7 @@
 #include <boost/multiprecision/cpp_int.hpp>
 #include <nlohmann/json.hpp>
 
+#include "assertion.hpp"
 #include "autobahn_wrapper.hpp"
 #include "client_blob.hpp"
 #include "containers.hpp"
@@ -1690,7 +1691,7 @@ namespace green {
             locker_t locker(m_mutex);
 
             const auto p = m_subaccounts.find(subaccount);
-            GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+            GDK_USER_ASSERT(p != m_subaccounts.end(), "Unknown subaccount"); // FIXME: res::
             if (!have_writable_client_blob(locker)) {
                 throw user_error(res::id_2fa_reset_in_progress);
             }
@@ -2008,7 +2009,7 @@ namespace green {
         }
 
         const auto p = m_subaccounts.find(utxo.at("subaccount"));
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        GDK_USER_ASSERT(p != m_subaccounts.end(), "Unknown subaccount"); // FIXME: res::
         if (p->second.at("type") != "2of2_no_recovery" || p->second.at("pointer") > 20u) {
             return {}; // Only used for first 20 2of2_no_recovery addrs
         }
@@ -2698,7 +2699,7 @@ namespace green {
     {
         locker_t locker(m_mutex);
         const auto p = m_subaccounts.find(subaccount);
-        GDK_RUNTIME_ASSERT_MSG(p != m_subaccounts.end(), "Unknown subaccount");
+        GDK_USER_ASSERT(p != m_subaccounts.end(), "Unknown subaccount"); // FIXME: res::
         return p->second.at("type") == "2of2"; // Only Green 2of2 subaccounts allow CSV
     }
 
