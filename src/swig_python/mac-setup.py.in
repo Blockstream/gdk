@@ -35,7 +35,7 @@ setup(
         include_dirs=["${CMAKE_BINARY_DIR}/src", "${CMAKE_SOURCE_DIR}/include"],
         swig_opts=["-threads", "-I${CMAKE_SOURCE_DIR}/include", "-DGDK_API="],
         extra_objects=extra_objects,
-        extra_link_args=["-shared", "-framework", "Security"],
+        extra_link_args=["-framework", "Security"],
         language="c++",
     )],
 )
