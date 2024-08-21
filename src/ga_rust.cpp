@@ -292,7 +292,25 @@ namespace green {
             if (signer->is_descriptor_watch_only()) {
                 m_blobserver.reset(); // No blobserver for descriptor wallets
                 locker.unlock();
-                return rust_call("login_wo", credentials, m_session);
+                auto login_data = rust_call("login_wo", credentials, m_session);
+
+                const auto fingerprint_hex = j_strref(login_data, "master_xpub_fingerprint");
+                m_signer->set_master_fingerprint(fingerprint_hex);
+                for (const auto& sa : j_arrayref(login_data, "xpubs")) {
+                    const auto pointer = j_uint32ref(sa, "pointer");
+                    const auto xpub = j_strref(sa, "xpub");
+                    m_user_pubkeys->add_subaccount(pointer, xpub);
+                }
+                if (m_net_params.is_liquid()) {
+                    const auto key_hex = j_strref(login_data, "master_blinding_key");
+                    m_signer->set_master_blinding_key(key_hex);
+                }
+
+                j_erase(login_data, "master_xpub_fingerprint");
+                j_erase(login_data, "xpubs");
+                j_erase(login_data, "master_blinding_key");
+
+                return login_data;
             }
         }
 
