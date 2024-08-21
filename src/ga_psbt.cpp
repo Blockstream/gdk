@@ -137,8 +137,7 @@ namespace green {
             }
 
             // Add the user's pubkey
-            const auto master_bip32_xpub = session.get_nonnull_signer()->get_master_bip32_xpub();
-            const auto master_fp = xpub_hdkey(master_bip32_xpub).get_fingerprint();
+            auto master_fp = session.get_nonnull_signer()->get_master_fingerprint();
             const auto& user_key = keys.at(user_key_index);
             add_keypath(keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer, is_internal);
 
