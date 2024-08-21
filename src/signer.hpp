@@ -140,6 +140,9 @@ namespace green {
         blinding_key_t get_master_blinding_key() const;
         void set_master_blinding_key(const std::string& blinding_key_hex);
 
+        std::vector<unsigned char> get_master_fingerprint();
+        void set_master_fingerprint(const std::string& fingerprint_hex);
+
     private:
         // Get all cached xpubs and their paths
         cache_t get_cached_bip32_xpubs();
@@ -154,6 +157,7 @@ namespace green {
         // Mutable post construction
         mutable std::mutex m_mutex;
         std::optional<blinding_key_t> m_master_blinding_key;
+        std::optional<std::vector<unsigned char>> m_master_fingerprint;
         cache_t m_cached_bip32_xpubs;
     };
 

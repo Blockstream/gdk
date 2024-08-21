@@ -458,4 +458,18 @@ namespace green {
         return ec_public_key_from_private_key(get_blinding_key_from_script(script));
     }
 
+    std::vector<unsigned char> signer::get_master_fingerprint()
+    {
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        GDK_RUNTIME_ASSERT(m_master_fingerprint);
+        return *m_master_fingerprint;
+    }
+
+    void signer::set_master_fingerprint(const std::string& fingerprint_hex)
+    {
+        GDK_RUNTIME_ASSERT(fingerprint_hex.size() == BIP32_KEY_FINGERPRINT_LEN * 2);
+        std::unique_lock<std::mutex> locker{ m_mutex };
+        m_master_fingerprint = h2b(fingerprint_hex);
+    }
+
 } // namespace green
