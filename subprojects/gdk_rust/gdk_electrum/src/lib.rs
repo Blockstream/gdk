@@ -479,12 +479,13 @@ impl ElectrumSession {
             filename: None,
             encryption_key_hex: None,
         })?;
-        if let Some(master_blinding_key) = master_blinding_key {
+        if let Some(ref master_blinding_key) = master_blinding_key {
             self.set_master_blinding_key(&SetMasterBlindingKeyOpt {
-                master_blinding_key,
+                master_blinding_key: master_blinding_key.clone(),
             })?;
         }
 
+        let mut xpubs = vec![];
         for account in accounts {
             self.create_subaccount(CreateAccountOpt {
                 subaccount: account.account_num,
@@ -494,12 +495,19 @@ impl ElectrumSession {
                 is_already_created: true,
                 allow_gaps: true,
             })?;
+            xpubs.push(AccountXpub {
+                account_num: account.account_num,
+                xpub: account.xpub,
+            });
         }
 
         self.start_threads()?;
         Ok(LoginData {
             wallet_hash_id: self.network.wallet_hash_id(&master_xpub),
             xpub_hash_id: self.network.xpub_hash_id(&master_xpub),
+            master_xpub_fingerprint: self.master_xpub_fingerprint,
+            xpubs,
+            master_blinding_key,
         })
     }
 

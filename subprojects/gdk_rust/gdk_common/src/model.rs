@@ -77,10 +77,21 @@ pub type ExchangeRateRes = Result<ExchangeRateOk, ExchangeRateError>;
 
 // =========== ^ exchange rate stuff ^ ===========
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct AccountXpub {
+    #[serde(rename = "pointer")]
+    pub account_num: u32,
+    pub xpub: Xpub,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct LoginData {
     pub wallet_hash_id: String,
     pub xpub_hash_id: String,
+    pub master_xpub_fingerprint: Fingerprint,
+    pub xpubs: Vec<AccountXpub>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub master_blinding_key: Option<MasterBlindingKey>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
