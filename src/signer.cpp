@@ -375,6 +375,15 @@ namespace green {
                 throw user_error("signer provided xpub does not match cached xpub");
             }
         }
+        if (path.empty() && !m_master_fingerprint) {
+            // Master xpub: set or verify the master fingerprint
+            auto fingerprint = xpub_hdkey(bip32_xpub).get_fingerprint();
+            if (m_master_fingerprint) {
+                GDK_RUNTIME_ASSERT(fingerprint == *m_master_fingerprint);
+            } else {
+                m_master_fingerprint = std::move(fingerprint);
+            }
+        }
         return { bip32_xpub, ret.second }; // Returns true if the xpub was inserted
     }
 
