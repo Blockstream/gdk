@@ -1527,7 +1527,10 @@ impl Syncer {
                                     last_statuses.insert(b_script, *status);
                                 } else {
                                     // First time script is subscribed, script is not in any tx
-                                    ()
+                                    if let Some(txids) = map_script_txids.get(&b_script) {
+                                        // The script has some txs in the cache, remove them
+                                        txids_to_remove.extend(txids);
+                                    }
                                 }
                             }
                         }
@@ -1549,6 +1552,10 @@ impl Syncer {
                             }
                             Ok(None) => {
                                 // Subscription dropped, created a new one, script is not in any tx
+                                if let Some(txids) = map_script_txids.get(&b_script) {
+                                    // The script has some txs in the cache, remove them
+                                    txids_to_remove.extend(txids);
+                                }
                             }
                             Err(gdk_common::electrum_client::Error::AlreadySubscribed(_)) => {
                                 // Already subscribed for this script (no network call)
