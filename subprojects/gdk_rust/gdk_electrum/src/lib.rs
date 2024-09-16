@@ -1592,7 +1592,7 @@ impl Syncer {
                         None => {
                             // Script never had a tx, initially and neither via updates
                             count_consecutive_empty += 1;
-                            if count_consecutive_empty >= self.gap_limit {
+                            if count_consecutive_empty > self.gap_limit {
                                 // No need to sync further
                                 break 'outer;
                             }
