@@ -1,8 +1,9 @@
 # Changelog
 
-## Release 0.73.0
+## Release 0.73.0 - 24-09-18
 
 ### Added
+- PSBT: Allow PSBT creation from singlesig descriptor watch-only sessions.
 - GA_broadcast_transaction: Added support for setting a memo when broadcasting.
 - GA_broadcast_transaction: Added support for broadcasting a PSBT/PSET directly.
   The PSBT is automatically finalized; callers no longer need to manually
@@ -13,9 +14,16 @@
 ### Changed
 - GA_broadcast_transaction: This call has changed to run via an auth handler,
   in order to allow extending its functionality.
-- Dependencies: Update deps: ur-c to 0.5.0.
+- Network: Update esplora connection details to the new offical URLs.
+- Dependencies: Update ur-c, libwally, rust-miniscript.
 
 ### Fixed
+- GA_get_unspent_outputs (Multisig): Fix intermittently incorrect nlocktime/expiry details.
+- GA_get_unspent_outputs (Multisig): Fix filtering for expired UTXOs to always work correctly.
+- GA_get_transactions (Singlesig): Fix returned results when a tx is replaced
+  and the replacements tx no longer involves the wallet.
+- GA_get_transactions (Singlesig): Fix sync incorrectly returning an empty
+  wallet when the first tx is receieved on the gap-limit address.
 - Documentation: Various formatting and consistency fixes.
 
 ## Release 0.72.2 - 24-07-31
