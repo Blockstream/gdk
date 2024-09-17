@@ -127,6 +127,10 @@ namespace green {
             utxos[policy_asset] = nlohmann::json::array_t();
             add_fee_utxo(m_details);
         }
+        if (const auto fee_rate = j_amount(m_details, "fee_rate"); fee_rate) {
+            // Use the callers provided fee rate
+            m_result["fee_rate"] = fee_rate->value();
+        }
         m_fee_subaccount = j_uint32(m_details, "fee_subaccount");
         if (!m_fee_subaccount) {
             // No fee subaccount given - take it from the first used utxo
