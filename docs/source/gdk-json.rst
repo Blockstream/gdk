@@ -694,6 +694,7 @@ re-deposits expired UTXOs in order to maintain two factor protection.
 
   {
     "utxos": [],
+    "fee_rate": 1000,
     "fee_subaccount": 0
   }
 
@@ -701,6 +702,7 @@ re-deposits expired UTXOs in order to maintain two factor protection.
         returned by `GA_get_unspent_outputs`. Non-expired UTXOs will be ignored,
         except for L-BTC UTXOs that may be required for fees when re-depositing assets.
         For Liquid, all assets except L-BTC must come from the same subaccount.
+:fee_rate: The fee rate in satoshi per thousand bytes.
 :fee_subaccount: Optional. If given, change from fees will be sent to this
                  suabaccount. Otherwise, fee change is sent to the subaccount of
                  the first fee UTXO used.
