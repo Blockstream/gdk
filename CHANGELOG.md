@@ -14,16 +14,16 @@
 ### Changed
 - GA_broadcast_transaction: This call has changed to run via an auth handler,
   in order to allow extending its functionality.
-- Network: Update esplora connection details to the new offical URLs.
+- Network: Update esplora connection details to the new official URLs.
 - Dependencies: Update ur-c, libwally, rust-miniscript.
 
 ### Fixed
 - GA_get_unspent_outputs (Multisig): Fix intermittently incorrect nlocktime/expiry details.
 - GA_get_unspent_outputs (Multisig): Fix filtering for expired UTXOs to always work correctly.
 - GA_get_transactions (Singlesig): Fix returned results when a tx is replaced
-  and the replacements tx no longer involves the wallet.
+  and the replacement tx no longer involves the wallet.
 - GA_get_transactions (Singlesig): Fix sync incorrectly returning an empty
-  wallet when the first tx is receieved on the gap-limit address.
+  wallet when the first tx is received on the gap-limit address.
 - Documentation: Various formatting and consistency fixes.
 
 ## Release 0.72.2 - 24-07-31
