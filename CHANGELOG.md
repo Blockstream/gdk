@@ -1,5 +1,16 @@
 # Changelog
 
+## Release 0.73.1
+
+### Added
+- GA_create_redeposit_transaction: Added a new call to create transactions
+  that re-deposit wallet funds. For Liquid this call handles multiple-asset
+  re-deposits and adds L-BTC fee inputs as required to cover re-deposit fees.
+
+### Changed
+
+### Fixed
+
 ## Release 0.73.0 - 24-09-18
 
 ### Added
