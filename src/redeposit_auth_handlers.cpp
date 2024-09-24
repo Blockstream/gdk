@@ -137,7 +137,22 @@ namespace green {
             const auto& fee_utxos = j_arrayref(utxos, policy_asset);
             m_fee_subaccount = j_uint32ref(fee_utxos.front(), "subaccount");
         }
-        m_result["addressees"] = nlohmann::json::array_t{};
+        nlohmann::json addressees = nlohmann::json::array_t{};
+        if (auto p = m_details.find("addressees"); p != m_details.end()) {
+            // Being called with previous result; use the existing addressees
+            // to avoid generating new addresses each time we are called
+            addressees = std::move(*p);
+            // Reset asset/greedy status in case the caller changed them
+            size_t n = 0;
+            for (auto& addressee : addressees) {
+                if (m_net_params.is_liquid()) {
+                    addressee["asset_id"] = get_nth_asset_id(n);
+                }
+                addressee["is_greedy"] = true;
+                ++n;
+            }
+        }
+        m_result["addressees"] = addressees;
     }
 
     std::string create_redeposit_transaction_call::get_nth_asset_id(size_t n) const
