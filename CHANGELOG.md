@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.73.1
+## Release 0.73.1 - 24-09-27
 
 ### Added
 - GA_create_redeposit_transaction: Added a new call to create transactions
@@ -8,6 +8,7 @@
   re-deposits and adds L-BTC fee inputs as required to cover re-deposit fees.
 
 ### Changed
+- Dependencies: Update libwally.
 
 ### Fixed
 
