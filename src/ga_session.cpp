@@ -3036,7 +3036,8 @@ namespace green {
         const auto& tx_hex = j_strref(result, "transaction");
         const size_t MAX_TX_WEIGHT = 400000;
         const Tx unsigned_tx(tx_hex, m_net_params.is_liquid());
-        GDK_RUNTIME_ASSERT(unsigned_tx.get_weight() < MAX_TX_WEIGHT);
+        constexpr bool with_discount = false;
+        GDK_RUNTIME_ASSERT(unsigned_tx.get_weight(with_discount) < MAX_TX_WEIGHT);
 
         nlohmann::json private_data;
         if (auto p = result.find("blinding_nonces"); p != result.end()) {

@@ -1078,11 +1078,15 @@ namespace green {
         m_tx->locktime = current_block_height;
     }
 
-    size_t Tx::get_weight() const
+    size_t Tx::get_weight(bool with_discount) const
     {
-        size_t written;
-        GDK_VERIFY(wally_tx_get_weight(m_tx.get(), &written));
-        return written;
+        size_t weight, discount = 0;
+        GDK_VERIFY(wally_tx_get_weight(m_tx.get(), &weight));
+        if (with_discount) {
+            GDK_VERIFY(wally_tx_get_elements_weight_discount(m_tx.get(), 0, &discount));
+            GDK_RUNTIME_ASSERT(discount < weight);
+        }
+        return weight - discount;
     }
 
     size_t Tx::vsize_from_weight(size_t weight)
@@ -1094,7 +1098,8 @@ namespace green {
 
     size_t Tx::get_adjusted_weight(const network_parameters& net_params) const
     {
-        size_t weight = get_weight();
+        const bool use_discounted_fees = net_params.use_discounted_fees();
+        size_t weight = get_weight(use_discounted_fees);
         GDK_RUNTIME_ASSERT(m_is_liquid == net_params.is_liquid());
         if (m_is_liquid) {
             // Add the weight of any missing blinding data
@@ -1110,6 +1115,10 @@ namespace green {
                 if (!tx_out.script) {
                     GDK_RUNTIME_ASSERT(!found_fee);
                     found_fee = true;
+                    continue;
+                }
+                if (use_discounted_fees) {
+                    // For discounted fees we don't add missing blinding weight
                     continue;
                 }
                 GDK_RUNTIME_ASSERT(tx_out.asset_len);

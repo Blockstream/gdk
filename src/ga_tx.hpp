@@ -72,7 +72,7 @@ namespace green {
         uint32_t get_locktime() const { return m_tx->locktime; }
         void set_anti_snipe_locktime(uint32_t current_block_height);
 
-        size_t get_weight() const;
+        size_t get_weight(bool with_discount) const;
         static size_t vsize_from_weight(size_t weight);
         size_t get_adjusted_weight(const network_parameters& net_params) const;
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
