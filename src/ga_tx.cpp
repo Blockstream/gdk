@@ -614,9 +614,10 @@ namespace green {
             result["network_fee"] = 0u;
             result.erase("change_amount");
 
-            if (result.find("fee_rate") == result.end()) {
+            const auto fee_rate = j_amount(result, "fee_rate");
+            if (!fee_rate) {
                 result["fee_rate"] = session.get_default_fee_rate().value();
-            } else if (j_amountref(result, "fee_rate") < session.get_min_fee_rate()) {
+            } else if (*fee_rate < session.get_min_fee_rate()) {
                 set_tx_error(result, res::id_fee_rate_is_below_minimum);
                 return;
             }
