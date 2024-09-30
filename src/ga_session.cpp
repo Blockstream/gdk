@@ -2112,14 +2112,23 @@ namespace green {
             tx.erase("transaction_size");
 
             // Compute the tx weight and fee rate
-            const uint32_t tx_vsize = tx.at("transaction_vsize");
-            tx["transaction_weight"] = tx_vsize * 4;
+            uint32_t vsize;
+            if (const auto weight = j_uint32(tx, "weight"); weight) {
+                // Weight provided by the server, use it
+                j_rename(tx, "weight", "transaction_weight");
+                vsize = Tx::vsize_from_weight(*weight);
+                tx["transaction_vsize"] = vsize;
+            } else {
+                // FIXME: Remove this once all backends are updated to return weight
+                vsize = j_uint32ref(tx, "transaction_vsize");
+                tx["transaction_weight"] = vsize * 4;
+            }
             // fee_rate is in satoshi/kb, with the best integer accuracy we have
-            tx["fee_rate"] = j_amountref(tx, "fee").value() * 1000 / tx_vsize;
+            tx["fee_rate"] = j_amountref(tx, "fee").value() * 1000 / vsize;
 
             // Clean up and categorize the endpoints. For liquid, this populates
             // 'missing' if any UTXOs require blinding nonces from the signer to unblind.
-            cleanup_utxos(locker, tx.at("eps"), tx.at("txhash"), missing);
+            cleanup_utxos(locker, j_ref(tx, "eps"), j_strref(tx, "txhash"), missing);
         }
 
         // Store the timestamp that we started fetching from in order to detect
