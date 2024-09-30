@@ -83,7 +83,7 @@ namespace green {
                 descriptors.push_back(formatted_descriptors[i++]);
             }
             auto fingerprint = (boost::format("%08x") % account.master_fingerprint).str();
-            return { { "master_fingerprint", fingerprint }, { "descriptors", std::move(descriptors) } };
+            return { { "master_fingerprint", std::move(fingerprint) }, { "descriptors", std::move(descriptors) } };
         }
 
         static nlohmann::json deserialize_jaderesponse(
