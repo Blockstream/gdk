@@ -3024,7 +3024,7 @@ namespace green {
         check_tx_memo(memo);
 
         // FIXME: test weight and return error in create_transaction, not here
-        const std::string tx_hex = result.at("transaction");
+        const auto& tx_hex = j_strref(result, "transaction");
         const size_t MAX_TX_WEIGHT = 400000;
         const Tx unsigned_tx(tx_hex, m_net_params.is_liquid());
         GDK_RUNTIME_ASSERT(unsigned_tx.get_weight() < MAX_TX_WEIGHT);
