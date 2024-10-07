@@ -2008,14 +2008,15 @@ namespace green {
             return {}; // Only available through master blinding key
         }
 
-        const auto p = m_subaccounts.find(utxo.at("subaccount"));
+        const auto p = m_subaccounts.find(j_uint32ref(utxo, "subaccount"));
         GDK_USER_ASSERT(p != m_subaccounts.end(), "Unknown subaccount"); // FIXME: res::
-        if (p->second.at("type") != "2of2_no_recovery" || p->second.at("pointer") > 20u) {
+        if (j_strref(p->second, "type") != "2of2_no_recovery" || j_uint32ref(p->second, "pointer") > 20u) {
             return {}; // Only used for first 20 2of2_no_recovery addrs
         }
 
         auto alt_utxo = utxo;
         alt_utxo["pointer"] = 1u; // Alt key is derived from the initial addr
+        alt_utxo["address_type"] = "p2wsh"; // Only 2of2_no_recovery supported
         const auto alt_script = output_script_from_utxo(locker, alt_utxo);
         const auto p2sh = scriptpubkey_p2sh_p2wsh_from_bytes(alt_script);
         const auto alt_key = m_signer->get_blinding_key_from_script(p2sh);
