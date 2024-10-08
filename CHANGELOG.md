@@ -1,5 +1,21 @@
 # Changelog
 
+## Release 0.73.2 - 24-10-08
+
+### Added
+
+### Changed
+- Liquid: Preliminary changes to support discounted Liquid fees. This will
+  be available to end users in an upcoming release.
+- Dependencies: Update rust dependencies.
+
+### Fixed
+- Liquid: Fix errors when listing transactions or fetching balances from
+  a subaccount which contains un-blindable UTXOs.
+- Multisig: Fix minor discrepancies between transaction weight and vsize due
+  to rounding. Note this fix requires a server release which will be made shortly.
+- Build (Windows): Remove duplicated "lib" directory from the library install path.
+
 ## Release 0.73.1 - 24-09-27
 
 ### Added
