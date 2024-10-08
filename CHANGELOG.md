@@ -3,6 +3,10 @@
 ## Release 0.73.2 - 24-10-08
 
 ### Added
+- Python: Python wheels for Linux and Mac platforms are now published to PyPI.
+  Other platforms will be supported in future releases. Please ensure you use
+  the `requirements.txt` file provided with each release to ensure that the
+  gdk wheel you install is the correct package.
 
 ### Changed
 - Liquid: Preliminary changes to support discounted Liquid fees. This will
@@ -11,7 +15,7 @@
 
 ### Fixed
 - Liquid: Fix errors when listing transactions or fetching balances from
-  a subaccount which contains un-blindable UTXOs.
+  a subaccount which contains non un-blindable UTXOs.
 - Multisig: Fix minor discrepancies between transaction weight and vsize due
   to rounding. Note this fix requires a server release which will be made shortly.
 - Build (Windows): Remove duplicated "lib" directory from the library install path.
