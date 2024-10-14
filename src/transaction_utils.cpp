@@ -539,7 +539,12 @@ namespace green {
         // Add the input to the tx
         tx.add_input(txid, vout, sequence, scriptsig, witness.get());
         if (add_to_tx_inputs) {
-            result["transaction_inputs"].push_back(utxo);
+            auto& transaction_inputs = result["transaction_inputs"];
+            transaction_inputs.push_back(utxo);
+            if (transaction_inputs.size() > 255u && session.get_network_parameters().is_liquid()) {
+                // Liquid is limited to 255 inputs
+                throw user_error("Transaction requires or contains too many inputs for Liquid");
+            }
         }
         return j_amountref(utxo);
     }
