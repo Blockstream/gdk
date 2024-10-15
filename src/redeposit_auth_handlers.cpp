@@ -81,10 +81,16 @@ namespace green {
     void create_redeposit_transaction_call::initialize()
     {
         const auto policy_asset = m_net_params.get_policy_asset();
-        const auto block_height = m_session->get_block_height();
+        uint32_t block_height;
         auto& utxos = j_ref(m_details, "utxos");
         std::set<std::string> to_erase;
 
+        const auto expired_at = j_uint32(m_details, "expired_at");
+        if (expired_at) {
+            block_height = *expired_at;
+        } else {
+            block_height = m_session->get_block_height();
+        }
         for (auto& asset : utxos.items()) {
             // Check all UTXOs are from the same subaccount, with the
             // exception that we allow fees to be paid from any subaccount
