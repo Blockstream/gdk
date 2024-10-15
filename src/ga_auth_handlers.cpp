@@ -1459,14 +1459,26 @@ namespace green {
         }
 
         const auto expired_at = j_uint32(m_details, "expired_at");
-        if (expired_at.has_value()) {
-            // Return only UTXOs that have expired as at block number 'expired_at'.
+        const auto expires_in = j_uint32(m_details, "expires_in");
+        if (expired_at || expires_in) {
+            uint64_t expiry_height;
+            if (expired_at && expires_in) {
+                throw user_error("Only one of \"expired_at\" or \"expires_in\" may be given");
+            }
+            if (expired_at) {
+                // Use the absolute expiry height given
+                expiry_height = *expired_at;
+            } else {
+                // Add the number of relative blocks to the current block height
+                expiry_height = m_session->get_block_height() + *expires_in;
+            }
+            // Return only UTXOs that have expired as at block number 'expiry_height'.
             // A UTXO is expired if its nlocktime has been reached; i.e. its
             // nlocktime is less than or equal to the block number in
-            // 'expired_at'. Therefore we filter out UTXOs where nlocktime
-            // is greater than 'expired_at', or not present (i.e. non-expiring UTXOs)
-            filter_utxos(
-                outputs, [expired_at](const auto& u) { return j_uint32_or_zero(u, "expiry_height") > expired_at; });
+            // 'expiry_height'. Therefore we filter out UTXOs where nlocktime
+            // is greater than 'expiry_height', or not present (i.e. non-expiring UTXOs)
+            filter_utxos(outputs,
+                [expiry_height](const auto& u) { return j_uint32_or_zero(u, "expiry_height") > expiry_height; });
         }
 
         const auto dust_limit = j_amount_or_zero(m_details, "dust_limit");

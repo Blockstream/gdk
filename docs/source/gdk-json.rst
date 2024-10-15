@@ -695,6 +695,7 @@ re-deposits expired UTXOs in order to maintain two factor protection.
   {
     "utxos": [],
     "expired_at": 99999,
+    "expires_in": 144,
     "fee_rate": 1000,
     "fee_subaccount": 0
   }
@@ -705,6 +706,9 @@ re-deposits expired UTXOs in order to maintain two factor protection.
         For Liquid, all assets except L-BTC must come from the same subaccount.
 :expired_at: Optional. If given, only re-deposit UTXOs where two factor authentication
         expires by the given block. Defaults to the current block height if ommitted.
+:expires_in: Optional, may only be given if ``"expired_at"`` is excluded. If present,
+        the number of blocks given is added to the current block height to
+        determine the expiry height to check as ``"expired_at"``.
 :fee_rate: Optional. The fee rate in satoshi per thousand bytes.
 :fee_subaccount: Optional. If given, change from fees will be sent to this
                  suabaccount. Otherwise, fee change is sent to the subaccount of
@@ -1206,6 +1210,7 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
     "address_type": "csv",
     "all_coins": false,
     "expired_at": 99999,
+    "expires_in": 144,
     "confidential": false,
     "dust_limit": 546,
     "sort_by": "newest"
@@ -1217,8 +1222,11 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
     or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the
     type of addresses to return. Defaults to blank (no address filtering).
 :all_coins: Pass ``true`` to include UTXOs with status ``frozen``. Defaults to ``false``.
-:expired_at: If given, only UTXOs where two factor authentication expires
+:expired_at: Optional. If given, only UTXOs where two factor authentication expires
     by the given block are returned.
+:expires_in: Optional, may only be given if ``"expired_at"`` is excluded. If present,
+    the number of blocks given is added to the current block height to
+    determine the expiry height to check as ``"expired_at"``.
 :confidential: Pass ``true`` to include only confidential UTXOs. Defaults to ``false``.
 :dust_limit: If given, only UTXOs with a value greater than the limit value are returned.
 :sort_by: One of ``"oldest"``, ``"newest"``, ``"largest"``, ``"smallest"``. Returns the

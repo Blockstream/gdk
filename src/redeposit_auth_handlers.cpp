@@ -16,7 +16,7 @@ namespace green {
 
     namespace {
         // Remove non-expired utxos and return them
-        static auto filter_unexpired_utxos(nlohmann::json& utxos, uint32_t block_height)
+        static auto filter_unexpired_utxos(nlohmann::json& utxos, uint64_t block_height)
         {
             nlohmann::json::array_t unexpired;
             auto&& is_not_expired = [block_height](const auto& utxo) -> bool {
@@ -81,15 +81,25 @@ namespace green {
     void create_redeposit_transaction_call::initialize()
     {
         const auto policy_asset = m_net_params.get_policy_asset();
-        uint32_t block_height;
+        uint64_t block_height;
         auto& utxos = j_ref(m_details, "utxos");
         std::set<std::string> to_erase;
 
         const auto expired_at = j_uint32(m_details, "expired_at");
+        const auto expires_in = j_uint32(m_details, "expires_in");
         if (expired_at) {
+            if (expires_in) {
+                throw user_error("Only one of \"expired_at\" or \"expires_in\" may be given");
+            }
+            // Use the absolute expiry height given
             block_height = *expired_at;
         } else {
+            // Assume the current block height is the expiry height
             block_height = m_session->get_block_height();
+            if (expires_in) {
+                // Add the number of relative blocks to the current block height
+                block_height += *expires_in;
+            }
         }
         for (auto& asset : utxos.items()) {
             // Check all UTXOs are from the same subaccount, with the
