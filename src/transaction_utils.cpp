@@ -492,7 +492,9 @@ namespace green {
         // Ensure this input hasn't been added before
         const auto txid = j_rbytesref(utxo, "txhash", WALLY_TXHASH_LEN);
         const auto vout = j_uint32ref(utxo, "pt_idx");
-        GDK_RUNTIME_ASSERT(!tx.find_input_spending(txid, vout).has_value());
+        if (tx.find_input_spending(txid, vout).has_value()) {
+            throw user_error("Transaction contains duplicated inputs");
+        }
 
         const auto transaction_version = j_uint32ref(result, "transaction_version");
         const uint32_t seq_default = session.is_rbf_enabled() ? 0xFFFFFFFD : 0xFFFFFFFE;
