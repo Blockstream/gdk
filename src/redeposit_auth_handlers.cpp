@@ -152,7 +152,7 @@ namespace green {
                 ++n;
             }
         }
-        m_result["addressees"] = addressees;
+        m_result["addressees"] = std::move(addressees);
     }
 
     std::string create_redeposit_transaction_call::get_nth_asset_id(size_t n) const
