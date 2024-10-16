@@ -508,14 +508,11 @@ namespace green {
         }
 
         static void pick_policy_asset_utxos(session_impl& session, Tx& tx, nlohmann::json& result,
-            nlohmann::json& utxos, addressee_details_t& addressee, bool manual_selection)
+            nlohmann::json& utxos, addressee_details_t& addressee, const amount& fee_rate, bool manual_selection)
         {
             const auto& net_params = session.get_network_parameters();
             const auto policy_asset = net_params.get_policy_asset();
             const amount dust_threshold = session.get_dust_threshold(policy_asset);
-            const auto user_fee_rate = j_amountref(result, "fee_rate");
-            const amount min_fee_rate = session.get_min_fee_rate();
-            const auto fee_rate = std::max(min_fee_rate.value(), user_fee_rate.value());
             const auto network_fee = j_amount_or_zero(result, "network_fee");
             const ssize_t num_utxos = manual_selection ? 0 : utxos.size();
             const bool is_greedy = addressee.greedy_index.has_value();
@@ -524,7 +521,7 @@ namespace green {
             for (ssize_t i = 0; i <= num_utxos; ++i) {
                 const bool no_more_utxos = i == num_utxos;
 
-                addressee.fee = tx.get_fee(net_params, fee_rate);
+                addressee.fee = tx.get_fee(net_params, fee_rate.value());
                 addressee.fee += network_fee;
                 auto required_total = addressee.required_total + addressee.fee;
 
@@ -575,7 +572,7 @@ namespace green {
         }
 
         static void pick_utxos(session_impl& session, Tx& tx, nlohmann::json& result, nlohmann::json& src_utxos,
-            addressee_details_t& addressee, bool manual_selection)
+            addressee_details_t& addressee, const amount& fee_rate, bool manual_selection)
         {
             // Select the inputs to use
             nlohmann::json empty = nlohmann::json::array_t{};
@@ -594,7 +591,7 @@ namespace green {
 
             addressee.utxo_indices.reserve(utxos.size());
             if (is_policy_asset) {
-                pick_policy_asset_utxos(session, tx, result, utxos, addressee, manual_selection);
+                pick_policy_asset_utxos(session, tx, result, utxos, addressee, fee_rate, manual_selection);
             } else {
                 pick_asset_utxos(session, tx, result, utxos, addressee);
             }
@@ -614,10 +611,12 @@ namespace green {
             result["network_fee"] = 0u;
             result.erase("change_amount");
 
-            const auto fee_rate = j_amount(result, "fee_rate");
+            auto fee_rate = j_amount(result, "fee_rate");
             if (!fee_rate) {
-                result["fee_rate"] = session.get_default_fee_rate().value();
-            } else if (*fee_rate < session.get_min_fee_rate()) {
+                fee_rate = session.get_default_fee_rate();
+                result["fee_rate"] = fee_rate.value().value();
+            }
+            if (fee_rate < session.get_min_fee_rate()) {
                 set_tx_error(result, res::id_fee_rate_is_below_minimum);
                 return;
             }
@@ -749,7 +748,7 @@ namespace green {
                     }
                     if (is_policy_asset || !manual_selection) {
                         // Compute the UTXOs to use and their sum
-                        pick_utxos(session, tx, result, utxos, addressee, manual_selection);
+                        pick_utxos(session, tx, result, utxos, addressee, *fee_rate, manual_selection);
                     }
                     if (addressee.utxo_sum < addressee.required_total) {
                         set_tx_error(result, res::id_insufficient_funds);
