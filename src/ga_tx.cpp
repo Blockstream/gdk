@@ -1168,7 +1168,7 @@ namespace green {
     uint64_t Tx::get_fee(const network_parameters& net_params, uint64_t fee_rate) const
     {
         const size_t weight = get_adjusted_weight(net_params);
-        const size_t vsize = (weight + 3) / 4;
+        const size_t vsize = Tx::vsize_from_weight(weight);
         const auto fee = static_cast<double>(vsize) * fee_rate / 1000.0;
         return static_cast<uint64_t>(std::ceil(fee));
     }
