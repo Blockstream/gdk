@@ -1113,7 +1113,19 @@ namespace green {
             const auto num_inputs = get_num_inputs() ? get_num_inputs() : 1; // Assume at least 1 input
             const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
             size_t blinding_weight = 0;
+            const bool have_any_witnesses = has_witnesses();
             bool found_fee = false;
+
+            if (!have_any_witnesses) {
+                // Tx has no segwit inputs, and no blinded outputs, i.e.
+                // it's being constructed via create_transaction et al.
+                // Since we will be blinding the tx, this will create
+                // output witnesses and so force witnesses to be serialized.
+                // Account for this here with a zero byte for each witness:
+                // issuance_amount_rangeproof, inflation_keys_rangeproof, witness, pegin_witness
+                const amount::value_type wit_weight = 1 + 1 + 1 + 1;
+                blinding_weight += get_num_inputs() * wit_weight;
+            }
 
             for (const auto& tx_out : get_outputs()) {
                 uint64_t satoshi = 0;
@@ -1166,7 +1178,7 @@ namespace green {
                 // explicit asset, explicit value, empty nonce, empty script
                 const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
                 weight += fee_output_vbytes * 4;
-                if (has_witnesses()) {
+                if (have_any_witnesses) {
                     weight += 2; // For empty witness
                 }
             }
