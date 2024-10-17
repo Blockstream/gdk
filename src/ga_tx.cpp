@@ -1077,6 +1077,13 @@ namespace green {
         m_tx->locktime = current_block_height;
     }
 
+    bool Tx::has_witnesses() const
+    {
+        size_t witness_count;
+        GDK_VERIFY(wally_tx_get_witness_count(m_tx.get(), &witness_count));
+        return witness_count != 0;
+    }
+
     size_t Tx::get_weight(bool with_discount) const
     {
         size_t weight, discount = 0;
@@ -1155,9 +1162,13 @@ namespace green {
                 // FIXME: Fee must be the last output
                 GDK_RUNTIME_ASSERT(!get_outputs().back().script);
             } else {
-                // Add weight for a fee output (which is always unblinded)
+                // Add weight for a fee output (which is always unblinded):
+                // explicit asset, explicit value, empty nonce, empty script
                 const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
                 weight += fee_output_vbytes * 4;
+                if (has_witnesses()) {
+                    weight += 2; // For empty witness
+                }
             }
             weight += blinding_weight;
         }
