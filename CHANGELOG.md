@@ -1,5 +1,22 @@
 # Changelog
 
+## Release 0.73.3 - 24-10-18
+
+### Added
+- GA_create_redeposit_transaction: Add support for ``"expired_at"`` to create
+  re-deposit transactions for UTXOs that will expire in the future.
+- GA_get_balance/GA_get_unspent_outputs/GA_create_redeposit_transaction: Add
+  support for ``"expires_in"`` to support filtering for UTXOs that expire in
+  the given number of blocks from the current block height.
+
+### Changed
+- Transactions: Improve error messages when too many or duplicate inputs are used.
+
+### Fixed
+- Transactions: Fix weight calculation for Liquid when all inputs to a transaction
+  are non-segwit (i.e. p2sh, p2pkh). This fix prevents the actual fee rate from
+  becoming lower than the desired fee rate.
+
 ## Release 0.73.2 - 24-10-08
 
 ### Added
