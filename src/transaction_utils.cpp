@@ -812,6 +812,8 @@ namespace green {
                 calculated_fee_rate = fee.value() * 1000 / tx_vsize;
             }
             result["calculated_fee_rate"] = calculated_fee_rate.value();
+        } else {
+            j_erase(result, "calculated_fee_rate");
         }
     }
 
