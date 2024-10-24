@@ -1113,10 +1113,10 @@ impl ElectrumSession {
             // Skip network call
             Ok(self.store()?.read()?.fee_estimates())
         } else {
-            let min_fee = self.network.id().default_min_fee_rate();
+            let default_min_rate = self.network.id().default_min_fee_rate();
             let fee_estimates =
                 try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
-                    .unwrap_or_else(|_| vec![FeeEstimate(min_fee); 25]);
+                    .unwrap_or_else(|_| vec![FeeEstimate(default_min_rate); 25]);
             self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
             *fee_fetched_at = SystemTime::now();
             Ok(fee_estimates)
@@ -1125,7 +1125,9 @@ impl ElectrumSession {
     }
 
     pub fn get_min_fee_rate(&self) -> Result<u64, Error> {
-        Ok(self.store()?.read()?.min_fee_rate())
+        let default_min_rate = self.network.id().default_min_fee_rate();
+        let min_rate = self.store()?.read()?.min_fee_rate();
+        Ok(min_rate.max(default_min_rate))
     }
 
     /// Return the settings or None if the store is not loaded (not logged in)
