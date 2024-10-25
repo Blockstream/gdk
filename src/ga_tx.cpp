@@ -1122,9 +1122,14 @@ namespace green {
                 // Since we will be blinding the tx, this will create
                 // output witnesses and so force witnesses to be serialized.
                 // Account for this here with a zero byte for each witness:
+                // inputs:
                 // issuance_amount_rangeproof, inflation_keys_rangeproof, witness, pegin_witness
-                const amount::value_type wit_weight = 1 + 1 + 1 + 1;
-                blinding_weight += get_num_inputs() * wit_weight;
+                const amount::value_type input_wit_weight = 1 + 1 + 1 + 1;
+                blinding_weight += get_num_inputs() * input_wit_weight;
+                // outputs:
+                // surjectionproof, rangeproof
+                const amount::value_type output_wit_weight = 1 + 1;
+                blinding_weight += get_num_outputs() * output_wit_weight;
             }
 
             for (const auto& tx_out : get_outputs()) {
@@ -1175,12 +1180,11 @@ namespace green {
                 GDK_RUNTIME_ASSERT(!get_outputs().back().script);
             } else {
                 // Add weight for a fee output (which is always unblinded):
-                // explicit asset, explicit value, empty nonce, empty script
+                // base: explicit asset, explicit value, empty nonce, empty script
                 const amount::value_type fee_output_vbytes = 33 + 9 + 1 + 1;
                 weight += fee_output_vbytes * 4;
-                if (have_any_witnesses) {
-                    weight += 2; // For empty witness
-                }
+                // witness: empty surjectionproof, empty rangeproof
+                weight += 2;
             }
             weight += blinding_weight;
         }
