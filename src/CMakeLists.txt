@@ -104,6 +104,11 @@ else()
          "LINKER:SHELL:--no-whole-archive"
     )
 endif()
+if(ANDROID)
+    # Support 16k page sizes on newer Android devices
+    list(APPEND _gdkLinkOptions "-Wl,-z,max-page-size=16384")
+endif()
+
 target_link_options(green_gdk PUBLIC $<BUILD_INTERFACE:${_gdkLinkOptions}>)
 #### rest
 target_link_libraries(
