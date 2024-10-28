@@ -1185,6 +1185,12 @@ namespace green {
                 weight += fee_output_vbytes * 4;
                 // witness: empty surjectionproof, empty rangeproof
                 weight += 2;
+
+                constexpr size_t VI_MAX_8 = 252; // Max single-byte varint value
+                if (get_num_outputs() == VI_MAX_8) {
+                    // Encoding num_outputs+1 will require an extra byte of base weight
+                    weight += (1 * 4);
+                }
             }
             weight += blinding_weight;
         }
