@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use bitcoin::blockdata::script::Builder;
 use bitcoin::hashes::Hash;
 use bitcoin::PubkeyHash;
-use bitcoin::{Address, Network, PublicKey, ScriptBuf};
+use bitcoin::{Address, CompressedPublicKey, Network, ScriptBuf};
 
 use std::convert::TryFrom;
 use std::fmt;
@@ -43,11 +43,11 @@ impl ScriptType {
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
 
-pub fn p2pkh_script(pk: &PublicKey) -> ScriptBuf {
+pub fn p2pkh_script(pk: &CompressedPublicKey) -> ScriptBuf {
     Address::p2pkh(pk, Network::Regtest).script_pubkey()
 }
 
-pub fn p2shwpkh_script_sig(public_key: &PublicKey) -> ScriptBuf {
+pub fn p2shwpkh_script_sig(public_key: &CompressedPublicKey) -> ScriptBuf {
     let mut vec = vec![0, 20];
     vec.extend(PubkeyHash::hash(&public_key.to_bytes()).as_byte_array());
     Builder::new().push_slice(&PushBytesBuf::try_from(vec).unwrap()).into_script()

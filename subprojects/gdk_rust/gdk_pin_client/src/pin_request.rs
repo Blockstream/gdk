@@ -46,7 +46,7 @@ impl PinServerRequest {
         };
 
         let payload = {
-            let message = Message::from_hashed_data::<sha256::Hash>(&data);
+            let message = Message::from_digest(sha256::Hash::hash(&data).to_byte_array());
 
             let (recovery_id, signature) =
                 EC.sign_ecdsa_recoverable(&message, client_key.secret_key()).serialize_compact();

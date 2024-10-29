@@ -1,6 +1,5 @@
 use crate::BETxid;
 use gdk_common::bitcoin::bip32::Xpub;
-use gdk_common::bitcoin::sighash;
 use gdk_common::error::Error as CommonError;
 use gdk_common::{bitcoin, electrum_client, elements, serde_cbor, ureq};
 use serde::ser::Serialize;
@@ -28,9 +27,6 @@ pub enum Error {
     Base64DecodeError(#[from] base64::DecodeError),
 
     #[error(transparent)]
-    BitcoinAddressError(#[from] bitcoin::address::Error),
-
-    #[error(transparent)]
     BitcoinAddressParseError(#[from] bitcoin::address::ParseError),
 
     #[error(transparent)]
@@ -46,7 +42,10 @@ pub enum Error {
     BitcoinHexToArrayError(#[from] bitcoin::hashes::hex::HexToArrayError),
 
     #[error(transparent)]
-    BitcoinKeyError(#[from] bitcoin::key::Error),
+    BitcoinKeyError(#[from] bitcoin::key::ParsePublicKeyError),
+
+    #[error(transparent)]
+    ParseCompressed(#[from] bitcoin::key::ParseCompressedPublicKeyError),
 
     #[error(transparent)]
     ClientError(#[from] electrum_client::Error),
@@ -193,9 +192,8 @@ pub enum Error {
     #[error(transparent)]
     UreqError(#[from] ureq::Error),
 
-    #[error(transparent)]
-    Sighash(#[from] sighash::Error),
-
+    //#[error(transparent)]
+    //Sighash(#[from] sighash::Error),
     #[error(
         "{}method not found: {method:?}",
         if *.in_session { "session " } else {""}

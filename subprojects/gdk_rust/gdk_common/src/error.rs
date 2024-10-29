@@ -7,7 +7,10 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error(transparent)]
-    BtcAddressError(#[from] bitcoin::address::Error),
+    BtcAddressError(#[from] bitcoin::address::ParseError),
+
+    #[error(transparent)]
+    ParsePublicKey(#[from] bitcoin::key::ParsePublicKeyError),
 
     #[error(transparent)]
     BtcBase58DecodingError(#[from] bitcoin::base58::Error),
@@ -26,9 +29,6 @@ pub enum Error {
 
     #[error(transparent)]
     BtcHexToBytesError(#[from] bitcoin::hashes::hex::HexToBytesError),
-
-    #[error(transparent)]
-    BtcKeyError(#[from] bitcoin::key::Error),
 
     #[error(transparent)]
     BtcNonStandardSigHashType(#[from] NonStandardSighashTypeError),
@@ -88,7 +88,10 @@ pub enum Error {
     Utf8(#[from] std::str::Utf8Error),
 
     #[error(transparent)]
-    Sighash(#[from] bitcoin::sighash::Error),
+    Sighash(#[from] bitcoin::sighash::P2wpkhError),
+
+    #[error(transparent)]
+    InputsIndex(#[from] bitcoin::blockdata::transaction::InputsIndexError),
 
     #[error("Generic({0})")]
     Generic(String),

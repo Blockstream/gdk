@@ -424,7 +424,7 @@ impl TestSession {
 
 fn keys_from_credentials(
     credentials: &Credentials,
-    network: bitcoin::Network,
+    network: bitcoin::NetworkKind,
 ) -> (Xpriv, Xpub, util::MasterBlindingKey) {
     let mnemonic = Mnemonic::parse(&credentials.mnemonic).unwrap();
     let seed = mnemonic.to_seed(&credentials.bip39_passphrase);

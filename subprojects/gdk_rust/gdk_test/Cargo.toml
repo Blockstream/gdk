@@ -4,12 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-electrsd = { version = "0.27.0", features = ["legacy"] }
+electrsd = { version = "0.29.0", features = ["legacy"] }
 env_logger = "0.10.0"
 gdk-common = { path = "../gdk_common" }
 gdk-electrum = { path = "../gdk_electrum", features = ["testing"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 tempfile = "3.2.0"
-bitcoin-private = "0.1.0"
 bip39 = {version = "2.0"}

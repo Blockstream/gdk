@@ -496,10 +496,7 @@ fn from_descriptor(
     };
     let (script_type, xpub, bip32_account, master_xpub_fingerprint, master_blinding_key) =
         parse_single_sig_descriptor(s, coin_type, is_liquid)?;
-    let is_mainnet = match xpub.network {
-        Network::Bitcoin => true,
-        _ => false,
-    };
+    let is_mainnet = xpub.network.is_mainnet();
     if is_mainnet != expected_is_mainnet {
         return Err(Error::MismatchingNetwork);
     }

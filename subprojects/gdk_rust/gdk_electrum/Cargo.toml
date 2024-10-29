@@ -9,7 +9,6 @@ testing = ["gdk-common/testing"]
 
 [dependencies]
 base64 = "0.13"
-bitcoin-private = "0.1.0"
 block-modes = "0.8.0"
 gdk-common = { path = "../gdk_common" }
 gdk-pin-client = { path = "../gdk_pin_client" }

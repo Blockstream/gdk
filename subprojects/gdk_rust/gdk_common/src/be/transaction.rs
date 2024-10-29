@@ -11,7 +11,7 @@ use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::secp256k1::{self, ecdsa::Signature, Message, Secp256k1};
 use bitcoin::sighash::SighashCache;
-use bitcoin::{PublicKey, Sequence};
+use bitcoin::{CompressedPublicKey, Sequence};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
@@ -56,7 +56,7 @@ impl BETransaction {
 
     pub fn txid(&self) -> BETxid {
         match self {
-            Self::Bitcoin(tx) => tx.txid().into(),
+            Self::Bitcoin(tx) => tx.compute_txid().into(),
             Self::Elements(tx) => tx.txid().into(),
         }
     }
@@ -132,7 +132,7 @@ impl BETransaction {
 
     pub fn outpoint(&self, vout: u32) -> BEOutPoint {
         match self {
-            Self::Bitcoin(tx) => BEOutPoint::new_bitcoin(tx.txid(), vout),
+            Self::Bitcoin(tx) => BEOutPoint::new_bitcoin(tx.compute_txid(), vout),
             Self::Elements(tx) => BEOutPoint::new_elements(tx.txid(), vout),
         }
     }
@@ -450,7 +450,7 @@ impl BETransaction {
         secp: &Secp256k1<impl secp256k1::Verification>,
         hashcache: &mut Option<SighashCache<&'a bitcoin::Transaction>>,
         inv: usize,
-        public_key: &PublicKey,
+        public_key: &CompressedPublicKey,
         value: u64,
         script_type: ScriptType,
     ) -> Result<(), Error> {
@@ -476,11 +476,11 @@ impl BETransaction {
         let hash = if script_type.is_segwit() {
             let amount = Amount::from_sat(value);
             let script_pubkey =
-                bitcoin::Address::p2wpkh(public_key, bitcoin::Network::Bitcoin)?.script_pubkey();
+                bitcoin::Address::p2wpkh(&public_key, bitcoin::Network::Bitcoin).script_pubkey();
             let hashcache = hashcache.get_or_insert_with(|| SighashCache::new(tx));
             hashcache.p2wpkh_signature_hash(inv, &script_pubkey, amount, sighash)?.to_byte_array()
         } else {
-            let script_pubkey = p2pkh_script(public_key);
+            let script_pubkey = p2pkh_script(&public_key);
             let sighash_cache = SighashCache::new(tx);
             sighash_cache
                 .legacy_signature_hash(inv, &script_pubkey, sighash.to_u32())?
@@ -488,7 +488,7 @@ impl BETransaction {
         };
         let message = Message::from_digest(hash);
 
-        secp.verify_ecdsa(&message, &Signature::from_der(&sig)?, &public_key.inner)?;
+        secp.verify_ecdsa(&message, &Signature::from_der(&sig)?, &public_key.0)?;
         Ok(())
     }
 

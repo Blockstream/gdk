@@ -6,7 +6,7 @@ use gdk_common::log::{info, warn};
 
 use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
-use gdk_common::bitcoin::PublicKey;
+use gdk_common::bitcoin::CompressedPublicKey;
 use gdk_common::{bitcoin, elements};
 
 use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETransactions, BETxid};
@@ -601,7 +601,7 @@ impl Account {
         Ok(txs)
     }
 
-    pub fn public_key(&self, path: &DerivationPath) -> PublicKey {
+    pub fn public_key(&self, path: &DerivationPath) -> CompressedPublicKey {
         let xpub = self.xpub.derive_pub(&crate::EC, path).unwrap();
         xpub.to_pub()
     }
@@ -639,7 +639,7 @@ impl Account {
             outpoint: outpoint.clone(),
             height,
 
-            public_key: self.public_key(&account_path),
+            public_key: self.public_key(&account_path).into(),
             script_pubkey,
             script_code: self.script_code(&account_path),
 
@@ -890,29 +890,31 @@ fn derive_address(
 }
 
 fn bitcoin_address(
-    public_key: &PublicKey,
+    public_key: &CompressedPublicKey,
     script_type: ScriptType,
     net: bitcoin::Network,
 ) -> bitcoin::Address {
     use gdk_common::bitcoin::Address;
     match script_type {
-        ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, net).expect("no compressed keys"),
-        ScriptType::P2wpkh => Address::p2wpkh(public_key, net).expect("no compressed keys"),
+        ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, net),
+        ScriptType::P2wpkh => Address::p2wpkh(public_key, net),
         ScriptType::P2pkh => Address::p2pkh(public_key, net),
     }
 }
 
 fn elements_address(
-    public_key: &PublicKey,
+    public_key: &CompressedPublicKey,
     master_blinding_key: &MasterBlindingKey,
     script_type: ScriptType,
     net: ElementsNetwork,
 ) -> elements::Address {
     let addr_params = net.address_params();
     let address = match script_type {
-        ScriptType::P2pkh => elements::Address::p2pkh(public_key, None, addr_params),
-        ScriptType::P2shP2wpkh => elements::Address::p2shwpkh(public_key, None, addr_params),
-        ScriptType::P2wpkh => elements::Address::p2wpkh(public_key, None, addr_params),
+        ScriptType::P2pkh => elements::Address::p2pkh(&public_key.0.into(), None, addr_params),
+        ScriptType::P2shP2wpkh => {
+            elements::Address::p2shwpkh(&public_key.0.into(), None, addr_params)
+        }
+        ScriptType::P2wpkh => elements::Address::p2wpkh(&public_key.0.into(), None, addr_params),
     };
     let script_pubkey = address.script_pubkey();
     let blinding_prv = asset_blinding_key_to_ec_private_key(master_blinding_key, &script_pubkey);

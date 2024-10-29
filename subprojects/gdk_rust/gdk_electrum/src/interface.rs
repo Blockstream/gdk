@@ -83,12 +83,12 @@ mod test {
     use gdk_common::bitcoin::consensus::deserialize;
     use gdk_common::bitcoin::hashes::hex::FromHex;
     use gdk_common::bitcoin::hashes::Hash;
+    use gdk_common::bitcoin::key::CompressedPublicKey;
     use gdk_common::bitcoin::key::PrivateKey;
-    use gdk_common::bitcoin::key::PublicKey;
     use gdk_common::bitcoin::secp256k1::{Message, SecretKey};
     use gdk_common::bitcoin::sighash::{EcdsaSighashType, SighashCache};
     use gdk_common::bitcoin::Amount;
-    use gdk_common::bitcoin::{Address, Network, Transaction};
+    use gdk_common::bitcoin::{Address, Network, NetworkKind, Transaction};
     use gdk_common::scripts::p2shwpkh_script_sig;
     use std::str::FromStr;
 
@@ -107,7 +107,7 @@ mod test {
         let inner = SecretKey::from_slice(&private_key_bytes).unwrap();
         let private_key = PrivateKey {
             compressed: true,
-            network: Network::Testnet,
+            network: NetworkKind::Test,
             inner,
         };
 
@@ -115,8 +115,8 @@ mod test {
             "03ad1d8e89212f0b92c74d23bb710c00662ad1470198ac48c43f7d6f93a2a26873",
         )
         .unwrap();
-        let public_key = PublicKey::from_slice(public_key.as_slice()).unwrap();
-        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).unwrap().script_pubkey();
+        let public_key = CompressedPublicKey::from_slice(public_key.as_slice()).unwrap();
+        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).script_pubkey();
         assert_eq!(script_pubkey.to_hex_string(), "001479091972186c449eb1ded22b78e40d009bdf0089");
         let value = Amount::from_sat(1_000_000_000);
         let hash = SighashCache::new(&tx)
@@ -151,7 +151,7 @@ mod test {
         let public_key_bytes = public_key.to_bytes();
         let public_key_str = format!("{}", public_key);
 
-        let address = Address::p2shwpkh(&public_key, Network::Testnet).unwrap();
+        let address = Address::p2shwpkh(&public_key, Network::Testnet);
         assert_eq!(format!("{}", address), "2NCEMwNagVAbbQWNfu7M7DNGxkknVTzhooC");
 
         assert_eq!(
@@ -163,7 +163,7 @@ mod test {
         let tx_bytes = Vec::<u8>::from_hex(tx_hex).unwrap();
         let tx: Transaction = deserialize(&tx_bytes).unwrap();
 
-        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).unwrap().script_pubkey();
+        let script_pubkey = Address::p2wpkh(&public_key, Network::Bitcoin).script_pubkey();
         let value = Amount::from_sat(10_202);
         let hash = SighashCache::new(&tx)
             .p2wpkh_signature_hash(0, &script_pubkey, value, EcdsaSighashType::All)

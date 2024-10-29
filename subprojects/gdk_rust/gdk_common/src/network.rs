@@ -177,7 +177,7 @@ impl NetworkParameters {
         assert_eq!(self.bip32_network(), master_xpub.network);
         // Only public_key and chain_code contribute to the xpub hash
         let mut xpub = master_xpub.clone();
-        xpub.network = bitcoin::network::Network::Testnet;
+        xpub.network = bitcoin::network::Network::Testnet.into();
         xpub.depth = 0;
         xpub.parent_fingerprint = Fingerprint::default();
         xpub.child_number = ChildNumber::from_normal_idx(0).unwrap();
@@ -187,11 +187,11 @@ impl NetworkParameters {
         crate::util::pbkdf2_hmac_sha512_256(password, salt, cost).to_hex()
     }
 
-    pub fn bip32_network(&self) -> bitcoin::network::Network {
+    pub fn bip32_network(&self) -> bitcoin::network::NetworkKind {
         if self.mainnet {
-            bitcoin::network::Network::Bitcoin
+            bitcoin::network::NetworkKind::Main
         } else {
-            bitcoin::network::Network::Testnet
+            bitcoin::network::NetworkKind::Test
         }
     }
 }

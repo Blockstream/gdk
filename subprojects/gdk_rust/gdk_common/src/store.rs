@@ -6,6 +6,7 @@ use aes_gcm_siv::aead::{AeadInPlace, NewAead};
 use aes_gcm_siv::{Aes256GcmSiv, Key, Nonce};
 use bitcoin::bip32::Xpub;
 use bitcoin::hashes::{sha256, Hash};
+use bitcoin::{Network, NetworkKind};
 use rand::Rng;
 
 use crate::Result;
@@ -59,7 +60,12 @@ impl ToCipher for Xpub {
         let mut enc_key_data = vec![];
         enc_key_data.extend(&self.to_pub().to_bytes());
         enc_key_data.extend(&self.chain_code.to_bytes());
-        let mut v = self.network.magic().to_bytes().to_vec();
+        let mut v = match self.network {
+            NetworkKind::Main => Network::Bitcoin.magic(),
+            NetworkKind::Test => Network::Testnet.magic(),
+        }
+        .to_bytes()
+        .to_vec();
         v.reverse(); // test_hardcoded_decryption fail otherwise
         enc_key_data.extend(&v);
         let hash = sha256::Hash::hash(&enc_key_data);
