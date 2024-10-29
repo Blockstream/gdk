@@ -480,7 +480,7 @@ impl BETransaction {
             let hashcache = hashcache.get_or_insert_with(|| SighashCache::new(tx));
             hashcache.p2wpkh_signature_hash(inv, &script_pubkey, amount, sighash)?.to_byte_array()
         } else {
-            let script_pubkey = p2pkh_script(&public_key);
+            let script_pubkey = p2pkh_script(public_key);
             let sighash_cache = SighashCache::new(tx);
             sighash_cache
                 .legacy_signature_hash(inv, &script_pubkey, sighash.to_u32())?

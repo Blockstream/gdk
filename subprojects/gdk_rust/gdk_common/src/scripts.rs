@@ -43,7 +43,7 @@ impl ScriptType {
 // The following scripts are always using regtest network,
 // it is always ok because I am not interested in the address just in the script
 
-pub fn p2pkh_script(pk: &CompressedPublicKey) -> ScriptBuf {
+pub fn p2pkh_script(pk: impl Into<PubkeyHash>) -> ScriptBuf {
     Address::p2pkh(pk, Network::Regtest).script_pubkey()
 }
 
