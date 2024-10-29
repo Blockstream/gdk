@@ -969,8 +969,8 @@ mod test {
 
     #[test]
     fn test_path() {
-        let path_external: DerivationPath = "m/44'/1'/0'/0/0".parse().unwrap();
-        let path_internal: DerivationPath = "m/44'/1'/0'/1/0".parse().unwrap();
+        let path_external: DerivationPath = "44'/1'/0'/0/0".parse().unwrap();
+        let path_internal: DerivationPath = "44'/1'/0'/1/0".parse().unwrap();
         assert_eq!(parse_path(&path_external).unwrap(), (false, 0u32));
         assert_eq!(parse_path(&path_internal).unwrap(), (true, 0u32));
     }

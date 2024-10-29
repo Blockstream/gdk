@@ -113,7 +113,6 @@ impl Account {
             ScriptType::P2pkh => ("pkh", ""),
         };
         let (_, path) = get_account_derivation(self.account_num, self.network.id())?;
-        let path = &path.to_string()[2..];
         let parent_fingerprint = self.master_xpub_fingerprint.to_string();
         let key_origin = format!("[{}/{}]", parent_fingerprint, path);
         let desc = format!("{}({}{}/{}/*){}", prefix, key_origin, self.xpub, internal_idx, suffix);
@@ -838,7 +837,7 @@ pub fn get_account_derivation(
 
     // BIP44: m / purpose' / coin_type' / account' / change / address_index
     let path: DerivationPath =
-        format!("m/{}'/{}'/{}'", purpose, coin_type, bip32_account_num).parse().unwrap();
+        format!("{}'/{}'/{}'", purpose, coin_type, bip32_account_num).parse().unwrap();
 
     info!("derivation path for account {}: {}", account_num, path);
 
@@ -987,23 +986,23 @@ mod test {
 
     #[test]
     fn account_derivation() {
-        test_derivation(0, ScriptType::P2shP2wpkh, "m/49'/1'/0'");
-        test_derivation(1, ScriptType::P2wpkh, "m/84'/1'/0'");
-        test_derivation(2, ScriptType::P2pkh, "m/44'/1'/0'");
+        test_derivation(0, ScriptType::P2shP2wpkh, "49'/1'/0'");
+        test_derivation(1, ScriptType::P2wpkh, "84'/1'/0'");
+        test_derivation(2, ScriptType::P2pkh, "44'/1'/0'");
 
         // reserved for future use, currently rejected
         for n in 3..=15 {
             test_derivation_fails(n);
         }
 
-        test_derivation(16, ScriptType::P2shP2wpkh, "m/49'/1'/1'");
-        test_derivation(17, ScriptType::P2wpkh, "m/84'/1'/1'");
-        test_derivation(18, ScriptType::P2pkh, "m/44'/1'/1'");
+        test_derivation(16, ScriptType::P2shP2wpkh, "49'/1'/1'");
+        test_derivation(17, ScriptType::P2wpkh, "84'/1'/1'");
+        test_derivation(18, ScriptType::P2pkh, "44'/1'/1'");
         test_derivation_fails(19);
 
-        test_derivation(160, ScriptType::P2shP2wpkh, "m/49'/1'/10'");
-        test_derivation(161, ScriptType::P2wpkh, "m/84'/1'/10'");
-        test_derivation(162, ScriptType::P2pkh, "m/44'/1'/10'");
+        test_derivation(160, ScriptType::P2shP2wpkh, "49'/1'/10'");
+        test_derivation(161, ScriptType::P2wpkh, "84'/1'/10'");
+        test_derivation(162, ScriptType::P2pkh, "44'/1'/10'");
     }
 
     #[test]

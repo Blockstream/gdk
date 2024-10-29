@@ -2,6 +2,7 @@ use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 
+use bip39::Mnemonic;
 use electrsd::bitcoind::bitcoincore_rpc::RpcApi;
 use electrsd::electrum_client::ElectrumApi;
 use gdk_common::bitcoin::bip32::{ChildNumber, DerivationPath, Xpriv, Xpub};
@@ -11,7 +12,6 @@ use gdk_common::util;
 use gdk_common::{bitcoin, rand};
 use serde_json::{json, Value};
 use tempfile::TempDir;
-use bip39::Mnemonic;
 
 use gdk_common::be::*;
 use gdk_common::model::*;
@@ -143,7 +143,7 @@ impl TestSession {
         assert_eq!(account_nums, vec![0]);
 
         // Create subaccount 0
-        let path: DerivationPath = "m/84'/1'/0'".parse().unwrap();
+        let path: DerivationPath = "84'/1'/0'".parse().unwrap();
         let path: Vec<ChildNumber> = path.into();
         let xprv = master_xprv.derive_priv(&gdk_common::EC, &path).unwrap();
         let xpub = Xpub::from_priv(&gdk_common::EC, &xprv);
