@@ -417,15 +417,7 @@ namespace green {
 
     nlohmann::json ga_rust::get_transactions(const nlohmann::json& details)
     {
-        nlohmann::json actual_details;
-
-        if (details.is_null()) {
-            actual_details["page_id"] = 0;
-        } else {
-            actual_details = details;
-        }
-
-        return rust_call("get_transactions", actual_details, m_session);
+        return rust_call("get_transactions", details, m_session);
     }
 
     void ga_rust::GDKRUST_notif_handler(void* self_context, char* json)
