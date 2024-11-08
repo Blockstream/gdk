@@ -2370,4 +2370,28 @@ namespace green {
         return state_type::done;
     }
 
+    //
+    // RSA verify
+    //
+    rsa_verify::rsa_verify(session& session, nlohmann::json details)
+        : auth_handler_impl(session, "rsa_verify", {})
+        , m_details(std::move(details))
+    {
+    }
+
+    auth_handler::state_type rsa_verify::call_impl()
+    {
+        try {
+            const auto& pem = j_strref(m_details, "pem");
+            const auto challenge = j_bytesref(m_details, "challenge");
+            const auto signature = j_bytesref(m_details, "signature");
+
+            rsa_verify_challenge(pem, challenge, signature); // Throws on failure
+            m_result = { { "result", true }, { "error", "" } };
+        } catch (const std::exception& e) {
+            m_result = { { "result", false }, { "error", e.what() } };
+        }
+        return state_type::done;
+    }
+
 } // namespace green

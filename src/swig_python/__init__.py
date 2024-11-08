@@ -173,6 +173,9 @@ class Session(object):
     def decrypt_with_pin(self, details):
         return Call(decrypt_with_pin(self.session_obj, self._to_json(details)))
 
+    def rsa_verify(self, details):
+        return Call(rsa_verify(self.session_obj, self._to_json(details)))
+
     def disable_all_pin_logins(self):
         return disable_all_pin_logins(self.session_obj)
 

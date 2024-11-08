@@ -290,6 +290,45 @@ Decrypt with PIN JSON
 :pin_data: See :ref:`pin-data`.
 
 
+.. _rsa-verify:
+
+RSA Verify JSON
+---------------
+
+Contains the details required to perform RSA challenge verification by `GA_rsa_verify`.
+
+.. code-block:: json
+
+   {
+      "pem": "...",
+      "challenge": "...",
+      "signature": "..."
+   }
+
+:pem: The PEM containing the public key that ``"signature"`` should sign for.
+:challenge: The challenge that ``"signature"`` should be a valid signature for, hex encoded.
+:signature: The signature that signs ``"challenge"`` with the private key corresponding to the public key in ``"pem"``, hex encoded.
+
+
+.. _rsa-verify-result:
+
+RSA Verify Result JSON
+----------------------
+
+Contains the result of an RSA challenge verification by `GA_rsa_verify`.
+
+.. code-block:: json
+
+   {
+      "result": true,
+      "error": ""
+   }
+
+:result: ``true`` if the verification succeeded, ``false`` otherwise.
+:error: A text description of the error that occurred, if any. When empty, the
+    ``"result"`` value alone determines whether verification succeeded.
+
+
 .. _wallet-id-request:
 
 Wallet identifier request JSON

@@ -32,6 +32,8 @@
 #include <x86intrin.h>
 #endif
 
+#include <openssl/evp.h>
+#include <openssl/pem.h>
 #include <openssl/rand.h>
 
 #include "assertion.hpp"
@@ -46,7 +48,6 @@
 #include "signer.hpp"
 #include "utils.hpp"
 #include "xpub_hdkey.hpp"
-#include <openssl/evp.h>
 #include <zlib.h>
 
 namespace green {
@@ -620,7 +621,7 @@ namespace green {
         constexpr int AES_GCM_TAG_SIZE = 16;
         constexpr int AES_GCM_IV_SIZE = 12;
     } // namespace
-    using evp_ctx_ptr = const std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
+    using EVP_CIPHER_CTX_ptr = const std::unique_ptr<EVP_CIPHER_CTX, decltype(&::EVP_CIPHER_CTX_free)>;
 
     size_t aes_gcm_encrypt_get_length(byte_span_t plaintext)
     {
@@ -638,7 +639,7 @@ namespace green {
         std::copy(iv.begin(), iv.end(), cyphertext.begin());
         unsigned char* out = cyphertext.data() + iv.size();
 
-        evp_ctx_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
+        EVP_CIPHER_CTX_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
         OPENSSL_VERIFY(EVP_EncryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), iv.data()));
         int n;
         OPENSSL_VERIFY(EVP_EncryptUpdate(ctx.get(), out, &n, plaintext.data(), plaintext.size()));
@@ -668,7 +669,7 @@ namespace green {
         const unsigned char* in = cyphertext.data() + iv.size();
         unsigned char* out = plaintext.data();
 
-        evp_ctx_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
+        EVP_CIPHER_CTX_ptr ctx{ EVP_CIPHER_CTX_new(), EVP_CIPHER_CTX_free };
 
         OPENSSL_VERIFY(EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, key.data(), iv.data()));
         OPENSSL_VERIFY(EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, AES_GCM_TAG_SIZE, tag));
@@ -676,6 +677,30 @@ namespace green {
         OPENSSL_VERIFY(EVP_DecryptUpdate(ctx.get(), out, &n, in, plaintext_size));
         OPENSSL_VERIFY(EVP_DecryptFinal_ex(ctx.get(), out, &n_final));
         return n + n_final;
+    }
+
+    static EVP_PKEY* pubkey_from_pem(std::string_view pem)
+    {
+        using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
+        BIO_ptr input(BIO_new_mem_buf(pem.data(), pem.size()), BIO_free);
+        return PEM_read_bio_PUBKEY(input.get(), nullptr, nullptr, nullptr);
+    }
+
+    void rsa_verify_challenge(std::string_view pem, byte_span_t challenge, byte_span_t sig)
+    {
+        using EVP_PKEY_ptr = std::unique_ptr<EVP_PKEY, decltype(&EVP_PKEY_free)>;
+        EVP_PKEY_ptr pubkey(pubkey_from_pem(pem), EVP_PKEY_free);
+        if (!pubkey) {
+            throw user_error("Invalid public key PEM");
+        }
+        using EVP_MD_CTX_ptr = const std::unique_ptr<EVP_MD_CTX, decltype(&::EVP_MD_CTX_free)>;
+        EVP_MD_CTX_ptr ctx{ EVP_MD_CTX_new(), EVP_MD_CTX_free };
+        if (EVP_DigestVerifyInit(ctx.get(), nullptr, EVP_sha256(), nullptr, pubkey.get()) != 1) {
+            throw user_error("Failed to initialize verify context");
+        }
+        if (EVP_DigestVerify(ctx.get(), sig.data(), sig.size(), challenge.data(), challenge.size()) != 1) {
+            throw user_error("Verification failed");
+        }
     }
 
     std::string get_wallet_hash_id(const std::string& chain_code_hex, const std::string& public_key_hex,

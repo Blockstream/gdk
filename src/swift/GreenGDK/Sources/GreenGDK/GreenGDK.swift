@@ -354,6 +354,10 @@ public class Session {
         return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_decrypt_with_pin)
     }
 
+    public func rsaVerify(details: [String: Any]) throws -> TwoFactorCall {
+        return try jsonFuncToCallHandlerWrapper(input: details, fun: GA_rsa_verify)
+    }
+
     public func disableAllPinLogins() throws -> Void {
         try callWrapper(fun: GA_disable_all_pin_logins(session))
     }

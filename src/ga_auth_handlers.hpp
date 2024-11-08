@@ -423,5 +423,15 @@ namespace green {
         nlohmann::json m_details;
     };
 
+    class rsa_verify : public auth_handler_impl {
+    public:
+        rsa_verify(session& session, nlohmann::json details);
+
+    private:
+        state_type call_impl() override;
+
+        nlohmann::json m_details;
+    };
+
 } // namespace green
 #endif

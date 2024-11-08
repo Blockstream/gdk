@@ -1052,6 +1052,20 @@ GDK_API int GA_bcur_encode(struct GA_session* session, GA_json* details, struct 
  */
 GDK_API int GA_bcur_decode(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
 
+/**
+ * Verify an RSA challenge.
+ *
+ * :param session: The session to use.
+ * :param details: :ref:`rsa-verify` containing the the details to verify.
+ * :param call: Destination for the resulting ``GA_auth_handler`` to perform the verification.
+ *|     The call handlers result is :ref:`rsa-verify-result`.
+ *
+ * .. note:: The returned ``GA_auth_handler`` should be freed using `GA_destroy_auth_handler`.
+ *
+ * .. note:: ``details`` is emptied when called directly from C or C++.
+ */
+GDK_API int GA_rsa_verify(struct GA_session* session, GA_json* details, struct GA_auth_handler** call);
+
 #ifndef SWIG
 /**
  * Free a string returned by the api.

@@ -116,6 +116,9 @@ namespace green {
     size_t aes_gcm_encrypt_get_length(byte_span_t plaintext);
     size_t aes_gcm_encrypt(byte_span_t key, byte_span_t plaintext, gsl::span<unsigned char> cyphertext);
 
+    // Verify an RSA challenge. Throws on error.
+    void rsa_verify_challenge(std::string_view pem, byte_span_t challenge, byte_span_t sig);
+
     // Return prefix followed by compressed `bytes`
     std::vector<unsigned char> compress(byte_span_t prefix, byte_span_t bytes);
     // Return decompressed `bytes` (prefix is assumed removed by the caller)
