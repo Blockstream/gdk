@@ -21,7 +21,12 @@ impl ElectrumUrl {
         // TODO: add support for socks5 credentials?
         if let Some(proxy) = proxy {
             if !proxy.trim().is_empty() {
-                if proxy.replacen("socks5://", "", 1).to_socket_addrs().is_err() {
+                let mut proxy = proxy.replacen("socks5://", "", 1).to_string();
+                if proxy.starts_with("localhost:") {
+                    // Try to prevent issues with "localhost" resolving incorrectly
+                    proxy = proxy.replacen("localhost:", "127.0.0.1:", 1);
+                }
+                if proxy.to_socket_addrs().is_err() {
                     return Err(Error::InvalidProxySocket(proxy.to_string()));
                 }
                 config = config.socks5(Some(Socks5Config::new(proxy)));
