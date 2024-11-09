@@ -1,5 +1,18 @@
 # Changelog
 
+## Release 0.73.4 - Unreleased
+
+### Added
+- Singlesig(Liquid): Add support for discounted Liquid fees.
+- Crypto: Add GA_rsa_verify to verify an RSA challenge.
+- Android: Release binaries now support devices with 16k page sizes.
+
+### Changed
+
+### Fixed
+- Transactions: Further fixes for Liquid weight calculations.
+- Singlesig(MacOS): Fix occasional localhost proxy resolution issues.
+
 ## Release 0.73.3 - 24-10-25
 
 ### Added
