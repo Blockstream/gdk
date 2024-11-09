@@ -38,9 +38,8 @@ namespace green {
     static X509* cert_from_pem(const std::string& pem)
     {
         using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
-        BIO_ptr input(BIO_new(BIO_s_mem()), BIO_free);
-        BIO_write(input.get(), pem.c_str(), pem.size());
-        return PEM_read_bio_X509_AUX(input.get(), NULL, NULL, NULL);
+        BIO_ptr input(BIO_new_mem_buf(pem.data(), pem.size()), BIO_free);
+        return PEM_read_bio_X509_AUX(input.get(), nullptr, nullptr, nullptr);
     }
 
     static std::string cert_to_pretty_string(const X509* cert)
