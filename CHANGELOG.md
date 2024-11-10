@@ -8,6 +8,7 @@
 - Android: Release binaries now support devices with 16k page sizes.
 
 ### Changed
+- Transactions(Liquid): Use appropriate coin selection criteria when discounted Liquid fees are in use.
 
 ### Fixed
 - Transactions: Further fixes for Liquid weight calculations.

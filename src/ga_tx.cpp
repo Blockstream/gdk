@@ -493,7 +493,7 @@ namespace green {
                 values.push_back(v.second.value());
             }
             const size_t attempts = 1000000; /* FIXME: dynamic? */
-            const uint32_t io_ratio = 5; /* FIXME: dynamic? */
+            const uint32_t io_ratio = session.get_network_parameters().use_discounted_fees() ? 2 : 5;
             size_t written;
             addressee.utxo_indices.resize(indexed_values.size());
             int ret = wally_coinselect_assets(values.data(), values.size(), required_total, attempts, io_ratio,
