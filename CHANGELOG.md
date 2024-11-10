@@ -9,6 +9,10 @@
 
 ### Changed
 - Transactions(Liquid): Use appropriate coin selection criteria when discounted Liquid fees are in use.
+- GA_create_transaction: Return the error ``"Fee change below the dust threshold"`` when
+  the change output left over from paying fees is below the dust threshold. Previously
+  this case returned ``"Insufficient funds for fees"`` (which is still returned if there
+  is not enough value in fee UTXOs to pay the transaction fee).
 
 ### Fixed
 - Transactions: Further fixes for Liquid weight calculations.

@@ -520,6 +520,7 @@ namespace green {
 
             for (ssize_t i = 0; i <= num_utxos; ++i) {
                 const bool no_more_utxos = i == num_utxos;
+                bool have_dusty_change = false; // TODO: Allow donating dusty fees
 
                 addressee.fee = tx.get_fee(net_params, fee_rate.value());
                 addressee.fee += network_fee;
@@ -533,6 +534,7 @@ namespace green {
                         if (change_amount) {
                             if (update_greedy_output(tx, result, addressee, change_amount)) {
                                 if (change_amount <= dust_threshold) {
+                                    have_dusty_change = true;
                                     goto add_more_utxos;
                                 }
                                 change_amount = 0;
@@ -546,6 +548,7 @@ namespace green {
                                     continue; // Loop again to include the change output
                                 }
                                 if (change_amount <= dust_threshold) {
+                                    have_dusty_change = true;
                                     goto add_more_utxos;
                                 }
                             }
@@ -562,6 +565,10 @@ namespace green {
                 if (no_more_utxos) {
                     if (addressee.utxo_sum < addressee.required_total) {
                         throw user_error(res::id_insufficient_funds);
+                    }
+                    if (have_dusty_change) {
+                        // Caller requres more fee utxos to avoid dusty change
+                        throw user_error("Fee change below the dust threshold"); // FIXME res::
                     }
                     throw user_error("Insufficient funds for fees"); // FIXME res::
                 }
