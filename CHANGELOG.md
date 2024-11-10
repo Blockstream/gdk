@@ -13,6 +13,7 @@
   the change output left over from paying fees is below the dust threshold. Previously
   this case returned ``"Insufficient funds for fees"`` (which is still returned if there
   is not enough value in fee UTXOs to pay the transaction fee).
+- Dependencies: Update tor.
 
 ### Fixed
 - Transactions: Further fixes for Liquid weight calculations.
