@@ -1,10 +1,10 @@
 # Changelog
 
-## Release 0.73.4 - Unreleased
+## Release 0.73.4 - 24-11-12
 
 ### Added
 - Singlesig(Liquid): Add support for discounted Liquid fees. Discounted fees can
-  now be used on the ``"electrum-testnet-liquid"`` network.
+  now be used on the Liquid testnet networks.
 - Crypto: Add GA_rsa_verify to verify an RSA challenge.
 - Android: Release binaries now support devices with 16k page sizes.
 
@@ -14,7 +14,9 @@
   the change output left over from paying fees is below the dust threshold. Previously
   this case returned ``"Insufficient funds for fees"`` (which is still returned if there
   is not enough value in fee UTXOs to pay the transaction fee).
-- Dependencies: Update tor.
+- SPV: Update built-in checkpoints.
+- Liquid: Update built-in assets and icons.
+- Dependencies: Update tor, rust-tempfile, libwally.
 
 ### Fixed
 - Transactions: Further fixes for Liquid weight calculations.
