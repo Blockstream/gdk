@@ -3,7 +3,8 @@
 ## Release 0.73.4 - Unreleased
 
 ### Added
-- Singlesig(Liquid): Add support for discounted Liquid fees.
+- Singlesig(Liquid): Add support for discounted Liquid fees. Discounted fees can
+  now be used on the ``"electrum-testnet-liquid"`` network.
 - Crypto: Add GA_rsa_verify to verify an RSA challenge.
 - Android: Release binaries now support devices with 16k page sizes.
 
