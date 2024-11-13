@@ -2064,7 +2064,6 @@ namespace green {
                 if (!utxo.contains("error")) {
                     utxo.erase("value"); // Only remove value if we unblinded it
                 }
-                utxo.erase("ga_asset_id");
                 auto block_height = utxo.find("block_height");
                 if (block_height != utxo.end() && block_height->is_null()) {
                     *block_height = 0;
