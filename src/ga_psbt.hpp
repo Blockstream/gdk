@@ -32,9 +32,10 @@ namespace green {
         std::string to_base64(bool include_redundant) const;
         nlohmann::json to_json(session_impl& session, nlohmann::json utxos) const;
 
-        // Finalize the PSBT for extraction. Assumes all finalization data
-        // is already present in the PSBT, and throws if not.
-        void finalize();
+        // Finalize the PSBT for extraction.
+        // if allow_partial is false, throws if any finalization data is
+        // missing and/or the PSBT cannot be fully finalized.
+        void finalize(bool allow_partial = false);
 
         Tx extract() const;
 

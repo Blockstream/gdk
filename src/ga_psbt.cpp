@@ -223,7 +223,7 @@ namespace green {
         std::swap(m_psbt, rhs.m_psbt);
     }
 
-    void Psbt::finalize()
+    void Psbt::finalize(bool allow_partial)
     {
         // Do not clear finalization data after finalizing. This does not
         // comply with the PSBT BIP but is required due to how the Green
@@ -237,8 +237,10 @@ namespace green {
             size_t is_finalized;
             if (wally_psbt_finalize_input(m_psbt.get(), i, flags) != WALLY_OK) {
                 error = "Error finalizing input ";
-            } else if (wally_psbt_input_is_finalized(&psbt_input, &is_finalized) != WALLY_OK || !is_finalized) {
-                error = "Could not finalize input ";
+            } else if (!allow_partial) {
+                if (wally_psbt_input_is_finalized(&psbt_input, &is_finalized) != WALLY_OK || !is_finalized) {
+                    error = "Could not finalize input ";
+                }
             }
             if (error) {
                 throw user_error(std::string(error) + std::to_string(i));
