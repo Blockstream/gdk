@@ -379,6 +379,24 @@ namespace green {
         return false;
     }
 
+    // Fetch any signatures present in a PSBT input.
+    static auto get_input_signatures(
+        session_impl& session, const struct wally_psbt_input& psbt_input, const nlohmann::json& utxo)
+    {
+        byte_span_t user_der, green_der;
+        auto keys = session.keys_from_utxo(utxo);
+        size_t sig_index;
+
+        const auto user_pubkey = keys.at(0).get_public_key();
+        GDK_VERIFY(wally_psbt_input_find_signature(&psbt_input, user_pubkey.data(), user_pubkey.size(), &sig_index));
+        if (sig_index) {
+            const auto* item = psbt_input.signatures.items + sig_index - 1;
+            user_der = { item->value, item->value_len };
+        }
+
+        return std::make_pair(user_der, green_der);
+    }
+
     std::pair<nlohmann::json, std::set<std::string>> Psbt::inputs_to_json(
         session_impl& session, Tx& tx, nlohmann::json utxos) const
     {
@@ -431,8 +449,8 @@ namespace green {
                 }
                 utxo_add_paths(session, utxo);
                 if (!txin.script || !txin.witness) {
-                    // FIXME: get the sigs from the PSBT, uses dummy sigs for now
-                    byte_span_t user_der, green_der;
+                    // Get the sigs from the PSBT input
+                    auto [user_der, green_der] = get_input_signatures(session, psbt_input, utxo);
                     auto [scriptsig, witness] = get_scriptsig_and_witness(session, utxo, user_der, green_der);
                     if (!txin.script) {
                         GDK_VERIFY(wally_tx_input_set_script(&txin, scriptsig.data(), scriptsig.size()));

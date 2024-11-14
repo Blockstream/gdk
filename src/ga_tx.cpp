@@ -1242,9 +1242,9 @@ namespace green {
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
     {
-        const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
-        const uint32_t pointer = j_uint32ref(utxo, "pointer");
-        const bool is_internal = j_bool_or_false(utxo, "is_internal");
+        const auto subaccount = j_uint32_or_zero(utxo, "subaccount");
+        const auto pointer = j_uint32ref(utxo, "pointer");
+        const auto is_internal = j_bool_or_false(utxo, "is_internal");
 
         if (utxo.find("user_path") == utxo.end()) {
             // Populate the full user path for h/w signing
