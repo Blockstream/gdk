@@ -2064,6 +2064,7 @@ namespace green {
                 if (!utxo.contains("error")) {
                     utxo.erase("value"); // Only remove value if we unblinded it
                 }
+                // TODO: remove block_height munging once backends are updated
                 auto block_height = utxo.find("block_height");
                 if (block_height != utxo.end() && block_height->is_null()) {
                     *block_height = 0;
