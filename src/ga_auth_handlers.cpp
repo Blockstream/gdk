@@ -872,9 +872,9 @@ namespace green {
             return state_type::done;
         }
 
-        nlohmann::json::array_t sign_with;
-        sign_with.push_back("all");
-        m_signing_details["sign_with"] = m_details.value("sign_with", sign_with);
+        nlohmann::json::array_t signers;
+        signers.push_back("all");
+        m_signing_details["sign_with"] = m_details.value("sign_with", signers);
 
         if (const auto p = m_details.find("blinding_nonces"); p != m_details.end()) {
             m_signing_details.emplace("blinding_nonces", *p);
@@ -898,11 +898,26 @@ namespace green {
         const Tx tx(j_strref(m_result, "transaction"), m_net_params.is_liquid());
         const auto num_inputs = tx.get_num_inputs();
         const auto& tx_inputs = j_arrayref(m_result, "transaction_inputs", num_inputs);
+        bool allow_partial_finalization = false;
+
         for (size_t i = 0; i < num_inputs; ++i) {
             if (!j_bool_or_false(tx_inputs.at(i), "skip_signing")) {
                 m_psbt->set_input_finalization_data(i, tx);
+            } else {
+                // Allow partial finalization as some inputs may not be signed
+                allow_partial_finalization = true;
             }
         }
+
+        // Finalize the signed PSBT (as far as possible)
+        if (!allow_partial_finalization && !m_net_params.is_electrum()) {
+            // Allow finalization errors if we havent server signed
+            const auto& signers = j_arrayref(m_result, "sign_with");
+            allow_partial_finalization = std::find(signers.begin(), signers.end(), "all") == signers.end()
+                && std::find(signers.begin(), signers.end(), "green-backend") == signers.end();
+        }
+        m_psbt->finalize(allow_partial_finalization);
+
         /* For partial signing, we must keep the redeem script in the PSBT
          * for inputs that we have finalized, despite this breaking the spec
          * behaviour. FIXME: Use an extension field for this, since some
