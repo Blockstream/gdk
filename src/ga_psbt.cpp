@@ -105,7 +105,7 @@ namespace green {
         }
 
         static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input, wally_map& keypaths,
-            const nlohmann::json& details, const nlohmann::json& utxo)
+            uint32_t tx_version, const nlohmann::json& utxo)
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
             auto keys = session.keys_from_utxo(utxo);
@@ -117,7 +117,7 @@ namespace green {
 
             if (!is_electrum) {
                 if (psbt_input && j_strref(utxo, "address_type") == address_type::csv
-                    && j_uint32ref(details, "transaction_version") >= WALLY_TX_VERSION_2) {
+                    && tx_version >= WALLY_TX_VERSION_2) {
                     const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
                     if (expiry_height && expiry_height <= session.get_block_height()
                         && session.get_network_parameters().is_valid_csv_value(psbt_input->sequence)) {
@@ -618,7 +618,8 @@ namespace green {
         GDK_RUNTIME_ASSERT(j_str_is_empty(details, "error"));
 
         const Tx tx(j_bytesref(details, "transaction"), m_is_liquid);
-        m_original_version = tx.get_version() < 2 ? 0 : 2;
+        const auto tx_version = tx.get_version();
+        m_original_version = tx_version < 2 ? 0 : 2;
         {
             // Create the base PSBT from the tx
             const uint32_t flags = m_is_liquid ? WALLY_PSBT_INIT_PSET : 0;
@@ -642,7 +643,7 @@ namespace green {
             const bool belongs_to_wallet = is_wallet_utxo(input);
             if (belongs_to_wallet) {
                 // Wallet UTXO. Add the relevant keypaths
-                auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, details, input);
+                auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, tx_version, input);
                 add_input_scripts(psbt_input.psbt_fields, input, keys);
             }
             if (m_is_liquid) {
@@ -680,7 +681,7 @@ namespace green {
 
             if (is_wallet_utxo(output)) {
                 // Wallet UTXO. Add the relevant keypaths
-                add_keypaths(session, nullptr, psbt_output.keypaths, details, output);
+                add_keypaths(session, nullptr, psbt_output.keypaths, tx_version, output);
             }
 
             if (m_is_liquid) {
