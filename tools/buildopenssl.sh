@@ -4,7 +4,7 @@ set -e
 
 # FIXME: Change no-tests to no-apps when openssl is updated to 3.x
 OPENSSL_NAME="$(basename ${PRJ_SUBDIR})"
-CONFIGURE_ARGS="no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-psk no-srp no-tests no-ui-console"
+CONFIGURE_ARGS="no-gost no-shared no-dso no-ssl2 no-ssl3 no-idea no-dtls no-dtls1 no-weak-ssl-ciphers no-comp -fvisibility=hidden no-err no-srp no-tests no-ui-console"
 
 case $target_triple in
     *-linux-gnu)
