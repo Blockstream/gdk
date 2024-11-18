@@ -76,6 +76,9 @@ namespace green {
     std::tuple<bool, bool, bool, bool> tx_get_user_server_sweep_signed(
         session_impl& session, const nlohmann::json& result, Tx& tx);
 
+    // Returns true if sig_der is a dummy signature
+    bool is_dummy_sig(byte_span_t sig_der);
+
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee);
 

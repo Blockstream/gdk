@@ -95,17 +95,25 @@ namespace green {
             dst[key] = (do_reverse ? b2h_rev : b2h)(val.value());
         }
 
-        static void add_keypath(wally_map& keypaths, xpub_hdkeys& pubkeys, byte_span_t fingerprint,
-            const xpub_hdkey& key, uint32_t subaccount, uint32_t pointer, bool is_internal)
+        static void add_keypath(struct wally_psbt_input* psbt_input, wally_map& keypaths, xpub_hdkeys& pubkeys,
+            byte_span_t fingerprint, const xpub_hdkey& key, uint32_t subaccount, uint32_t pointer, bool is_internal,
+            byte_span_t der_sig)
         {
             const auto public_key = key.get_public_key();
             const auto path = pubkeys.get_full_path(subaccount, pointer, is_internal);
             GDK_VERIFY(wally_map_keypath_add(&keypaths, public_key.data(), public_key.size(), fingerprint.data(),
                 fingerprint.size(), path.data(), path.size()));
+            if (!der_sig.empty()) {
+                GDK_RUNTIME_ASSERT(psbt_input); // Can only add sigs to inputs
+                if (!is_dummy_sig(der_sig)) {
+                    GDK_VERIFY(wally_psbt_input_add_signature(
+                        psbt_input, public_key.data(), public_key.size(), der_sig.data(), der_sig.size()));
+                }
+            }
         }
 
         static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input, wally_map& keypaths,
-            uint32_t tx_version, const nlohmann::json& utxo)
+            uint32_t tx_version, const nlohmann::json& utxo, const std::vector<byte_span_t>* sigs = nullptr)
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
             auto keys = session.keys_from_utxo(utxo);
@@ -130,8 +138,9 @@ namespace green {
                     // First key returned is the Green key, add it
                     const auto green_fp = session.get_green_pubkeys().get_master_xpub().get_fingerprint();
                     const auto& green_key = keys.at(user_key_index);
-                    add_keypath(
-                        keypaths, session.get_green_pubkeys(), green_fp, green_key, subaccount, pointer, is_internal);
+                    byte_span_t green_der_sig = sigs && sigs->size() == 2 ? sigs->front() : byte_span_t{};
+                    add_keypath(psbt_input, keypaths, session.get_green_pubkeys(), green_fp, green_key, subaccount,
+                        pointer, is_internal, green_der_sig);
                 }
                 user_key_index = 1;
             }
@@ -139,14 +148,17 @@ namespace green {
             // Add the user's pubkey
             auto master_fp = session.get_nonnull_signer()->get_master_fingerprint();
             const auto& user_key = keys.at(user_key_index);
-            add_keypath(keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer, is_internal);
+            byte_span_t user_der_sig = sigs ? sigs->at(sigs->size() - 1) : byte_span_t{};
+            add_keypath(psbt_input, keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer,
+                is_internal, user_der_sig);
 
             if (!is_electrum && keys.size() > 2) {
                 // 2of3: Add the recovery pubkey
                 auto& recovery_pubkeys = session.get_recovery_pubkeys();
                 const auto recovery_fp = recovery_pubkeys.get_subaccount(subaccount).get_parent_fingerprint();
                 const auto& recovery_key = keys.back();
-                add_keypath(keypaths, recovery_pubkeys, recovery_fp, recovery_key, subaccount, pointer, is_internal);
+                add_keypath(psbt_input, keypaths, recovery_pubkeys, recovery_fp, recovery_key, subaccount, pointer,
+                    is_internal, {});
             }
             return keys;
         }
@@ -288,11 +300,14 @@ namespace green {
         return m_psbt->inputs[index];
     }
 
-    void Psbt::set_input_finalization_data(size_t index, const Tx& tx)
+    void Psbt::set_input_signatures(session_impl& session, const nlohmann::json& utxo, const Tx& tx, size_t index)
     {
-        const auto& txin = tx.get_input(index);
-        GDK_VERIFY(wally_psbt_set_input_final_witness(m_psbt.get(), index, txin.witness));
-        GDK_VERIFY(wally_psbt_set_input_final_scriptsig(m_psbt.get(), index, txin.script, txin.script_len));
+        const auto sigs = tx.get_input_signatures(session.get_network_parameters(), utxo, index);
+        auto& psbt_input = get_input(index);
+        auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, tx.get_version(), utxo, &sigs);
+        // The PSBT may be missing input scripts, add them here to ensure
+        // they are present for finalization.
+        add_input_scripts(psbt_input.psbt_fields, utxo, keys);
     }
 
     size_t Psbt::get_num_outputs() const { return m_psbt->num_outputs; }

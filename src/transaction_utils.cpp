@@ -86,8 +86,6 @@ namespace green {
             return byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2);
         }
 
-        static bool is_dummy_sig(byte_span_t sig) { return sig == dummy_sig_der(true) || sig == dummy_sig_der(false); }
-
         static auto segwit_address(const network_parameters& net_params, byte_span_t bytes)
         {
             constexpr uint32_t flags = 0;
@@ -607,6 +605,8 @@ namespace green {
         }
         return { user_signed, server_signed, sweep_signed, has_sweeps };
     }
+
+    bool is_dummy_sig(byte_span_t sig_der) { return sig_der == dummy_sig_der(true) || sig_der == dummy_sig_der(false); }
 
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)

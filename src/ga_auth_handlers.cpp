@@ -901,8 +901,9 @@ namespace green {
         bool allow_partial_finalization = false;
 
         for (size_t i = 0; i < num_inputs; ++i) {
-            if (!j_bool_or_false(tx_inputs.at(i), "skip_signing")) {
-                m_psbt->set_input_finalization_data(i, tx);
+            const auto& tx_input = tx_inputs.at(i);
+            if (!j_bool_or_false(tx_input, "skip_signing")) {
+                m_psbt->set_input_signatures(*m_session, tx_input, tx, i);
             } else {
                 // Allow partial finalization as some inputs may not be signed
                 allow_partial_finalization = true;

@@ -46,9 +46,8 @@ namespace green {
         struct wally_psbt_input& get_input(size_t index);
         const struct wally_psbt_input& get_input(size_t index) const;
 
-        // Finalize the input using the witness and scriptsig from a fully signed tx.
-        // Unlike normal finalization, this does not remove the source fields.
-        void set_input_finalization_data(size_t index, const Tx& tx);
+        // Add any valid signatures from the tx input at 'index' to the PSBT
+        void set_input_signatures(session_impl& session, const nlohmann::json& utxo, const Tx& tx, size_t index);
 
         // Outputs
         size_t get_num_outputs() const;
