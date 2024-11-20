@@ -1,16 +1,8 @@
-import atexit
-import json
 from ._green_gdk import *
 from ._green_gdk import _python_set_callback_handler, _python_destroy_session
-try:
-    import queue
-except:
-    import Queue as queue
-
-try:
-    basestring
-except NameError:
-    basestring = str
+import atexit
+import json
+import queue
 
 # Unused: Provided for back compatibility only
 GA_MEMO_USER = 0
@@ -137,7 +129,7 @@ class Session(object):
 
     @staticmethod
     def _to_json(obj):
-        return obj if isinstance(obj, basestring) else json.dumps(obj)
+        return obj if isinstance(obj, str) else json.dumps(obj)
 
     def connect(self, net_params):
         return connect(self.session_obj, self._to_json(net_params))
