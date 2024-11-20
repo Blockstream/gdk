@@ -3,6 +3,7 @@ from ._green_gdk import _python_set_callback_handler, _python_destroy_session
 import atexit
 import json
 import queue
+import weakref
 
 # Unused: Provided for back compatibility only
 GA_MEMO_USER = 0
@@ -73,33 +74,43 @@ class Session(object):
 
     """
 
-    to_destroy = []
+    # A list of weak references of sessions to destroy.
+    # If not destroyed manually, via with-scope or garbage collection,
+    # any sessions alive at program exit are destroyed.
+    _to_destroy = []
 
     @staticmethod
     @atexit.register
     def destroy_all():
-        while len(Session.to_destroy):
-            session = Session.to_destroy.pop()
-            session._destroy()
+        while len(Session._to_destroy):
+            session = Session._to_destroy.pop()() # Pop and resolve weakref
+            if session is not None:
+                session._destroy()
 
     def __init__(self, net_params):
         self.notifications = queue.Queue()
         self.session_obj = create_session()
-        Session.to_destroy.append(self)
-        _python_set_callback_handler(self.session_obj, self._callback_handler)
+        Session._to_destroy.append(weakref.ref(self))
+        _python_set_callback_handler(
+            self.session_obj,
+            weakref.WeakMethod(self._callback_handler)
+        )
         return self.connect(net_params)
 
     def _destroy(self):
-        if getattr(self, 'session_obj', None):
-            obj = self.session_obj
+        obj = getattr(self, 'session_obj', None)
+        if obj:
             self.session_obj = None
             _python_set_callback_handler(obj, None)
             _python_destroy_session(obj)
 
     def destroy(self):
-        if self in Session.to_destroy:
-            Session.to_destroy.remove(self)
-            self._destroy()
+        for s in Session._to_destroy:
+            session = s() # Resolve weakref
+            if session == self:
+                 Session._to_destroy.remove(s)
+                 self._destroy()
+                 break
 
     def __enter__(self):
         return self
@@ -113,9 +124,11 @@ class Session(object):
     def _callback_handler(self, obj, event):
         assert obj is self.session_obj
         try:
-            self.callback_handler(json.loads(event))
+            if obj:
+                self.callback_handler(json.loads(event))
         except Exception as e:
             print('exception {}\n'.format(e))
+
 
     def callback_handler(self, event):
         """Callback handler.

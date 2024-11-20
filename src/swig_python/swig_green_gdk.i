@@ -116,6 +116,7 @@ static void* get_from_capsule(PyObject *obj, const char* name)
 static void notification_handler(void* context_p, GA_json* details)
 {
     PyObject* session_capsule = (PyObject*) context_p;
+    PyObject* handler_ref = NULL;
     PyObject* handler = NULL;
     char* json_cstring = NULL;
 
@@ -131,18 +132,34 @@ static void notification_handler(void* context_p, GA_json* details)
     if (!p)
         goto end;
 
-    handler = (PyObject *)PyCapsule_GetContext(session_capsule);
+    /* Fetch the handler weak reference from the context */
+    handler_ref = (PyObject *)PyCapsule_GetContext(session_capsule);
+    if (!handler_ref)
+        goto end;
+
+    /* Call the weak reference to get the handler (if available) */
+    handler = PyEval_CallObject(handler_ref, NULL);
     if (!handler)
         goto end;
 
-    PyObject *args = Py_BuildValue("(Os)", session_capsule, json_cstring);
-    if (!args)
-        goto end;
+    if (handler != Py_None) {
+        PyObject *ret;
+        PyObject *args = Py_BuildValue("(Os)", session_capsule, json_cstring);
+        if (!args)
+            goto end;
 
-    PyEval_CallObject(handler, args);
-    Py_DecRef(args);
+        ret = PyEval_CallObject(handler, args);
+        Py_DecRef(args);
+        if (ret)
+            Py_DecRef(ret); /* Ignore any return value */
+    }
+    Py_DecRef(handler);
 
 end:
+    if (PyErr_Occurred()) {
+        PyErr_PrintEx(0);
+        PyErr_Clear();
+    }
     SWIG_PYTHON_THREAD_END_BLOCK;
 
     if (json_cstring)
