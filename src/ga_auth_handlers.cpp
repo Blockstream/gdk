@@ -380,7 +380,8 @@ namespace green {
             request["path"] = signer::LOGIN_PATH;
             add_required_ae_data(m_signer, request);
             return m_state;
-        } else if (m_hw_request == hw_request::sign_message) {
+        }
+        if (m_hw_request == hw_request::sign_message) {
             // Caller has signed the challenge
         do_authenticate:
             std::string sig_der_hex;
@@ -405,13 +406,13 @@ namespace green {
                     // fetching and caching logic.
                     signal_hw_request(hw_request::get_master_blinding_key);
                     return m_state;
-                } else {
-                    GDK_RUNTIME_ASSERT_MSG(!is_electrum, "HWW must support host unblinding for singlesig wallets");
                 }
+                GDK_RUNTIME_ASSERT_MSG(!is_electrum, "HWW must support host unblinding for singlesig wallets");
             }
 
             return request_subaccount_xpubs();
-        } else if (m_hw_request == hw_request::get_master_blinding_key) {
+        }
+        if (m_hw_request == hw_request::get_master_blinding_key) {
             // We either had the master blinding key cached, have fetched it
             // from the HWW, or the user has denied the request (if its blank).
             // Tell the session to cache the key or denial, and add it to
@@ -420,7 +421,8 @@ namespace green {
             m_session->set_cached_master_blinding_key(key_hex);
 
             return request_subaccount_xpubs();
-        } else if (m_hw_request == hw_request::get_xpubs) {
+        }
+        if (m_hw_request == hw_request::get_xpubs) {
             // Caller has provided the xpubs for each subaccount
             const std::vector<std::string> xpubs = get_hw_reply().at("xpubs");
             m_session->register_subaccount_xpubs(m_subaccount_pointers, xpubs);

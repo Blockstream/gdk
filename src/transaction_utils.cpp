@@ -241,7 +241,8 @@ namespace green {
     {
         if (addr_type == address_type::csv) {
             return ga_p2sh_p2wsh_csv_fortified_out;
-        } else if (addr_type == address_type::p2wsh) {
+        }
+        if (addr_type == address_type::p2wsh) {
             return ga_p2sh_p2wsh_fortified_out;
         }
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2sh)
