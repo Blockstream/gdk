@@ -763,7 +763,7 @@ namespace green {
         return get_blob(m_stmt_liquid_blinding_key_search, 0);
     }
 
-    nlohmann::json cache::get_liquid_output(byte_span_t txhash, const uint32_t vout)
+    nlohmann::json cache::get_liquid_output(byte_span_t txhash, uint32_t vout)
     {
         nlohmann::json utxo;
 
