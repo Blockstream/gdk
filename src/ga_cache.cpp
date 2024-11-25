@@ -152,7 +152,7 @@ namespace green {
             std::vector<unsigned char> cyphertext(encrypted_len);
             GDK_RUNTIME_ASSERT(aes_gcm_encrypt(key, data, cyphertext) == encrypted_len);
 
-            std::ofstream f(path, f.out | f.binary);
+            std::ofstream f(path, std::ofstream::out | std::ofstream::binary);
             if (f.is_open()) {
                 for (size_t written = 0; written != encrypted_len; written = f.tellp()) {
                     auto p = reinterpret_cast<const char*>(&cyphertext[written]);
@@ -164,7 +164,7 @@ namespace green {
         static std::vector<unsigned char> load_db_file(byte_span_t key, const std::string& path)
         {
             GDK_RUNTIME_ASSERT(!key.empty());
-            std::ifstream f(path, f.in | f.binary);
+            std::ifstream f(path, std::ifstream::in | std::ifstream::binary);
             if (!f.is_open()) {
                 GDK_LOG(info) << "Load db, no file or bad file " << path;
                 return std::vector<unsigned char>();
@@ -198,7 +198,7 @@ namespace green {
             for (int version = 0; version < VERSION; ++version) {
                 const auto path = get_persistent_storage_file(data_dir, db_name, version);
                 {
-                    const std::ifstream f(path, f.in | f.binary);
+                    const std::ifstream f(path, std::ifstream::in | std::ifstream::binary);
                     if (!f.is_open()) {
                         continue;
                     }
