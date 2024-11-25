@@ -834,8 +834,6 @@ namespace green {
     {
     }
 
-    network_parameters::~network_parameters() = default;
-
     void network_parameters::add(const std::string& name, const nlohmann::json& details)
     {
         std::unique_lock<std::mutex> l{ registered_networks_mutex };
