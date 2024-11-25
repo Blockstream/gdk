@@ -1,8 +1,9 @@
 # Changelog
 
-## Release 0.74.0 - Unreleased
+## Release 0.74.0 - 24-11-25
 
 ### Added
+
 ### Changed
 - GA_psbt_sign: Now signs all required inputs and then attempts to finalize.
   If the PSBT is not fully signed, some inputs will remain unfinalized.
@@ -16,7 +17,7 @@
 - PSBT: When a user signature is present for an input, use it instead of
   asking the signer to re-sign.
 - PSBT: Fix user-only signing of multisig inputs, by adding the user
-  signature and leaving the input unfinalized for future Green signing..
+  signature and leaving the input unfinalized for future Green signing.
 - PSBT: Fix detection of expired multisig CSV inputs when finalizing v0 PSBTs.
 - Python: Fix gdk session cleanup to happen when a session falls out of scope
   or is garbage collected. Previously sessions would generally be cleaned up
