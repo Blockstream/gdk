@@ -147,10 +147,9 @@ namespace green {
             // Initial login: set the signer for the session
             m_signer = std::move(signer);
             return false;
-        } else {
-            GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
-            return true;
         }
+        GDK_RUNTIME_ASSERT(m_signer.get() == signer.get());
+        return true;
     }
 
     void session_impl::disable_notifications() { m_notify = false; }

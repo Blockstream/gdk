@@ -1066,7 +1066,8 @@ namespace green {
             locker.unlock();
             reset_all_session_data(false);
             throw login_error(res::id_login_failed);
-        } else if (is_relogin) {
+        }
+        if (is_relogin) {
             // Re-login. Discard all cached data which may be out of date
             reset_cached_session_data(locker);
         }

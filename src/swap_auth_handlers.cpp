@@ -161,9 +161,9 @@ namespace green {
             GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "input_type") == LIQUIDEX_STR, "unknown input_type");
             GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "output_type") == LIQUIDEX_STR, "unknown output_type");
             return liquidex_impl();
-        } else {
-            GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
         }
+        GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
+
         return state_type::error; // Unreachable
     }
 
@@ -269,9 +269,9 @@ namespace green {
             GDK_RUNTIME_ASSERT_MSG(j_strref(m_details, "output_type") == "transaction", "unknown output_type");
             GDK_RUNTIME_ASSERT(m_net_params.is_liquid());
             return liquidex_impl();
-        } else {
-            GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
         }
+        GDK_RUNTIME_ASSERT_MSG(false, "unknown swap_type");
+
         return state_type::error; // Unreachable
     }
 
@@ -295,7 +295,8 @@ namespace green {
             const nlohmann::json addr_details = { { "subaccount", subaccount } };
             add_next_handler(new get_receive_address_call(m_session_parent, addr_details));
             return state_type::make_call;
-        } else if (m_create_details.empty()) {
+        }
+        if (m_create_details.empty()) {
             // Get the input UTXOs
             auto maker_input = liquidex_get_maker_input(*m_tx, proposal_input);
             nlohmann::json::array_t tx_inputs = { std::move(maker_input) };
@@ -318,7 +319,8 @@ namespace green {
                       { "randomize_inputs", false }, { "scalars", proposal.at("scalars") } };
             add_next_handler(new create_transaction_call(m_session_parent, create_details));
             return state_type::make_call;
-        } else if (j_str_is_empty(m_create_details, "error") && !j_bool_or_false(m_create_details, "is_blinded")) {
+        }
+        if (j_str_is_empty(m_create_details, "error") && !j_bool_or_false(m_create_details, "is_blinded")) {
             // Call blind_transaction to blind the callers side
             add_next_handler(new blind_transaction_call(m_session_parent, std::move(m_create_details)));
             return state_type::make_call;

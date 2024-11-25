@@ -111,7 +111,8 @@ namespace green {
         if (asset_p == end_p) {
             if (satoshi > SATOSHI_MAX) {
                 throw user_error(res::id_amount_above_maximum_allowed);
-            } else if (satoshi < -SATOSHI_MAX) {
+            }
+            if (satoshi < -SATOSHI_MAX) {
                 throw user_error(res::id_amount_below_minimum_allowed);
             }
         }
