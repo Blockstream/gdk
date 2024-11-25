@@ -797,7 +797,7 @@ namespace green {
         return false; // No caching by default, so return 'not updated'
     }
 
-    void session_impl::encache_new_scriptpubkeys(const uint32_t /*subaccount*/)
+    void session_impl::encache_new_scriptpubkeys(uint32_t /*subaccount*/)
     {
         // Overriden for multisig
     }

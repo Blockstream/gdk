@@ -242,7 +242,7 @@ namespace green {
                 GDK_RUNTIME_ASSERT_MSG(have_master_key, "Master blinding key must be exported for PSBT operations");
             }
             // FIXME: Updating the scriptpubkey cache can be very expensive
-            for (const auto subaccount : session.get_subaccount_pointers()) {
+            for (auto subaccount : session.get_subaccount_pointers()) {
                 session.encache_new_scriptpubkeys(subaccount);
             }
         }

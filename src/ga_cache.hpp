@@ -28,8 +28,8 @@ namespace green {
 
         const std::string& get_network_name() const;
 
-        nlohmann::json get_liquid_output(byte_span_t txhash, const uint32_t vout);
-        void insert_liquid_output(byte_span_t txhash, const uint32_t vout, nlohmann::json& utxo);
+        nlohmann::json get_liquid_output(byte_span_t txhash, uint32_t vout);
+        void insert_liquid_output(byte_span_t txhash, uint32_t vout, nlohmann::json& utxo);
 
         std::vector<unsigned char> get_liquid_blinding_nonce(byte_span_t pubkey, byte_span_t script);
         std::vector<unsigned char> get_liquid_blinding_pubkey(byte_span_t script);
