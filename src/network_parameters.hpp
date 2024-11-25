@@ -24,7 +24,7 @@ namespace green {
         // Construct from a user's overrides and raw network json
         network_parameters(const nlohmann::json& user_overrides, nlohmann::json& defaults);
 
-        ~network_parameters();
+        ~network_parameters() = default;
 
         network_parameters(const network_parameters&) = default;
         network_parameters& operator=(const network_parameters&) = default;
