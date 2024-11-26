@@ -162,12 +162,12 @@ namespace green {
     };
 
     //
-    // Derives BIP44/BIP49/BIP84 public keys for the given network:
+    // Derives BIP44/BIP49/BIP84/BIP86 public keys for the given network:
     // Subaccounts:
-    //     m/[44|49|84]'/[0|1|1776]'/mapped subaccount'/is_internal/pointer
+    //     m/[44|49|84|86]'/[0|1|1776]'/mapped subaccount'/is_internal/pointer
     // 0 = Mainnet, 1 = Testnet/Liquid testnet, 1776 = Liquid mainnet.
     // Green subaccount numbers are mapped to BIP44 accounts as follows:
-    // purpose: subaccount % 16 -> 0=49, 1=84, 2=44.
+    // purpose: subaccount % 16 -> 0=49, 1=84, 2=44, 3=86
     // mapped subaccount: subaccount / 16.
     // Because subaccount keys are privately derived, you must call
     // add_subaccount passing the xpub up to mapped subaccount' before calling
@@ -183,7 +183,7 @@ namespace green {
         bip44_pubkeys& operator=(bip44_pubkeys&&) = default;
         ~bip44_pubkeys() override = default;
 
-        // Get the path to the subaccount root, i.e. m/[44|49|84]'/[0|1|1776]'/mapped subaccount'
+        // Get the path to the subaccount root, i.e. m/[44|49|84|86]'/[0|1|1776]'/mapped subaccount'
         virtual std::vector<uint32_t> get_path_to_subaccount(uint32_t subaccount) const override;
 
         // Get the path from the subaccount root, i.e. /1/pointer
