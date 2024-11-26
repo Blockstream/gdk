@@ -111,6 +111,7 @@ impl Account {
             ScriptType::P2shP2wpkh => ("sh(wpkh", ")"),
             ScriptType::P2wpkh => ("wpkh", ""),
             ScriptType::P2pkh => ("pkh", ""),
+            ScriptType::P2tr => ("tr", ""),
         };
         let (_, path) = get_account_derivation(self.account_num, self.network.id())?;
         let parent_fingerprint = self.master_xpub_fingerprint.to_string();
@@ -140,10 +141,14 @@ impl Account {
         if self.network.liquid {
             None
         } else {
-            let mut xpub_bytes = self.xpub.encode();
-            xpub_bytes[0..4]
-                .copy_from_slice(&slip132_version(self.network.mainnet, self.script_type));
-            Some(bitcoin::base58::encode_check(&xpub_bytes))
+            match slip132_version(self.network.mainnet, self.script_type) {
+                Ok(version) => {
+                    let mut xpub_bytes = self.xpub.encode();
+                    xpub_bytes[0..4].copy_from_slice(&version);
+                    Some(bitcoin::base58::encode_check(&xpub_bytes))
+                }
+                _ => None,
+            }
         }
     }
 
@@ -612,9 +617,19 @@ impl Account {
     }
 
     pub fn script_code(&self, path: &DerivationPath) -> BEScript {
+        // FIXME: TAPROOT: elements p2tr
         let public_key = self.public_key(path);
-        // script code is the same for the currently supported script type
-        p2pkh_script(&public_key).into()
+        match (self.network.id(), self.script_type) {
+            (NetworkId::Bitcoin(network), ScriptType::P2tr) => {
+                // script_code is the p2tr scriptpubkey for p2tr
+                use gdk_common::bitcoin::Address;
+                Address::p2tr(&crate::EC, public_key.into(), None, network).script_pubkey().into()
+            }
+            (_, _) => {
+                // script_code is the p2pkh scriptpubkey for p2pkh/p2wpkh/p2sh-p2wpkh
+                p2pkh_script(&public_key).into()
+            }
+        }
     }
 
     pub fn txo(&self, outpoint: &BEOutPoint, acc_store: &RawAccountCache) -> Result<Txo, Error> {
@@ -829,6 +844,7 @@ pub fn get_account_script_purpose(account_num: u32) -> Result<(ScriptType, u32),
         0 => (ScriptType::P2shP2wpkh, 49),
         1 => (ScriptType::P2wpkh, 84),
         2 => (ScriptType::P2pkh, 44),
+        3 => (ScriptType::P2tr, 86),
         _ => return Err(Error::InvalidSubaccount(account_num)),
     })
 }
@@ -904,6 +920,7 @@ fn bitcoin_address(
         ScriptType::P2shP2wpkh => Address::p2shwpkh(public_key, net),
         ScriptType::P2wpkh => Address::p2wpkh(public_key, net),
         ScriptType::P2pkh => Address::p2pkh(public_key, net),
+        ScriptType::P2tr => Address::p2tr(&crate::EC, (*public_key).into(), None, net),
     }
 }
 
@@ -920,6 +937,10 @@ fn elements_address(
             elements::Address::p2shwpkh(&public_key.0.into(), None, addr_params)
         }
         ScriptType::P2wpkh => elements::Address::p2wpkh(&public_key.0.into(), None, addr_params),
+        ScriptType::P2tr => {
+            let (x_only, _) = public_key.0.x_only_public_key();
+            elements::Address::p2tr(&crate::EC, x_only, None, None, addr_params)
+        }
     };
     let script_pubkey = address.script_pubkey();
     let blinding_prv = asset_blinding_key_to_ec_private_key(master_blinding_key, &script_pubkey);
@@ -995,20 +1016,23 @@ mod test {
         test_derivation(0, ScriptType::P2shP2wpkh, "49'/1'/0'");
         test_derivation(1, ScriptType::P2wpkh, "84'/1'/0'");
         test_derivation(2, ScriptType::P2pkh, "44'/1'/0'");
+        test_derivation(3, ScriptType::P2tr, "86'/1'/0'");
 
         // reserved for future use, currently rejected
-        for n in 3..=15 {
+        for n in 4..=15 {
             test_derivation_fails(n);
         }
 
         test_derivation(16, ScriptType::P2shP2wpkh, "49'/1'/1'");
         test_derivation(17, ScriptType::P2wpkh, "84'/1'/1'");
         test_derivation(18, ScriptType::P2pkh, "44'/1'/1'");
-        test_derivation_fails(19);
+        test_derivation(19, ScriptType::P2tr, "86'/1'/1'");
+        test_derivation_fails(20);
 
         test_derivation(160, ScriptType::P2shP2wpkh, "49'/1'/10'");
         test_derivation(161, ScriptType::P2wpkh, "84'/1'/10'");
         test_derivation(162, ScriptType::P2pkh, "44'/1'/10'");
+        test_derivation(163, ScriptType::P2tr, "86'/1'/10'");
     }
 
     #[test]

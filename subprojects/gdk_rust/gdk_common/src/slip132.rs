@@ -13,14 +13,15 @@ const VERSION_TPUB: [u8; 4] = [0x04, 0x35, 0x87, 0xcf]; // testnet p2pkh
 const VERSION_UPUB: [u8; 4] = [0x04, 0x4a, 0x52, 0x62]; // testnet p2sh-p2wpkh
 const VERSION_VPUB: [u8; 4] = [0x04, 0x5f, 0x1c, 0xf6]; // testnet p2wpkh
 
-pub fn slip132_version(is_mainnet: bool, script_type: ScriptType) -> [u8; 4] {
+pub fn slip132_version(is_mainnet: bool, script_type: ScriptType) -> Result<[u8; 4], Error> {
     match (is_mainnet, script_type) {
-        (true, ScriptType::P2pkh) => VERSION_XPUB,
-        (true, ScriptType::P2shP2wpkh) => VERSION_YPUB,
-        (true, ScriptType::P2wpkh) => VERSION_ZPUB,
-        (false, ScriptType::P2pkh) => VERSION_TPUB,
-        (false, ScriptType::P2shP2wpkh) => VERSION_UPUB,
-        (false, ScriptType::P2wpkh) => VERSION_VPUB,
+        (true, ScriptType::P2pkh) => Ok(VERSION_XPUB),
+        (true, ScriptType::P2shP2wpkh) => Ok(VERSION_YPUB),
+        (true, ScriptType::P2wpkh) => Ok(VERSION_ZPUB),
+        (false, ScriptType::P2pkh) => Ok(VERSION_TPUB),
+        (false, ScriptType::P2shP2wpkh) => Ok(VERSION_UPUB),
+        (false, ScriptType::P2wpkh) => Ok(VERSION_VPUB),
+        _ => Err(Error::UnrepresentableSlip132ScriptType),
     }
 }
 
@@ -101,7 +102,7 @@ mod test {
             } else {
                 assert_eq!(prefix, "tpub");
             }
-            assert_eq!(slip132_version(is_mainnet, script_type), version);
+            assert_eq!(slip132_version(is_mainnet, script_type).unwrap(), version);
             assert_eq!(extract_bip32_account(&xpub).unwrap(), n)
         }
 

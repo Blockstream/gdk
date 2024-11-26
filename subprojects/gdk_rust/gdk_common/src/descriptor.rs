@@ -106,6 +106,21 @@ pub fn parse_single_sig_descriptor(
                 return check_xpub_consitency(ScriptType::P2pkh, descriptorxkey.xkey, n, *f, mbk);
             }
         }
+    } else if let Descriptor::Tr(tr) = desc {
+        if let DescriptorPublicKey::XPub(descriptorxkey) = tr.internal_key() {
+            if tr.tap_tree().is_none() {
+                if let Some((f, p)) = &descriptorxkey.origin {
+                    let n = match_key_origin(&p.clone().into(), 86, coin_type)?;
+                    return check_xpub_consitency(
+                        ScriptType::P2tr,
+                        descriptorxkey.xkey,
+                        n,
+                        *f,
+                        mbk,
+                    );
+                }
+            }
+        }
     }
     Err(Error::UnsupportedDescriptor)
 }

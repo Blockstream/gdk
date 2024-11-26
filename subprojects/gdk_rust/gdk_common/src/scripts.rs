@@ -17,6 +17,8 @@ pub enum ScriptType {
     P2wpkh = 1,
     #[serde(rename = "p2pkh")]
     P2pkh = 2,
+    #[serde(rename = "p2tr")]
+    P2tr = 3,
 }
 
 impl fmt::Display for ScriptType {
@@ -25,6 +27,7 @@ impl fmt::Display for ScriptType {
             Self::P2shP2wpkh => write!(f, "p2sh-p2wpkh"),
             Self::P2wpkh => write!(f, "p2wpkh"),
             Self::P2pkh => write!(f, "p2pkh"),
+            Self::P2tr => write!(f, "p2tr"),
         }
     }
 }
@@ -36,6 +39,7 @@ impl ScriptType {
             Self::P2shP2wpkh => 0,
             Self::P2wpkh => 1,
             Self::P2pkh => 2,
+            Self::P2tr => 3,
         }
     }
 }
@@ -59,6 +63,6 @@ impl ScriptType {
     }
 
     pub fn is_segwit(self) -> bool {
-        matches!(self, ScriptType::P2wpkh | ScriptType::P2shP2wpkh)
+        matches!(self, ScriptType::P2wpkh | ScriptType::P2shP2wpkh | ScriptType::P2tr)
     }
 }
