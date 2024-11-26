@@ -164,7 +164,7 @@ namespace green {
 
     std::vector<uint32_t> bip44_pubkeys::get_path_to_subaccount(uint32_t subaccount) const
     {
-        const std::array<uint32_t, 3> purpose_lookup{ 49, 84, 44 };
+        const std::array<uint32_t, 4> purpose_lookup{ 49, 84, 44, 86 };
         const uint32_t purpose = purpose_lookup.at(subaccount % 16);
         const uint32_t coin_type = m_is_main_net ? (m_is_liquid ? 1776 : 0) : 1;
         const uint32_t account = subaccount / 16;
