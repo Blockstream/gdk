@@ -45,7 +45,6 @@
     GCLOUD_URL: "gs://green-gdk-builds"
   before_script:
     - subfolder=$CI_PROJECT_NAME-$CI_COMMIT_SHA
-    - if [[ ${CI_COMMIT_REF_NAME} == "master" ]]; then subfolder=gdk-master; fi
     - TMPF=$(mktemp) || exit 1
     - echo $GCLOUD_PUSH_KEY > $TMPF
     - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
