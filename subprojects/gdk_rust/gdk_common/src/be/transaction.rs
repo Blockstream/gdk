@@ -461,7 +461,7 @@ impl BETransaction {
             unimplemented!();
         };
         let mut sig = match script_type {
-            ScriptType::P2wpkh | ScriptType::P2shP2wpkh => {
+            ScriptType::P2wpkh | ScriptType::P2shP2wpkh | ScriptType::P2tr => {
                 tx.input[inv].witness.to_vec().get(0).cloned().ok_or(Error::InputValidationFailed)
             }
             ScriptType::P2pkh => match tx.input[inv].script_sig.instructions().next() {

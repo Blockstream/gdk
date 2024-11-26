@@ -60,6 +60,9 @@ pub enum Error {
     #[error("Invalid SLIP132 version")]
     InvalidSlip132Version,
 
+    #[error("Script type cannot be represented in SLIP132")]
+    UnrepresentableSlip132ScriptType,
+
     #[error("Invalid URL: {0}")]
     InvalidUrl(String),
 
