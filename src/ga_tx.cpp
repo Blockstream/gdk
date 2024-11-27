@@ -570,6 +570,7 @@ namespace green {
                         // Caller requres more fee utxos to avoid dusty change
                         throw user_error("Fee change below the dust threshold"); // FIXME res::
                     }
+                    result["fee"] = addressee.fee.value();
                     throw user_error("Insufficient funds for fees"); // FIXME res::
                 }
                 // Add the next input
@@ -762,6 +763,7 @@ namespace green {
                         return;
                     } else if (addressee.utxo_sum < addressee.required_total + addressee.fee) {
                         GDK_RUNTIME_ASSERT(is_policy_asset); // Fee only present for policy asset
+                        result["fee"] = addressee.fee.value();
                         set_tx_error(result, "Insufficient funds for fees"); // FIXME res::
                         return;
                     }
