@@ -228,17 +228,18 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
     }
 }
 
-fn try_get_fee_estimates(client: &Client) -> Result<Vec<FeeEstimate>, Error> {
+fn try_get_fee_estimates(client: &Client, min_rate: u64) -> Result<Vec<FeeEstimate>, Error> {
     let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
+    let min_rate = min_rate.max(relay_fee);
     let blocks: Vec<usize> = (1..25).collect();
     // max is covering a rounding errors in production electrs which sometimes cause a fee
     // estimates lower than relay fee
     let mut estimates: Vec<FeeEstimate> = client
         .batch_estimate_fee(blocks)?
         .iter()
-        .map(|e| FeeEstimate(relay_fee.max((*e * 100_000_000.0) as u64)))
+        .map(|e| FeeEstimate(min_rate.max((*e * 100_000_000.0) as u64)))
         .collect();
-    estimates.insert(0, FeeEstimate(relay_fee));
+    estimates.insert(0, FeeEstimate(min_rate));
     Ok(estimates)
 }
 
@@ -566,8 +567,9 @@ impl ElectrumSession {
             info!("building built end");
             let fee_store = self.store()?;
             let fee_fetched_at = self.fee_fetched_at.clone();
+            let min_rate = self.network.id().default_min_fee_rate();
             thread::spawn(move || {
-                match try_get_fee_estimates(&fee_client) {
+                match try_get_fee_estimates(&fee_client, min_rate) {
                     Ok(fee_estimates) => {
                         fee_store.write().unwrap().cache.fee_estimates = fee_estimates;
                         let mut fee_fetched_at = fee_fetched_at.lock().unwrap();
@@ -1113,10 +1115,12 @@ impl ElectrumSession {
             // Skip network call
             Ok(self.store()?.read()?.fee_estimates())
         } else {
-            let default_min_rate = self.network.id().default_min_fee_rate();
-            let fee_estimates =
-                try_get_fee_estimates(&self.url.build_client(self.proxy.as_deref(), None)?)
-                    .unwrap_or_else(|_| vec![FeeEstimate(default_min_rate); 25]);
+            let min_rate = self.network.id().default_min_fee_rate();
+            let fee_estimates = try_get_fee_estimates(
+                &self.url.build_client(self.proxy.as_deref(), None)?,
+                min_rate,
+            )
+            .unwrap_or_else(|_| vec![FeeEstimate(min_rate); 25]);
             self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
             *fee_fetched_at = SystemTime::now();
             Ok(fee_estimates)
