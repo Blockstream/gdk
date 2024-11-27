@@ -541,8 +541,8 @@ namespace green {
         if (add_to_tx_inputs) {
             auto& transaction_inputs = result["transaction_inputs"];
             transaction_inputs.push_back(utxo);
-            if (transaction_inputs.size() > 255u && session.get_network_parameters().is_liquid()) {
-                // Liquid is limited to 255 inputs
+            if (transaction_inputs.size() > 256u && session.get_network_parameters().is_liquid()) {
+                // Liquid is limited to 256 inputs
                 throw user_error("Transaction requires or contains too many inputs for Liquid");
             }
         }
