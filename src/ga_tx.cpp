@@ -51,9 +51,25 @@ namespace green {
         // Return a DER encoded sig from a tx witness, including sighash byte
         static auto der_from_witness(const struct wally_tx_witness_stack* witness, size_t index)
         {
-            GDK_RUNTIME_ASSERT_MSG(index < witness->num_items, "Malformed witness");
+            GDK_USER_ASSERT(index < witness->num_items, "Malformed witness");
             const auto& item = witness->items[index];
             return der_validate({ item.witness, item.witness_len });
+        }
+
+        static auto schnorr_validate(byte_span_t sig)
+        {
+            // secp doesn't have a validation function; just check the size
+            GDK_USER_ASSERT(
+                sig.size() == EC_SIGNATURE_LEN || sig.size() == EC_SIGNATURE_LEN + 1, "Malformed taproot signature");
+            return sig;
+        }
+
+        // Return a schnorr sig from a tx witness, including sighash byte if present
+        static auto schnorr_from_witness(const struct wally_tx_witness_stack* witness, size_t index)
+        {
+            GDK_USER_ASSERT(index < witness->num_items, "Malformed witness");
+            const auto& item = witness->items[index];
+            return schnorr_validate({ item.witness, item.witness_len });
         }
 
         static auto der_from_push(byte_span_t push)
@@ -990,7 +1006,8 @@ namespace green {
         if (addr_type == p2pkh) {
             // p2pkh: script sig: <user_sig> <pubkey>
             return { der_from_push({ input.script, input.script_len }) };
-        } else if (addr_type == p2sh) {
+        }
+        if (addr_type == p2sh) {
             // 2of2 p2sh: script sig: OP_0 <ga_sig> <user_sig>
             // 2of3 p2sh: script sig: OP_0 <ga_sig> <user_sig>
             return ders_from_multisig_scriptsig({ input.script, input.script_len });
@@ -1003,6 +1020,12 @@ namespace green {
             GDK_RUNTIME_ASSERT(num_items == 2);
             return { der_from_witness(input.witness, 0) };
         }
+        if (addr_type == p2tr) {
+            // p2tr: witness stack: <user_sig> (keypath spend, user_sig is schnorr)
+            GDK_RUNTIME_ASSERT(num_items == 1);
+            return { schnorr_from_witness(input.witness, 0) };
+        }
+
         // 2of2 p2wsh:       witness stack: <> <ga_sig> <user_sig> <redeem_script>
         // 2of2 csv:         witness stack: <user_sig> <ga_sig> <redeem_script> (Liquid, not optimized)
         // 2of2 csv:         witness stack: <ga_sig> <user_sig> <redeem_script>
