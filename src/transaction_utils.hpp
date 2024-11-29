@@ -29,6 +29,7 @@ namespace green {
         extern const std::string p2sh;
         extern const std::string p2wsh; // Actually p2sh-p2wsh
         extern const std::string csv;
+        extern const std::string p2tr;
     } // namespace address_type
 
     bool address_type_is_segwit(const std::string& addr_type);
