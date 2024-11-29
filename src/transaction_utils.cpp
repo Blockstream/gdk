@@ -77,7 +77,7 @@ namespace green {
         static const std::vector<unsigned char> DUMMY_SIG_DER_PUSH_LOW_R
             = { { 0x00, 0x47, 0x30, 0x44, 0x02, 0x20, SIG_LOW, 0x02, 0x20, SIG_LOW, WALLY_SIGHASH_ALL } };
 
-        // Return a DER encoded dummy sig including sighash byte
+        // Return a DER encoded ECDSA dummy sig including sighash byte
         static byte_span_t dummy_sig_der(bool is_low_r)
         {
             if (is_low_r) {
@@ -85,6 +85,18 @@ namespace green {
             }
             return byte_span_t(DUMMY_SIG_DER_PUSH).subspan(2);
         }
+
+        // An all-zero schnorr sig with SIGHASH_DEFAULT. Invalid because
+        // SIGHASH_DEFAULT must be ommitted under BIP-0341. Using a 65 byte
+        // signature ensures we don't underestimate when using other sighashes.
+        static const std::vector<unsigned char> DUMMY_SIG_SCHNORR
+            = { { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } };
+
+        // Return a dummy schnorr sig including sighash byte
+        static byte_span_t dummy_sig_schnorr() { return byte_span_t(DUMMY_SIG_SCHNORR); }
 
         static auto segwit_address(const network_parameters& net_params, byte_span_t bytes)
         {
@@ -203,12 +215,14 @@ namespace green {
         const std::string p2sh("p2sh");
         const std::string p2wsh("p2wsh");
         const std::string csv("csv");
+        const std::string p2tr("p2tr");
     } // namespace address_type
 
     bool address_type_is_segwit(const std::string& addr_type)
     {
         using namespace address_type;
-        if (addr_type == csv || addr_type == p2wsh || addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
+        if (addr_type == csv || addr_type == p2wsh || addr_type == p2wpkh || addr_type == p2sh_p2wpkh
+            || addr_type == p2tr) {
             return true;
         }
         if (addr_type == p2sh || addr_type == p2pkh) {
@@ -419,22 +433,29 @@ namespace green {
         using namespace address_type;
         std::vector<unsigned char> scriptsig;
         witness_ptr witness{ nullptr, wally_tx_witness_stack_free };
+        const auto& addr_type = j_strref(utxo, "address_type");
 
         if (user_der.empty()) {
-            const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
-            user_der = dummy_sig_der(is_low_r);
+            if (addr_type == p2tr) {
+                user_der = dummy_sig_schnorr();
+            } else {
+                const bool is_low_r = session.get_nonnull_signer()->supports_low_r();
+                user_der = dummy_sig_der(is_low_r);
+            }
         }
         if (green_der.empty()) {
             green_der = dummy_sig_der(true);
         }
 
-        const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh) {
+        if (addr_type == p2pkh || addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2tr) {
             // Singlesig
             const auto pub_key = j_bytesref(utxo, "public_key");
             if (addr_type == p2pkh) {
                 // Singlesig or sweep p2pkh
                 scriptsig = scriptsig_p2pkh_from_der(pub_key, user_der);
+            } else if (addr_type == p2tr) {
+                // Singlesig taproot
+                witness = witness_stack({ user_der });
             } else {
                 // Singlesig segwit
                 witness = witness_stack({ user_der, pub_key });
@@ -607,7 +628,10 @@ namespace green {
         return { user_signed, server_signed, sweep_signed, has_sweeps };
     }
 
-    bool is_dummy_sig(byte_span_t sig_der) { return sig_der == dummy_sig_der(true) || sig_der == dummy_sig_der(false); }
+    bool is_dummy_sig(byte_span_t sig_der)
+    {
+        return sig_der == dummy_sig_der(true) || sig_der == dummy_sig_der(false) || sig_der == dummy_sig_schnorr();
+    }
 
     std::string validate_tx_addressee(
         session_impl& session, const network_parameters& net_params, nlohmann::json& addressee)
