@@ -78,7 +78,8 @@ namespace green {
         size_t get_adjusted_weight(const network_parameters& net_params) const;
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
-        std::vector<unsigned char> get_signature_hash(const nlohmann::json& utxo, size_t index, uint32_t sighash) const;
+        std::vector<unsigned char> get_signature_hash(
+            const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash) const;
 
     private:
         uint32_t get_flags() const;
