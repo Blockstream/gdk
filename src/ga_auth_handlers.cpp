@@ -786,34 +786,23 @@ namespace green {
         const bool is_electrum = m_net_params.is_electrum();
         Tx tx(j_strref(m_twofactor_data, "transaction"), is_liquid);
 
-        // If we are using the Anti-Exfil protocol we verify the signatures
-        // TODO: the signer-commitments should be verified as being the same for the
-        // same input data and host-entropy (eg. if retrying following failure).
         if (signer->use_ae_protocol()) {
-            // FIXME: User pubkeys is not threadsafe if adding a subaccount
-            // at the same time (this cant happen yet but should be allowed
-            // in the future).
-            auto& user_pubkeys = m_session->get_user_pubkeys();
+            // Anti-Exfil protocol: verify the signatures
+            // TODO: signer_commitments should be verified as being the same
+            // for the same input data and host-entropy (eg. if retrying
+            // following failure).
             for (size_t i = 0; i < inputs.size(); ++i) {
-                const auto& utxo = inputs.at(i);
-                if (j_bool_or_false(utxo, "skip_signing")) {
+                const auto& input = inputs.at(i);
+                if (j_bool_or_false(input, "skip_signing")) {
                     continue;
                 }
-                const auto sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
+                const auto sighash_flags = j_uint32(input, "user_sighash").value_or(WALLY_SIGHASH_ALL);
                 const auto tx_signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
-
-                const uint32_t subaccount = j_uint32ref(utxo, "subaccount");
-                const uint32_t pointer = j_uint32ref(utxo, "pointer");
-
-                std::optional<bool> is_internal;
-                if (is_electrum) {
-                    is_internal = j_bool_or_false(utxo, "is_internal");
-                }
-                const auto user_key = user_pubkeys.derive(subaccount, pointer, is_internal);
+                const auto user_key = m_session->keys_from_utxo(input).at(is_electrum ? 0 : 1);
                 constexpr bool has_sighash_byte = true;
-                const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
-                verify_ae_signature(user_key.get_public_key(), tx_signature_hash, j_bytesref(utxo, "ae_host_entropy"),
+                const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
+                verify_ae_signature(user_key.get_public_key(), tx_signature_hash, j_bytesref(input, "ae_host_entropy"),
                     h2b(signer_commitments[i]), sig);
             }
         }
