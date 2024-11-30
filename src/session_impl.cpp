@@ -980,6 +980,9 @@ namespace green {
         return *m_green_pubkeys;
     }
 
+    // FIXME: m_user_pubkeys is not threadsafe if adding a subaccount at the
+    // same time as reading it (this cant happen yet but should be allowed in
+    // the future).
     user_pubkeys& session_impl::get_user_pubkeys() { return *m_user_pubkeys; }
 
     // Post-login idempotent
