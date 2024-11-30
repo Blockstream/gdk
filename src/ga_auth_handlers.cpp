@@ -685,7 +685,7 @@ namespace green {
                     tx = std::make_unique<Tx>(j_strref(m_twofactor_data, "transaction"), is_liquid);
                 }
                 const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
-                const auto tx_signature_hash = tx->get_signature_hash(input, i, sighash_flags);
+                const auto tx_signature_hash = tx->get_signature_hash(inputs, i, sighash_flags);
                 m_sweep_private_keys[i] = input["private_key"];
                 const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), tx_signature_hash);
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
@@ -799,16 +799,17 @@ namespace green {
                 if (j_bool_or_false(utxo, "skip_signing")) {
                     continue;
                 }
+                const auto sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
+                const auto tx_signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
+
                 const uint32_t subaccount = j_uint32ref(utxo, "subaccount");
                 const uint32_t pointer = j_uint32ref(utxo, "pointer");
-                const uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
 
                 std::optional<bool> is_internal;
                 if (is_electrum) {
                     is_internal = j_bool_or_false(utxo, "is_internal");
                 }
                 const auto user_key = user_pubkeys.derive(subaccount, pointer, is_internal);
-                const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
                 const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);

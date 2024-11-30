@@ -304,6 +304,7 @@ namespace green {
                 }
 
                 // Add the existing inputs as UTXOs
+                // Fetch them from the inputs and re-order them as required
                 std::map<uint32_t, nlohmann::json> tx_inputs_map;
                 for (const auto& input : prev_tx.at("inputs")) {
                     GDK_RUNTIME_ASSERT(j_bool_or_false(input, "is_relevant"));
@@ -324,44 +325,47 @@ namespace green {
                     tx_inputs_map.emplace(i, std::move(utxo));
                 }
                 GDK_RUNTIME_ASSERT(tx_inputs_map.size() == tx.get_num_inputs());
-                std::vector<nlohmann::json> tx_inputs;
-                tx_inputs.reserve(tx_inputs_map.size());
-                const auto block_height = session.get_block_height();
+                std::vector<nlohmann::json> inputs;
+                inputs.reserve(tx_inputs_map.size());
                 for (auto& item : tx_inputs_map) {
+                    inputs.push_back(std::move(item.second));
+                }
+
+                const auto block_height = session.get_block_height();
+                for (size_t i = 0; i < inputs.size(); ++i) {
+                    auto& input = inputs.at(i);
                     // Verify the transaction signatures to prevent outputs
                     // from being modified. Also store the users sighash in
                     // case it wasn't SIGHASH_ALL.
-                    const auto der_sigs = tx.get_input_signatures(net_params, item.second, item.first);
-                    const auto keys = session.keys_from_utxo(item.second);
-                    for (size_t i = 0; i < der_sigs.size(); ++i) {
-                        const auto& der_sig = der_sigs.at(i);
-                        if (!is_electrum && tx_version >= WALLY_TX_VERSION_2 && i == 0 && der_sig.empty()
+                    const auto der_sigs = tx.get_input_signatures(net_params, input, i);
+                    const auto keys = session.keys_from_utxo(input);
+                    for (size_t sig_i = 0; sig_i < der_sigs.size(); ++sig_i) {
+                        const auto& der_sig = der_sigs.at(sig_i);
+                        if (!is_electrum && tx_version >= WALLY_TX_VERSION_2 && sig_i == 0 && der_sig.empty()
                             && net_params.is_valid_csv_value(tx.get_input(i).sequence)) {
                             // Expired csv spend. Ignore the missing green sig, and
                             // ensure we have a user sig to verify/get the sighash.
-                            GDK_LOG(debug) << "RBF tx input " << item.first << " spent via expiry";
+                            GDK_LOG(debug) << "RBF tx input " << i << " spent via expiry";
                             GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
                             // We must set a block and expiry height in order to
                             // recognise the input as expired when signing. Note
                             // the sequence is what is set in the tx so the actual
                             // values don't matter; just that the expiry height is
                             // at least sequence blocks before the block height.
-                            item.second["block_height"] = block_height;
-                            item.second["expiry_height"] = block_height - tx.get_input(i).sequence;
+                            input["block_height"] = block_height;
+                            input["expiry_height"] = block_height - tx.get_input(i).sequence;
                             continue;
                         }
                         GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
                         const auto sighash_flags = der_sig.back();
-                        item.second["user_sighash"] = sighash_flags;
-                        const auto signature_hash = tx.get_signature_hash(item.second, item.first, sighash_flags);
+                        input["user_sighash"] = sighash_flags;
+                        const auto signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
                         constexpr bool has_sighash_byte = true;
                         const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
-                        GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(i).get_public_key(), signature_hash, sig));
+                        GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(sig_i).get_public_key(), signature_hash, sig));
                     }
-                    // Add to the used UTXOs
-                    tx_inputs.emplace_back(std::move(item.second));
                 }
-                result["transaction_inputs"] = std::move(tx_inputs);
+                result["transaction_inputs"] = std::move(inputs);
 
                 if (j_str_is_empty(result, "memo")) {
                     result["memo"] = prev_tx["memo"];
@@ -1215,9 +1219,10 @@ namespace green {
     }
 
     std::vector<unsigned char> Tx::get_signature_hash(
-        const nlohmann::json& utxo, size_t index, uint32_t sighash_flags) const
+        const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash_flags) const
     {
         std::array<unsigned char, SHA256_LEN> ret;
+        const nlohmann::json& utxo = utxos.at(index);
         const auto satoshi = j_amountref(utxo).value();
         const auto script = j_bytesref(utxo, "prevout_script");
         const bool is_segwit = address_type_is_segwit(j_strref(utxo, "address_type"));
@@ -1312,7 +1317,7 @@ namespace green {
                 continue;
             }
             uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
-            const auto tx_signature_hash = tx.get_signature_hash(utxo, i, sighash_flags);
+            const auto tx_signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
 
             const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
             const uint32_t pointer = j_uint32_or_zero(utxo, "pointer");
