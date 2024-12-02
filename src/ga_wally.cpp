@@ -301,6 +301,20 @@ namespace green {
         return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
     }
 
+    // FIXME: TAPROOT: add scriptpubkey_p2tr_from_public_key/scriptpubkey_p2tr_from_xonly_public_key
+    // to wally and use it here
+    std::vector<unsigned char> scriptpubkey_p2tr_from_xonly_key(byte_span_t xonly_key)
+    {
+        // scriptpubkey is: 1 [xonly_pubkey]
+        std::vector<unsigned char> script;
+        script.reserve(WALLY_SCRIPTPUBKEY_P2TR_LEN);
+        script.push_back(0x51);
+        script.push_back(0x20);
+        script.insert(script.end(), xonly_key.begin(), xonly_key.end());
+        GDK_RUNTIME_ASSERT(script.size() == WALLY_SCRIPTPUBKEY_P2TR_LEN);
+        return script;
+    }
+
     uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey)
     {
         size_t typ;
