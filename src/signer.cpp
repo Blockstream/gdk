@@ -14,6 +14,7 @@ namespace green {
             const wally_ext_key_ptr& hdkey, uint32_span_t path, uint32_t flags = BIP32_FLAG_KEY_PRIVATE)
         {
             // FIXME: Private keys should be derived into mlocked memory
+            GDK_RUNTIME_ASSERT(hdkey);
             return bip32_key_from_parent_path_alloc(hdkey, path, flags | BIP32_FLAG_SKIP_HASH);
         }
 
@@ -318,7 +319,6 @@ namespace green {
         }
         if (!parent_path.empty() && !parent_key) {
             // Derive and encache the parent key from the master key
-            GDK_RUNTIME_ASSERT(m_master_key);
             parent_key = xpub_hdkey(*derive(m_master_key, parent_path, BIP32_FLAG_KEY_PUBLIC));
             cache_bip32_xpub(parent_path, parent_key->to_base58());
         }
@@ -405,18 +405,26 @@ namespace green {
         return xpubs_json;
     }
 
-    ecdsa_sig_t signer::sign_hash(uint32_span_t path, byte_span_t hash)
+    ec_sig_t signer::ecdsa_sign(uint32_span_t path, byte_span_t message)
     {
-        GDK_RUNTIME_ASSERT(m_master_key);
-        wally_ext_key_ptr derived = derive(m_master_key, path);
-        return ec_sig_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
+        const auto derived = derive(m_master_key, path);
+        const auto priv_key = gsl::make_span(derived->priv_key).subspan(1);
+        return ec_sig_from_bytes(priv_key, message);
     }
 
-    ecdsa_sig_rec_t signer::sign_rec_hash(uint32_span_t path, byte_span_t hash)
+    ec_sig_t signer::schnorr_sign(uint32_span_t path, byte_span_t message)
     {
-        GDK_RUNTIME_ASSERT(m_master_key);
-        wally_ext_key_ptr derived = derive(m_master_key, path);
-        return ec_sig_rec_from_bytes(gsl::make_span(derived->priv_key).subspan(1), hash);
+        const auto derived = derive(m_master_key, path);
+        const auto priv_key = gsl::make_span(derived->priv_key).subspan(1);
+        // Apply the taptweak to the private key.
+        // As we don't support script path spending we pass a null merkle_root
+        std::array<unsigned char, EC_PRIVATE_KEY_LEN> tweaked;
+        constexpr uint32_t flags = 0;
+        GDK_VERIFY(wally_ec_private_key_bip341_tweak(
+            priv_key.data(), priv_key.size(), nullptr, 0, flags, tweaked.data(), tweaked.size()));
+        auto ret = ec_sig_from_bytes(tweaked, message, EC_FLAG_SCHNORR);
+        wally_bzero(tweaked.data(), tweaked.size());
+        return ret;
     }
 
     bool signer::has_master_blinding_key() const

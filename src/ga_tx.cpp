@@ -129,6 +129,53 @@ namespace green {
             }
         }
 
+        static auto get_input_scriptpubkeys(session_impl& session, const std::vector<nlohmann::json>& utxos)
+        {
+            using namespace address_type;
+            wally_map* scripts = nullptr;
+            try {
+                GDK_VERIFY(wally_map_init_alloc(utxos.size(), nullptr, &scripts));
+                for (size_t i = 0; i < utxos.size(); ++i) {
+                    const auto& utxo = utxos.at(i);
+                    const auto& addr_type = j_strref(utxo, "address_type");
+                    // For signing, Taproot requires the scriptpubkey rather
+                    // than the scriptcode in "prevout_script".
+                    auto script = h2b(j_strref(utxo, "prevout_script"));
+                    if (addr_type == p2pkh || addr_type == p2tr) {
+                        // For p2pkh/p2tr, the scriptpubkey is the same as scriptcode
+                    } else if (addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
+                        // For p2wpkh/p2sh-p2wpkh, compute scriptpubkey from the pubkey
+                        const auto script_type = scriptpubkey_get_type(script);
+                        const auto public_key = j_bytesref(utxo, "public_key");
+                        GDK_RUNTIME_ASSERT(script_type == WALLY_SCRIPT_TYPE_P2PKH);
+                        if (addr_type == p2wpkh) {
+                            script = scriptpubkey_p2wpkh_from_public_key(public_key);
+                        } else {
+                            script = scriptpubkey_p2sh_p2wpkh_from_public_key(public_key);
+                        }
+                    } else if (addr_type != p2pkh && addr_type != p2tr) {
+                        // For unknown/non-wallet UTXOs, fetch scriptpubkey
+                        // from the UTXOs.
+                        GDK_RUNTIME_ASSERT_MSG(false, "unhandled prevout_script type");
+                        (void)session;
+                    }
+                    GDK_VERIFY(wally_map_add_integer(scripts, i, script.data(), script.size()));
+                }
+            } catch (const std::exception& e) {
+                wally_map_free(scripts);
+                throw;
+            }
+            return scripts;
+        }
+
+        static auto get_input_values(const std::vector<nlohmann::json>& utxos)
+        {
+            std::vector<uint64_t> values(utxos.size());
+            std::transform(
+                utxos.begin(), utxos.end(), values.begin(), [](const auto& u) { return j_amountref(u).value(); });
+            return values;
+        }
+
         // Check if a tx to bump is present, and if so add the details required to bump it
         // FIXME: Support bump/CPFP for liquid
         static std::pair<bool, bool> check_bump_tx(
@@ -372,10 +419,14 @@ namespace green {
                             input["expiry_height"] = block_height - tx.get_input(i).sequence;
                             continue;
                         }
+                        if (j_strref(input, "address_type") == "p2tr") {
+                            // FIXME: TAPROOT: check p2tr signature
+                            continue;
+                        }
                         GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
                         const auto sighash_flags = der_sig.back();
                         input["user_sighash"] = sighash_flags;
-                        const auto signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
+                        const auto signature_hash = tx.get_signature_hash(session, inputs, i, sighash_flags);
                         constexpr bool has_sighash_byte = true;
                         const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
                         GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(sig_i).get_public_key(), signature_hash, sig));
@@ -832,12 +883,13 @@ namespace green {
             }
         }
 
-        static void validate_sighash_flags(uint32_t sighash_flags, bool is_liquid)
+        static void validate_sighash_flags(uint32_t sighash_flags, bool is_p2tr, bool is_liquid)
         {
-            if (sighash_flags != WALLY_SIGHASH_ALL) {
-                const bool is_valid = is_liquid && sighash_flags == SIGHASH_SINGLE_ANYONECANPAY;
-                GDK_RUNTIME_ASSERT_MSG(is_valid, "Unsupported sighash type");
+            if (sighash_flags == WALLY_SIGHASH_ALL || (is_p2tr && sighash_flags == WALLY_SIGHASH_DEFAULT)) {
+                return;
             }
+            const bool is_valid = is_liquid && sighash_flags == SIGHASH_SINGLE_ANYONECANPAY;
+            GDK_USER_ASSERT(is_valid, "Unsupported sighash type");
         }
     } // namespace
 
@@ -1242,22 +1294,37 @@ namespace green {
     }
 
     std::vector<unsigned char> Tx::get_signature_hash(
-        const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash_flags) const
+        session_impl& session, const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash_flags) const
     {
         std::array<unsigned char, SHA256_LEN> ret;
         const nlohmann::json& utxo = utxos.at(index);
         const auto satoshi = j_amountref(utxo).value();
         const auto script = j_bytesref(utxo, "prevout_script");
-        const bool is_segwit = address_type_is_segwit(j_strref(utxo, "address_type"));
-        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const auto& addr_type = j_strref(utxo, "address_type");
+        const bool is_segwit = address_type_is_segwit(addr_type);
+        const bool is_p2tr = addr_type == address_type::p2tr;
+        const uint32_t flags = is_segwit && !is_p2tr ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
-        validate_sighash_flags(sighash_flags, m_is_liquid);
+        validate_sighash_flags(sighash_flags, is_p2tr, m_is_liquid);
 
         if (!m_is_liquid) {
-            GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
-                sighash_flags, flags, ret.data(), ret.size()));
+            if (is_p2tr) {
+                using map_ptr = std::unique_ptr<struct wally_map, decltype(&wally_map_free)>;
+                const map_ptr scripts(get_input_scriptpubkeys(session, utxos), wally_map_free);
+                const auto values = get_input_values(utxos);
+                const uint32_t key_version = 0;
+                GDK_VERIFY(wally_tx_get_btc_taproot_signature_hash(m_tx.get(), index, scripts.get(), values.data(),
+                    values.size(), nullptr, 0, key_version, WALLY_NO_CODESEPARATOR, nullptr, 0, sighash_flags, flags,
+                    ret.data(), ret.size()));
+            } else {
+                GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
+                    sighash_flags, flags, ret.data(), ret.size()));
+            }
             return { ret.begin(), ret.end() };
         }
+
+        // FIXME: TAPROOT: Support p2tr for Liquid
+        GDK_RUNTIME_ASSERT_MSG(!is_p2tr, "Taproot is not yet supported for Liquid");
 
         // Liquid case - has a value-commitment in place of a satoshi value
         auto ct_value = j_bytes_or_empty(utxo, "commitment");
@@ -1339,15 +1406,27 @@ namespace green {
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
-            uint32_t sighash_flags = j_uint32(utxo, "user_sighash").value_or(WALLY_SIGHASH_ALL);
-            const auto tx_signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
+            const bool is_p2tr = j_strref(utxo, "address_type") == address_type::p2tr;
+            const auto default_sighash = is_p2tr ? WALLY_SIGHASH_DEFAULT : WALLY_SIGHASH_ALL;
+            const auto sighash_flags = j_uint32(utxo, "user_sighash").value_or(default_sighash);
+            const auto message = tx.get_signature_hash(session, inputs, i, sighash_flags);
 
             const uint32_t subaccount = j_uint32_or_zero(utxo, "subaccount");
             const uint32_t pointer = j_uint32_or_zero(utxo, "pointer");
             const bool is_internal = j_bool_or_false(utxo, "is_internal");
             const auto path = session.get_user_pubkeys().get_full_path(subaccount, pointer, is_internal);
-            const auto sig = session.get_nonnull_signer()->sign_hash(path, tx_signature_hash);
-            sigs[i] = b2h(ec_sig_to_der(sig, sighash_flags));
+            if (j_strref(utxo, "address_type") == address_type::p2tr) {
+                const auto sig = session.get_nonnull_signer()->schnorr_sign(path, message);
+                std::vector<unsigned char> sig_with_sighash{ sig.begin(), sig.end() };
+                if (sighash_flags != WALLY_SIGHASH_DEFAULT) {
+                    // Include the sighash flags when non-default, per BIP 341
+                    sig_with_sighash.push_back(static_cast<unsigned char>(sighash_flags));
+                }
+                sigs[i] = b2h(sig_with_sighash);
+            } else {
+                const auto sig = session.get_nonnull_signer()->ecdsa_sign(path, message);
+                sigs[i] = b2h(ec_sig_to_der(sig, sighash_flags));
+            }
         }
         return sigs;
     }

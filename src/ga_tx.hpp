@@ -79,7 +79,7 @@ namespace green {
         uint64_t get_fee(const network_parameters& net_params, uint64_t fee_rate) const;
 
         std::vector<unsigned char> get_signature_hash(
-            const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash) const;
+            session_impl& session, const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash) const;
 
     private:
         uint32_t get_flags() const;
