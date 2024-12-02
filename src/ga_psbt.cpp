@@ -118,20 +118,49 @@ namespace green {
                 psbt_input, public_key.data(), public_key.size(), der_sig.data(), der_sig.size()));
         }
 
-        static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input, wally_map& keypaths,
-            uint32_t tx_version, const nlohmann::json& utxo, const std::vector<byte_span_t>* sigs = nullptr)
+        static void add_taproot_keypath(struct wally_psbt_input* psbt_input, struct wally_psbt_output* psbt_output,
+            xpub_hdkeys& pubkeys, byte_span_t fingerprint, const xpub_hdkey& key, uint32_t subaccount, uint32_t pointer,
+            bool is_internal, byte_span_t der_sig, bool is_liquid)
+        {
+            const auto xonly_key = key.get_tweaked_xonly_key(is_liquid);
+            const auto path = pubkeys.get_full_path(subaccount, pointer, is_internal);
+            if (psbt_input) {
+                // FIXME: Use _replace() when implemented in wally
+                map_remove(psbt_input->taproot_leaf_paths, xonly_key);
+                map_remove(psbt_input->taproot_leaf_hashes, xonly_key);
+                GDK_VERIFY(wally_psbt_input_taproot_keypath_add(psbt_input, xonly_key.data(), xonly_key.size(), nullptr,
+                    0, // Tapleaf hashes
+                    fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+            } else {
+                map_remove(psbt_output->taproot_leaf_paths, xonly_key);
+                map_remove(psbt_output->taproot_leaf_hashes, xonly_key);
+                GDK_VERIFY(wally_psbt_output_taproot_keypath_add(psbt_output, xonly_key.data(), xonly_key.size(),
+                    nullptr, 0, // Tapleaf hashes
+                    fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+            }
+            if (der_sig.empty() || is_dummy_sig(der_sig)) {
+                return;
+            }
+            GDK_RUNTIME_ASSERT(psbt_input); // Can only add sigs to inputs
+            GDK_VERIFY(wally_psbt_input_set_taproot_signature(psbt_input, der_sig.data(), der_sig.size()));
+        }
+
+        static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input,
+            struct wally_psbt_output* psbt_output, wally_map& keypaths, uint32_t tx_version, const nlohmann::json& utxo,
+            const std::vector<byte_span_t>* sigs = nullptr)
         {
             const bool is_electrum = session.get_network_parameters().is_electrum();
+            const bool is_liquid = session.get_network_parameters().is_liquid();
             auto keys = session.keys_from_utxo(utxo);
             size_t user_key_index = 0;
+            const auto& addr_type = j_strref(utxo, "address_type");
             const auto subaccount = j_uint32ref(utxo, "subaccount");
             const auto pointer = j_uint32ref(utxo, "pointer");
             const auto is_internal = j_bool_or_false(utxo, "is_internal");
             bool is_expired_csv = false;
 
             if (!is_electrum) {
-                if (psbt_input && j_strref(utxo, "address_type") == address_type::csv
-                    && tx_version >= WALLY_TX_VERSION_2) {
+                if (psbt_input && addr_type == address_type::csv && tx_version >= WALLY_TX_VERSION_2) {
                     const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
                     if (expiry_height && expiry_height <= session.get_block_height()
                         && session.get_network_parameters().is_valid_csv_value(psbt_input->sequence)) {
@@ -155,8 +184,13 @@ namespace green {
             auto master_fp = session.get_nonnull_signer()->get_master_fingerprint();
             const auto& user_key = keys.at(user_key_index);
             byte_span_t user_der_sig = sigs ? sigs->at(sigs->size() - 1) : byte_span_t{};
-            add_keypath(psbt_input, keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer,
-                is_internal, user_der_sig);
+            if (addr_type == address_type::p2tr) {
+                add_taproot_keypath(psbt_input, psbt_output, session.get_user_pubkeys(), master_fp, user_key,
+                    subaccount, pointer, is_internal, user_der_sig, is_liquid);
+            } else {
+                add_keypath(psbt_input, keypaths, session.get_user_pubkeys(), master_fp, user_key, subaccount, pointer,
+                    is_internal, user_der_sig);
+            }
 
             if (!is_electrum && keys.size() > 2) {
                 // 2of3: Add the recovery pubkey
@@ -310,7 +344,7 @@ namespace green {
     {
         const auto sigs = tx.get_input_signatures(session.get_network_parameters(), utxo, index);
         auto& psbt_input = get_input(index);
-        auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, tx.get_version(), utxo, &sigs);
+        auto keys = add_keypaths(session, &psbt_input, nullptr, psbt_input.keypaths, tx.get_version(), utxo, &sigs);
         // The PSBT may be missing input scripts, add them here to ensure
         // they are present for finalization.
         add_input_scripts(psbt_input.psbt_fields, utxo, keys);
@@ -664,7 +698,7 @@ namespace green {
             const bool belongs_to_wallet = is_wallet_utxo(input);
             if (belongs_to_wallet) {
                 // Wallet UTXO. Add the relevant keypaths
-                auto keys = add_keypaths(session, &psbt_input, psbt_input.keypaths, tx_version, input);
+                auto keys = add_keypaths(session, &psbt_input, nullptr, psbt_input.keypaths, tx_version, input);
                 add_input_scripts(psbt_input.psbt_fields, input, keys);
             }
             if (m_is_liquid) {
@@ -702,7 +736,7 @@ namespace green {
 
             if (is_wallet_utxo(output)) {
                 // Wallet UTXO. Add the relevant keypaths
-                add_keypaths(session, nullptr, psbt_output.keypaths, tx_version, output);
+                add_keypaths(session, nullptr, &psbt_output, psbt_output.keypaths, tx_version, output);
             }
 
             if (m_is_liquid) {
