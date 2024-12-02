@@ -109,6 +109,7 @@ namespace green {
 
         chain_code_t get_chain_code() const;
         pub_key_t get_public_key() const;
+        std::vector<unsigned char> get_tweaked_xonly_key(bool is_liquid) const;
         std::vector<unsigned char> get_fingerprint() const;
         std::vector<unsigned char> get_parent_fingerprint() const;
         void set_parent_fingerprint(byte_span_t fingerprint);
