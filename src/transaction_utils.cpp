@@ -355,17 +355,24 @@ namespace green {
         using namespace address_type;
         const auto& net_params = session.get_network_parameters();
         const auto& addr_type = j_strref(utxo, "address_type");
-        if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh) {
-            const auto pub_key = session.keys_from_utxo(utxo).at(0).get_public_key();
+        if (addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2pkh || addr_type == p2tr) {
+            // Singlesig
+            const auto public_key = session.keys_from_utxo(utxo).at(0).get_public_key();
             if (addr_type == p2pkh) {
-                return base58_address(net_params.btc_version(), pub_key);
+                return base58_address(net_params.btc_version(), public_key);
             }
-            const auto witness_program = witness_script(pub_key, WALLY_SCRIPT_HASH160);
+            std::vector<unsigned char> witness_program;
+            if (addr_type == p2tr) {
+                witness_program = scriptpubkey_p2tr_from_public_key(public_key, net_params.is_liquid());
+            } else {
+                witness_program = witness_script(public_key, WALLY_SCRIPT_HASH160);
+            }
             if (addr_type == p2sh_p2wpkh) {
                 return base58_address(net_params.btc_p2sh_version(), witness_program);
             }
             return segwit_address(net_params, witness_program);
         }
+        // Multisig
         auto script = j_bytes_or_empty(utxo, "script");
         if (verify_script) {
             // Verify the generated script must match the "script" element.
