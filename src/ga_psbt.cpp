@@ -74,6 +74,11 @@ namespace green {
             return {};
         }
 
+        static void map_remove(struct wally_map& m, byte_span_t key)
+        {
+            GDK_VERIFY(wally_map_remove(&m, key.data(), key.size()));
+        }
+
         template <typename T> static inline optional_bytes_t psbt_field(const T& src, uint32_t k)
         {
             return get_field(src.psbt_fields, k);
@@ -101,15 +106,16 @@ namespace green {
         {
             const auto public_key = key.get_public_key();
             const auto path = pubkeys.get_full_path(subaccount, pointer, is_internal);
+            map_remove(keypaths, public_key); // FIXME: Use _replace when implemented in wally
             GDK_VERIFY(wally_map_keypath_add(&keypaths, public_key.data(), public_key.size(), fingerprint.data(),
                 fingerprint.size(), path.data(), path.size()));
-            if (!der_sig.empty()) {
-                GDK_RUNTIME_ASSERT(psbt_input); // Can only add sigs to inputs
-                if (!is_dummy_sig(der_sig)) {
-                    GDK_VERIFY(wally_psbt_input_add_signature(
-                        psbt_input, public_key.data(), public_key.size(), der_sig.data(), der_sig.size()));
-                }
+            if (der_sig.empty() || is_dummy_sig(der_sig)) {
+                return;
             }
+            GDK_RUNTIME_ASSERT(psbt_input); // Can only add sigs to inputs
+            map_remove(psbt_input->signatures, public_key); // FIXME: Use _replace when implemented in wally
+            GDK_VERIFY(wally_psbt_input_add_signature(
+                psbt_input, public_key.data(), public_key.size(), der_sig.data(), der_sig.size()));
         }
 
         static auto add_keypaths(session_impl& session, struct wally_psbt_input* psbt_input, wally_map& keypaths,
