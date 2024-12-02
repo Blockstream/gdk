@@ -151,10 +151,9 @@ namespace green {
 
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash);
     std::vector<unsigned char> scriptpubkey_p2pkh_from_public_key(byte_span_t public_key);
-
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash);
-
     std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script);
+    std::vector<unsigned char> scriptpubkey_p2tr_from_public_key(byte_span_t public_key, bool is_liquid);
 
     uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey);
 

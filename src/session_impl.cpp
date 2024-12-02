@@ -1065,8 +1065,11 @@ namespace green {
 
         if (addr_type == p2pkh || m_net_params.is_electrum()) {
             // Sweep or singlesig UTXO
-            const auto user_key = keys_from_utxo(locker, utxo).at(0);
-            return scriptpubkey_p2pkh_from_public_key(user_key.get_public_key());
+            const auto public_key = keys_from_utxo(locker, utxo).at(0).get_public_key();
+            if (addr_type == p2tr) {
+                return scriptpubkey_p2tr_from_public_key(public_key, m_net_params.is_liquid());
+            }
+            return scriptpubkey_p2pkh_from_public_key(public_key);
         }
         // Multisig UTXO
         return multisig_output_script_from_utxo(
@@ -1095,7 +1098,7 @@ namespace green {
             // Multisig doesn't support p2pkh except for sweep UTXOs
             GDK_RUNTIME_ASSERT(is_electrum);
         } else if (is_electrum) {
-            GDK_RUNTIME_ASSERT(addr_type == p2sh_p2wpkh || addr_type == p2wpkh);
+            GDK_RUNTIME_ASSERT(addr_type == p2sh_p2wpkh || addr_type == p2wpkh || addr_type == p2tr);
         } else {
             GDK_RUNTIME_ASSERT(addr_type == csv || addr_type == p2wsh || addr_type == p2sh);
         }
