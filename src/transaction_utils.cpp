@@ -397,7 +397,7 @@ namespace green {
         uint32_t ga_sighash_flags = WALLY_SIGHASH_ALL)
     {
         const std::array<uint32_t, 2> sighash_flags = { { ga_sighash_flags, user_sighash_flags } };
-        std::array<unsigned char, sizeof(ecdsa_sig_t) * 2> sigs;
+        std::array<unsigned char, sizeof(ec_sig_t) * 2> sigs;
         init_container(sigs, green_sig, user_sig);
         // OP_O [sig + sighash_flags] [sig + sighash_flags] [prevout_script]
         // 3 below allows for up to an OP_PUSHDATA2 prevout script size.

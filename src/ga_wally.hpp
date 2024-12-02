@@ -38,7 +38,7 @@ namespace green {
     using uint32_span_t = gsl::span<const uint32_t>;
     using uint64_span_t = gsl::span<const uint64_t>;
 
-    using ecdsa_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
+    using ec_sig_t = std::array<unsigned char, EC_SIGNATURE_LEN>;
     using ecdsa_sig_rec_t = std::array<unsigned char, EC_SIGNATURE_RECOVERABLE_LEN>;
     using chain_code_t = std::array<unsigned char, WALLY_BIP32_CHAIN_CODE_LEN>;
     using pbkdf2_hmac256_t = std::array<unsigned char, PBKDF2_HMAC_SHA256_LEN>;
@@ -151,6 +151,8 @@ namespace green {
 
     std::vector<unsigned char> scriptpubkey_p2pkh_from_hash160(byte_span_t hash);
     std::vector<unsigned char> scriptpubkey_p2pkh_from_public_key(byte_span_t public_key);
+    std::vector<unsigned char> scriptpubkey_p2wpkh_from_public_key(byte_span_t public_key);
+    std::vector<unsigned char> scriptpubkey_p2sh_p2wpkh_from_public_key(byte_span_t public_key);
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash);
     std::vector<unsigned char> scriptpubkey_p2sh_p2wsh_from_bytes(byte_span_t script);
     std::vector<unsigned char> scriptpubkey_p2tr_from_public_key(byte_span_t public_key, bool is_liquid);
@@ -242,21 +244,18 @@ namespace green {
 
     void aes_cbc(byte_span_t key, byte_span_t iv, byte_span_t data, uint32_t flags, std::vector<unsigned char>& out);
 
-    ecdsa_sig_t ec_sig_from_bytes(
+    ec_sig_t ec_sig_from_bytes(
         byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_GRIND_R);
-
-    ecdsa_sig_rec_t ec_sig_rec_from_bytes(
-        byte_span_t private_key, byte_span_t hash, uint32_t flags = EC_FLAG_ECDSA | EC_FLAG_RECOVERABLE);
 
     ecdsa_sig_rec_t ec_sig_rec_from_compact(byte_span_t compact_sig, byte_span_t hash, byte_span_t public_key);
 
     std::vector<unsigned char> ec_sig_to_der(byte_span_t sig, uint32_t sighash_flags = WALLY_SIGHASH_ALL);
-    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte);
+    ec_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte);
 
     bool ec_sig_verify(
         byte_span_t public_key, byte_span_t message_hash, byte_span_t sig, uint32_t flags = EC_FLAG_ECDSA);
 
-    std::string sig_only_to_der_hex(const ecdsa_sig_t& signature);
+    std::string sig_only_to_der_hex(const ec_sig_t& signature);
 
     std::vector<unsigned char> ec_public_key_from_private_key(byte_span_t private_key, bool do_decompress = false);
 
