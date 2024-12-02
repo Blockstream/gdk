@@ -301,6 +301,17 @@ namespace green {
         return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
     }
 
+    std::vector<unsigned char> scriptpubkey_p2tr_from_public_key(byte_span_t public_key, bool is_liquid)
+    {
+        size_t written;
+        std::vector<unsigned char> ret(WALLY_SCRIPTPUBKEY_P2TR_LEN);
+        const uint32_t flags = is_liquid ? EC_FLAG_ELEMENTS : 0;
+        GDK_VERIFY(wally_scriptpubkey_p2tr_from_bytes(
+            public_key.data(), public_key.size(), flags, &ret[0], ret.size(), &written));
+        GDK_RUNTIME_ASSERT(written == ret.size());
+        return ret;
+    }
+
     uint32_t scriptpubkey_get_type(byte_span_t scriptpubkey)
     {
         size_t typ;
