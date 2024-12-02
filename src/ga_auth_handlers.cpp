@@ -685,7 +685,7 @@ namespace green {
                     tx = std::make_unique<Tx>(j_strref(m_twofactor_data, "transaction"), is_liquid);
                 }
                 const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
-                const auto tx_signature_hash = tx->get_signature_hash(inputs, i, sighash_flags);
+                const auto tx_signature_hash = tx->get_signature_hash(*m_session, inputs, i, sighash_flags);
                 m_sweep_private_keys[i] = input["private_key"];
                 const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), tx_signature_hash);
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
@@ -796,8 +796,12 @@ namespace green {
                 if (j_bool_or_false(input, "skip_signing")) {
                     continue;
                 }
+                if (j_strref(input, "address_type") == address_type::p2tr) {
+                    // Schnorr sigs don't support Anti-exfil
+                    continue;
+                }
                 const auto sighash_flags = j_uint32(input, "user_sighash").value_or(WALLY_SIGHASH_ALL);
-                const auto tx_signature_hash = tx.get_signature_hash(inputs, i, sighash_flags);
+                const auto tx_signature_hash = tx.get_signature_hash(*m_session, inputs, i, sighash_flags);
                 const auto user_key = m_session->keys_from_utxo(input).at(is_electrum ? 0 : 1);
                 constexpr bool has_sighash_byte = true;
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
@@ -2204,7 +2208,7 @@ namespace green {
 
         // Get the compact and recoverable signatures from the DER/compact/recoverable signature
         const auto sig = j_bytesref(hw_reply, "signature");
-        ecdsa_sig_t compact_sig;
+        ec_sig_t compact_sig;
         ecdsa_sig_rec_t recoverable_sig;
         if (sig[0] == 48 || sig.size() == 64) {
             if (sig[0] == 48) {
