@@ -285,6 +285,17 @@ namespace green {
         return scriptpubkey_p2pkh_from_hash160(hash160(public_key));
     }
 
+    std::vector<unsigned char> scriptpubkey_p2wpkh_from_public_key(byte_span_t public_key)
+    {
+        return witness_script(public_key, WALLY_SCRIPT_HASH160);
+    }
+
+    std::vector<unsigned char> scriptpubkey_p2sh_p2wpkh_from_public_key(byte_span_t public_key)
+    {
+        const auto witness_program = witness_script(public_key, WALLY_SCRIPT_HASH160);
+        return scriptpubkey_p2sh_from_hash160(hash160(witness_program));
+    }
+
     std::vector<unsigned char> scriptpubkey_p2sh_from_hash160(byte_span_t hash)
     {
         GDK_RUNTIME_ASSERT(hash.size() == HASH160_LEN);
@@ -510,18 +521,9 @@ namespace green {
         out.resize(written);
     }
 
-    ecdsa_sig_t ec_sig_from_bytes(byte_span_t private_key, byte_span_t hash, uint32_t flags)
+    ec_sig_t ec_sig_from_bytes(byte_span_t private_key, byte_span_t hash, uint32_t flags)
     {
-        ecdsa_sig_t ret;
-        GDK_VERIFY(wally_ec_sig_from_bytes(
-            private_key.data(), private_key.size(), hash.data(), hash.size(), flags, ret.data(), ret.size()));
-        return ret;
-    }
-
-    ecdsa_sig_rec_t ec_sig_rec_from_bytes(byte_span_t private_key, byte_span_t hash, uint32_t flags)
-    {
-        ecdsa_sig_rec_t ret;
-        flags |= EC_FLAG_RECOVERABLE;
+        ec_sig_t ret;
         GDK_VERIFY(wally_ec_sig_from_bytes(
             private_key.data(), private_key.size(), hash.data(), hash.size(), flags, ret.data(), ret.size()));
         return ret;
@@ -559,7 +561,7 @@ namespace green {
         return der;
     }
 
-    std::string sig_only_to_der_hex(const ecdsa_sig_t& signature)
+    std::string sig_only_to_der_hex(const ec_sig_t& signature)
     {
         std::vector<unsigned char> der = ec_sig_to_der(signature);
         // Remove sighash byte
@@ -567,9 +569,9 @@ namespace green {
         return b2h(der);
     }
 
-    ecdsa_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte)
+    ec_sig_t ec_sig_from_der(byte_span_t der, bool has_sighash_byte)
     {
-        ecdsa_sig_t sig;
+        ec_sig_t sig;
         int ret = WALLY_EINVAL;
         if (!der.empty()) {
             const auto non_sighash_len = der.size() - (has_sighash_byte ? 1 : 0);

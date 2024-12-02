@@ -126,11 +126,11 @@ namespace green {
         // Get cached xpubs and paths from a signer as a cacheable json format
         nlohmann::json get_cached_bip32_xpubs_json();
 
-        // Return the ECDSA signature for a hash using the bip32 key 'm/<path>'
-        ecdsa_sig_t sign_hash(uint32_span_t path, byte_span_t hash);
+        // Return the ECDSA signature for a message using the bip32 key 'm/<path>'
+        ec_sig_t ecdsa_sign(uint32_span_t path, byte_span_t message);
 
-        // Return the recoverable ECDSA signature for a hash using the bip32 key 'm/<path>'
-        ecdsa_sig_rec_t sign_rec_hash(uint32_span_t path, byte_span_t hash);
+        // Return the Schnorr signature for a hash using the taptweak bip32 key 'm/<path>'
+        ec_sig_t schnorr_sign(uint32_span_t path, byte_span_t message);
 
         priv_key_t get_blinding_key_from_script(byte_span_t script);
 
