@@ -16,7 +16,6 @@
 #include <condition_variable>
 #include <cstdio>
 #include <cstdlib>
-#include <filesystem>
 #include <fstream>
 #include <set>
 #include <string>
@@ -45,7 +44,7 @@ namespace green {
     std::mutex tor_controller::s_inst_mutex;
     std::weak_ptr<tor_controller> tor_controller::s_inst;
 
-    static std::string read_file(const std::filesystem::path& file)
+    static std::string read_file(const std::string& file)
     {
         std::ifstream ifs(file);
         if (!ifs.good()) {
@@ -54,7 +53,7 @@ namespace green {
         return { std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>() };
     }
 
-    static void clear_file(const std::filesystem::path& file) { std::ofstream ofs(file, std::ios::trunc); }
+    static void clear_file(const std::string& file) { std::ofstream ofs(file, std::ios::trunc); }
 
     static std::pair<std::string, std::string> split_tor_reply_line(std::string s)
     {
