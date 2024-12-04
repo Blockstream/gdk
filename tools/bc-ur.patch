@@ -46,3 +46,29 @@ diff --git -ru a/src/xoshiro256.cpp b/src/xoshiro256.cpp
  
  /*  Written in 2018 by David Blackman and Sebastiano Vigna (vigna@acm.org)
  
+diff --git a/src/utils.hpp b/src/utils.hpp
+--- a/src/utils.hpp
++++ b/src/utils.hpp
+@@ -60,11 +60,8 @@ std::vector<T> join(const std::vector<std::vector<T>>& parts) {
+ template<typename T>
+ std::pair<std::vector<T>, std::vector<T>> split(const std::vector<T>& buf, size_t count) {
+     auto first = buf.begin();
+-    auto c = std::min(buf.size(), count);
+-    auto last = first + c;
+-    auto a = std::vector(first, last);
+-    auto b = std::vector(last, buf.end());
+-    return std::make_pair(a, b);
++    auto last = first + std::min(buf.size(), count);
++    return { {first, last}, {last, buf.end()} };
+ }
+ 
+ template<typename T>
+@@ -72,7 +69,7 @@ std::vector<T> take_first(const std::vector<T> &buf, size_t count) {
+     auto first = buf.begin();
+     auto c = std::min(buf.size(), count);
+     auto last = first + c;
+-    return std::vector(first, last);
++    return {first, last};
+ }
+ 
+ void xor_into(ByteVector& target, const ByteVector& source);
