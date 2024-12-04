@@ -18,6 +18,7 @@ BUILD=""
 BUILDTYPE="release"
 NDK_ARCH=""
 COMPILER_VERSION=""
+SKIP_HASH=""
 export GDK_BUILD_ROOT=""
 
 
@@ -34,6 +35,7 @@ while true; do
         --compiler-version) COMPILER_VERSION="-$2"; shift 2 ;;
         --prefix ) GDK_BUILD_ROOT="$2"; shift 2 ;;
         --parallel ) NUM_JOBS="$2"; shift 2 ;;
+        --skip-hash ) SKIP_HASH="true"; shift ;;
         -- ) shift; break ;;
         *) break ;;
     esac
@@ -100,8 +102,12 @@ function prepare_sources {
         curl -sL --retry 3 ${source_url} --output ${source_filename}
         rm_downloaded="yes"
     fi
-    echo "checking ${source_filename}..."
-    echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
+    if [ -z "$SKIP_HASH" ]; then
+        echo "checking ${source_filename}..."
+        echo "${source_hash}  ${source_filename}" | shasum -a 256 -c
+    else
+        echo "WARNING: not checking download hash for ${source_filename}..."
+    fi
 
     cd -
     tmp_folder="tmp"
