@@ -20,7 +20,6 @@
         paths: [tools/*, $DOCKER_BUILD_CONTEXT/*, cmake/profiles/*, gitlab/docker.yml]
         compare_to: master
   script:
-    - mkdir downloads
     - docker pull ${IMAGE}:latest || true
     - >
       docker build
