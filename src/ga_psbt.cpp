@@ -536,6 +536,9 @@ namespace green {
                 if (redeem_script.has_value()) {
                     utxo["redeem_script"] = b2h(redeem_script.value());
                 }
+                // Taproot signing requires the scriptpubkey for all inputs:
+                // Provide it so that signing does not have to lookup the UTXO.
+                utxo["scriptpubkey"] = b2h({ txin_utxo->script, txin_utxo->script_len });
             }
         }
         return std::make_pair(std::move(inputs), std::move(wallet_assets));
