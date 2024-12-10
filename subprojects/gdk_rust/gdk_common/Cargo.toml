@@ -22,7 +22,7 @@ rand = "0.8"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-ureq = { version = "2.9.6", features = ["json", "socks-proxy", "gzip", "brotli"] }
+ureq = { version = "2.12", features = ["json", "socks-proxy", "gzip", "brotli"] }
 url = "2.2.2"
 elements-miniscript = "0.4.0"
 pbkdf2 = {version = "0.12"}
