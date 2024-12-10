@@ -540,13 +540,13 @@ namespace green {
         m_next_subaccount = 0;
         for (const auto& sa : m_login_data["subaccounts"]) {
             const auto subaccount = j_uint32ref(sa, "pointer");
-            auto type = j_str_or_empty(sa, "type");
-            if (type == "simple") {
-                type = "2of2";
+            auto sa_type = j_str_or_empty(sa, "type");
+            if (sa_type == "simple") {
+                sa_type = "2of2";
             }
             std::optional<xpub_hdkey> recovery_key;
 
-            if (type == "2of3") {
+            if (sa_type == "2of3") {
                 // 2of3 subaccount: Fetch and validate the recovery key
                 const auto& pub_key = j_strref(sa, "2of3_backup_pubkey");
                 const auto& chain_code = j_strref(sa, "2of3_backup_chaincode");
@@ -575,8 +575,8 @@ namespace green {
                 }
             }
 
-            insert_subaccount(locker, subaccount, type, j_str_or_empty(sa, "name"), j_str_or_empty(sa, "receiving_id"),
-                recovery_key, j_uint32_or_zero(sa, "required_ca"));
+            insert_subaccount(locker, subaccount, sa_type, j_str_or_empty(sa, "name"),
+                j_str_or_empty(sa, "receiving_id"), recovery_key, j_uint32_or_zero(sa, "required_ca"));
 
             if (subaccount > m_next_subaccount) {
                 m_next_subaccount = subaccount;
@@ -1701,21 +1701,21 @@ namespace green {
     }
 
     nlohmann::json ga_session::insert_subaccount(session_impl::locker_t& locker, uint32_t subaccount,
-        const std::string& type, const std::string& name, const std::string& receiving_id,
+        const std::string& sa_type, const std::string& name, const std::string& receiving_id,
         const std::optional<xpub_hdkey>& recovery_key, uint32_t required_ca)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer != nullptr);
 
         GDK_RUNTIME_ASSERT(m_subaccounts.find(subaccount) == m_subaccounts.end());
-        GDK_RUNTIME_ASSERT(type == "2of2" || type == "2of3" || type == "2of2_no_recovery");
+        GDK_RUNTIME_ASSERT(sa_type == "2of2" || sa_type == "2of3" || sa_type == "2of2_no_recovery");
 
         std::string recovery_xpub = recovery_key ? recovery_key->to_base58() : std::string();
         nlohmann::json sa = {
             { "name", name },
             { "pointer", subaccount },
             { "receiving_id", receiving_id },
-            { "type", type },
+            { "type", sa_type },
             { "recovery_xpub", recovery_xpub },
             { "required_ca", required_ca },
         };
@@ -1729,11 +1729,11 @@ namespace green {
         return sa;
     }
 
-    uint32_t ga_session::get_next_subaccount(const std::string& type)
+    uint32_t ga_session::get_next_subaccount(const std::string& sa_type)
     {
-        if ((type != "2of2" && type != "2of3" && type != "2of2_no_recovery")
-            || (type == "2of2_no_recovery" && !m_net_params.is_liquid())) {
-            throw user_error("Invalid account type");
+        if ((sa_type != "2of2" && sa_type != "2of3" && sa_type != "2of2_no_recovery")
+            || (sa_type == "2of2_no_recovery" && !m_net_params.is_liquid())) {
+            throw_user_error("Invalid account type");
         }
         locker_t locker(m_mutex);
         const uint32_t subaccount = m_next_subaccount;
@@ -1744,7 +1744,7 @@ namespace green {
     nlohmann::json ga_session::create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub)
     {
         const auto name = j_strref(details, "name");
-        const auto type = j_str_or_empty(details, "type");
+        const auto sa_type = j_str_or_empty(details, "type");
         std::string recovery_bip32_xpub = j_str_or_empty(details, "recovery_xpub");
 
         std::vector<std::string> xpubs{ { xpub } };
@@ -1753,19 +1753,20 @@ namespace green {
         GDK_RUNTIME_ASSERT(subaccount < 16384u); // Disallow more than 16k subaccounts
 
         std::optional<xpub_hdkey> recovery_key;
-        if (type == "2of3") {
+        if (sa_type == "2of3") {
             xpubs.emplace_back(recovery_bip32_xpub);
             sigs.emplace_back(j_strref(details, "recovery_key_sig"));
             recovery_key = xpub_hdkey(recovery_bip32_xpub);
         }
 
         const auto recv_id
-            = wamp_cast(m_wamp->call("txs.create_subaccount_v2", subaccount, std::string(), type, xpubs, sigs));
+            = wamp_cast(m_wamp->call("txs.create_subaccount_v2", subaccount, std::string(), sa_type, xpubs, sigs));
 
         locker_t locker(m_mutex);
         m_user_pubkeys->add_subaccount(subaccount, xpub);
         constexpr uint32_t required_ca = 0;
-        auto subaccount_details = insert_subaccount(locker, subaccount, type, name, recv_id, recovery_key, required_ca);
+        auto subaccount_details
+            = insert_subaccount(locker, subaccount, sa_type, name, recv_id, recovery_key, required_ca);
         subaccount_details["hidden"] = false;
         subaccount_details["user_path"] = m_user_pubkeys->get_path_to_subaccount(subaccount);
 

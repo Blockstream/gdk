@@ -49,7 +49,7 @@ namespace green {
         nlohmann::json get_subaccounts_impl(locker_t& locker);
         std::vector<uint32_t> get_subaccount_pointers();
         void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
-        uint32_t get_next_subaccount(const std::string& type);
+        uint32_t get_next_subaccount(const std::string& sa_type);
         nlohmann::json create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub);
         nlohmann::json get_receive_address(const nlohmann::json& details);
         nlohmann::json get_previous_addresses(const nlohmann::json& details);
@@ -188,7 +188,7 @@ namespace green {
         void remap_appearance_settings(session_impl::locker_t& locker, const nlohmann::json& src_json,
             nlohmann::json& dst_json, bool from_settings) const;
 
-        nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& type,
+        nlohmann::json insert_subaccount(locker_t& locker, uint32_t subaccount, const std::string& sa_type,
             const std::string& name, const std::string& receiving_id, const std::optional<xpub_hdkey>& recovery_key,
             uint32_t required_ca);
 
