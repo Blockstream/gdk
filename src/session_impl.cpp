@@ -779,13 +779,13 @@ namespace green {
     }
 
     bool session_impl::discover_subaccount(
-        uint32_t /*subaccount*/, const std::string& /*xpub*/, const std::string& /*type*/)
+        uint32_t /*subaccount*/, const std::string& /*xpub*/, const std::string& /*sa_type*/)
     {
         // Overriden for ga_rust
         return false;
     }
 
-    uint32_t session_impl::get_last_empty_subaccount(const std::string& /*type*/)
+    uint32_t session_impl::get_last_empty_subaccount(const std::string& /*sa_type*/)
     {
         // Overriden for ga_rust
         throw std::runtime_error("not implemented");

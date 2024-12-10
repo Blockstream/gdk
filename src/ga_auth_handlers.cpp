@@ -485,12 +485,28 @@ namespace green {
 
     void create_subaccount_call::initialize()
     {
+        using namespace address_type;
+
         m_session->ensure_full_session();
 
-        const std::string type = m_details.at("type");
-        m_subaccount = m_session->get_next_subaccount(type);
+        const auto& sa_type = j_strref(m_details, "type");
+        if (sa_type == p2tr) {
+            if (m_net_params.is_liquid()) {
+                // FIXME: TAPROOT: Support p2tr for Liquid
+                throw_user_error("Invalid account type"); // FIXME: res::
+            }
+            if (!m_signer->supports_p2tr()) {
+                throw_user_error("session signer does not support p2tr subaccounts");
+            }
+        } else if (m_net_params.is_electrum()) {
+            if (sa_type != p2pkh && sa_type != p2wpkh && sa_type != p2sh_p2wpkh) {
+                throw_user_error("Invalid account type"); // FIXME: res::
+            }
+        }
 
-        if (type == "2of3") {
+        m_subaccount = m_session->get_next_subaccount(sa_type);
+
+        if (sa_type == "2of3") {
             // The user can provide a recovery mnemonic or bip32 xpub, but not both
             auto recovery_mnemonic = j_str_or_empty(m_details, "recovery_mnemonic");
             const bool missing_recovery_xpub = j_str_is_empty(m_details, "recovery_xpub");
@@ -523,7 +539,7 @@ namespace green {
             // Caller has provided the xpubs for the new subaccount
             const auto& xpubs = j_arrayref(get_hw_reply(), "xpubs");
             m_subaccount_xpub = xpubs.at(0);
-            if (m_details.at("type") == "2of3") {
+            if (j_strref(m_details, "type") == "2of3") {
                 // Ask the caller to sign the recovery key with the login key
                 auto& request = signal_hw_request(hw_request::sign_message);
                 request["message"] = format_recovery_key_message(m_details["recovery_xpub"], m_subaccount);
@@ -554,7 +570,7 @@ namespace green {
         // Ensure the server created the subaccount number we expected
         GDK_RUNTIME_ASSERT(m_subaccount == m_result.at("pointer"));
 
-        if (m_details.at("type") == "2of2_no_recovery") {
+        if (j_strref(m_details, "type") == "2of2_no_recovery") {
             // Push a handler to upload confidential addresses
             add_next_handler(new upload_ca_handler(m_session_parent, m_subaccount, INITIAL_UPLOAD_CA));
         }

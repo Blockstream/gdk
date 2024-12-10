@@ -342,9 +342,9 @@ namespace green {
         return true;
     }
 
-    bool ga_rust::discover_subaccount(uint32_t subaccount, const std::string& xpub, const std::string& type)
+    bool ga_rust::discover_subaccount(uint32_t subaccount, const std::string& xpub, const std::string& sa_type)
     {
-        nlohmann::json details = { { "type", type }, { "xpub", xpub } };
+        nlohmann::json details = { { "type", sa_type }, { "xpub", xpub } };
         if (!rust_call("discover_subaccount", details, m_session)) {
             return false;
         }
@@ -366,14 +366,14 @@ namespace green {
         return true;
     }
 
-    uint32_t ga_rust::get_next_subaccount(const std::string& type)
+    uint32_t ga_rust::get_next_subaccount(const std::string& sa_type)
     {
-        return rust_call("get_next_subaccount", nlohmann::json({ { "type", type } }), m_session);
+        return rust_call("get_next_subaccount", nlohmann::json({ { "type", sa_type } }), m_session);
     }
 
-    uint32_t ga_rust::get_last_empty_subaccount(const std::string& type)
+    uint32_t ga_rust::get_last_empty_subaccount(const std::string& sa_type)
     {
-        return rust_call("get_last_empty_subaccount", nlohmann::json({ { "type", type } }), m_session);
+        return rust_call("get_last_empty_subaccount", nlohmann::json({ { "type", sa_type } }), m_session);
     }
 
     nlohmann::json ga_rust::create_subaccount(nlohmann::json details, uint32_t subaccount, const std::string& xpub)
