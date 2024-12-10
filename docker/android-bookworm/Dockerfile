@@ -43,7 +43,7 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.68.0
+ENV RUST_VERSION=1.71.1
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # predownloading rust dependencies
