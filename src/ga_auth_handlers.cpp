@@ -1190,15 +1190,21 @@ namespace green {
 
     auth_handler::state_type get_subaccounts_call::call_impl()
     {
-        constexpr size_t NUM_ACCT_TYPES = 3u;
-        if (m_found.size() == NUM_ACCT_TYPES || !m_net_params.is_electrum() || !j_bool_or_false(m_details, "refresh")) {
+        using namespace address_type;
+        auto signer = get_signer();
+        GDK_RUNTIME_ASSERT(signer);
+        std::vector<std::string> ss_sa_types = { p2sh_p2wpkh, p2wpkh, p2pkh };
+        if (!m_net_params.is_liquid() && signer->supports_p2tr()) {
+            ss_sa_types.push_back(p2tr);
+        }
+
+        if (m_found.size() == ss_sa_types.size() || !m_net_params.is_electrum()
+            || !j_bool_or_false(m_details, "refresh")) {
             m_result = { { "subaccounts", m_session->get_subaccounts() } };
             return state_type::done;
         }
 
         // Singlesig: We have been requested to perform BIP44 account discovery
-        auto signer = get_signer();
-        GDK_RUNTIME_ASSERT(signer);
         if (signer->is_descriptor_watch_only()) {
             // Descriptor watch only sessions cannot derive xpubs for finding accounts
             throw user_error("Authentication required");
@@ -1206,22 +1212,22 @@ namespace green {
         const bool is_watch_only = m_session->is_watch_only();
 
         nlohmann::json::array_t paths;
-        using namespace address_type;
-        for (const auto& addr_type : { p2sh_p2wpkh, p2wpkh, p2pkh }) {
-            if (std::find(m_found.begin(), m_found.end(), addr_type) != m_found.end()) {
+
+        for (const auto& sa_type : ss_sa_types) {
+            if (std::find(m_found.begin(), m_found.end(), sa_type) != m_found.end()) {
                 // Already discovered all subaccounts for this type
                 continue;
             }
             for (;;) {
                 // Find the last empty subaccount of this type
-                auto subaccount = m_session->get_last_empty_subaccount(addr_type);
+                auto subaccount = m_session->get_last_empty_subaccount(sa_type);
                 auto path = m_session->get_user_pubkeys().get_path_to_subaccount(subaccount);
                 if (!signer->has_bip32_xpub(path)) {
                     if (is_watch_only) {
                         // Watch only sessions can only discover subaccounts where
                         // the client blob (and thus signer) has the xpub (i.e. the
                         // subaccount was created or discovered by a full session).
-                        m_found.push_back(addr_type);
+                        m_found.push_back(sa_type);
                     } else {
                         // Request the xpub for the subaccount so we can discover it
                         paths.emplace_back(std::move(path));
@@ -1230,9 +1236,9 @@ namespace green {
                 }
                 // Discover whether the subaccount exists
                 const auto xpub = signer->get_bip32_xpub(path);
-                if (!m_session->discover_subaccount(subaccount, xpub, addr_type)) {
+                if (!m_session->discover_subaccount(subaccount, xpub, sa_type)) {
                     // Reached the last discoverable subaccount of this type
-                    m_found.push_back(addr_type);
+                    m_found.push_back(sa_type);
                     break;
                 }
             }
@@ -1241,7 +1247,7 @@ namespace green {
         if (paths.empty()) {
             // We have discovered all subaccounts. When the caller calls
             // us again, the results will be returned
-            GDK_RUNTIME_ASSERT(m_found.size() == NUM_ACCT_TYPES);
+            GDK_RUNTIME_ASSERT(m_found.size() == ss_sa_types.size());
             m_state = state_type::make_call;
         } else {
             // Request paths for further subaccounts to discover
