@@ -1207,21 +1207,26 @@ namespace green {
 
         nlohmann::json::array_t paths;
         using namespace address_type;
-        for (const auto& addr_type : { p2sh_p2wpkh, p2wpkh, p2pkh }) {
-            if (std::find(m_found.begin(), m_found.end(), addr_type) != m_found.end()) {
+        std::vector sa_types = { p2sh_p2wpkh, p2wpkh, p2pkh };
+        if (!m_net_params.is_liquid() && signer->supports_p2tr()) {
+            sa_types.push_back(p2tr);
+        }
+
+        for (const auto& sa_type : sa_types) {
+            if (std::find(m_found.begin(), m_found.end(), sa_type) != m_found.end()) {
                 // Already discovered all subaccounts for this type
                 continue;
             }
             for (;;) {
                 // Find the last empty subaccount of this type
-                auto subaccount = m_session->get_last_empty_subaccount(addr_type);
+                auto subaccount = m_session->get_last_empty_subaccount(sa_type);
                 auto path = m_session->get_user_pubkeys().get_path_to_subaccount(subaccount);
                 if (!signer->has_bip32_xpub(path)) {
                     if (is_watch_only) {
                         // Watch only sessions can only discover subaccounts where
                         // the client blob (and thus signer) has the xpub (i.e. the
                         // subaccount was created or discovered by a full session).
-                        m_found.push_back(addr_type);
+                        m_found.push_back(sa_type);
                     } else {
                         // Request the xpub for the subaccount so we can discover it
                         paths.emplace_back(std::move(path));
@@ -1230,9 +1235,9 @@ namespace green {
                 }
                 // Discover whether the subaccount exists
                 const auto xpub = signer->get_bip32_xpub(path);
-                if (!m_session->discover_subaccount(subaccount, xpub, addr_type)) {
+                if (!m_session->discover_subaccount(subaccount, xpub, sa_type)) {
                     // Reached the last discoverable subaccount of this type
-                    m_found.push_back(addr_type);
+                    m_found.push_back(sa_type);
                     break;
                 }
             }
