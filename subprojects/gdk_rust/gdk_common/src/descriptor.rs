@@ -42,6 +42,10 @@ fn check_xpub_consitency(
         ChildNumber::Hardened {
             index: n,
         } if n == bip32_account => Ok((script_type, xpub, n, fingerprint, master_blinding_key)),
+        // Ledger sets the child number to unhardened 0, allow for that
+        ChildNumber::Normal {
+            index: 0,
+        } => Ok((script_type, xpub, bip32_account, fingerprint, master_blinding_key)),
         _ => Err(Error::UnsupportedDescriptor),
     }
 }
@@ -126,6 +130,9 @@ mod test {
         let shp2wkh_no_key_origin = format!("sh(wpkh({}/0/*))", tpub);
         let p2wpkh_incorrect_key_origin1 = format!("sh(wpkh([00000000/44'/1'/0']{}/0/*))", tpub);
         let p2wpkh_incorrect_key_origin2 = format!("sh(wpkh([00000000/84'/1'/0'/0']{}/0/*))", tpub);
+        let tpub_ledger = "tpubD8G8MPGsm1E4QHo3qfgkb5PMP4nTNJhDrCP4t7Z1WpBKyRbLe9QimyVwhwZj6h4vx8ek4MrhkxFVZaMZ66ArQa9ram1xHuBWV8KbmYUKSeA";
+        let p2wpkh_ledger = format!("wpkh([00000000/84'/1'/0']{}/0/*)", tpub_ledger);
+        let p2wpkh_1_ledger = format!("wpkh([00000000/84'/1'/1']{}/0/*)", tpub_ledger);
 
         let is_liquid = false;
         // Valid cases
@@ -157,6 +164,18 @@ mod test {
             parse_single_sig_descriptor(&p2pkh, coin_type, is_liquid).unwrap();
         assert_eq!(t, ScriptType::P2pkh);
         assert_eq!(bip32_account, 0);
+        assert_eq!(f, Fingerprint::default());
+        assert!(mbk.is_none());
+        let (t, _, bip32_account, f, mbk) =
+            parse_single_sig_descriptor(&p2wpkh_ledger, coin_type, is_liquid).unwrap();
+        assert_eq!(t, ScriptType::P2wpkh);
+        assert_eq!(bip32_account, 0);
+        assert_eq!(f, Fingerprint::default());
+        assert!(mbk.is_none());
+        let (t, _, bip32_account, f, mbk) =
+            parse_single_sig_descriptor(&p2wpkh_1_ledger, coin_type, is_liquid).unwrap();
+        assert_eq!(t, ScriptType::P2wpkh);
+        assert_eq!(bip32_account, 1);
         assert_eq!(f, Fingerprint::default());
         assert!(mbk.is_none());
 
