@@ -397,6 +397,11 @@ as the array elements of `GA_get_subaccounts`.
     Use of this value is discouraged and this field might be removed in the future.
     Callers should use descriptors instead.
 
+.. note:: Ledger sets some xpub fields incorrectly (e.g. always sets child number ``"0"``).
+   Thus if you're using a Ledger device the returned ``"core_descriptors"`` and ``"slip132_extended_pubkey"``
+   are "incorrect", meaning that the xpub is different from xpubs returned by other signers
+   using the same secret (but the generated addresses are the same).
+
 
 .. _subaccount-update:
 
