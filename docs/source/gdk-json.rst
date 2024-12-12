@@ -557,7 +557,7 @@ Liquid outputs have the following additional fields:
 :blinding_key: The blinding public key for the output.
 :commitment: The hex-encoded value commitment.
 :is_blinded: For user wallet outputs, a boolean indicating whether or not the output is blinded.
-:is_confidential: Whether or not the address in ``"address"`` is a confidential address. Note that this does not indicate whether the output was originally sent to a confidential address (which is determined by ``"is_blinded"``), only whether the `""address"`` field is a confidential or non-confidential address, i.e. whether it contains the blinding public key or not.
+:is_confidential: Whether or not the address in ``"address"`` is a confidential address. Note that this does not indicate whether the output was originally sent to a confidential address (which is determined by ``"is_blinded"``), only whether the ``"address"`` field is a confidential or non-confidential address, i.e. whether it contains the blinding public key or not.
 :nonce_commitment: The hex-encoded nonce commitment.
 :script: For user wallet outputs, the scriptpubkey of this output.
 :unconfidential_address: For user wallet outputs, the non-confidential address
