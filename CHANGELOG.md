@@ -1,5 +1,21 @@
 # Changelog
 
+## Release 0.74.1 - 24-12-13
+
+### Added
+- Added an example Dockerfile for building AWS lambda compatible gdk deployments.
+
+### Changed
+- Singlesig: Allow some incorrect descriptors/xpubs returned by Ledger HWW.
+- GA_create_transaction: Return the currently calculated transaction fee in
+  the ``"fee"`` element when an insufficient fee error occurs.
+
+### Fixed
+- Singlesig: Prevent the relay fee from falling below the network minimum.
+- Liquid: Update the allowed maximum of transaction inputs to 256, not 255.
+- Build: Various build fixes for older compilers.
+
+
 ## Release 0.74.0 - 24-11-25
 
 ### Added
