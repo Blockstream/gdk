@@ -2113,18 +2113,11 @@ namespace green {
             tx.erase("created_at"); // TODO: Remove once the server stops returning this
             tx.erase("transaction_size");
 
-            // Compute the tx weight and fee rate
-            uint32_t vsize;
-            if (const auto weight = j_uint32(tx, "weight"); weight) {
-                // Weight provided by the server, use it
-                j_rename(tx, "weight", "transaction_weight");
-                vsize = Tx::vsize_from_weight(*weight);
-                tx["transaction_vsize"] = vsize;
-            } else {
-                // FIXME: Remove this once all backends are updated to return weight
-                vsize = j_uint32ref(tx, "transaction_vsize");
-                tx["transaction_weight"] = vsize * 4;
-            }
+            // Compute tx vsize from weight
+            const auto vsize = Tx::vsize_from_weight(j_uint32ref(tx, "weight"));
+            j_rename(tx, "weight", "transaction_weight");
+            tx["transaction_vsize"] = vsize;
+
             // fee_rate is in satoshi/kb, with the best integer accuracy we have
             tx["fee_rate"] = j_amountref(tx, "fee").value() * 1000 / vsize;
 
