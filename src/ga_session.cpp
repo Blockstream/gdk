@@ -2065,11 +2065,6 @@ namespace green {
                 if (!utxo.contains("error")) {
                     utxo.erase("value"); // Only remove value if we unblinded it
                 }
-                // TODO: remove block_height munging once backends are updated
-                auto block_height = utxo.find("block_height");
-                if (block_height != utxo.end() && block_height->is_null()) {
-                    *block_height = 0;
-                }
                 json_add_if_missing(utxo, "subtype", 0u);
                 json_add_if_missing(utxo, "is_internal", false);
                 utxo["address_type"] = std::move(addr_type);
