@@ -16,7 +16,7 @@ FROM base AS builderlinux
 #wally absolutely wants a running python -- it doesn't really matter the version here
 RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
-FROM rust:1.68-bullseye as builderrust
+FROM rust:1.71-bullseye as builderrust
 
 FROM base as final
 # Remove copied/downloaded dependency sources
@@ -29,7 +29,7 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.64.0
+ENV RUST_VERSION=1.71.1
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # predownloading rust dependencies

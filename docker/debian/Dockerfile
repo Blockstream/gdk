@@ -23,7 +23,7 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
-FROM rust:1.68-bullseye as builderrust
+FROM rust:1.71-bullseye as builderrust
 WORKDIR /root
 COPY ./docker/debian/install_rust_tools.sh ./docker/debian/install_rust_tools.sh
 RUN ./docker/debian/install_rust_tools.sh
@@ -36,9 +36,7 @@ FROM base as final
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 
 COPY --from=esplora-base-image /srv/explorer/electrs_bitcoin/bin/electrs /root/bin/electrs_bitcoin
-COPY --from=esplora-base-image /srv/explorer/electrs_liquid/bin/electrs /root/bin/electrs_liquid
 COPY --from=esplora-base-image /srv/explorer/bitcoin/bin/bitcoind /root/bin/bitcoind
-COPY --from=esplora-base-image /srv/explorer/liquid/bin/liquidd /root/bin/elementsd
 
 COPY --from=builderlinux /prebuild/gcc /prebuild/gcc
 COPY --from=builderlinux /prebuild/clang /prebuild/clang
@@ -51,9 +49,7 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 ENV OPENSSL_DIR=/prebuild/clang
 ENV OPENSSL_STATIC=True
 ENV ELECTRS_EXEC=/root/bin/electrs_bitcoin
-ENV ELECTRS_LIQUID_EXEC=/root/bin/electrs_liquid
 ENV BITCOIND_EXEC=/root/bin/bitcoind
-ENV ELEMENTSD_EXEC=/root/bin/elementsd
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
