@@ -1706,10 +1706,6 @@ impl Syncer {
 
                 store_write.flush()?;
                 drop(store_write);
-
-                // the transactions are first indexed into the db and then verified so that all the prevouts
-                // and scripts are available for querying. invalid transactions will be removed by verify_own_txs.
-                account.verify_own_txs(&new_txs.txs)?;
             },
         )
     }

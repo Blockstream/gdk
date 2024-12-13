@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 
 use gdk_common::electrum_client::ScriptStatus;
-use gdk_common::log::{info, warn};
+use gdk_common::log::info;
 
 use gdk_common::bitcoin::bip32::{DerivationPath, Fingerprint, Xpub};
 use gdk_common::bitcoin::hashes::Hash;
@@ -752,62 +752,6 @@ impl Account {
         Ok(AddressDataResult {
             user_path: self.get_full_path(account_path).into(),
         })
-    }
-
-    /// Verify that our own (outgoing) transactions were properly signed by the wallet.
-    /// This is needed to prevent malicious servers from getting the user to fee-bump a
-    /// transaction that they never signed in the first place.
-    ///
-    /// Invalid transactions will be removed from the db and result in an Ok(false).
-    pub fn verify_own_txs(&self, txs: &[(BETxid, BETransaction)]) -> Result<bool, Error> {
-        let mut all_valid = true;
-        let mut store_write = self.store.write().unwrap();
-        let acc_store = store_write.account_cache_mut(self.account_num).unwrap();
-
-        for (txid, tx) in txs {
-            info!("verifying tx: {}", txid);
-            // Confirmed transactions and Elements transactions cannot be fee-bumped and therefore don't require verification
-            if !matches!(tx, BETransaction::Bitcoin(_))
-                || acc_store.heights.get(txid).map_or(true, |h| h.is_some())
-            {
-                continue;
-            }
-            let mut hashcache = None;
-            for (vin, outpoint) in tx.previous_outputs().iter().enumerate() {
-                let script = acc_store
-                    .all_txs
-                    .get_previous_output_script_pubkey(outpoint)
-                    .expect("prevout to be indexed");
-                let public_key = match acc_store.paths.get(&script) {
-                    Some(path) => self.xpub.derive_pub(&crate::EC, path)?,
-                    // We only need to check wallet-owned inputs
-                    None => continue,
-                }
-                .to_pub();
-                let value = acc_store
-                    .all_txs
-                    .get_previous_output_value(&outpoint, &acc_store.unblinded)
-                    .expect("own prevout to have known value");
-                if let Err(err) = tx.verify_input_sig(
-                    &crate::EC,
-                    &mut hashcache,
-                    vin,
-                    &public_key,
-                    value,
-                    self.script_type,
-                ) {
-                    warn!("tx {} verification failed: {:?}", txid, err);
-                    acc_store.all_txs.remove(txid);
-                    acc_store.heights.remove(txid);
-                    all_valid = false;
-                    break;
-                }
-            }
-        }
-        if !all_valid {
-            store_write.flush()?;
-        }
-        Ok(all_valid)
     }
 }
 
