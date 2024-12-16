@@ -402,7 +402,8 @@ namespace green {
                 for (auto& item : tx_inputs_map) {
                     inputs.push_back(std::move(item.second));
                 }
-                tx.validate_user_signatures(session, inputs);
+                constexpr bool for_rbf = true;
+                tx.validate_user_signatures(session, inputs, for_rbf);
                 result["transaction_inputs"] = std::move(inputs);
 
                 if (j_str_is_empty(result, "memo")) {
@@ -1308,7 +1309,7 @@ namespace green {
         return { ret.begin(), ret.end() };
     }
 
-    void Tx::validate_user_signatures(session_impl& session, std::vector<nlohmann::json>& inputs) const
+    void Tx::validate_user_signatures(session_impl& session, std::vector<nlohmann::json>& inputs, bool for_rbf) const
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_electrum = net_params.is_electrum();
@@ -1337,8 +1338,10 @@ namespace green {
                     // the sequence is what is set in the tx so the actual
                     // values don't matter; just that the expiry height is
                     // at least sequence blocks before the block height.
-                    input["block_height"] = block_height;
-                    input["expiry_height"] = block_height - txin.sequence;
+                    if (for_rbf) {
+                        input["block_height"] = block_height;
+                        input["expiry_height"] = block_height - txin.sequence;
+                    }
                     continue;
                 }
                 if (j_strref(input, "address_type") == "p2tr") {
@@ -1347,7 +1350,9 @@ namespace green {
                 }
                 GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
                 const auto sighash_flags = der_sig.back();
-                input["user_sighash"] = sighash_flags;
+                if (for_rbf) {
+                    input["user_sighash"] = sighash_flags;
+                }
                 const auto signature_hash = get_signature_hash(session, inputs, i, sighash_flags);
                 constexpr bool has_sighash_byte = true;
                 const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);

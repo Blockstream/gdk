@@ -81,6 +81,10 @@ namespace green {
         std::vector<unsigned char> get_signature_hash(
             session_impl& session, const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash) const;
 
+        // Validate user signatures. If for_rbf is true, updates the inputs for
+        // create_transaction processing (add sighash flags/expiry details etc)
+        void validate_user_signatures(session_impl& session, std::vector<nlohmann::json>& inputs, bool for_rbf) const;
+
     private:
         uint32_t get_flags() const;
 
