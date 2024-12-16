@@ -396,51 +396,13 @@ namespace green {
                     }
                     tx_inputs_map.emplace(i, std::move(utxo));
                 }
-                GDK_RUNTIME_ASSERT(tx_inputs_map.size() == tx.get_num_inputs());
+
                 std::vector<nlohmann::json> inputs;
                 inputs.reserve(tx_inputs_map.size());
                 for (auto& item : tx_inputs_map) {
                     inputs.push_back(std::move(item.second));
                 }
-
-                const auto block_height = session.get_block_height();
-                for (size_t i = 0; i < inputs.size(); ++i) {
-                    auto& input = inputs.at(i);
-                    // Verify the transaction signatures to prevent outputs
-                    // from being modified. Also store the users sighash in
-                    // case it wasn't SIGHASH_ALL.
-                    const auto der_sigs = tx.get_input_signatures(net_params, input, i);
-                    const auto keys = session.keys_from_utxo(input);
-                    for (size_t sig_i = 0; sig_i < der_sigs.size(); ++sig_i) {
-                        const auto& der_sig = der_sigs.at(sig_i);
-                        if (!is_electrum && tx_version >= WALLY_TX_VERSION_2 && sig_i == 0 && der_sig.empty()
-                            && net_params.is_valid_csv_value(tx.get_input(i).sequence)) {
-                            // Expired csv spend. Ignore the missing green sig, and
-                            // ensure we have a user sig to verify/get the sighash.
-                            GDK_LOG(debug) << "RBF tx input " << i << " spent via expiry";
-                            GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
-                            // We must set a block and expiry height in order to
-                            // recognise the input as expired when signing. Note
-                            // the sequence is what is set in the tx so the actual
-                            // values don't matter; just that the expiry height is
-                            // at least sequence blocks before the block height.
-                            input["block_height"] = block_height;
-                            input["expiry_height"] = block_height - tx.get_input(i).sequence;
-                            continue;
-                        }
-                        if (j_strref(input, "address_type") == "p2tr") {
-                            // FIXME: TAPROOT: check p2tr signature
-                            continue;
-                        }
-                        GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
-                        const auto sighash_flags = der_sig.back();
-                        input["user_sighash"] = sighash_flags;
-                        const auto signature_hash = tx.get_signature_hash(session, inputs, i, sighash_flags);
-                        constexpr bool has_sighash_byte = true;
-                        const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
-                        GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(sig_i).get_public_key(), signature_hash, sig));
-                    }
-                }
+                tx.validate_user_signatures(session, inputs);
                 result["transaction_inputs"] = std::move(inputs);
 
                 if (j_str_is_empty(result, "memo")) {
@@ -1344,6 +1306,54 @@ namespace green {
         GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
             ct_value.data(), ct_value.size(), sighash_flags, flags, ret.data(), ret.size()));
         return { ret.begin(), ret.end() };
+    }
+
+    void Tx::validate_user_signatures(session_impl& session, std::vector<nlohmann::json>& inputs) const
+    {
+        const auto& net_params = session.get_network_parameters();
+        const bool is_electrum = net_params.is_electrum();
+        const auto block_height = session.get_block_height();
+
+        GDK_RUNTIME_ASSERT(get_num_inputs() == inputs.size());
+
+        for (size_t i = 0; i < inputs.size(); ++i) {
+            auto& input = inputs.at(i);
+            const auto& txin = get_input(i);
+            // Verify the transaction signatures to prevent outputs
+            // from being modified. Also store the users sighash in
+            // case it wasn't SIGHASH_ALL.
+            const auto der_sigs = get_input_signatures(net_params, input, i);
+            const auto keys = session.keys_from_utxo(input);
+            for (size_t sig_i = 0; sig_i < der_sigs.size(); ++sig_i) {
+                const auto& der_sig = der_sigs.at(sig_i);
+                if (!is_electrum && get_version() >= WALLY_TX_VERSION_2 && sig_i == 0 && der_sig.empty()
+                    && net_params.is_valid_csv_value(txin.sequence)) {
+                    // Expired csv spend. Ignore the missing green sig, and
+                    // ensure we have a user sig to verify/get the sighash.
+                    GDK_LOG(debug) << "Tx input " << i << " spent via expiry";
+                    GDK_RUNTIME_ASSERT(der_sigs.size() == 2);
+                    // We must set a block and expiry height in order to
+                    // recognise the input as expired when signing. Note
+                    // the sequence is what is set in the tx so the actual
+                    // values don't matter; just that the expiry height is
+                    // at least sequence blocks before the block height.
+                    input["block_height"] = block_height;
+                    input["expiry_height"] = block_height - txin.sequence;
+                    continue;
+                }
+                if (j_strref(input, "address_type") == "p2tr") {
+                    // FIXME: TAPROOT: check p2tr signature
+                    continue;
+                }
+                GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
+                const auto sighash_flags = der_sig.back();
+                input["user_sighash"] = sighash_flags;
+                const auto signature_hash = get_signature_hash(session, inputs, i, sighash_flags);
+                constexpr bool has_sighash_byte = true;
+                const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
+                GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(sig_i).get_public_key(), signature_hash, sig));
+            }
+        }
     }
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
