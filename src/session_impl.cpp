@@ -1164,6 +1164,7 @@ namespace green {
         for (auto& utxo : utxos) {
             utxo["private_key"] = private_key_hex;
             utxo["is_compressed"] = is_compressed;
+            utxo_remove_wallet_keys(utxo);
         }
         return { { "unspent_outputs", { { "btc", std::move(utxos) } } } };
     }
