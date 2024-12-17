@@ -1024,6 +1024,9 @@ namespace green {
         const auto& addr_type = j_strref(utxo, "address_type");
         const auto& input = get_input(index);
 
+        if (!is_wallet_utxo(utxo)) {
+            return {};
+        }
         // TODO: handle backup paths:
         // - 2of3 p2sh, user + backup key signing
         // - 2of3 p2wsh, user + backup key signing
@@ -1319,6 +1322,10 @@ namespace green {
 
         for (size_t i = 0; i < inputs.size(); ++i) {
             auto& input = inputs.at(i);
+            if (!is_wallet_utxo(input)) {
+                GDK_LOG(debug) << "Tx input " << i << " does not belog to the wallet";
+                continue;
+            }
             const auto& txin = get_input(i);
             // Verify the transaction signatures to prevent outputs
             // from being modified. Also store the users sighash in
