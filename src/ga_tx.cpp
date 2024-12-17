@@ -1316,6 +1316,7 @@ namespace green {
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_electrum = net_params.is_electrum();
+        const bool is_liquid = net_params.is_liquid();
         const auto block_height = session.get_block_height();
 
         GDK_RUNTIME_ASSERT(get_num_inputs() == inputs.size());
@@ -1326,11 +1327,14 @@ namespace green {
                 GDK_LOG(debug) << "Tx input " << i << " does not belog to the wallet";
                 continue;
             }
+            const bool is_p2tr = j_strref(input, "address_type") == address_type::p2tr;
+
             const auto& txin = get_input(i);
             // Verify the transaction signatures to prevent outputs
             // from being modified. Also store the users sighash in
             // case it wasn't SIGHASH_ALL.
             const auto der_sigs = get_input_signatures(net_params, input, i);
+            GDK_RUNTIME_ASSERT(!der_sigs.empty());
             const auto keys = session.keys_from_utxo(input);
             for (size_t sig_i = 0; sig_i < der_sigs.size(); ++sig_i) {
                 const auto& der_sig = der_sigs.at(sig_i);
@@ -1351,19 +1355,32 @@ namespace green {
                     }
                     continue;
                 }
-                if (j_strref(input, "address_type") == "p2tr") {
-                    // FIXME: TAPROOT: check p2tr signature
-                    continue;
-                }
                 GDK_RUNTIME_ASSERT(!der_sig.empty()); // Must have a signature
-                const auto sighash_flags = der_sig.back();
+                uint32_t sighash_flags;
+                uint32_t flags;
+                ec_sig_t sig;
+                std::vector<unsigned char> public_key;
+
+                if (is_p2tr) {
+                    const auto sig_len = der_sig.size();
+                    GDK_RUNTIME_ASSERT(sig_len == EC_SIGNATURE_LEN || sig_len == EC_SIGNATURE_LEN + 1);
+                    sighash_flags = sig_len == EC_SIGNATURE_LEN ? WALLY_SIGHASH_DEFAULT : der_sig.back();
+                    memcpy(&sig, der_sig.data(), EC_SIGNATURE_LEN);
+                    public_key = keys.at(sig_i).get_tweaked_xonly_key(is_liquid);
+                    flags = EC_FLAG_SCHNORR;
+                } else {
+                    sighash_flags = der_sig.back();
+                    constexpr bool has_sighash_byte = true;
+                    sig = ec_sig_from_der(der_sig, has_sighash_byte);
+                    const auto pk = keys.at(sig_i).get_public_key();
+                    public_key = { pk.begin(), pk.end() };
+                    flags = EC_FLAG_ECDSA;
+                }
                 if (for_rbf) {
                     input["user_sighash"] = sighash_flags;
                 }
                 const auto signature_hash = get_signature_hash(session, inputs, i, sighash_flags);
-                constexpr bool has_sighash_byte = true;
-                const auto sig = ec_sig_from_der(der_sig, has_sighash_byte);
-                GDK_RUNTIME_ASSERT(ec_sig_verify(keys.at(sig_i).get_public_key(), signature_hash, sig));
+                GDK_RUNTIME_ASSERT(ec_sig_verify(public_key, signature_hash, sig, flags));
             }
         }
     }
