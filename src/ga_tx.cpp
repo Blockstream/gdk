@@ -376,7 +376,10 @@ namespace green {
                 // Fetch them from the inputs and re-order them as required
                 std::map<uint32_t, nlohmann::json> tx_inputs_map;
                 for (const auto& input : prev_tx.at("inputs")) {
-                    GDK_RUNTIME_ASSERT(j_bool_or_false(input, "is_relevant"));
+                    if (!j_bool_or_false(input, "is_relevant")) {
+                        // FIXME: Allow RBF of mixed wallet/non-wallet input txs
+                        throw_user_error("Cannot RBF a transaction with non-wallet inputs");
+                    }
                     nlohmann::json utxo(input);
                     // Note pt_idx on endpoints is the index within the tx, not the previous tx!
                     const uint32_t i = input.at("pt_idx");
