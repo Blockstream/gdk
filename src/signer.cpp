@@ -57,20 +57,17 @@ namespace green {
             }
 
             const auto slip132_pubkeys = j_array(credentials, "slip132_extended_pubkeys");
-            if (auto descriptors = j_array(credentials, "core_descriptors"); descriptors) {
+            const auto descriptors = j_array(credentials, "core_descriptors");
+            if (descriptors && !slip132_pubkeys && !descriptors->empty()) {
                 // Descriptor watch-only login
-                if (slip132_pubkeys) {
-                    throw user_error("cannot use slip132_extended_pubkeys and core_descriptors");
-                }
                 return { { "core_descriptors", std::move(*descriptors) } };
             }
-
-            if (slip132_pubkeys) {
+            if (slip132_pubkeys && !descriptors && !slip132_pubkeys->empty()) {
                 // Descriptor watch-only login
                 return { { "slip132_extended_pubkeys", std::move(*slip132_pubkeys) } };
             }
-
-            throw user_error("Invalid credentials");
+            // Unknown or invalid credentials
+            throw_user_error("Invalid credentials"); // FIXME: res::
         }
 
         static const nlohmann::json GREEN_DEVICE_JSON{ { "device_type", "green-backend" }, { "supports_low_r", true },

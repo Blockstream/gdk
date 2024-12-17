@@ -722,7 +722,7 @@ namespace green {
             blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(raw_data.substr(pubkey_hex_size, blob_key.size() * 2));
         } catch (const std::exception& e) {
             GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
-            throw user_error("Invalid credentials");
+            throw_user_error("Invalid credentials"); // FIXME: res::
         }
         m_blob->set_key(blob_key);
         return public_key;
