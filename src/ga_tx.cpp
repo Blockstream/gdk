@@ -226,12 +226,9 @@ namespace green {
 
             for (auto& output : result.at("previous_transaction").at("outputs")) {
                 if (j_str_is_empty(output, "address_type")) {
-                    // Remove wallet keys from non-wallet outputs
-                    // FIXME: Should be removed from the transaction itself before
-                    // it is returned from get_transactions
-                    for (const auto& key : { "branch", "subaccount", "pointer", "subtype" }) {
-                        output.erase(key);
-                    }
+                    // FIXME: These keys should be removed from the transaction
+                    // itself before it is returned from get_transactions
+                    utxo_remove_wallet_keys(output);
                 } else if (!is_electrum) {
                     // Add the branch which is missing from transaction outputs
                     // FIXME: Should be added to get_transactions results or replaced
