@@ -293,12 +293,15 @@ one or more inputs of a transaction.
        "signatures": [ "30440220580c7ef934d5d8f31c1c592fbf0e5bc3267b76995206f0eb61616eb2f8f6e1c4022022e3feaf88469328bdaff3990a6069bda4e320e46e0531ba1e403cd50a9252e901" ]
      }
 
-:signatures: The ECDSA signatures corresponding to each input in the
+:signatures: The ECDSA or Schnorr signatures corresponding to each input in the
     request, or an empty string if ``"skip_signing"`` is ``true`` for the
-    input. Signatures must be returned as hex-encoded DER format, with the
+    input. ECDSA signatures must be returned as hex-encoded DER format, with the
     sighash byte, and must be in low-S form. Additionally, if
     the :ref:`hw-device` for the signer indicates low-R support, and
-    Anti-Exfil is not being used, the signatures must also be low-R.
+    Anti-Exfil is not being used, the signatures must also be low-R. Schnorr
+    signatures must be returned as a 64 (for SIGHASH_DEFAULT) or 65 (for all
+    other sighash types) byte serialized Schnorr signature as would appear
+    on-chain, hex encoded.
 
 
 .. _anti-exfil-request:
@@ -321,7 +324,10 @@ the following additional data will be present in the request:
 :ae_host_commitment: The Anti-Exfil commitment to ``ae_host_entropy``, hex encoded.
 
 For transaction signing, the above elements will be present in each element
-in the ``"transaction_inputs"`` array of inputs to be signed.
+in the ``"transaction_inputs"`` array of inputs to be signed. If the elements
+are empty for a given input, this indicates that the input type does not
+support Anti-Exfil signing (for example, Taproot p2tr inputs), and the input
+should be signed without without using the Anti-Exfil protocol.
 
 
 .. _anti-exfil-reply:
@@ -350,4 +356,5 @@ returned in an array as follows:
      }
 
 
-Inputs that were not signed should have an empty string as their commitment array element.
+Inputs that were not signed, or input types that do not support the Anti-Exfil
+protocol should have an empty string as their commitment array element.

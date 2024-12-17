@@ -209,6 +209,7 @@ Describes the capabilities of an external signing device.
          "supports_external_blinding": false,
          "supports_liquid": 1,
          "supports_low_r": false,
+         "supports_p2tr": false,
       }
    }
 
@@ -222,6 +223,7 @@ Describes the capabilities of an external signing device.
 :supports_external_blinding: True if the device supports blinding and signing Liquid transactions
     with outputs that are already blinded from another wallet (e.g. 2-step swaps).
 :supports_ae_protocol: See "ae_protocol_support_level" enum  in the gdk source for details.
+:supports_p2tr: True if the device can sign Bitcoin BIP-341 taproot inputs.
 
 The default for any value not provided is false or 0.
 
@@ -384,7 +386,7 @@ as the array elements of `GA_get_subaccounts`.
 :required_ca: For ``"2of2_no_recovery"`` subaccounts, the number of confidential addresses
     that the user must upload to the server before transacting.
 :type: For multisig subaccounts, one of ``"2of2"``, ``"2of3"`` or ``"2of2_no_recovery"``.
-    For singlesig subaccounts, one of ``"p2pkh"``, ``"p2wpkh"`` or ``"p2sh-p2wpkh"``.
+    For singlesig subaccounts, one of ``"p2pkh"``, ``"p2wpkh"``, ``"p2sh-p2wpkh"`` or ``"p2tr"``.
 :bip44_discovered: Singlesig only. Whether or not this subaccount contains at least one transaction.
 :user_path: The BIP32 path for this subaccount.
 :core_descriptors: Singlesig only. The Bitcoin Core compatible output descriptors.
@@ -492,7 +494,8 @@ Describes a transaction input in :ref:`tx-list`.
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
 :addressee: Optional, multisig only. For historical social payments, the account name sent from.
 :address_type: For user wallet addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
-    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"``, ``"p2tr"`` (singlesig), indicating
+    the type of address.
 :is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
 :is_output: Always false. Deprecated, will be removed in a future release.
 :is_relevant: A boolean indicating whether the input relates to the subaccount the
@@ -535,7 +538,8 @@ Describes a transaction output in :ref:`tx-list`.
 
 :address: For user wallet addresses, the wallet address in base58, bech32 or blech32 encoding.
 :address_type: For user wallet output addresses, One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
-    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"``, ``"p2tr"`` (singlesig), indicating
+    the type of address.
 :is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
 :is_output: Always true. Deprecated, will be removed in a future release.
 :is_relevant: A boolean indicating whether the output relates to the subaccount the
@@ -1169,7 +1173,8 @@ Receive address details JSON
 
 :address: The wallet address in base58, bech32 or blech32 encoding.
 :address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
-    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"``, ``"p2tr"`` (singlesig), indicating
+    the type of address.
 :branch: Always ``1``, used in the address derivation path for subaccounts.
 :pointer: The address number/final number in the address derivation path.
 :script: The locking script of the address.
@@ -1263,8 +1268,8 @@ or which unspent outputs to include in the balance returned by `GA_get_balance`.
 :subaccount: The subaccount to fetch unspent outputs for.
 :num_confs: Pass ``0`` for unconfirmed UTXOs or ``1`` for confirmed.
 :address_type: If given, one of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
-    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the
-    type of addresses to return. Defaults to blank (no address filtering).
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"``, ``"p2tr"`` (singlesig),
+    indicating the type of address to return. Defaults to blank (no address filtering).
 :all_coins: Pass ``true`` to include UTXOs with status ``frozen``. Defaults to ``false``.
 :expired_at: Optional. If given, only UTXOs where two factor authentication expires
     by the given block are returned.
@@ -1319,7 +1324,8 @@ Contains unspent outputs for the wallet as requested by `GA_get_unspent_outputs`
 :block_height: The height of the block where the transaction is included.
                Is 0 if the transaction is unconfirmed.
 :address_type: One of ``"csv"``, ``"p2sh"``, ``"p2wsh"`` (multisig),
-    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"`` (singlesig), indicating the type of address.
+    or ``"p2pkh"``, ``"p2sh-p2wpkh"``, ``"p2wpkh"``, ``"p2tr"`` (singlesig), indicating
+    the type of address.
 :is_internal: Whether or not the user key belongs to the internal chain. Always false for multisig.
 :pointer: The user key number/final number in the derivation path.
 :subaccount: The subaccount this output belongs to.
