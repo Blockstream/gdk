@@ -1028,6 +1028,13 @@ namespace green {
         return j_str_is_empty(utxo, "private_key") && !j_str_is_empty(utxo, "address_type");
     }
 
+    void utxo_remove_wallet_keys(nlohmann::json& utxo)
+    {
+        for (const auto& key : { "branch", "subaccount", "pointer", "subtype" }) {
+            j_erase(utxo, key);
+        }
+    }
+
     std::set<uint32_t> get_tx_subaccounts(const nlohmann::json& details)
     {
         std::set<uint32_t> ret;
