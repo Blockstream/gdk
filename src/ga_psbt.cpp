@@ -159,6 +159,10 @@ namespace green {
             const auto is_internal = j_bool_or_false(utxo, "is_internal");
             bool is_expired_csv = false;
 
+            if (!is_wallet_utxo(utxo)) {
+                return std::vector<xpub_hdkey>();
+            }
+
             if (!is_electrum) {
                 if (psbt_input && addr_type == address_type::csv && tx_version >= WALLY_TX_VERSION_2) {
                     const auto expiry_height = j_uint32_or_zero(utxo, "expiry_height");
@@ -468,15 +472,15 @@ namespace green {
             const std::string txhash_hex = j_strref(utxo, "txhash"); // Note as-value
             const auto vout = psbt_input.index;
 
-            bool belongs_to_wallet = false;
+            bool have_utxo = false; // Whether a UTXO was passed in for this input
             if (utxos.is_array()) {
                 // utxos in a flat array (deprecated)
-                belongs_to_wallet = take_matching_utxo(utxos, txhash_hex, vout, utxo);
+                have_utxo = take_matching_utxo(utxos, txhash_hex, vout, utxo);
             } else {
                 // utxos in the standard format "{ asset: [utxo, utxo. ,,,] }"
                 for (auto& it : utxos.items()) {
-                    belongs_to_wallet = take_matching_utxo(it.value(), txhash_hex, vout, utxo);
-                    if (belongs_to_wallet) {
+                    have_utxo = take_matching_utxo(it.value(), txhash_hex, vout, utxo);
+                    if (have_utxo) {
                         break;
                     }
                 }
@@ -486,8 +490,7 @@ namespace green {
                 // Add a witness UTXO if we know this input is segwit.
                 // Add a full UTXO for Bitcoin txs (to mitigate fee attacks), or
                 // if we havent added a witness utxo.
-                const bool add_witness_utxo
-                    = belongs_to_wallet && address_type_is_segwit(j_strref(utxo, "address_type"));
+                const bool add_witness_utxo = have_utxo && address_type_is_segwit(j_strref(utxo, "address_type"));
                 const bool add_full_utxo = !m_is_liquid || !add_witness_utxo;
                 add_input_utxo(session, m_psbt.get(), i, txhash_hex, vout, add_full_utxo, add_witness_utxo);
             }
@@ -495,7 +498,7 @@ namespace green {
             GDK_VERIFY(wally_psbt_get_input_best_utxo(m_psbt.get(), i, &txin_utxo));
             GDK_RUNTIME_ASSERT(txin_utxo);
 
-            if (belongs_to_wallet) {
+            if (have_utxo && is_wallet_utxo(utxo)) {
                 // Wallet UTXO
                 wallet_assets.insert(j_assetref(m_is_liquid, utxo));
                 if (psbt_input.sighash && psbt_input.sighash != WALLY_SIGHASH_ALL) {
