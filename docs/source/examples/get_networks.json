@@ -15,12 +15,14 @@
       "electrum-localtest",
       "electrum-localtest-liquid",
       "electrum-mainnet",
+      "electrum-signet",
       "electrum-testnet",
       "electrum-testnet-liquid",
       "localtest",
       "localtest-liquid"
     ],
     "electrum-liquid": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/address/",
       "address_explorer_url": "https://blockstream.info/liquid/address/",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion",
       "asset_registry_url": "https://assets.blockstream.info",
@@ -32,12 +34,13 @@
       "blob_server_url": "",
       "csv_buckets": [],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:195",
+      "electrum_onion_url": "liqm3aeuthw4eacn2gssv4qg4zfhmy24rmtghp3vujintldu7jaxqyid.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:995",
+      "electrum_url": "elements-mainnet.blockstream.info:50002",
       "liquid": true,
       "mainnet": true,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Liquid (Electrum)",
       "network": "electrum-liquid",
       "p2pkh_version": 57,
@@ -54,6 +57,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/tx/",
       "tx_explorer_url": "https://blockstream.info/liquid/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -63,6 +67,7 @@
       "wamp_url": ""
     },
     "electrum-localtest": {
+      "address_explorer_onion_url": "",
       "address_explorer_url": "http://127.0.0.1:8080/address/",
       "bech32_prefix": "bcrt",
       "bip21_prefix": "bitcoin",
@@ -76,6 +81,7 @@
       "liquid": false,
       "mainnet": false,
       "max_reorg_blocks": 1008,
+      "min_fee_rate": null,
       "name": "Localtest (Electrum)",
       "network": "electrum-localtest",
       "p2pkh_version": 111,
@@ -91,6 +97,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "",
       "tx_explorer_url": "http://127.0.0.1:8080/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -100,6 +107,7 @@
       "wamp_url": ""
     },
     "electrum-localtest-liquid": {
+      "address_explorer_onion_url": "",
       "address_explorer_url": "",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion",
       "asset_registry_url": "https://assets.blockstream.info",
@@ -117,6 +125,7 @@
       "liquid": true,
       "mainnet": false,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Localtest Liquid (Electrum)",
       "network": "electrum-localtest-liquid",
       "p2pkh_version": 235,
@@ -133,6 +142,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "",
       "tx_explorer_url": "",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -142,6 +152,7 @@
       "wamp_url": ""
     },
     "electrum-mainnet": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/address/",
       "address_explorer_url": "https://blockstream.info/address/",
       "bech32_prefix": "bc",
       "bip21_prefix": "bitcoin",
@@ -149,12 +160,13 @@
       "blob_server_url": "",
       "csv_buckets": [],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110",
+      "electrum_onion_url": "btcmxqzlrigojf2sdp6ekwjibucdqifpw34yidjez3x7ecdtbkuzavid.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:700",
+      "electrum_url": "bitcoin-mainnet.blockstream.info:50002",
       "liquid": false,
       "mainnet": true,
       "max_reorg_blocks": 144,
+      "min_fee_rate": null,
       "name": "Bitcoin (Electrum)",
       "network": "electrum-mainnet",
       "p2pkh_version": 0,
@@ -170,6 +182,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/",
       "tx_explorer_url": "https://blockstream.info/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -178,7 +191,48 @@
       "wamp_onion_url": "",
       "wamp_url": ""
     },
+    "electrum-signet": {
+      "address_explorer_onion_url": "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/signet/address/",
+      "address_explorer_url": "https://mempool.space/signet/address/",
+      "bech32_prefix": "tb",
+      "bip21_prefix": "bitcoin",
+      "blob_server_onion_url": "",
+      "blob_server_url": "",
+      "csv_buckets": [],
+      "development": false,
+      "electrum_onion_url": "mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion:60602",
+      "electrum_tls": true,
+      "electrum_url": "mempool.space:60602",
+      "liquid": false,
+      "mainnet": false,
+      "max_reorg_blocks": 1008,
+      "min_fee_rate": null,
+      "name": "Signet (Electrum)",
+      "network": "electrum-signet",
+      "p2pkh_version": 111,
+      "p2sh_version": 196,
+      "pin_server_onion_url": "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion",
+      "pin_server_public_key": "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547",
+      "pin_server_url": "https://jadepin.blockstream.com",
+      "price_onion_url": "http://greent5yfxruca52pkqjtgo2qdxijscqlastnv3jwzpmavvffdldm2yd.onion/prices",
+      "price_url": "https://green-bitcoin-testnet.blockstream.com/prices",
+      "server_type": "electrum",
+      "service_chain_code": "",
+      "service_pubkey": "",
+      "spv_enabled": false,
+      "spv_multi": false,
+      "spv_servers": [],
+      "tx_explorer_onion_url": "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/signet/tx/",
+      "tx_explorer_url": "https://mempool.space/signet/tx/",
+      "wamp_cert_pins": [],
+      "wamp_cert_roots": [
+        "default"
+      ],
+      "wamp_onion_url": "",
+      "wamp_url": ""
+    },
     "electrum-testnet": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/address/",
       "address_explorer_url": "https://blockstream.info/testnet/address/",
       "bech32_prefix": "tb",
       "bip21_prefix": "bitcoin",
@@ -186,12 +240,13 @@
       "blob_server_url": "",
       "csv_buckets": [],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
+      "electrum_onion_url": "btctxun5igzd4bv7t42ayifqsfugkfevfdly2543ddadl2634s2ortyd.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:993",
+      "electrum_url": "bitcoin-testnet.blockstream.info:50002",
       "liquid": false,
       "mainnet": false,
       "max_reorg_blocks": 1008,
+      "min_fee_rate": null,
       "name": "Testnet (Electrum)",
       "network": "electrum-testnet",
       "p2pkh_version": 111,
@@ -207,6 +262,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/tx/",
       "tx_explorer_url": "https://blockstream.info/testnet/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -216,6 +272,7 @@
       "wamp_url": ""
     },
     "electrum-testnet-liquid": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/address/",
       "address_explorer_url": "https://blockstream.info/liquidtestnet/address/",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/",
       "asset_registry_url": "https://assets-testnet.blockstream.info/",
@@ -227,12 +284,13 @@
       "blob_server_url": "",
       "csv_buckets": [],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:587",
+      "electrum_onion_url": "liqtzdv3soz7onazmbqzvzbrcgz73bdqlcuhbqlkucjj7i6irbdmoryd.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:465",
+      "electrum_url": "elements-testnet.blockstream.info:50002",
       "liquid": true,
       "mainnet": false,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Testnet Liquid (Electrum)",
       "network": "electrum-testnet-liquid",
       "p2pkh_version": 36,
@@ -249,6 +307,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/tx/",
       "tx_explorer_url": "https://blockstream.info/liquidtestnet/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -258,6 +317,7 @@
       "wamp_url": ""
     },
     "liquid": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/address/",
       "address_explorer_url": "https://blockstream.info/liquid/address/",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion",
       "asset_registry_url": "https://assets.blockstream.info",
@@ -271,12 +331,13 @@
         65535
       ],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:195",
+      "electrum_onion_url": "liqm3aeuthw4eacn2gssv4qg4zfhmy24rmtghp3vujintldu7jaxqyid.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:995",
+      "electrum_url": "elements-mainnet.blockstream.info:50002",
       "liquid": true,
       "mainnet": true,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Liquid",
       "network": "liquid",
       "p2pkh_version": 57,
@@ -293,6 +354,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/tx/",
       "tx_explorer_url": "https://blockstream.info/liquid/tx/",
       "wamp_cert_pins": [
         "default"
@@ -304,6 +366,7 @@
       "wamp_url": "wss://green-liquid-mainnet.blockstream.com/v2/ws"
     },
     "localtest": {
+      "address_explorer_onion_url": "",
       "address_explorer_url": "",
       "bech32_prefix": "bcrt",
       "bip21_prefix": "bitcoin",
@@ -322,6 +385,7 @@
       "liquid": false,
       "mainnet": false,
       "max_reorg_blocks": 1008,
+      "min_fee_rate": null,
       "name": "Localtest",
       "network": "localtest",
       "p2pkh_version": 111,
@@ -337,6 +401,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "",
       "tx_explorer_url": "",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -346,6 +411,7 @@
       "wamp_url": "ws://localhost:8080/v2/ws"
     },
     "localtest-liquid": {
+      "address_explorer_onion_url": "",
       "address_explorer_url": "",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion",
       "asset_registry_url": "https://assets.blockstream.info",
@@ -367,6 +433,7 @@
       "liquid": true,
       "mainnet": false,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Localtest Liquid",
       "network": "localtest-liquid",
       "p2pkh_version": 235,
@@ -383,6 +450,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "",
       "tx_explorer_url": "",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -392,6 +460,7 @@
       "wamp_url": "ws://localhost:8080/v2/ws"
     },
     "mainnet": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/address/",
       "address_explorer_url": "https://blockstream.info/address/",
       "bech32_prefix": "bc",
       "bip21_prefix": "bitcoin",
@@ -403,12 +472,13 @@
         65535
       ],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110",
+      "electrum_onion_url": "btcmxqzlrigojf2sdp6ekwjibucdqifpw34yidjez3x7ecdtbkuzavid.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:700",
+      "electrum_url": "bitcoin-mainnet.blockstream.info:50002",
       "liquid": false,
       "mainnet": true,
       "max_reorg_blocks": 144,
+      "min_fee_rate": null,
       "name": "Bitcoin",
       "network": "mainnet",
       "p2pkh_version": 0,
@@ -424,6 +494,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/",
       "tx_explorer_url": "https://blockstream.info/tx/",
       "wamp_cert_pins": [
         "default"
@@ -435,6 +506,7 @@
       "wamp_url": "wss://green-bitcoin-mainnet.blockstream.com/v2/ws"
     },
     "testnet": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/address/",
       "address_explorer_url": "https://blockstream.info/testnet/address/",
       "bech32_prefix": "tb",
       "bip21_prefix": "bitcoin",
@@ -446,12 +518,13 @@
         51840
       ],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
+      "electrum_onion_url": "btctxun5igzd4bv7t42ayifqsfugkfevfdly2543ddadl2634s2ortyd.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:993",
+      "electrum_url": "bitcoin-testnet.blockstream.info:50002",
       "liquid": false,
       "mainnet": false,
       "max_reorg_blocks": 1008,
+      "min_fee_rate": null,
       "name": "Testnet",
       "network": "testnet",
       "p2pkh_version": 111,
@@ -467,6 +540,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/tx/",
       "tx_explorer_url": "https://blockstream.info/testnet/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
@@ -476,6 +550,7 @@
       "wamp_url": "wss://green-bitcoin-testnet.blockstream.com/v2/ws"
     },
     "testnet-liquid": {
+      "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/address/",
       "address_explorer_url": "https://esplora.blockstream.com/liquidtestnet/address/",
       "asset_registry_onion_url": "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/",
       "asset_registry_url": "https://assets-testnet.blockstream.info/",
@@ -490,12 +565,13 @@
         65535
       ],
       "development": false,
-      "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:587",
+      "electrum_onion_url": "liqtzdv3soz7onazmbqzvzbrcgz73bdqlcuhbqlkucjj7i6irbdmoryd.onion:50001",
       "electrum_tls": true,
-      "electrum_url": "blockstream.info:465",
+      "electrum_url": "elements-testnet.blockstream.info:50002",
       "liquid": true,
       "mainnet": false,
       "max_reorg_blocks": 2,
+      "min_fee_rate": null,
       "name": "Testnet Liquid",
       "network": "testnet-liquid",
       "p2pkh_version": 36,
@@ -512,6 +588,7 @@
       "spv_enabled": false,
       "spv_multi": false,
       "spv_servers": [],
+      "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/tx/",
       "tx_explorer_url": "https://esplora.blockstream.com/liquidtestnet/tx/",
       "wamp_cert_pins": [],
       "wamp_cert_roots": [
