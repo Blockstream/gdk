@@ -645,6 +645,7 @@ namespace green {
 
     void sign_transaction_call::initialize()
     {
+        const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
         bool have_checked_full_session = false;
 
@@ -660,7 +661,6 @@ namespace green {
         // Ensure we have an empty error element for the happy path
         m_details["error"] = std::string();
 
-        const bool is_liquid = m_net_params.is_liquid();
         const auto signer = get_signer();
         const bool use_ae_protocol = signer->use_ae_protocol();
         const bool is_local_signer = !signer->is_remote();
@@ -673,10 +673,11 @@ namespace green {
         inputs = std::move(m_details["transaction_inputs"]);
         request["transaction_outputs"] = std::move(m_details["transaction_outputs"]);
         request["use_ae_protocol"] = use_ae_protocol;
+
         const bool is_partial = j_bool_or_false(m_details, "is_partial");
-        const bool is_partial_multisig = is_partial && !is_electrum;
-        if (is_partial_multisig) {
-            // Multisig partial signing. Ensure all inputs to be signed are segwit
+        const bool is_partial_liquid_ms = is_partial && is_liquid && !is_electrum;
+        if (is_partial_liquid_ms && m_details.contains("blinding_nonces")) {
+            // AMP partial signing. Ensure all inputs to be signed are segwit
             for (const auto& utxo : inputs) {
                 const auto addr_type = j_str_or_empty(utxo, "address_type");
                 if (!addr_type.empty() && !address_type_is_segwit(addr_type)) {
@@ -2095,7 +2096,9 @@ namespace green {
             return m_state;
         }
 
-        if (!m_net_params.is_liquid()) {
+        const bool is_liquid = m_net_params.is_liquid();
+        const bool is_electrum = m_net_params.is_electrum();
+        if (!is_liquid) {
             // The api requires the request and action data to differ, which is non-optimal
             j_rename(m_twofactor_data, "fee", m_type + "_raw_tx_fee");
             j_rename(m_twofactor_data, "change_idx", m_type + "_raw_tx_change_idx");
@@ -2104,16 +2107,14 @@ namespace green {
             j_rename(m_twofactor_data, "amount", key);
         }
 
-        // TODO: Add the recipient to twofactor_data for more server verification?
-
-        const bool is_partial = m_details.value("is_partial", false);
         if (m_type == "send") {
             m_result = m_session->send_transaction(m_details, m_twofactor_data);
         } else {
             std::vector<std::vector<unsigned char>> old_scripts;
-            const bool is_partial_multisig = is_partial && !m_net_params.is_electrum();
-            if (is_partial_multisig) {
-                // Multisig partial signing. Ensure all inputs to be signed are segwit
+            const bool is_partial = j_bool_or_false(m_details, "is_partial");
+            const bool is_partial_liquid_ms = is_partial && is_liquid && !is_electrum;
+            if (is_partial_liquid_ms && m_details.contains("blinding_nonces")) {
+                // AMP partial signing. Ensure all inputs to be signed are segwit
                 auto& inputs = m_details.at("transaction_inputs");
                 for (const auto& utxo : inputs) {
                     const auto addr_type = j_str_or_empty(utxo, "address_type");
@@ -2123,7 +2124,7 @@ namespace green {
                 }
                 // Replace tx input scriptSigs with redeem scripts so the Green
                 // backend can ensure they are segwit for partial signing
-                Tx tx(j_strref(m_details, "transaction"), m_net_params.is_liquid());
+                Tx tx(j_strref(m_details, "transaction"), is_liquid);
                 size_t i = 0;
                 bool have_redeem_scripts = false;
                 for (auto& utxo : inputs) {
