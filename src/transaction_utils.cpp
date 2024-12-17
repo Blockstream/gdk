@@ -544,7 +544,7 @@ namespace green {
                     witness_stack_add(witness, { h2b(item_hex) });
                 }
             }
-        } else {
+        } else if (is_wallet_utxo(utxo)) {
             utxo_add_paths(session, utxo);
 
             // Populate the prevout script if missing so signing can use it later
@@ -564,7 +564,12 @@ namespace green {
             }
 
             std::tie(scriptsig, witness) = get_scriptsig_and_witness(session, utxo, {}, {});
+        } else {
+            // Must be an unsigned sweep UTXO
+            GDK_RUNTIME_ASSERT(utxo.contains("private_key"));
+            std::tie(scriptsig, witness) = get_scriptsig_and_witness(session, utxo, {}, {});
         }
+
         // Add the input to the tx
         tx.add_input(txid, vout, sequence, scriptsig, witness.get());
         if (add_to_tx_inputs) {
