@@ -6,6 +6,7 @@
 .. code-block:: json
 
   {
+    "address_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/address/",
     "address_explorer_url": "https://blockstream.info/address/",
     "bech32_prefix": "bc",
     "bip21_prefix": "bitcoin",
@@ -17,12 +18,13 @@
       65535
     ],
     "development": false,
-    "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:110",
+    "electrum_onion_url": "btcmxqzlrigojf2sdp6ekwjibucdqifpw34yidjez3x7ecdtbkuzavid.onion:50001",
     "electrum_tls": true,
-    "electrum_url": "blockstream.info:700",
+    "electrum_url": "bitcoin-mainnet.blockstream.info:50002",
     "liquid": false,
     "mainnet": true,
     "max_reorg_blocks": 144,
+    "min_fee_rate": null,
     "name": "Bitcoin",
     "network": "mainnet",
     "p2pkh_version": 0,
@@ -38,6 +40,7 @@
     "spv_enabled": false,
     "spv_multi": false,
     "spv_servers": [],
+    "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/",
     "tx_explorer_url": "https://blockstream.info/tx/",
     "wamp_cert_pins": [
       "default"
