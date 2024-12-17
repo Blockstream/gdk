@@ -2106,9 +2106,6 @@ namespace green {
         txs.erase(std::remove_if(txs.begin(), txs.end(), filter), txs.end());
 
         for (auto& tx : txs) {
-            tx.erase("created_at"); // TODO: Remove once the server stops returning this
-            tx.erase("transaction_size");
-
             // Compute tx vsize from weight
             const auto vsize = Tx::vsize_from_weight(j_uint32ref(tx, "weight"));
             j_rename(tx, "weight", "transaction_weight");
