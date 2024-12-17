@@ -2098,6 +2098,7 @@ namespace green {
 
         const bool is_liquid = m_net_params.is_liquid();
         const bool is_electrum = m_net_params.is_electrum();
+
         if (!is_liquid) {
             // The api requires the request and action data to differ, which is non-optimal
             j_rename(m_twofactor_data, "fee", m_type + "_raw_tx_fee");
@@ -2109,43 +2110,48 @@ namespace green {
 
         if (m_type == "send") {
             m_result = m_session->send_transaction(m_details, m_twofactor_data);
-        } else {
-            std::vector<std::vector<unsigned char>> old_scripts;
-            const bool is_partial = j_bool_or_false(m_details, "is_partial");
-            const bool is_partial_liquid_ms = is_partial && is_liquid && !is_electrum;
-            if (is_partial_liquid_ms && m_details.contains("blinding_nonces")) {
-                // AMP partial signing. Ensure all inputs to be signed are segwit
-                auto& inputs = m_details.at("transaction_inputs");
-                for (const auto& utxo : inputs) {
-                    const auto addr_type = j_str_or_empty(utxo, "address_type");
-                    if (!addr_type.empty() && !address_type_is_segwit(addr_type)) {
-                        throw user_error("Non-segwit utxos cannnot be used with partial signing");
-                    }
-                }
-                // Replace tx input scriptSigs with redeem scripts so the Green
-                // backend can ensure they are segwit for partial signing
-                Tx tx(j_strref(m_details, "transaction"), is_liquid);
-                size_t i = 0;
-                bool have_redeem_scripts = false;
-                for (auto& utxo : inputs) {
-                    const auto& txin = tx.get()->inputs[i];
-                    if (utxo.contains("redeem_script")) {
-                        old_scripts.push_back({ txin.script, txin.script + txin.script_len });
-                        const auto redeem_script = j_bytesref(utxo, "redeem_script");
-                        tx.set_input_script(i, script_push_from_bytes(redeem_script));
-                        have_redeem_scripts = true;
-                    } else {
-                        old_scripts.push_back({});
-                    }
-                    ++i;
-                }
-                if (!have_redeem_scripts) {
-                    old_scripts.clear();
-                }
-                m_details["transaction"] = tx.to_hex();
-            }
-            m_result = m_session->service_sign_transaction(m_details, m_twofactor_data, old_scripts);
+            return state_type::done;
         }
+
+        // m_type == "sign": server sign the tx
+        // This is only called in this way internally for multisig sessions.
+        GDK_RUNTIME_ASSERT(!is_electrum);
+
+        std::vector<std::vector<unsigned char>> old_scripts;
+        const bool is_partial = j_bool_or_false(m_details, "is_partial");
+        const bool is_partial_liquid_ms = is_partial && is_liquid && !is_electrum;
+        if (is_partial_liquid_ms && m_details.contains("blinding_nonces")) {
+            // AMP partial signing. Ensure all inputs to be signed are segwit
+            auto& inputs = m_details.at("transaction_inputs");
+            for (const auto& utxo : inputs) {
+                const auto addr_type = j_str_or_empty(utxo, "address_type");
+                if (!addr_type.empty() && !address_type_is_segwit(addr_type)) {
+                    throw user_error("Non-segwit utxos cannnot be used with partial signing");
+                }
+            }
+            // Replace tx input scriptSigs with redeem scripts so the Green
+            // backend can ensure they are segwit for partial signing
+            Tx tx(j_strref(m_details, "transaction"), is_liquid);
+            size_t i = 0;
+            bool have_redeem_scripts = false;
+            for (auto& utxo : inputs) {
+                const auto& txin = tx.get()->inputs[i];
+                if (utxo.contains("redeem_script")) {
+                    old_scripts.push_back({ txin.script, txin.script + txin.script_len });
+                    const auto redeem_script = j_bytesref(utxo, "redeem_script");
+                    tx.set_input_script(i, script_push_from_bytes(redeem_script));
+                    have_redeem_scripts = true;
+                } else {
+                    old_scripts.push_back({});
+                }
+                ++i;
+            }
+            if (!have_redeem_scripts) {
+                old_scripts.clear();
+            }
+            m_details["transaction"] = tx.to_hex();
+        }
+        m_result = m_session->service_sign_transaction(m_details, m_twofactor_data, old_scripts);
         return state_type::done;
     }
 
