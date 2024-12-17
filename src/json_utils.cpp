@@ -5,6 +5,7 @@
 #include <type_traits>
 
 #include "amount.hpp"
+#include "assertion.hpp"
 #include "exception.hpp"
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
@@ -24,7 +25,11 @@ namespace {
     }
     [[noreturn]] static void throw_key_error(std::string_view key)
     {
-        throw ::green::user_error(std::string("key ") + std::string(key) + " not found");
+        green::throw_user_error(std::string("key ") + std::string(key) + " not found");
+    }
+    [[noreturn]] static void throw_type_error(std::string_view key, std::string_view typ)
+    {
+        green::throw_user_error(std::string("key ") + std::string(key) + std::string(" is not ") + std::string(typ));
     }
     static auto get_or_throw(const nlohmann::json& src, std::string_view key)
     {
@@ -34,13 +39,18 @@ namespace {
         }
         return it;
     }
-    template <typename T> static std::optional<T> get_optional(const nlohmann::json& src, std::string_view key)
+    template <typename T>
+    static std::optional<T> get_optional(const nlohmann::json& src, std::string_view key, std::string_view typ)
     {
         auto it = find(src, key);
         if (it == src.end()) {
             return {};
         }
-        return it->get<T>();
+        try {
+            return it->get<T>();
+        } catch (const std::exception& e) {
+            throw_type_error(key, typ);
+        }
     }
     template <typename T> static T get_or_default(const nlohmann::json& src, std::string_view key)
     {
@@ -56,7 +66,7 @@ namespace green {
             return nlohmann::json::parse(src);
         } catch (const std::exception&) {
             GDK_LOG(debug) << "exception parsing json input: " << src;
-            throw user_error("Invalid JSON");
+            throw_user_error("Invalid JSON");
         }
     }
 
@@ -90,7 +100,7 @@ namespace green {
 
     std::optional<std::string> j_str(const nlohmann::json& src, std::string_view key)
     {
-        return get_optional<std::string>(src, key);
+        return get_optional<std::string>(src, key, "a string");
     }
 
     std::string j_str_or_empty(const nlohmann::json& src, std::string_view key)
@@ -124,7 +134,7 @@ namespace green {
 
     std::optional<json_array_t> j_array(const nlohmann::json& src, std::string_view key)
     {
-        return get_optional<nlohmann::json::array_t>(src, key);
+        return get_optional<nlohmann::json::array_t>(src, key, "an array");
     }
 
     amount j_amountref(const nlohmann::json& src, std::string_view key)
@@ -134,7 +144,7 @@ namespace green {
 
     std::optional<amount> j_amount(const nlohmann::json& src, std::string_view key)
     {
-        auto value = get_optional<amount::value_type>(src, key);
+        auto value = get_optional<amount::value_type>(src, key, "an amount");
         if (!value.has_value()) {
             return {};
         }
@@ -153,19 +163,22 @@ namespace green {
         if (is_liquid) {
             if (is_empty || !validate_hex(asset_id_hex, 32)) {
                 // Must be a valid hex asset id
-                throw user_error(res::id_invalid_asset_id);
+                throw_user_error(res::id_invalid_asset_id);
             }
             return asset_id_hex;
         }
         if (!is_empty) {
-            throw user_error(res::id_assets_cannot_be_used_on_bitcoin);
+            throw_user_error(res::id_assets_cannot_be_used_on_bitcoin);
         }
         return "btc";
     }
 
     bool j_boolref(const nlohmann::json& src, std::string_view key) { return get_or_throw(src, key)->get<bool>(); }
 
-    std::optional<bool> j_bool(const nlohmann::json& src, std::string_view key) { return get_optional<bool>(src, key); }
+    std::optional<bool> j_bool(const nlohmann::json& src, std::string_view key)
+    {
+        return get_optional<bool>(src, key, "a boolean");
+    }
 
     bool j_bool_or_false(const nlohmann::json& src, std::string_view key) { return get_or_default<bool>(src, key); }
 
@@ -176,7 +189,7 @@ namespace green {
 
     std::optional<uint32_t> j_uint32(const nlohmann::json& src, std::string_view key)
     {
-        return get_optional<uint32_t>(src, key);
+        return get_optional<uint32_t>(src, key, "an unsigned integer");
     }
 
     uint32_t j_uint32_or_zero(const nlohmann::json& src, std::string_view key)
@@ -190,18 +203,18 @@ namespace green {
         const auto hex = j_str_or_empty(src, key);
         if (expected_size.has_value() && hex.size() != expected_size.value() * 2) {
             auto num = std::to_string(expected_size.value() * 2);
-            throw user_error(std::string("key ") + std::string(key) + " is not " + num + " hex chars");
+            throw_user_error(std::string("key ") + std::string(key) + " is not " + num + " hex chars");
         }
         if (hex.empty()) {
             if (!allow_empty) {
-                throw user_error(std::string("key ") + std::string(key) + " is empty hex");
+                throw_user_error(std::string("key ") + std::string(key) + " is empty hex");
             }
             return {};
         }
         try {
             return do_reverse ? h2b_rev(hex) : h2b(hex);
         } catch (const std::exception& e) {
-            throw user_error(std::string("key ") + std::string(key) + " is invalid hex");
+            throw_user_error(std::string("key ") + std::string(key) + " is invalid hex");
         }
     }
 
