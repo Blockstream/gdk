@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Changed bip21 schema for liquid testnet networks, from `liquidtestnet` to 
+  `liquidnetwork`.
+
 ## Release 0.74.1 - 24-12-13
 
 ### Added
