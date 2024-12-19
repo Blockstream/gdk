@@ -2207,11 +2207,18 @@ namespace green {
 
     auth_handler::state_type sign_message_call::call_impl()
     {
-        GDK_RUNTIME_ASSERT_MSG(m_net_params.is_electrum() && !m_net_params.is_liquid(), "Invalid network");
+        if (!m_net_params.is_electrum() || m_net_params.is_liquid()) {
+            throw_user_error("Invalid network");
+        }
         auto signer = get_signer();
 
         if (m_address_data.empty()) {
             // Get address data and request the xpub for signing
+            const auto& addr = j_strref(m_details, "address");
+            if (get_segwit_address_version(m_net_params, addr).value_or(0) != 0) {
+                // There is no signing standard for segwit v1+
+                throw_user_error("Unsupported address type");
+            }
             m_address_data = m_session->get_address_data(m_details);
             auto& paths = signal_hw_request(hw_request::get_xpubs)["paths"];
             paths.emplace_back(m_address_data.at("user_path"));
@@ -2264,7 +2271,7 @@ namespace green {
             verify_ae_message(m_twofactor_data, signing_pubkey, signer_commitment, compact_sig);
         }
 
-        m_result["signature"] = base64_from_bytes(recoverable_sig);
+        m_result = { { "signature", base64_from_bytes(recoverable_sig) }, { "error", std::string() } };
         return state_type::done;
     }
 

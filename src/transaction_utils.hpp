@@ -38,6 +38,8 @@ namespace green {
 
     uint32_t address_type_to_script_type(const std::string& addr_type);
 
+    std::optional<uint32_t> get_segwit_address_version(const network_parameters& net_params, const std::string& addr);
+
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey);
 
     std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo, bool verify_script = true);

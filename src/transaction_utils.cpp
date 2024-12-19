@@ -263,6 +263,19 @@ namespace green {
         return ga_p2sh_fortified_out;
     }
 
+    std::optional<uint32_t> get_segwit_address_version(const network_parameters& net_params, const std::string& addr)
+    {
+        std::optional<uint32_t> ret;
+        const auto family = net_params.bech32_prefix();
+        if (boost::istarts_with(addr, family)) {
+            size_t version;
+            if (wally_addr_segwit_get_version(addr.c_str(), family.c_str(), 0, &version) == WALLY_OK) {
+                ret = version;
+            }
+        }
+        return ret;
+    }
+
     std::string get_address_from_scriptpubkey(const network_parameters& net_params, byte_span_t scriptpubkey)
     {
         // TODO: Fix wally_scriptpubkey_to_address and use that
