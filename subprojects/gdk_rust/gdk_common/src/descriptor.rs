@@ -31,7 +31,7 @@ fn match_key_origin(v: &Vec<ChildNumber>, purpose: u32, coin_type: u32) -> Resul
 }
 
 /// Check that the xpub child number matches the bip32 account number
-fn check_xpub_consitency(
+fn check_xpub_consistency(
     script_type: ScriptType,
     xpub: Xpub,
     bip32_account: u32,
@@ -82,7 +82,7 @@ pub fn parse_single_sig_descriptor(
             if let DescriptorPublicKey::XPub(descriptorxkey) = wpkh.as_inner() {
                 if let Some((f, p)) = &descriptorxkey.origin {
                     let n = match_key_origin(&p.clone().into(), 49, coin_type)?;
-                    return check_xpub_consitency(
+                    return check_xpub_consistency(
                         ScriptType::P2shP2wpkh,
                         descriptorxkey.xkey,
                         n,
@@ -96,14 +96,14 @@ pub fn parse_single_sig_descriptor(
         if let DescriptorPublicKey::XPub(descriptorxkey) = wpkh.as_inner() {
             if let Some((f, p)) = &descriptorxkey.origin {
                 let n = match_key_origin(&p.clone().into(), 84, coin_type)?;
-                return check_xpub_consitency(ScriptType::P2wpkh, descriptorxkey.xkey, n, *f, mbk);
+                return check_xpub_consistency(ScriptType::P2wpkh, descriptorxkey.xkey, n, *f, mbk);
             }
         }
     } else if let Descriptor::Pkh(pkh) = desc {
         if let DescriptorPublicKey::XPub(descriptorxkey) = pkh.as_inner() {
             if let Some((f, p)) = &descriptorxkey.origin {
                 let n = match_key_origin(&p.clone().into(), 44, coin_type)?;
-                return check_xpub_consitency(ScriptType::P2pkh, descriptorxkey.xkey, n, *f, mbk);
+                return check_xpub_consistency(ScriptType::P2pkh, descriptorxkey.xkey, n, *f, mbk);
             }
         }
     } else if let Descriptor::Tr(tr) = desc {
@@ -111,7 +111,7 @@ pub fn parse_single_sig_descriptor(
             if tr.tap_tree().is_none() {
                 if let Some((f, p)) = &descriptorxkey.origin {
                     let n = match_key_origin(&p.clone().into(), 86, coin_type)?;
-                    return check_xpub_consitency(
+                    return check_xpub_consistency(
                         ScriptType::P2tr,
                         descriptorxkey.xkey,
                         n,
