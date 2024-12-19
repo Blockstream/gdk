@@ -3,13 +3,55 @@
 ## Release 0.75.0 - Unreleased
 
 ### Added
-- docs: explain how to use GA_convert_amount for Liquid assets.
+- Bitcoin(Singlesig): Add support for BIP-86 P2TR (Taproot) wallets.
+- HWW: Add a new device JSON key ``"supports_p2tr"`` to indicate P2TR inputs
+  can be signed by the device.
+- Liquid: Automatically enable fee discounting for Liquid testnet environments.
+  Mainnet will be enabled automatically in an upcoming gdk release.
 
 ### Changed
-- GA_convert_amount: fail if asset precision is not in the allowed range.
+
+- Multisig: The minium supported gdk version is now 0.68.0. However, we strongly
+  recommend all clients update to the latest released gdk version to ensure they
+  have all available security updates, bug fixes and new features.
+- Build: Update rust to 1.71.1, which is now the MSRV for building gdk.
+- Singlesig(Bitcoin): Outgoing wallet mempool transactions with invalid signatures
+  (as might be expected from a malicious Electrum server) are no longer silently
+  filtered. Attempting to bump an invalid transaction will raise an error as it
+  does in multisig. Otherwise, any underlying valid transaction will confirm at
+  some point and the invalid transaction will disappear.
+- Signing: Allow signing of transactions with mixed segwit and pre-segwit inputs
+  in all cases except for transactions involving AMP assets on Liquid.
+- GA_get_unspent_outputs_for_private_key: Do not include wallet keys such as
+  ``"subaccount"`` and ``"pointer"`` in the returned UTXOs (these were added
+  mistakenly in release 0.68.0).
+- Dependencies: Update rust dependencies, libwally.
+- JSON: Improve error messages for developers when JSON values are passed as
+  incorrect types (e.g. an array is expected but another type is given).
+- Build: Various code quality and build-related cleanups.
 
 ### Fixed
-- GA_convert_amount: allow converting from satoshi for assets and large amounts.
+
+- PSBT: Ensure updating PSBT values overwrites existing values in all cases.
+- PSBT: Do not attempt to add keypaths and other metadata for non-wallet inputs.
+- Transactions: Fixed some edge cases in signing and verifying transactions
+  containing non-wallet inputs.
+- Watch-only(Singlesig): Prevent watch-only login with an empty descriptor array.
+- GA_sign_message: Ensure an ``"error"`` element is always returned (empty if
+  the call succeeded).
+
+
+## Release 0.74.2 - 25-01-04
+
+### Added
+- Docs: Explain how to use GA_convert_amount for Liquid assets.
+
+### Changed
+- GA_convert_amount: Fail if asset precision is not in the allowed range.
+
+### Fixed
+- GA_convert_amount: Allow converting from satoshi for assets and large amounts.
+
 
 ## Release 0.74.1 - 24-12-13
 
