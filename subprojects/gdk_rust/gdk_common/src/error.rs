@@ -48,14 +48,8 @@ pub enum Error {
     #[error("Invalid input")]
     InputValidationFailed,
 
-    #[error("Invalid address")]
-    InvalidAddress,
-
     #[error("Invalid address type")]
     InvalidAddressType,
-
-    #[error("Invalid sighash")]
-    InvalidSigHash,
 
     #[error("Invalid SLIP132 version")]
     InvalidSlip132Version,
@@ -80,9 +74,6 @@ pub enum Error {
 
     #[error("Invalid credentials")]
     UnexpectedChildNumber,
-
-    #[error("Unsupported sighash")]
-    UnsupportedSigHash,
 
     #[error("Invalid credentials")]
     UnsupportedDescriptor,

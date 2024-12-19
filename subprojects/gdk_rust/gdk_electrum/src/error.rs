@@ -15,9 +15,6 @@ pub enum Error {
     #[error("could not parse SocketAddr `{0}`")]
     AddrParse(String),
 
-    #[error("`asset_id` cannot be empty in Liquid")]
-    AssetEmpty,
-
     #[error("Expected a {expected}")]
     AvailableIndexesBadResponse {
         expected: String,
@@ -63,34 +60,13 @@ pub enum Error {
     ElementsMiniscriptError(#[from] gdk_common::elements_miniscript::Error),
 
     #[error(transparent)]
-    ElementsPset(#[from] elements::pset::Error),
-
-    #[error("addressees cannot be empty")]
-    EmptyAddressees,
-
-    #[error(transparent)]
     Encryption(#[from] block_modes::BlockModeError),
-
-    #[error("fee rate is below the minimum of {0}sat/kb")]
-    FeeRateBelowMinimum(u64),
 
     #[error(transparent)]
     JSON(#[from] serde_json::error::Error),
 
     #[error(transparent)]
     SerdeCbor(#[from] serde_cbor::Error),
-
-    #[error("insufficient funds")]
-    InsufficientFunds,
-
-    #[error("invalid address")]
-    InvalidAddress,
-
-    #[error("invalid amount")]
-    InvalidAmount,
-
-    #[error("invalid asset id")]
-    InvalidAssetId,
 
     #[error("Invalid Electrum URL: {0}")]
     InvalidElectrumUrl(String),
@@ -100,15 +76,6 @@ pub enum Error {
 
     #[error(transparent)]
     InvalidKeyIvLength(#[from] block_modes::InvalidKeyIvLength),
-
-    #[error("invalid mnemonic")]
-    InvalidMnemonic,
-
-    #[error("invalid replacement request fields")]
-    InvalidReplacementRequest,
-
-    #[error("invalid sighash")]
-    InvalidSigHash,
 
     #[error("Sync interrupted because user doesn't want to sync")]
     UserDoesntWantToSync,
@@ -134,9 +101,6 @@ pub enum Error {
     #[error("Mutex is poisoned: {0}")]
     MutexPoisonError(String),
 
-    #[error("non confidential address")]
-    NonConfidentialAddress,
-
     #[error("Invalid proxy socket: {0}")]
     InvalidProxySocket(String),
 
@@ -146,9 +110,6 @@ pub enum Error {
         _ => "id_connection_failed",
     })]
     PinClient(#[from] gdk_pin_client::Error),
-
-    #[error(transparent)]
-    PsetBlindError(#[from] elements::pset::PsetBlindError),
 
     #[error("RW lock is poisoned: {0}")]
     RwLockPoisonError(String),
@@ -165,9 +126,6 @@ pub enum Error {
     #[error(transparent)]
     Send(#[from] std::sync::mpsc::SendError<()>),
 
-    #[error("sendall error")]
-    SendAll,
-
     #[error(transparent)]
     SliceConversionError(#[from] std::array::TryFromSliceError),
 
@@ -183,12 +141,6 @@ pub enum Error {
     #[error(transparent)]
     UnblindError(#[from] elements::UnblindError),
 
-    #[error("unknown call")]
-    UnknownCall,
-
-    #[error("unsupported sighash")]
-    UnsupportedSigHash,
-
     #[error(transparent)]
     UreqError(#[from] ureq::Error),
 
@@ -203,7 +155,7 @@ pub enum Error {
         in_session: bool,
     },
 
-    #[error("{0} do not exist")]
+    #[error("{0} does not exist")]
     FileNotExist(PathBuf),
 
     #[error("{0}")]
@@ -252,19 +204,8 @@ impl<T> From<PoisonError<MutexGuard<'_, T>>> for Error {
 impl Error {
     /// Convert the error to a GDK-compatible code.
     pub fn to_gdk_code(&self) -> String {
-        // Unhandled error codes:
-        // id_no_amount_specified
-        // id_invalid_replacement_fee_rate
-        // id_send_all_requires_a_single_output
-
         use super::Error::*;
         match *self {
-            InsufficientFunds => "id_insufficient_funds",
-            InvalidAddress => "id_invalid_address",
-            NonConfidentialAddress => "id_nonconfidential_addresses_not",
-            InvalidAmount => "id_invalid_amount",
-            InvalidAssetId => "id_invalid_asset_id",
-            FeeRateBelowMinimum(_) => "id_fee_rate_is_below_minimum",
             // An invalid pin attempt. Should trigger an increment to the
             // caller counter as after 3 consecutive wrong guesses the server
             // will delete the corresponding key. Other errors should leave
@@ -273,7 +214,6 @@ impl Error {
                 "id_invalid_pin"
             }
             PinClient(_) => "id_connection_failed",
-            EmptyAddressees => "id_no_recipients",
             _ => "id_unknown",
         }
         .to_string()
