@@ -78,13 +78,13 @@ pub enum Error {
     #[error("Mismatching xpub")]
     MismatchingXpub,
 
-    #[error("Unexpected child number")]
+    #[error("Invalid credentials")]
     UnexpectedChildNumber,
 
     #[error("Unsupported sighash")]
     UnsupportedSigHash,
 
-    #[error("Unsupported descriptor")]
+    #[error("Invalid credentials")]
     UnsupportedDescriptor,
 
     #[error(transparent)]
