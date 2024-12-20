@@ -882,10 +882,13 @@ Returned by `GA_sign_message`.
 .. code-block:: json
 
   {
+    "error", "",
     "signature": "..."
   }
 
-:message: The recoverable signature of the message encoded in base 64.
+:error: A text description of the error that occurred, if any. If this element
+    is not empty, the ``"signature"`` field will not be present.
+:signature: The recoverable signature of the message encoded in base 64.
 
 
 .. _estimates:
