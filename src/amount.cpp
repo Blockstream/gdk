@@ -108,7 +108,7 @@ namespace green {
 
         // Check upper limit for btc type (ie. non-asset) inputs
         // Note: an asset_info block indicating btc denomination would have failed key_count check above
-        if (asset_p == end_p) {
+        if (!have_asset_info) {
             if (satoshi > SATOSHI_MAX) {
                 throw user_error(res::id_amount_above_maximum_allowed);
             } else if (satoshi < -SATOSHI_MAX) {
