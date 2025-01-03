@@ -1711,6 +1711,34 @@ pricing details. For example:
     }
   }
 
+For Liquid it's possible to convert asset amounts using the asset precision.
+To do so, it's necessary to specify the ``"asset_info"`` field.
+
+It's possible to convert from the asset base unit, ``"satoshi"``:
+
+.. code-block:: json
+
+   {
+     "asset_info": {
+       "asset_id": "aa..aa",
+       "precision": 2,
+     },
+     "satoshi": 12345,
+   }
+
+Or from the asset string representation, using the ``"asset id"`` value
+specified in ``"asset_info"``.
+
+.. code-block:: json
+
+   {
+     "asset_info": {
+       "asset_id": "aa..aa",
+       "precision": 2,
+     },
+     "aa..aa": 123.45,
+   }
+
 .. _amount-data:
 
 Amount JSON
@@ -1729,12 +1757,16 @@ Amount JSON
     "sats": "2034469",
     "subaccount": 0,
     "ubtc": "20344.69"
-    "is_current": true
+    "is_current": true,
+    "aa..aa": "0.02034469",
   }
 
 :fiat_currency: Set to the users fiat currency if available, otherwise an empty string.
 :fiat_rate: Set to the users fiat exchange rate if available, otherwise ``null``.
 :is_current: ``true`` if the ``"fiat_currency"`` and ``"fiat_rate"`` members are current.
+:aa..aa: This field is only present if ``"asset_info"`` was passed. The key is the
+         ``"asset_id"`` in ``"asset_info"``, and the value is the string representation of
+         the asset amount according to the ``"precision"`` in ``"asset_info"``.
 
 
 .. _currencies:
