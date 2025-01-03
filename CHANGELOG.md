@@ -1,5 +1,16 @@
 # Changelog
 
+## Release 0.75.0 - Unreleased
+
+### Added
+- docs: explain how to use GA_convert_amount for Liquid assets.
+
+### Changed
+- GA_convert_amount: fail if asset precision is not in the allowed range.
+
+### Fixed
+- GA_convert_amount: allow converting from satoshi for assets and large amounts.
+
 ## Release 0.74.1 - 24-12-13
 
 ### Added
