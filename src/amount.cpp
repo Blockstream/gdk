@@ -43,6 +43,14 @@ namespace green {
 
     amount::value_type amount::get_max_satoshi() { return SATOSHI_MAX; }
 
+    // Returns true if "asset_id" is L-BTC for any network
+    static bool is_lbtc_asset_id(const std::string& asset_id)
+    {
+        return asset_id == "144c654344aa716d6f3abcc1ca90e5641e4e2a7f633bc09fe3baf64585819a49"
+            || asset_id == "6f0279e9ed041c3d710a9f57d0c02928416460c4b722ae3457a11eec381c526d"
+            || asset_id == "5ac9f65c0efcc4775e0baec4ec03abdde22473cd3cf33c0419ca290e0751b225";
+    }
+
     nlohmann::json amount::convert(
         const nlohmann::json& amount_json, const std::string& fiat_currency, const std::string& fiat_rate)
     {
@@ -112,7 +120,7 @@ namespace green {
 
         // Check upper limit for btc type (ie. non-asset) inputs
         // Note: an asset_info block indicating btc denomination would have failed key_count check above
-        if (!have_asset_info) {
+        if (!have_asset_info || is_lbtc_asset_id(asset_id)) {
             if (satoshi > SATOSHI_MAX) {
                 throw user_error(res::id_amount_above_maximum_allowed);
             } else if (satoshi < -SATOSHI_MAX) {
