@@ -66,6 +66,10 @@ namespace green {
             throw user_error(res::id_no_amount_specified);
         }
 
+        if (precision < 0 || precision > 8) {
+            throw user_error("Invalid precision");
+        }
+
         // If either the fiat rate or currency is not available, use any provided values
         // from the amount json instead and indicate that the conversion is out of date
         const std::string old_fiat_rate = amount_json.value("fiat_rate", std::string());
