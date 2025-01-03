@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.75.0 - Unreleased
+## Release 0.74.2 - 25-01-04
 
 ### Added
 - docs: explain how to use GA_convert_amount for Liquid assets.
