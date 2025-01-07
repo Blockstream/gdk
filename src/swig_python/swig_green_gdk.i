@@ -138,7 +138,7 @@ static void notification_handler(void* context_p, GA_json* details)
         goto end;
 
     /* Call the weak reference to get the handler (if available) */
-    handler = PyEval_CallObject(handler_ref, NULL);
+    handler = PyObject_CallObject(handler_ref, NULL);
     if (!handler)
         goto end;
 
@@ -148,7 +148,7 @@ static void notification_handler(void* context_p, GA_json* details)
         if (!args)
             goto end;
 
-        ret = PyEval_CallObject(handler, args);
+        ret = PyObject_CallObject(handler, args);
         Py_DecRef(args);
         if (ret)
             Py_DecRef(ret); /* Ignore any return value */
