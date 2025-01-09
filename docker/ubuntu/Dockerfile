@@ -1,7 +1,7 @@
 # Ubuntu image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-ubuntu-builder -f docker/ubuntu-arm64/Dockerfile
 #
-FROM ubuntu:20.04@sha256:3626dff0d616e8ee7065a9ac8c7117e904a4178725385910eeecd7f1872fc12d as base
+FROM ubuntu:20.04@sha256:3626dff0d616e8ee7065a9ac8c7117e904a4178725385910eeecd7f1872fc12d AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
@@ -20,7 +20,7 @@ ENV GDK_KEEP_DOWNLOADS=1
 RUN mkdir -p /prebuild/clang
 RUN ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
-FROM base as final
+FROM base AS final
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 

@@ -1,7 +1,7 @@
 # Manylinux (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t greenaddress/gdk-python-builder -f docker/python/Dockerfile
 #
-FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:f40d8d97b891cce332ec974b35f7e44c5e164da51ba89eff92a5a799ec2a0c21 as base
+FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:f40d8d97b891cce332ec974b35f7e44c5e164da51ba89eff92a5a799ec2a0c21 AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
@@ -16,9 +16,9 @@ FROM base AS builderlinux
 #wally absolutely wants a running python -- it doesn't really matter the version here
 RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
-FROM rust:1.71-bullseye as builderrust
+FROM rust:1.71-bullseye AS builderrust
 
-FROM base as final
+FROM base AS final
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 

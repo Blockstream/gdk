@@ -1,7 +1,7 @@
 # Android (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-android-build -f docker/android/Dockerfile
 #
-FROM debian:bookworm@sha256:e97ee92bf1e11a2de654e9f3da827d8dce32b54e0490ac83bfc65c8706568116 as base
+FROM debian:bookworm@sha256:e97ee92bf1e11a2de654e9f3da827d8dce32b54e0490ac83bfc65c8706568116 AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
@@ -22,12 +22,12 @@ RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/android-armeabi-v7
     ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/android-x86_64
 
 
-FROM rust:1.71-bullseye as builderrust
+FROM rust:1.71-bullseye AS builderrust
 RUN rustup component add rustfmt clippy llvm-tools-preview
 RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
 
-FROM base as final
+FROM base AS final
 # Remove copied/downloaded dependency sources
 RUN rm -rf ./tools ./downloads ./cmake ./docker
 

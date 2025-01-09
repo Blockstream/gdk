@@ -1,7 +1,7 @@
 # Ubuntu for arm64 image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-ubuntu-builder -f docker/ubuntu/Dockerfile
 #
-FROM ubuntu:20.04@sha256:71201a4c55f72ec33671cfcbf007689df61a13a35f028f94f8c510967dfb52e1 as base
+FROM ubuntu:20.04@sha256:71201a4c55f72ec33671cfcbf007689df61a13a35f028f94f8c510967dfb52e1 AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
