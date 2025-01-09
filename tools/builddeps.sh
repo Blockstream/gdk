@@ -239,7 +239,7 @@ export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 
 # building boost
 name="boost"
-source_url="https://boostorg.jfrog.io/artifactory/main/release/1.84.0/source/boost_1_84_0.tar.gz"
+source_url="https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz"
 source_name="boost_1_84_0"
 source_filename="boost_1_84_0.tar.gz"
 source_hash="a5800f405508f5df8114558ca9855d2640a2de8f0445f051fa1c7c3383045724"
