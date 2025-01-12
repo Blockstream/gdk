@@ -132,6 +132,12 @@ namespace green {
         return ret;
     }
 
+    std::vector<unsigned char> xpub_hdkey::get_xonly_key() const
+    {
+        const auto x_only = gsl::make_span(m_ext_key.pub_key, sizeof(m_ext_key.pub_key)).subspan(1);
+        return { x_only.begin(), x_only.end() };
+    }
+
     std::vector<unsigned char> xpub_hdkey::get_tweaked_xonly_key(bool is_liquid) const
     {
         GDK_RUNTIME_ASSERT(!is_liquid); // FIXME: TAPROOT: Support p2tr for Liquid
