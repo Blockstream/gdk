@@ -120,23 +120,28 @@ namespace green {
 
         static void add_taproot_keypath(struct wally_psbt_input* psbt_input, struct wally_psbt_output* psbt_output,
             xpub_hdkeys& pubkeys, byte_span_t fingerprint, const xpub_hdkey& key, uint32_t subaccount, uint32_t pointer,
-            bool is_internal, byte_span_t der_sig, bool is_liquid)
+            bool is_internal, byte_span_t der_sig, bool /*is_liquid*/)
         {
-            const auto xonly_key = key.get_tweaked_xonly_key(is_liquid);
+            const auto internal_key = key.get_xonly_key();
             const auto path = pubkeys.get_full_path(subaccount, pointer, is_internal);
             if (psbt_input) {
                 // FIXME: Use _replace() when implemented in wally
-                map_remove(psbt_input->taproot_leaf_paths, xonly_key);
-                map_remove(psbt_input->taproot_leaf_hashes, xonly_key);
-                GDK_VERIFY(wally_psbt_input_taproot_keypath_add(psbt_input, xonly_key.data(), xonly_key.size(), nullptr,
-                    0, // Tapleaf hashes
-                    fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+                map_remove(psbt_input->taproot_leaf_paths, internal_key);
+                map_remove(psbt_input->taproot_leaf_hashes, internal_key);
+                GDK_VERIFY(
+                    wally_psbt_input_taproot_keypath_add(psbt_input, internal_key.data(), internal_key.size(), nullptr,
+                        0, // Tapleaf hashes
+                        fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+                GDK_VERIFY(
+                    wally_psbt_input_set_taproot_internal_key(psbt_input, internal_key.data(), internal_key.size()));
             } else {
-                map_remove(psbt_output->taproot_leaf_paths, xonly_key);
-                map_remove(psbt_output->taproot_leaf_hashes, xonly_key);
-                GDK_VERIFY(wally_psbt_output_taproot_keypath_add(psbt_output, xonly_key.data(), xonly_key.size(),
-                    nullptr, 0, // Tapleaf hashes
-                    fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+                map_remove(psbt_output->taproot_leaf_paths, internal_key);
+                map_remove(psbt_output->taproot_leaf_hashes, internal_key);
+                // nullptr, 0 are tapleaf hashes (always empty for keyspends)
+                GDK_VERIFY(wally_psbt_output_taproot_keypath_add(psbt_output, internal_key.data(), internal_key.size(),
+                    nullptr, 0, fingerprint.data(), fingerprint.size(), path.data(), path.size()));
+                GDK_VERIFY(
+                    wally_psbt_output_set_taproot_internal_key(psbt_output, internal_key.data(), internal_key.size()));
             }
             if (der_sig.empty() || is_dummy_sig(der_sig)) {
                 return;
