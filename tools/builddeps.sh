@@ -239,10 +239,10 @@ export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 
 # building boost
 name="boost"
-source_url="https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz"
-source_name="boost_1_84_0"
-source_filename="boost_1_84_0.tar.gz"
-source_hash="a5800f405508f5df8114558ca9855d2640a2de8f0445f051fa1c7c3383045724"
+source_url="https://archives.boost.io/release/1.87.0/source/boost_1_87_0.tar.gz"
+source_name="boost_1_87_0"
+source_filename="boost_1_87_0.tar.gz"
+source_hash="f55c340aa49763b1925ccf02b2e83f35fdcf634c9d5164a2acb87540173c741d"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export BOOST_SRCDIR=`pwd`/tmp/${source_name}
 export PRJ_SUBDIR=${BOOST_SRCDIR}
@@ -281,10 +281,10 @@ cmake --install tmp/${source_name}/build
 
 # building websocketpp
 name="websocketpp"
-source_url="https://github.com/blockstream/websocketpp/archive/1026e877449aeee27e0bb51746a96ab42d133652.tar.gz"
-source_name="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652"
-source_filename="websocketpp-1026e877449aeee27e0bb51746a96ab42d133652.tar.gz"
-source_hash="82644fce179590ec73daf3a42383b26378716ba61bbde7ef460816170fed5aeb"
+source_url="https://github.com/blockstream/websocketpp/archive/bc065371c5009cadb30ce0cc680cde010514bebd.tar.gz"
+source_name="websocketpp-bc065371c5009cadb30ce0cc680cde010514bebd"
+source_filename="websocketpp-bc065371c5009cadb30ce0cc680cde010514bebd.tar.gz"
+source_hash="05e9c9ab362ccfb0618f63036791b9041bd85b50b31131ed190394efe1b3e095"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
@@ -315,10 +315,10 @@ cmake --install tmp/${source_name}/build
 
 # building autobahn-cpp
 name="autobahn-cpp"
-source_url="https://codeload.github.com/jgriffiths/autobahn-cpp/tar.gz/976e1f64bf5bc5bf22d7b96e1447467d6e1c063f"
-source_name="autobahn-cpp-976e1f64bf5bc5bf22d7b96e1447467d6e1c063f"
-source_filename="autobahn-cpp-68a79600efd6b4861e2155ce640108918c538312f6e7d8e1fc7f660d425c2b7c.tar.gz"
-source_hash="68a79600efd6b4861e2155ce640108918c538312f6e7d8e1fc7f660d425c2b7c"
+source_url="https://github.com/Blockstream/autobahn-cpp/archive/ec6847551980809d0a5e9044309766ee90cbaf6d.tar.gz"
+source_name="autobahn-cpp-ec6847551980809d0a5e9044309766ee90cbaf6d"
+source_filename="autobahn-cpp-ec6847551980809d0a5e9044309766ee90cbaf6d.tar.gz"
+source_hash="1d7a7f55c1204d3ef217f0487dc0a263cbee7be9365d58a94ffbe27db3f29b6d"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 rm -f tmp/${source_name}/cmake/Modules/FindWebsocketpp.cmake
 rm -f tmp/${source_name}/cmake/Modules/FindMsgpack.cmake

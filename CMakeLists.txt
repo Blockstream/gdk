@@ -38,7 +38,7 @@ else()
     set(Boost_USE_DEBUG_LIBS OFF)
 endif()
 set(Boost_NO_SYSTEM_PATHS ON)
-find_package(Boost 1.84.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
+find_package(Boost 1.87.0 EXACT REQUIRED COMPONENTS date_time thread log chrono system)
 # zlib
 set(ZLIB_ROOT ${CMAKE_PREFIX_PATH})
 find_package(ZLIB 1.3 EXACT REQUIRED)
