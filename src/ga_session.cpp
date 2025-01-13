@@ -327,7 +327,7 @@ namespace green {
     {
         if (m_notify) {
             if (async) {
-                m_strand->post([this, details] { emit_notification(details, false); });
+                boost::asio::post(*m_strand, [this, details] { emit_notification(details, false); });
             } else {
                 session_impl::emit_notification(details, false);
             }
@@ -789,7 +789,7 @@ namespace green {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            m_strand->post([this, subaccounts, details] { on_new_transaction(subaccounts, details); });
+            boost::asio::post(*m_strand, [this, subaccounts, details] { on_new_transaction(subaccounts, details); });
             return;
         }
 
@@ -870,7 +870,7 @@ namespace green {
 
         if (!locker.owns_lock()) {
             // Try again: 'post' this to allow the competing thread to proceed.
-            m_strand->post([this, details, is_relogin] { on_new_block(details, is_relogin); });
+            boost::asio::post(*m_strand, [this, details, is_relogin] { on_new_block(details, is_relogin); });
             return;
         }
         on_new_block(locker, details, is_relogin);
