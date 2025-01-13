@@ -184,7 +184,7 @@ namespace green {
                 }
 
                 // Check the host name matches the target
-                return asio::ssl::rfc2818_verification{ host_name }(true, vctx);
+                return asio::ssl::host_name_verification{ host_name }(true, vctx);
             });
 
         return ctx;
