@@ -6,6 +6,7 @@
     DOCKER_HOST: tcp://localhost:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_BUILDKIT: 1
+    BUILDX_GIT_INFO: false
   image: docker:23
   services:
     - docker:23-dind
