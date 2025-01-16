@@ -1,27 +1,27 @@
 
 ####### DOCKER IMAGES
 .debian-image:
-  image: blockstream/gdk-debian-ci@sha256:6d6ee0e95bcceb9908f8f061fa80fbc75c1a6e9c3ff4cf86c35d85d7c8880f1d
+  image: blockstream/gdk-debian-ci@sha256:a99481999b7c08d3b31d1951d91ff8f1da4f8a830f11442dea1c375e98a2ae89
   tags: [ ga ]
 
 .android-image:
-  image: blockstream/gdk-android-builder@sha256:77e2631845772cf7adf25ca7038963e31832e364549a170ddc7fb8c74dec6b3d
+  image: blockstream/gdk-android-builder@sha256:8c33e1d849c9aef3c6743f581d6a723399a80e29ac7767493e98c1402f7f89f2
   tags: [ ga ]
 
 .python-image:
-  image: blockstream/gdk-python-builder@sha256:9470a0a883e6f90fdecfecc50645644e74a781ffe8f8497c38e8079c917df3ac
+  image: blockstream/gdk-python-builder@sha256:0062a1aca4f23a666293219d11f2e8c0be98c74a65b0790c1c2b1ef8ffdada79
   tags: [ ga ]
 
 .ubuntu-image:
-  image: blockstream/gdk-ubuntu-builder@sha256:eb87bd6bba99788ce6300015b13721f02b9da51ca83318b4e0e615bf3a3fa840
+  image: blockstream/gdk-ubuntu-builder@sha256:7c718aa7fb7c48927f191c69df37fdfb55aa3d201ac25718345ab5a2652595cd
   tags: [ ga ]
 
 .ubuntu-arm64-image:
-  image: blockstream/gdk-ubuntu-builder@sha256:60eccb1ce3db9f1d8e20d9f95cec9d96155af205f6eaa01f2284da0c6f126f40
+  image: blockstream/gdk-ubuntu-builder@sha256:c93da43d361aa354d0ddba257929912342bc1d0dc5ae5b643238187b139498db
   tags: [ arm64_docker ]
 
 .fedora-image:
-  image: blockstream/gdk-fedora-builder@sha256:722465a5cb8a2e055ec258f8bc059e24dbb2a8811fa7905e785b73b9219c6658
+  image: blockstream/gdk-fedora-builder@sha256:e348c787b0608e0383f73286f9faa7e20a06ded5131265b4ee7d8eb3f75ac3cc
   tags: [ ga ]
 
 
