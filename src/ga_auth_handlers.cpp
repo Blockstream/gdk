@@ -710,15 +710,18 @@ namespace green {
                 input.erase("private_key");
             } else if (!j_bool_or_false(input, "skip_signing")) {
                 // Wallet input we have been asked to sign. Must be spendable by us
-                GDK_RUNTIME_ASSERT(!j_strref(input, "address_type").empty());
+                const auto& addr_type = j_strref(input, "address_type");
+                GDK_RUNTIME_ASSERT(!addr_type.empty());
                 if (!have_checked_full_session) {
                     // Only full (i.e. non watch-only) sessions can sign wallet inputs
                     m_session->ensure_full_session();
                     have_checked_full_session = true; // Avoid re-checking
                 }
 
-                // Add host-entropy and host-commitment to each input if using the anti-exfil protocol
-                if (use_ae_protocol) {
+                // Add host-entropy and host-commitment to each input if using the anti-exfil protocol.
+                // Note taproot does not yet support anti-exfil: don't add AE data in this case
+                // so that support can be added in the future in a backwards compatible way.
+                if (use_ae_protocol && addr_type != address_type::p2tr) {
                     add_ae_host_data(input);
                 } else {
                     remove_ae_host_data(input);
