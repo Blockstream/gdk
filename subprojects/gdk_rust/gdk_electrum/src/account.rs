@@ -76,7 +76,7 @@ impl Account {
         // cache internal/external chains
         let chains = [xpub.ckd_pub(&crate::EC, 0.into())?, xpub.ckd_pub(&crate::EC, 1.into())?];
 
-        store.write().unwrap().make_account(account_num, xpub.clone(), discovered)?;
+        store.lock().unwrap().make_account(account_num, xpub.clone(), discovered)?;
 
         info!("initialized account #{} path={} type={:?}", account_num, path, script_type);
 
@@ -163,7 +163,7 @@ impl Account {
     }
 
     pub fn info(&self) -> Result<AccountInfo, Error> {
-        let settings = self.store.read()?.get_account_settings(self.account_num).cloned();
+        let settings = self.store.lock()?.get_account_settings(self.account_num).cloned();
 
         Ok(AccountInfo {
             account_num: self.account_num,
@@ -179,7 +179,7 @@ impl Account {
     }
 
     pub fn set_settings(&self, opt: UpdateAccountOpt) -> Result<bool, Error> {
-        let mut store_write = self.store.write()?;
+        let mut store_write = self.store.lock()?;
         let mut settings =
             store_write.get_account_settings(self.account_num).cloned().unwrap_or_default();
         if let Some(name) = opt.name {
@@ -215,7 +215,7 @@ impl Account {
         ignore_gap_limit: bool,
         gap_limit: u32,
     ) -> Result<AddressPointer, Error> {
-        let store = &mut self.store.write()?;
+        let store = &mut self.store.lock()?;
         let acc_store = store.account_cache_mut(self.account_num)?;
         let pointer = acc_store.get_next_pointer(is_internal);
         acc_store.increment_pointer(is_internal, ignore_gap_limit, gap_limit);
@@ -274,7 +274,7 @@ impl Account {
     ) -> Result<PreviousAddresses, Error> {
         let subaccount = self.account_num;
         let is_internal = opt.is_internal;
-        let store = self.store.read()?;
+        let store = self.store.lock()?;
         let acc_store = store.account_cache(subaccount)?;
         let wallet_last_pointer = acc_store.get_next_pointer(is_internal);
         let before_pointer = match opt.last_pointer {
@@ -322,7 +322,7 @@ impl Account {
     }
 
     pub fn list_tx(&self, opt: &GetTransactionsOpt) -> Result<Vec<TxListItem>, Error> {
-        let store = self.store.read()?;
+        let store = self.store.lock()?;
         let acc_store = store.account_cache(self.account_num)?;
 
         let tip_height = store.cache.tip_height();
@@ -678,7 +678,7 @@ impl Account {
     pub fn unspents(&self) -> Result<HashSet<BEOutPoint>, Error> {
         let mut relevant_outputs = HashSet::new();
         let mut inputs = HashSet::new();
-        let store_read = self.store.read()?;
+        let store_read = self.store.lock()?;
         let acc_store = store_read.account_cache(self.account_num)?;
         for (txid, txe) in acc_store.all_txs.iter() {
             if !acc_store.heights.contains_key(&txid) {
@@ -704,13 +704,13 @@ impl Account {
     }
 
     pub fn has_transactions(&self) -> Result<bool, Error> {
-        let store_read = self.store.read()?;
+        let store_read = self.store.lock()?;
         let acc_store = store_read.account_cache(self.account_num)?;
         Ok(acc_store.bip44_discovered || !acc_store.heights.is_empty())
     }
 
     pub fn status(&self) -> Result<ScriptStatuses, Error> {
-        let store = self.store.read()?;
+        let store = self.store.lock()?;
         Ok(store.account_cache(self.account_num)?.script_statuses.clone().unwrap_or_default())
     }
 
@@ -719,7 +719,7 @@ impl Account {
         is_internal: bool,
         batch_count: u32,
     ) -> Result<Vec<(bool, u32, DerivationPath, BEScript)>, Error> {
-        let store = self.store.read()?;
+        let store = self.store.lock()?;
         let acc_store = store.account_cache(self.account_num)?;
 
         let mut result = vec![];
@@ -745,7 +745,7 @@ impl Account {
     }
 
     pub fn get_address_data(&self, address: &BEAddress) -> Result<AddressDataResult, Error> {
-        let store_read = self.store.read()?;
+        let store_read = self.store.lock()?;
         let acc_store = store_read.account_cache(self.account_num)?;
         let script_pubkey = address.script_pubkey();
         let account_path = acc_store.get_path(&script_pubkey)?;

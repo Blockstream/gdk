@@ -25,10 +25,10 @@ use std::fs::File;
 use std::io::Write;
 use std::ops::{Index, IndexMut};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
-pub type Store = Arc<RwLock<StoreMeta>>;
+pub type Store = Arc<Mutex<StoreMeta>>;
 
 /// RawCache is a persisted and encrypted cache of wallet data, contains stuff like wallet transactions
 /// It is fully reconstructable from xpub and data from electrum server (plus master blinding for elements)

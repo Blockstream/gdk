@@ -340,7 +340,7 @@ impl ElectrumSession {
             // avoid touching disk if equivalent to last, it isn't a big performance penalty.
             // disconnect() may be called without login, so we check the store is loaded.
             if let Ok(store) = self.store() {
-                store.write()?.flush()?;
+                store.lock()?.flush()?;
             }
             self.notify.network(State::Disconnected, State::Disconnected);
         }
@@ -404,7 +404,7 @@ impl ElectrumSession {
             info!("Store root path: {:?}", path);
 
             let store = StoreMeta::new(&path, &cipher, self.network.id())?;
-            let store = Arc::new(RwLock::new(store));
+            let store = Arc::new(Mutex::new(store));
             self.store = Some(store);
         }
         if let Some(fingerprint) = opt.master_xpub_fingerprint {
@@ -422,12 +422,12 @@ impl ElectrumSession {
     }
 
     pub fn save_blob(&mut self, blob: ClientBlob) -> Result<(), Error> {
-        self.store()?.write()?.store.client_blob = Some(blob);
+        self.store()?.lock()?.store.client_blob = Some(blob);
         Ok(())
     }
 
     pub fn load_blob(&self) -> Result<ClientBlob, Error> {
-        match self.store()?.read()?.store.client_blob.as_ref() {
+        match self.store()?.lock()?.store.client_blob.as_ref() {
             Some(blob) => Ok(blob.clone()),
             None => Ok(ClientBlob {
                 ..Default::default()
@@ -436,7 +436,7 @@ impl ElectrumSession {
     }
 
     pub fn get_memos(&self) -> Result<HashMap<Txid, String>, Error> {
-        Ok(self.store()?.read()?.store.memos.clone())
+        Ok(self.store()?.lock()?.store.memos.clone())
     }
 
     /// Remove the persisted cache and store
@@ -444,22 +444,22 @@ impl ElectrumSession {
     /// The actual file removal will happen when the session will be dropped.
     pub fn remove_account(&mut self) -> Result<(), Error> {
         // Mark the store as to be removed when it will be dropped
-        self.store()?.write()?.to_remove();
+        self.store()?.lock()?.to_remove();
         Ok(())
     }
 
     /// Set the master key in the internal store, it needs to be called after `load_store`
     pub fn set_master_blinding_key(&mut self, opt: &SetMasterBlindingKeyOpt) -> Result<(), Error> {
-        if let Some(master_blinding) = self.store()?.read()?.cache.master_blinding.as_ref() {
+        if let Some(master_blinding) = self.store()?.lock()?.cache.master_blinding.as_ref() {
             assert_eq!(master_blinding, &opt.master_blinding_key);
         }
-        self.store()?.write()?.cache.master_blinding = Some(opt.master_blinding_key.clone());
+        self.store()?.lock()?.cache.master_blinding = Some(opt.master_blinding_key.clone());
         Ok(())
     }
 
     /// Return the master blinding key if the cache contains it, it needs to be called after `load_store`
     pub fn get_master_blinding_key(&mut self) -> Result<GetMasterBlindingKeyResult, Error> {
-        let master_blinding_key = self.store()?.read()?.cache.master_blinding.clone();
+        let master_blinding_key = self.store()?.lock()?.cache.master_blinding.clone();
         Ok(GetMasterBlindingKeyResult {
             master_blinding_key,
         })
@@ -536,7 +536,7 @@ impl ElectrumSession {
         }
 
         let master_blinding = if self.network.liquid {
-            let master_blinding = self.store()?.read()?.cache.master_blinding.clone();
+            let master_blinding = self.store()?.lock()?.cache.master_blinding.clone();
             if master_blinding.is_none() {
                 return Err(Error::MissingMasterBlindingKey);
             }
@@ -547,7 +547,7 @@ impl ElectrumSession {
 
         {
             let store = self.store()?;
-            let store_read = store.read()?;
+            let store_read = store.lock()?;
             let tip_height = store_read.cache.tip_height();
             let tip_hash = store_read.cache.tip_block_hash();
             let tip_prev_hash = store_read.cache.tip_prev_block_hash();
@@ -571,7 +571,7 @@ impl ElectrumSession {
             thread::spawn(move || {
                 match try_get_fee_estimates(&fee_client, min_rate) {
                     Ok(fee_estimates) => {
-                        fee_store.write().unwrap().cache.fee_estimates = fee_estimates;
+                        fee_store.lock().unwrap().cache.fee_estimates = fee_estimates;
                         let mut fee_fetched_at = fee_fetched_at.lock().unwrap();
                         *fee_fetched_at = SystemTime::now();
                     }
@@ -646,7 +646,7 @@ impl ElectrumSession {
                                 Err(Error::InvalidHeaders) => {
                                     warn!("invalid headers");
                                     // this should handle reorgs and also broke IO writes update
-                                    headers.store.write().unwrap().cache.txs_verif.clear();
+                                    headers.store.lock().unwrap().cache.txs_verif.clear();
                                     if let Err(e) = headers.remove(max_reorg_blocks) {
                                         warn!("failed removing headers: {:?}", e);
                                         break;
@@ -679,7 +679,7 @@ impl ElectrumSession {
                             let status_changed = headers.cross_validate();
                             if status_changed {
                                 // TODO: improve block notification
-                                if let Ok(store_read) = headers.store.read() {
+                                if let Ok(store_read) = headers.store.lock() {
                                     let tip_height = store_read.cache.tip_height();
                                     let tip_hash = store_read.cache.tip_block_hash();
                                     let tip_prev_hash = store_read.cache.tip_prev_block_hash();
@@ -904,7 +904,7 @@ impl ElectrumSession {
     /// to do the same. So we fetch the subaccount pointers from the
     /// persisted store and return them here.
     pub fn get_subaccount_nums(&self) -> Result<Vec<u32>, Error> {
-        let mut account_nums = self.store()?.read()?.account_nums();
+        let mut account_nums = self.store()?.lock()?.account_nums();
         // For compatibility reason, account 0 must always be present
         if !account_nums.contains(&0) {
             // Insert it at the start to preserve sorting
@@ -918,19 +918,19 @@ impl ElectrumSession {
     }
 
     pub fn get_accounts_settings(&mut self) -> Result<HashMap<u32, AccountSettings>, Error> {
-        Ok(self.store()?.read()?.get_accounts_settings().clone())
+        Ok(self.store()?.lock()?.get_accounts_settings().clone())
     }
 
     pub fn create_subaccount(&mut self, opt: CreateAccountOpt) -> Result<AccountInfo, Error> {
         let store = self.store()?.clone();
-        let master_blinding = store.read()?.cache.master_blinding.clone();
+        let master_blinding = store.lock()?.cache.master_blinding.clone();
         let network = self.network.clone();
         let mut accounts = self.accounts.write()?;
 
         // Allow discovery of already created subaccounts
         if opt.discovered {
             if let Entry::Occupied(entry) = accounts.entry(opt.subaccount) {
-                store.write()?.account_cache_mut(opt.subaccount)?.bip44_discovered = opt.discovered;
+                store.lock()?.account_cache_mut(opt.subaccount)?.bip44_discovered = opt.discovered;
                 return entry.get().info();
             }
         }
@@ -1016,7 +1016,7 @@ impl ElectrumSession {
     }
 
     pub fn get_block_height(&self) -> Result<u32, Error> {
-        Ok(self.store()?.read()?.cache.tip_height())
+        Ok(self.store()?.lock()?.cache.tip_height())
     }
 
     pub fn update_subaccount(&mut self, opt: UpdateAccountOpt) -> Result<bool, Error> {
@@ -1045,7 +1045,7 @@ impl ElectrumSession {
     pub fn get_transaction_hex(&self, txid: &str) -> Result<String, Error> {
         let txid = BETxid::from_hex(txid, self.network.id())?;
         let store = self.store()?;
-        let store = store.read()?;
+        let store = store.lock()?;
         if let Ok(entry) = store.get_tx_entry(&txid) {
             Ok(entry.tx.serialize().to_lower_hex_string())
         } else {
@@ -1058,7 +1058,7 @@ impl ElectrumSession {
     pub fn get_scriptpubkey_data(&self, script_pubkey: &str) -> Result<ScriptPubKeyData, Error> {
         let script = BEScript::from_hex(script_pubkey, self.network.id())?;
         let store = self.store()?;
-        let store = store.read()?;
+        let store = store.lock()?;
         let accounts = self.get_accounts()?;
         for account in accounts.iter() {
             let account_cache = store.account_cache(account.num())?;
@@ -1082,7 +1082,7 @@ impl ElectrumSession {
         if memo.len() > 1024 {
             return Err(Error::Generic("Too long memo (max 1024)".into()));
         }
-        self.store()?.write()?.insert_memo(txid, memo)?;
+        self.store()?.lock()?.insert_memo(txid, memo)?;
 
         Ok(())
     }
@@ -1113,7 +1113,7 @@ impl ElectrumSession {
         let mut fee_fetched_at = self.fee_fetched_at.lock()?;
         if *fee_fetched_at + FEE_ESTIMATE_INTERVAL > SystemTime::now() {
             // Skip network call
-            Ok(self.store()?.read()?.fee_estimates())
+            Ok(self.store()?.lock()?.fee_estimates())
         } else {
             let min_rate = self.network.id().default_min_fee_rate();
             let fee_estimates = try_get_fee_estimates(
@@ -1121,7 +1121,7 @@ impl ElectrumSession {
                 min_rate,
             )
             .unwrap_or_else(|_| vec![FeeEstimate(min_rate); 25]);
-            self.store()?.write()?.cache.fee_estimates = fee_estimates.clone();
+            self.store()?.lock()?.cache.fee_estimates = fee_estimates.clone();
             *fee_fetched_at = SystemTime::now();
             Ok(fee_estimates)
         }
@@ -1130,19 +1130,19 @@ impl ElectrumSession {
 
     pub fn get_min_fee_rate(&self) -> Result<u64, Error> {
         let default_min_rate = self.network.id().default_min_fee_rate();
-        let min_rate = self.store()?.read()?.min_fee_rate();
+        let min_rate = self.store()?.lock()?.min_fee_rate();
         Ok(min_rate.max(default_min_rate))
     }
 
     /// Return the settings or None if the store is not loaded (not logged in)
     pub fn get_settings(&self) -> Option<Settings> {
-        Some(self.store().ok()?.read().ok()?.get_settings().unwrap_or_default())
+        Some(self.store().ok()?.lock().ok()?.get_settings().unwrap_or_default())
     }
 
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
         let mut settings = self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?;
         settings.update(value)?;
-        self.store()?.write()?.insert_settings(Some(settings.clone()))?;
+        self.store()?.lock()?.insert_settings(Some(settings.clone()))?;
         self.notify.settings(&settings);
         Ok(())
     }
@@ -1170,7 +1170,7 @@ impl ElectrumSession {
         let account = self.get_account(opt.subaccount)?;
 
         let store = self.store()?;
-        let store_read = store.read()?;
+        let store_read = store.lock()?;
         let acc_store = store_read.account_cache(opt.subaccount)?;
         let height = store_read.cache.tip_height();
 
@@ -1213,7 +1213,7 @@ impl ElectrumSession {
 
     pub fn block_status(&self) -> Result<(u32, BEBlockHash), Error> {
         let store = self.store()?;
-        let store_read = store.read()?;
+        let store_read = store.lock()?;
         let tip = (store_read.cache.tip_height(), store_read.cache.tip_block_hash());
         info!("tip={:?}", tip);
         Ok(tip)
@@ -1250,7 +1250,7 @@ impl Tipper {
         new_height: u32,
         new_header: BEBlockHeader,
     ) -> Result<Option<HeightHeader>, Error> {
-        let do_update = match &self.store.read()?.cache.tip_ {
+        let do_update = match &self.store.lock()?.cache.tip_ {
             None => true,
             Some((current_height, current_header)) => {
                 &new_height != current_height || &new_header != current_header
@@ -1258,7 +1258,7 @@ impl Tipper {
         };
         if do_update {
             info!("saving in store new tip {:?}", new_height);
-            self.store.write()?.update_tip(new_height, new_header.clone())?;
+            self.store.lock()?.update_tip(new_height, new_header.clone())?;
             Ok(Some((new_height, new_header).into()))
         } else {
             Ok(None)
@@ -1282,10 +1282,10 @@ impl Headers {
 
     pub fn get_proofs(&mut self, client: &Client) -> Result<usize, Error> {
         let mut proofs_done = 0;
-        let account_nums = self.store.read()?.account_nums();
+        let account_nums = self.store.lock()?.account_nums();
 
         for account_num in account_nums {
-            let store_read = self.store.read()?;
+            let store_read = self.store.lock()?;
             let acc_store = store_read.account_cache(account_num)?;
 
             // find unconfirmed transactions that were previously confirmed and had
@@ -1318,7 +1318,7 @@ impl Headers {
                             .is_ok(),
                         ChainOrVerifier::Verifier(verifier) => {
                             if let Some(BEBlockHeader::Elements(header)) =
-                                self.store.read()?.cache.headers.get(&height)
+                                self.store.lock()?.cache.headers.get(&height)
                             {
                                 verifier
                                     .verify_tx_proof(txid.ref_elements().unwrap(), proof, &header)
@@ -1344,7 +1344,7 @@ impl Headers {
             }
             proofs_done += txs_verified.len();
 
-            let mut store_write = self.store.write()?;
+            let mut store_write = self.store.lock()?;
 
             store_write.cache.txs_verif.extend(txs_verified);
             for txid in remove_proof {
@@ -1367,7 +1367,7 @@ impl Headers {
             (&mut self.cross_validator, &self.checker)
         {
             let was_valid = {
-                let store = self.store.read().unwrap();
+                let store = self.store.lock().unwrap();
                 store.cache.cross_validation_result.as_ref().map(|r| r.is_valid())
             };
 
@@ -1376,7 +1376,7 @@ impl Headers {
 
             let changed = was_valid.map_or(true, |was_valid| was_valid != result.is_valid());
 
-            let mut store = self.store.write().unwrap();
+            let mut store = self.store.lock().unwrap();
             store.cache.cross_validation_result = Some(result);
 
             changed
@@ -1442,7 +1442,7 @@ impl Syncer {
         account_nums: &Vec<u32>,
     ) -> Result<Vec<TransactionNotification>, Error> {
         let mut tx_ntfs = Vec::<TransactionNotification>::new();
-        let store_read = self.store.read()?;
+        let store_read = self.store.lock()?;
         for tx in updated_txs.values() {
             let mut tx_accounts = vec![];
             'account_loop: for account_num in account_nums {
@@ -1649,7 +1649,7 @@ impl Syncer {
         let new_txs = self.download_txs(account.num(), &history_txs_id, &scripts, &client)?;
         let headers = self.download_headers(account.num(), &heights_set, &client)?;
         let store_last_used = {
-            let store_read = self.store.read()?;
+            let store_read = self.store.lock()?;
             let acc_store = store_read.account_cache(account.num())?;
             acc_store.get_both_last_used()
         };
@@ -1669,7 +1669,7 @@ impl Syncer {
                 scripts,
                 store_last_used != last_used
             );
-                let mut store_write = self.store.write()?;
+                let mut store_write = self.store.lock()?;
                 store_write.cache.headers.extend(headers.into_iter().map(Into::into));
 
                 let acc_store = store_write.account_cache_mut(account.num())?;
@@ -1716,7 +1716,7 @@ impl Syncer {
         account: &Account,
     ) -> Result<HashMap<bitcoin::ScriptBuf, HashSet<BETxid>>, Error> {
         let mut script_txid = HashMap::new();
-        let store_read = self.store.read()?;
+        let store_read = self.store.lock()?;
         let acc_store = store_read.account_cache(account.num())?;
         for txid in acc_store.heights.keys() {
             let tx = acc_store.all_txs.get(&txid).unwrap();
@@ -1779,7 +1779,7 @@ impl Syncer {
         client: &Client,
     ) -> Result<Vec<HeightHeader>, Error> {
         let heights_in_db: HashSet<u32> = {
-            let store_read = self.store.read()?;
+            let store_read = self.store.lock()?;
             let acc_store = store_read.account_cache(account_num)?;
             iter::once(0).chain(acc_store.heights.iter().filter_map(|(_, h)| *h)).collect()
         };
@@ -1817,7 +1817,7 @@ impl Syncer {
         let mut is_previous = HashSet::new();
 
         let mut txs_in_db =
-            self.store.read()?.account_cache(account_num)?.all_txs.keys().cloned().collect();
+            self.store.lock()?.account_cache(account_num)?.all_txs.keys().cloned().collect();
         // BETxid has to be converted into bitcoin::Txid for rust-electrum-client
         let txs_to_download: Vec<bitcoin::Txid> =
             history_txs_id.difference(&txs_in_db).map(BETxidConvert::into_bitcoin).collect();
@@ -1838,7 +1838,7 @@ impl Syncer {
                     info!("compute OutPoint Unblinded");
                     for (i, output) in tx.output.iter().enumerate() {
                         let be_script = output.script_pubkey.clone().into_be();
-                        let store_read = self.store.read()?;
+                        let store_read = self.store.lock()?;
                         let acc_store = store_read.account_cache(account_num)?;
                         // could be the searched script it's not yet in the store, because created in the current run, thus it's searched also in the `scripts`
                         if acc_store.paths.contains_key(&be_script)
