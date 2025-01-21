@@ -827,7 +827,7 @@ namespace green {
                 const auto sig = ec_sig_from_der(h2b(signatures[i]), has_sighash_byte);
                 const auto& signer_commitments = j_arrayref(hw_reply, "signer_commitments", inputs.size());
                 verify_ae_signature(user_key.get_public_key(), tx_signature_hash, j_bytesref(input, "ae_host_entropy"),
-                    h2b(signer_commitments[i]), sig);
+                    h2b(signer_commitments.at(i)), sig);
             }
         }
 
