@@ -1406,16 +1406,20 @@ impl Syncer {
     ) -> Result<SyncResult, Error> {
         trace!("start sync");
 
-        let accounts = self.accounts.read().unwrap();
+        let (account_nums, accounts_values) = {
+            let accounts = self.accounts.read().unwrap();
+            let mut account_nums: Vec<u32> = accounts.keys().copied().collect();
+            account_nums.sort();
+            let accounts_values: Vec<Account> = accounts.values().cloned().collect();
+            (account_nums, accounts_values)
+        };
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
 
-        for account in accounts.values() {
-            self.sync_account(account, client, last_statuses, &mut updated_txs, first_sync)?;
+        for account in accounts_values {
+            self.sync_account(&account, client, last_statuses, &mut updated_txs, first_sync)?;
         }
 
         self.empty_recent_spent_utxos()?;
-        let mut account_nums: Vec<u32> = accounts.keys().copied().collect();
-        account_nums.sort();
 
         // TODO: skip this computation if it's the first sync (no transaction notifications)
         let tx_ntfs = self.create_tx_notifications(updated_txs, &account_nums)?;
