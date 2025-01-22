@@ -1168,6 +1168,7 @@ impl ElectrumSession {
     pub fn get_unspent_outputs(&self, opt: &GetUnspentOpt) -> Result<GetUnspentOutputs, Error> {
         let mut unspent_outputs: HashMap<String, Vec<UnspentOutput>> = HashMap::new();
         let account = self.get_account(opt.subaccount)?;
+        let outpoints = account.unspents()?;
 
         let store = self.store()?;
         let store_read = store.lock()?;
@@ -1177,7 +1178,7 @@ impl ElectrumSession {
         let num_confs = opt.num_confs.unwrap_or(0);
         let confidential_utxos_only = opt.confidential_utxos_only.unwrap_or(false);
 
-        for outpoint in account.unspents()? {
+        for outpoint in outpoints {
             let utxo = account.txo(&outpoint, acc_store)?;
             let confirmations = match utxo.height {
                 None | Some(0) => 0,
