@@ -321,7 +321,25 @@ namespace green {
             return;
         }
 
-        if (result != beast::http::status::ok) {
+        bool is_ok = false;
+        bool is_empty = false;
+
+        switch (result) {
+        case beast::http::status::ok:
+        case beast::http::status::created:
+        case beast::http::status::accepted:
+        case beast::http::status::non_authoritative_information:
+            is_ok = true;
+            break;
+        case beast::http::status::no_content:
+        case beast::http::status::reset_content:
+            is_ok = true;
+            is_empty = true;
+        default:
+            break;
+        }
+
+        if (!is_ok) {
             std::stringstream error;
             error << result;
             set_exception(error.str());
@@ -332,11 +350,11 @@ namespace green {
             nlohmann::json body;
 
             if (m_accept == "json") {
-                body["body"] = json_parse(response.body());
+                body["body"] = is_empty ? nlohmann::json({}) : json_parse(response.body());
             } else if (m_accept == "base64") {
-                body["body"] = base64_from_bytes(ustring_span(response.body()));
+                body["body"] = is_empty ? std::string() : base64_from_bytes(ustring_span(response.body()));
             } else {
-                body["body"] = std::move(response.body());
+                body["body"] = is_empty ? std::string() : std::move(response.body());
             }
 
             for (const auto& field : response.base()) {
