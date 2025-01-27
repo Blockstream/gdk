@@ -41,6 +41,18 @@
   the call succeeded).
 
 
+## Release 0.74.3 - 25-01-11
+
+### Added
+- GA_convert_amount(Liquid): Ensure L-BTC amounts are within concensus limits
+  when asset information is included in the input JSON.
+
+### Changed
+
+### Fixed
+- Build: Update the official boost download location as the old one is defunct.
+
+
 ## Release 0.74.2 - 25-01-04
 
 ### Added
