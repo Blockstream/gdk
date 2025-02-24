@@ -76,7 +76,7 @@ build_clang_bullseye:
 
 test_rust:
   extends: .debian-image
-  needs: []
+  needs: [ test_format ]
   stage: test
   variables:
     OPENSSL_DIR: "/prebuild/clang"
@@ -102,7 +102,7 @@ test_rust:
 
 rust_audit:
   extends: .debian-image
-  needs: []
+  needs: [ test_format ]
   stage: test
   allow_failure: true
   script:
