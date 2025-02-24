@@ -536,7 +536,7 @@ namespace green {
                 values.push_back(v.second.value());
             }
             const size_t attempts = 1000000; /* FIXME: dynamic? */
-            const uint32_t io_ratio = session.get_network_parameters().use_discounted_fees() ? 2 : 5;
+            const uint32_t io_ratio = 2;
             size_t written;
             addressee.utxo_indices.resize(indexed_values.size());
             int ret = wally_coinselect_assets(values.data(), values.size(), required_total, attempts, io_ratio,
@@ -1167,19 +1167,13 @@ namespace green {
 
     size_t Tx::get_adjusted_weight(const network_parameters& net_params) const
     {
-        const bool use_discounted_fees = net_params.use_discounted_fees();
-        size_t weight = get_weight(use_discounted_fees);
         GDK_RUNTIME_ASSERT(m_is_liquid == net_params.is_liquid());
+        size_t weight = get_weight(m_is_liquid);
         if (m_is_liquid) {
             // Add the weight of any missing blinding data
-            const auto policy_asset_bytes = h2b_rev(net_params.get_policy_asset(), 0x1);
-            const auto num_inputs = get_num_inputs() ? get_num_inputs() : 1; // Assume at least 1 input
-            const size_t sjp_size = varbuff_get_length(asset_surjectionproof_size(num_inputs));
             size_t blinding_weight = 0;
-            const bool have_any_witnesses = has_witnesses();
-            bool found_fee = false;
 
-            if (!have_any_witnesses) {
+            if (!has_witnesses()) {
                 // Tx has no segwit inputs, and no blinded outputs, i.e.
                 // it's being constructed via create_transaction et al.
                 // Since we will be blinding the tx, this will create
@@ -1195,50 +1189,10 @@ namespace green {
                 blinding_weight += get_num_outputs() * output_wit_weight;
             }
 
-            for (const auto& tx_out : get_outputs()) {
-                uint64_t satoshi = 0;
-
-                if (!tx_out.script) {
-                    GDK_RUNTIME_ASSERT(!found_fee);
-                    found_fee = true;
-                    continue;
-                }
-                if (use_discounted_fees) {
-                    // For discounted fees we don't add missing blinding weight
-                    continue;
-                }
-                GDK_RUNTIME_ASSERT(tx_out.asset_len);
-                GDK_RUNTIME_ASSERT(tx_out.value_len);
-                if (!tx_out.nonce) {
-                    blinding_weight += WALLY_TX_ASSET_CT_NONCE_LEN * 4;
-                }
-                if (!tx_out.surjectionproof_len) {
-                    blinding_weight += sjp_size;
-                }
-                if (tx_out.value[0] == 1) {
-                    // An explicit value; use it for a better estimate
-                    satoshi = tx_confidential_value_to_satoshi({ tx_out.value, tx_out.value_len });
-                    // Add the difference between the explicit and blinded value size
-                    blinding_weight -= WALLY_TX_ASSET_CT_VALUE_UNBLIND_LEN * 4;
-                    blinding_weight += WALLY_TX_ASSET_CT_VALUE_LEN * 4;
-                }
-                if (!tx_out.rangeproof_len) {
-                    if (!satoshi) {
-                        // We don't know the value, or its a zero placeholder;
-                        // assume its the maximum for estimation purposes.
-                        if (tx_out.asset_len == policy_asset_bytes.size()
-                            && !memcmp(tx_out.asset, policy_asset_bytes.data(), tx_out.asset_len)) {
-                            // L-BTC: Limited by the policy asset coin supply
-                            satoshi = amount::get_max_satoshi();
-                        } else {
-                            // Asset: Any valid uint64 value is possible
-                            satoshi = std::numeric_limits<uint64_t>::max();
-                        }
-                    }
-                    blinding_weight += varbuff_get_length(asset_rangeproof_max_size(satoshi));
-                }
-            }
-            if (found_fee) {
+            const auto num_fees
+                = std::count_if(get_outputs().begin(), get_outputs().end(), [](const auto& o) { return !o.script; });
+            GDK_RUNTIME_ASSERT(num_fees <= 1);
+            if (num_fees) {
                 // FIXME: Fee must be the last output
                 GDK_RUNTIME_ASSERT(!get_outputs().back().script);
             } else {

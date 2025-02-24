@@ -6,8 +6,7 @@
 - Bitcoin(Singlesig): Add support for BIP-86 P2TR (Taproot) wallets.
 - HWW: Add a new device JSON key ``"supports_p2tr"`` to indicate P2TR inputs
   can be signed by the device.
-- Liquid: Automatically enable fee discounting for Liquid testnet environments.
-  Mainnet will be enabled automatically in an upcoming gdk release.
+- Liquid: Automatically enable fee discounting for Liquid environments.
 
 ### Changed
 

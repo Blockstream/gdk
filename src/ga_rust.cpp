@@ -417,20 +417,7 @@ namespace green {
 
     nlohmann::json ga_rust::get_transactions(const nlohmann::json& details)
     {
-        const bool use_discounted_fees = m_net_params.use_discounted_fees();
-        auto ret = rust_call("get_transactions", details, m_session);
-        // TODO: remove this logic once the discount is enabled in all envs
-        for (auto& tx : ret) {
-            // Convert weight/fee rate according to whether the discount is enabled
-            const auto weight_key = use_discounted_fees ? "discount_weight" : "transaction_weight";
-            const auto tx_weight = j_uint32ref(tx, weight_key);
-            tx["transaction_weight"] = tx_weight;
-            const auto tx_vsize = Tx::vsize_from_weight(tx_weight);
-            tx["transaction_vsize"] = tx_vsize;
-            tx.erase("discount_weight");
-            tx["fee_rate"] = j_amountref(tx, "fee").value() * 1000 / tx_vsize;
-        }
-        return ret;
+        return rust_call("get_transactions", details, m_session);
     }
 
     void ga_rust::GDKRUST_notif_handler(void* self_context, char* json)

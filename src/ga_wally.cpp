@@ -776,7 +776,7 @@ namespace green {
             == WALLY_OK;
     }
 
-    size_t asset_surjectionproof_size(size_t num_inputs)
+    static size_t asset_surjectionproof_size(size_t num_inputs)
     {
         size_t written;
         GDK_VERIFY(wally_asset_surjectionproof_size(num_inputs, &written));

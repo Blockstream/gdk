@@ -42,7 +42,6 @@ namespace green {
         std::string block_explorer_tx() const;
         std::string chain_code() const;
         std::string electrum_url() const;
-        bool use_discounted_fees() const;
         std::string get_pin_server_url() const;
         std::string get_pin_server_public_key() const;
         std::string pub_key() const;
