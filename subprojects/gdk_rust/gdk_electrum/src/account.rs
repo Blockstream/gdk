@@ -580,11 +580,6 @@ impl Account {
                 })
                 .collect::<Result<Vec<GetTxInOut>, Error>>()?;
 
-            let discount_weight = match &txe.tx {
-                BETransaction::Bitcoin(_tx) => txe.weight,
-                BETransaction::Elements(tx) => tx.discount_weight(),
-            };
-
             txs.push(TxListItem {
                 block_height: height.unwrap_or(0),
                 created_at_ts: timestamp,
@@ -603,7 +598,6 @@ impl Account {
                 transaction_size: txe.size,
                 transaction_vsize: weight_to_vsize(txe.weight),
                 transaction_weight: txe.weight,
-                discount_weight,
             });
         }
         info!("list_tx {:?}", txs.iter().map(|e| &e.txhash).collect::<Vec<&String>>());

@@ -238,7 +238,7 @@ impl BETransaction {
     pub fn get_weight(&self) -> usize {
         match self {
             Self::Bitcoin(tx) => tx.weight().to_wu() as usize,
-            Self::Elements(tx) => tx.weight(),
+            Self::Elements(tx) => tx.discount_weight(),
         }
     }
 

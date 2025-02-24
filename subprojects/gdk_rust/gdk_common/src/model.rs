@@ -418,7 +418,6 @@ pub struct TxListItem {
     pub transaction_size: usize,
     pub transaction_vsize: usize,
     pub transaction_weight: usize,
-    pub discount_weight: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
