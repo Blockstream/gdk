@@ -162,10 +162,10 @@ echo ""
 
 # building wally-core
 name="libwally-core"
-source_url="https://github.com/ElementsProject/libwally-core/tarball/1fffafa23c67fd2264a27bc5c4352e3b512197d0/ElementsProject-libwally-core-1fffafa.tar.gz"
-source_name="ElementsProject-libwally-core-1fffafa"
-source_filename="${source_name}.tar.gz"
-source_hash="d8e2c2b69246bf611605d11a33bfc2e1f4c84e3b6fd08eca7c0ae18b85303f32"
+source_url="https://github.com/ElementsProject/libwally-core/tarball/85ed0b12fa1c678d93f865e3f5eeb7abf41b1f8c/ElementsProject-libwally-core-85ed0b1.tar.gz"
+source_filename=$(basename $source_url)
+source_name=$(echo $source_filename | cut -d. -f1)
+source_hash="71f45f2934488cb53b9ffcf8a48fd470efcad4be935feab036f4403de1970673"
 secpurl="https://github.com/ElementsProject/secp256k1-zkp.git"
 # Update this line to the secp commit used in wally
 secpcommit="6152622613fdf1c5af6f31f74c427c4e9ee120ce"
