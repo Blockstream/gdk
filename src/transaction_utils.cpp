@@ -807,7 +807,7 @@ namespace green {
             return;
         }
 
-        if (!addressee.value("is_greedy", false)) {
+        if (!is_liquid && !addressee.value("is_greedy", false)) {
             const auto satoshi = j_amountref(addressee);
             if (satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
