@@ -73,6 +73,12 @@ build_gdk-android-builder:
     IMAGE: blockstream/gdk-android-builder
     DOCKER_BUILD_CONTEXT: docker/android
 
+build_gdk-aws-lambda-builder:
+  extends: .build_setup
+  variables:
+    IMAGE: blockstream/gdk-aws-lambda-builder
+    DOCKER_BUILD_CONTEXT: docker/aws_lambda
+
 # build_gdk-android-bookworm-builder:
 #   extends: .build_setup
 #   variables:

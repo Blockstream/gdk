@@ -24,6 +24,10 @@
   image: blockstream/gdk-fedora-builder@sha256:fffdde3d7e32b387c20a34fcb1399e8b39dc5fd182f9745d4ff60502281d9975
   tags: [ ga ]
 
+.aws-lambda-image:
+  image: blockstream/gdk-aws-lambda-builder@sha256:067de138533dbf80d0a651ac17b881c60beb747bc038310819b961996ee0b219
+  tags: [ ga ]
+
 
 .py_release:
   variables:
