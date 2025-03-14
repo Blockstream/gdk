@@ -184,6 +184,18 @@ build_clang_osx:
     - cp $INSTALL_PATH/share/python/* wheelhouse
 
 
+build_aws_lambda:
+  extends:
+    - .aws-lambda-image
+    - .py_release
+  stage: build
+  needs: [ test_format ]
+  script:
+    - ./tools/build.sh --gcc --python-version=3.10 --buildtype release --install $INSTALL_PATH --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
+    - mkdir -p wheelhouse
+    - mv $INSTALL_PATH/share/python/*.whl $(ls $INSTALL_PATH/share/python/*.whl | sed 's/_x86_64/_x86_64.aws_lambda/g')
+    - mv $INSTALL_PATH/share/python/*.whl wheelhouse
+
 
 apidocs:
   extends: .debian-image
