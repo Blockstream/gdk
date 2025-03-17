@@ -1993,6 +1993,9 @@ namespace green {
         Tx tx(j_strref(m_details, "transaction"), m_net_params.is_liquid());
         auto [user_signed, server_signed, sweep_signed, has_sweeps]
             = tx_get_user_server_sweep_signed(*m_session, m_details, tx);
+        (void)user_signed;
+        (void)sweep_signed;
+        (void)has_sweeps;
 
         if (m_twofactor_required && server_signed) {
             // Already server signed, no need for 2fa

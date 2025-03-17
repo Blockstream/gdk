@@ -81,6 +81,7 @@ namespace green {
             auto network_name = m_net_params.network() + "RWO";
             const auto [filename, type, encryption_key]
                 = cache::get_name_type_and_key(local_encryption_key, network_name, signer);
+            (void)type;
             store_details = { { "filename", std::move(filename) }, { "encryption_key_hex", b2h(encryption_key) } };
         } else {
             // Use the master xpub to derive the cache filename and encryption key
