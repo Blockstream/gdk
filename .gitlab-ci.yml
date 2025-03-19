@@ -29,6 +29,7 @@ test_format:
   stage: format
   needs: []
   script:
+    - sed -i 's/json({}/error_use_j_empty_for_empty_json/g' src/*.cpp src/*.hpp
     - ./tools/format.sh && git diff --exit-code
 
 
