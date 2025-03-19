@@ -995,14 +995,13 @@ namespace green {
     // Post-login idempotent
     amount session_impl::get_dust_threshold(const std::string& asset_id_hex) const
     {
-        if (m_net_params.is_liquid() && asset_id_hex != m_net_params.get_policy_asset()) {
+        const bool is_liquid = m_net_params.is_liquid();
+        if (is_liquid && asset_id_hex != m_net_params.get_policy_asset()) {
             return amount(1); // No dust threshold for assets
         }
-        // BTC and L-BTC use the same threshold. For Liquid, txs are ~10x larger,
-        // but fees are 10x smaller. Fees, OP_RETURN and blinded outputs are not
-        // subject to the dust limit. As we only create blinded output, we only
-        // respect the limit to save users fees on L-BTC sends and change.
-        return amount(546);
+        // Liquid has a smaller dust threshold to reflect its discounted fees,
+        // see ELIP 201 for details.
+        return amount(is_liquid ? 21 : 546);
     }
 
     nlohmann::json session_impl::sync_transactions(uint32_t /*subaccount*/, unique_pubkeys_and_scripts_t& /*missing*/)
