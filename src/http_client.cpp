@@ -350,7 +350,7 @@ namespace green {
             nlohmann::json body;
 
             if (m_accept == "json") {
-                body["body"] = is_empty ? nlohmann::json({}) : json_parse(response.body());
+                body["body"] = is_empty ? j_empty() : json_parse(response.body());
             } else if (m_accept == "base64") {
                 body["body"] = is_empty ? std::string() : base64_from_bytes(ustring_span(response.body()));
             } else {

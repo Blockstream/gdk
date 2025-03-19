@@ -511,7 +511,7 @@ namespace green {
         return !m_net_params.is_liquid(); // Not supported on liquid
     }
 
-    nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", nlohmann::json({}), m_session); }
+    nlohmann::json ga_rust::get_settings() const { return rust_call("get_settings", j_empty(), m_session); }
 
     void ga_rust::change_settings(const nlohmann::json& settings) { rust_call("change_settings", settings, m_session); }
 
@@ -545,14 +545,14 @@ namespace green {
     nlohmann::json ga_rust::confirm_twofactor_reset(
         const std::string& email, bool is_dispute, const nlohmann::json& twofactor_data)
     {
-        return nlohmann::json({});
+        return j_empty();
     }
 
     nlohmann::json ga_rust::request_undo_twofactor_reset(const std::string& email) { return nlohmann::json{}; }
 
     nlohmann::json ga_rust::confirm_undo_twofactor_reset(const std::string& email, const nlohmann::json& twofactor_data)
     {
-        return nlohmann::json({});
+        return j_empty();
     }
 
     nlohmann::json ga_rust::cancel_twofactor_reset(const nlohmann::json& twofactor_data) { return nlohmann::json{}; }
@@ -648,10 +648,7 @@ namespace green {
         session_impl::set_transaction_memo(txhash_hex, memo);
     }
 
-    nlohmann::json ga_rust::get_fee_estimates()
-    {
-        return rust_call("get_fee_estimates", nlohmann::json({}), m_session);
-    }
+    nlohmann::json ga_rust::get_fee_estimates() { return rust_call("get_fee_estimates", j_empty(), m_session); }
 
     std::string ga_rust::get_system_message()
     {

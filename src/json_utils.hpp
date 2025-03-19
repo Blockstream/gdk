@@ -15,6 +15,9 @@ namespace green {
     using json_array_t = std::vector<nlohmann::json>;
     using namespace std::string_view_literals;
 
+    // Return empty (but not null) JSON
+    nlohmann::json j_empty();
+
     nlohmann::json json_parse(std::string_view src);
     nlohmann::json json_parse(gsl::span<const unsigned char> src);
 

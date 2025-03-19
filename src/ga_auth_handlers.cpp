@@ -2005,7 +2005,7 @@ namespace green {
 
         if (m_twofactor_required && !m_net_params.is_liquid() && !m_net_params.is_electrum()) {
             // Avoid 2FA if this tx is under the users spending limit
-            auto user_limits = m_twofactor_required ? m_session->get_spending_limits() : nlohmann::json({});
+            auto user_limits = m_twofactor_required ? m_session->get_spending_limits() : j_empty();
             if (user_limits.value("is_fiat", false)) {
                 try {
                     user_limits = m_session->convert_amount(user_limits);

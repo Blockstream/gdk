@@ -60,6 +60,13 @@ namespace {
 } // namespace
 
 namespace green {
+    nlohmann::json j_empty()
+    {
+        // Some older gcc versions miscompile the brace ctor ({}) resulting
+        // in a null json object. Use the explicit object ctor to avoid this
+        return nlohmann::json(nlohmann::json::object());
+    }
+
     nlohmann::json json_parse(std::string_view src)
     {
         try {
