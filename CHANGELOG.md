@@ -1,18 +1,21 @@
 # Changelog
 
-## Release 0.75.0 - Unreleased
+## Release 0.75.0 - 25-03-20
 
 ### Added
 - Bitcoin(Singlesig): Add support for BIP-86 P2TR (Taproot) wallets.
 - HWW: Add a new device JSON key ``"supports_p2tr"`` to indicate P2TR inputs
   can be signed by the device.
 - Liquid: Automatically enable fee discounting for Liquid environments.
+- Add an AWS lambda docker build image and a Python wheel for Python 3.10 lambda containers.
 
 ### Changed
 
-- Multisig: The minium supported gdk version is now 0.68.0. However, we strongly
+- Multisig: The minimum supported gdk version is now 0.68.0. However, we strongly
   recommend all clients update to the latest released gdk version to ensure they
   have all available security updates, bug fixes and new features.
+- Liquid: Allow callers to create dust (non-change) transaction outputs.
+- Liquid: Lower the L-BTC dust threshold to 21 l-satoshi following ELIP 201.
 - Build: Update rust to 1.71.1, which is now the MSRV for building gdk.
 - Singlesig(Bitcoin): Outgoing wallet mempool transactions with invalid signatures
   (as might be expected from a malicious Electrum server) are no longer silently
@@ -24,7 +27,7 @@
 - GA_get_unspent_outputs_for_private_key: Do not include wallet keys such as
   ``"subaccount"`` and ``"pointer"`` in the returned UTXOs (these were added
   mistakenly in release 0.68.0).
-- Dependencies: Update rust dependencies, libwally.
+- Dependencies: Update rust dependencies, libwally, json, boost, autobahn-cpp, websocketpp.
 - JSON: Improve error messages for developers when JSON values are passed as
   incorrect types (e.g. an array is expected but another type is given).
 - Build: Various code quality and build-related cleanups.
@@ -38,12 +41,15 @@
 - Watch-only(Singlesig): Prevent watch-only login with an empty descriptor array.
 - GA_sign_message: Ensure an ``"error"`` element is always returned (empty if
   the call succeeded).
+- Singlesig: Fix a deadlock that could cause singlesig sessions to hang.
+- Python: Fix Python wrapper compilation with later Python SDK versions.
+- JSON: Fix miscompilation of jSON handling code with older gcc versions.
 
 
 ## Release 0.74.3 - 25-01-11
 
 ### Added
-- GA_convert_amount(Liquid): Ensure L-BTC amounts are within concensus limits
+- GA_convert_amount(Liquid): Ensure L-BTC amounts are within consensus limits
   when asset information is included in the input JSON.
 
 ### Changed
