@@ -15,8 +15,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
 
-pub const DUST_VALUE: u64 = 546;
-
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub enum BETransaction {
     Bitcoin(bitcoin::Transaction),
