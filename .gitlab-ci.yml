@@ -29,7 +29,8 @@ test_format:
   stage: format
   needs: []
   script:
-    - if grep "json({}" src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
+    - if grep 'json({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
+    - if grep -P '^ +nlohmann::json [a-z0-9_]+\({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
     - ./tools/format.sh && git diff --exit-code
 
 
