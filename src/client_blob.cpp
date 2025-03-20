@@ -189,7 +189,7 @@ namespace green {
         if (!is_key_encrypted(SA_NAMES)) {
             name = j_str(m_data[SA_NAMES], subaccount_str);
         }
-        nlohmann::json ret({});
+        auto ret = j_empty();
         if (name.has_value()) {
             ret["name"] = std::move(name.value());
         }
