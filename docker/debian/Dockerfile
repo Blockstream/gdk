@@ -53,7 +53,7 @@ ENV BITCOIND_EXEC=/root/bin/bitcoind
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.71.1
+ENV RUST_VERSION=1.81.0
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # predownloading rust dependencies
