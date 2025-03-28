@@ -1,5 +1,11 @@
 # Changelog
 
+## Release 0.75.1 - 25-04-01
+
+### Fixed
+- GA_create_transaction: Return an invalid amount error instead of
+  an assertion failure if any output amount in a transaction is 0.
+
 ## Release 0.75.0 - 25-03-20
 
 ### Added
