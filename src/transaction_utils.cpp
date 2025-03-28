@@ -807,9 +807,13 @@ namespace green {
             return;
         }
 
-        if (!is_liquid && !addressee.value("is_greedy", false)) {
+        if (!addressee.value("is_greedy", false)) {
             const auto satoshi = j_amountref(addressee);
-            if (satoshi < session.get_dust_threshold(asset_id_hex)) {
+            if (!satoshi.value()) {
+                // TODO: Allow 0 OP_RETURN.
+                throw user_error(res::id_invalid_amount);
+            }
+            if (!is_liquid && satoshi < session.get_dust_threshold(asset_id_hex)) {
                 // Output is below the dust threshold. TODO: Allow 0 OP_RETURN.
                 throw user_error(res::id_amount_below_the_dust_threshold);
             }
