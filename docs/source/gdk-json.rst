@@ -210,6 +210,7 @@ Describes the capabilities of an external signing device.
          "supports_liquid": 1,
          "supports_low_r": false,
          "supports_p2tr": false,
+         "supports_liquid_p2tr": false
       }
    }
 
@@ -224,6 +225,7 @@ Describes the capabilities of an external signing device.
     with outputs that are already blinded from another wallet (e.g. 2-step swaps).
 :supports_ae_protocol: See "ae_protocol_support_level" enum  in the gdk source for details.
 :supports_p2tr: True if the device can sign Bitcoin BIP-341 taproot inputs.
+:supports_liquid_p2tr: True if the device can sign Liquid/Elements BIP-341 taproot inputs.
 
 The default for any value not provided is false or 0.
 
