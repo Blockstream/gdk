@@ -1225,45 +1225,46 @@ namespace green {
     std::vector<unsigned char> Tx::get_signature_hash(
         session_impl& session, const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash_flags) const
     {
-        std::array<unsigned char, SHA256_LEN> ret;
+        std::vector<unsigned char> ret(SHA256_LEN);
         const nlohmann::json& utxo = utxos.at(index);
-        const auto satoshi = j_amountref(utxo).value();
-        const auto script = j_bytesref(utxo, "prevout_script");
         const auto& addr_type = j_strref(utxo, "address_type");
-        const bool is_segwit = address_type_is_segwit(addr_type);
         const bool is_p2tr = addr_type == address_type::p2tr;
-        const uint32_t flags = is_segwit && !is_p2tr ? WALLY_TX_FLAG_USE_WITNESS : 0;
 
+        GDK_RUNTIME_ASSERT(m_is_liquid == session.get_network_parameters().is_liquid());
         validate_sighash_flags(sighash_flags, is_p2tr, m_is_liquid);
 
+        if (is_p2tr) {
+            // FIXME: TAPROOT: Support p2tr for Liquid
+            GDK_RUNTIME_ASSERT_MSG(!m_is_liquid, "Taproot is not yet supported for Liquid");
+
+            using map_ptr = std::unique_ptr<struct wally_map, decltype(&wally_map_free)>;
+            const map_ptr scripts(get_input_scriptpubkeys(session, utxos), wally_map_free);
+            const auto values = get_input_values(utxos);
+            const uint32_t key_version = 0;
+            GDK_VERIFY(wally_tx_get_btc_taproot_signature_hash(m_tx.get(), index, scripts.get(), values.data(),
+                values.size(), nullptr, 0, key_version, WALLY_NO_CODESEPARATOR, nullptr, 0, sighash_flags, 0,
+                ret.data(), ret.size()));
+            return ret;
+        }
+
+        const bool is_segwit = address_type_is_segwit(addr_type);
+        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
+        const auto satoshi = j_amountref(utxo).value();
+        const auto script = j_bytesref(utxo, "prevout_script");
         if (!m_is_liquid) {
-            if (is_p2tr) {
-                using map_ptr = std::unique_ptr<struct wally_map, decltype(&wally_map_free)>;
-                const map_ptr scripts(get_input_scriptpubkeys(session, utxos), wally_map_free);
-                const auto values = get_input_values(utxos);
-                const uint32_t key_version = 0;
-                GDK_VERIFY(wally_tx_get_btc_taproot_signature_hash(m_tx.get(), index, scripts.get(), values.data(),
-                    values.size(), nullptr, 0, key_version, WALLY_NO_CODESEPARATOR, nullptr, 0, sighash_flags, flags,
-                    ret.data(), ret.size()));
-            } else {
-                GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
-                    sighash_flags, flags, ret.data(), ret.size()));
+            GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
+                sighash_flags, flags, ret.data(), ret.size()));
+        } else {
+            // Liquid case - has a value-commitment in place of a satoshi value
+            auto ct_value = j_bytes_or_empty(utxo, "commitment");
+            if (ct_value.empty()) {
+                const auto value = tx_confidential_value_from_satoshi(satoshi);
+                ct_value.assign(std::begin(value), std::end(value));
             }
-            return { ret.begin(), ret.end() };
+            GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
+                ct_value.data(), ct_value.size(), sighash_flags, flags, ret.data(), ret.size()));
         }
-
-        // FIXME: TAPROOT: Support p2tr for Liquid
-        GDK_RUNTIME_ASSERT_MSG(!is_p2tr, "Taproot is not yet supported for Liquid");
-
-        // Liquid case - has a value-commitment in place of a satoshi value
-        auto ct_value = j_bytes_or_empty(utxo, "commitment");
-        if (ct_value.empty()) {
-            const auto value = tx_confidential_value_from_satoshi(satoshi);
-            ct_value.assign(std::begin(value), std::end(value));
-        }
-        GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
-            ct_value.data(), ct_value.size(), sighash_flags, flags, ret.data(), ret.size()));
-        return { ret.begin(), ret.end() };
+        return ret;
     }
 
     void Tx::validate_user_signatures(session_impl& session, std::vector<nlohmann::json>& inputs, bool for_rbf) const
