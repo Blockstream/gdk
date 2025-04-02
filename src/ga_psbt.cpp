@@ -793,6 +793,12 @@ namespace green {
                 GDK_VERIFY(
                     wally_psbt_set_output_value_blinding_rangeproof(m_psbt.get(), i, range_proof.data(), written));
             }
+            if (m_is_liquid) {
+                // Set the genesis blockhash per ELIP-0101
+                // Set this for all Elements PSETs to allow checking the network.
+                const auto genesis = session.get_network_parameters().get_genesis_hash();
+                GDK_VERIFY(wally_psbt_set_global_genesis_blockhash(m_psbt.get(), genesis.data(), genesis.size()));
+            }
         }
     }
 
