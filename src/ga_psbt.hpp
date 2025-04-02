@@ -32,6 +32,8 @@ namespace green {
         std::string to_base64(bool include_redundant) const;
         nlohmann::json to_json(session_impl& session, nlohmann::json utxos) const;
 
+        std::vector<unsigned char> get_genesis_blockhash() const;
+
         // Finalize the PSBT for extraction.
         // if allow_partial is false, throws if any finalization data is
         // missing and/or the PSBT cannot be fully finalized.
