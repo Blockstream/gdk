@@ -71,6 +71,7 @@ namespace green {
         uint32_t get_max_reorg_blocks() const;
         std::optional<uint32_t> get_min_fee_rate() const;
         std::string get_price_url() const;
+        std::vector<unsigned char> get_genesis_hash() const;
 
     private:
         nlohmann::json m_details;

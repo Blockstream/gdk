@@ -202,6 +202,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
             { "electrum_onion_url", std::string() },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -246,6 +247,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "elements-mainnet.blockstream.info:50002" },
             { "electrum_onion_url", "liqm3aeuthw4eacn2gssv4qg4zfhmy24rmtghp3vujintldu7jaxqyid.onion:50001" },
+            { "genesis_hash", "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -291,6 +293,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
             { "electrum_onion_url", std::string() },
+            { "genesis_hash", "00902a6b70c2ca83b5d9c815d96a0e2f4202179316970d14ea1847dae5b1ca21" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -336,6 +339,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "elements-testnet.blockstream.info:50002" },
             { "electrum_onion_url", "liqtzdv3soz7onazmbqzvzbrcgz73bdqlcuhbqlkucjj7i6irbdmoryd.onion:50001" },
+            { "genesis_hash", "a771da8e52ee6ad581ed1e9a99825e5b3b7992225534eaa2ae23244fe26ab1c1" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -377,6 +381,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "bitcoin-mainnet.blockstream.info:50002" },
             { "electrum_onion_url", "btcmxqzlrigojf2sdp6ekwjibucdqifpw34yidjez3x7ecdtbkuzavid.onion:50001" },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -417,6 +422,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "bitcoin-testnet.blockstream.info:50002" },
             { "electrum_onion_url", "btctxun5igzd4bv7t42ayifqsfugkfevfdly2543ddadl2634s2ortyd.onion:50001" },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -461,6 +467,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "elements-mainnet.blockstream.info:50002" },
             { "electrum_onion_url", "liqm3aeuthw4eacn2gssv4qg4zfhmy24rmtghp3vujintldu7jaxqyid.onion:50001" },
+            { "genesis_hash", "1466275836220db2944ca059a3a10ef6fd2ea684b0688d2c379296888a206003" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -506,6 +513,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
             { "electrum_onion_url", std::string() },
+            { "genesis_hash", "00902a6b70c2ca83b5d9c815d96a0e2f4202179316970d14ea1847dae5b1ca21" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -547,6 +555,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "bitcoin-mainnet.blockstream.info:50002" },
             { "electrum_onion_url", "btcmxqzlrigojf2sdp6ekwjibucdqifpw34yidjez3x7ecdtbkuzavid.onion:50001" },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -587,6 +596,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "bitcoin-testnet.blockstream.info:50002" },
             { "electrum_onion_url", "btctxun5igzd4bv7t42ayifqsfugkfevfdly2543ddadl2634s2ortyd.onion:50001" },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -627,6 +637,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "mempool.space:60602" },
             { "electrum_onion_url", "mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion:60602" },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -667,6 +678,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", false },
             { "electrum_url", "localhost:19002" },
             { "electrum_onion_url", std::string() },
+            { "genesis_hash", std::string() },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -711,6 +723,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "electrum_tls", true },
             { "electrum_url", "elements-testnet.blockstream.info:50002" },
             { "electrum_onion_url", "liqtzdv3soz7onazmbqzvzbrcgz73bdqlcuhbqlkucjj7i6irbdmoryd.onion:50001" },
+            { "genesis_hash", "a771da8e52ee6ad581ed1e9a99825e5b3b7992225534eaa2ae23244fe26ab1c1" },
             { "pin_server_url", "https://jadepin.blockstream.com" },
             { "pin_server_onion_url", "http://mrrxtq6tjpbnbm7vh5jt6mpjctn7ggyfy5wegvbeff3x7jrznqawlmid.onion" },
             { "pin_server_public_key", "0332b7b1348bde8ca4b46b9dcc30320e140ca26428160a27bdbfc30b34ec87c547" },
@@ -974,6 +987,14 @@ namespace green {
     std::string network_parameters::get_price_url() const
     {
         return get_url(m_details, "price_url", "price_onion_url", use_tor());
+    }
+
+    std::vector<unsigned char> network_parameters::get_genesis_hash() const
+    {
+        if (!is_liquid()) {
+            return {}; // Not relevant for BTC
+        }
+        return j_rbytesref(m_details, "genesis_hash");
     }
 
 } // namespace green
