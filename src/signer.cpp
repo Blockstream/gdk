@@ -419,14 +419,14 @@ namespace green {
         return ec_sig_from_bytes(priv_key, message);
     }
 
-    ec_sig_t signer::schnorr_sign(uint32_span_t path, byte_span_t message)
+    ec_sig_t signer::schnorr_sign(uint32_span_t path, byte_span_t message, bool is_liquid)
     {
         const auto derived = derive(m_master_key, path);
         const auto priv_key = gsl::make_span(derived->priv_key).subspan(1);
         // Apply the taptweak to the private key.
         // As we don't support script path spending we pass a null merkle_root
         std::array<unsigned char, EC_PRIVATE_KEY_LEN> tweaked;
-        constexpr uint32_t flags = 0;
+        const uint32_t flags = is_liquid ? EC_FLAG_ELEMENTS : 0;
         GDK_VERIFY(wally_ec_private_key_bip341_tweak(
             priv_key.data(), priv_key.size(), nullptr, 0, flags, tweaked.data(), tweaked.size()));
         auto ret = ec_sig_from_bytes(tweaked, message, EC_FLAG_SCHNORR);

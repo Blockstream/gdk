@@ -133,7 +133,7 @@ namespace green {
         ec_sig_t ecdsa_sign(uint32_span_t path, byte_span_t message);
 
         // Return the Schnorr signature for a hash using the taptweak bip32 key 'm/<path>'
-        ec_sig_t schnorr_sign(uint32_span_t path, byte_span_t message);
+        ec_sig_t schnorr_sign(uint32_span_t path, byte_span_t message, bool is_liquid);
 
         priv_key_t get_blinding_key_from_script(byte_span_t script);
 
