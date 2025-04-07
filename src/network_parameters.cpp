@@ -321,7 +321,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
 
     { "testnet-liquid",
         std::make_shared<nlohmann::json>(nlohmann::json({
-            { "address_explorer_url", "https://esplora.blockstream.com/liquidtestnet/address/" },
+            { "address_explorer_url", "https://blockstream.info/liquidtestnet/address/" },
             { "address_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/address/" },
             { "asset_registry_url", "https://assets-testnet.blockstream.info/" },
             { "asset_registry_onion_url", "http://lhquhzzpzg5tyymcqep24fynpzzqqg3m3rlh7ascnw5cpqsro35bfxyd.onion/testnet/" },
@@ -356,7 +356,7 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "spv_multi", false },
             { "spv_servers", nlohmann::json::array() },
             { "spv_enabled", false },
-            { "tx_explorer_url", "https://esplora.blockstream.com/liquidtestnet/tx/" },
+            { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
             { "wamp_cert_roots", nlohmann::json::array({"default"}) },
