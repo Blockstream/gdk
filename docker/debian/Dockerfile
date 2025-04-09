@@ -23,7 +23,7 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
-FROM rust:1.71-bullseye AS builderrust
+FROM rust:1.81-bullseye AS builderrust
 WORKDIR /root
 COPY ./docker/debian/install_rust_tools.sh ./docker/debian/install_rust_tools.sh
 RUN ./docker/debian/install_rust_tools.sh

@@ -16,7 +16,7 @@ FROM base AS builderlinux
 #wally absolutely wants a running python -- it doesn't really matter the version here
 RUN source /opt/python/default/bin/activate && ./tools/builddeps.sh --clang --prefix /prebuild/clang
 
-FROM rust:1.71-bullseye AS builderrust
+FROM rust:1.81-bullseye AS builderrust
 
 FROM base AS final
 # Remove copied/downloaded dependency sources
