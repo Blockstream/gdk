@@ -731,16 +731,34 @@ namespace green {
         }
 
         nlohmann::json prev_txs; // FIXME: allow caller to pass in (e.g. from PSBT)
-        if (is_local_signer && have_inputs_to_sign && !is_liquid) {
+        if (is_local_signer && have_inputs_to_sign) {
             // BTC: Provide the previous txs data for validation, even
             // for segwit, in order to mitigate the segwit fee attack.
-            // (Liquid txs are explicit fee and so not affected)
+            // Liquid: Provide previous txs only for non-wallet inputs,
+            // and only when a p2tr input is to be signed
+            // Although Liquid txs are not affected by the segwit attack,
+            // signing any p2tr input requires data from the prevout.
+            bool have_liquid_p2tr = false;
+            if (is_liquid) {
+                auto&& is_tr = [](const auto& in) -> bool {
+                    return !j_bool_or_false(in, "skip_signing")
+                        && j_str_or_empty(in, "address_type") == address_type::p2tr;
+                };
+                have_liquid_p2tr = std::any_of(inputs.begin(), inputs.end(), is_tr);
+            }
             for (const auto& input : inputs) {
-                std::string txhash = input.at("txhash");
-                if (!prev_txs.contains(txhash)) {
-                    auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
-                    prev_txs.emplace(std::move(txhash), std::move(tx_hex));
+                const auto& txhash = j_strref(input, "txhash");
+                if (prev_txs.contains(txhash)) {
+                    continue; // Already present: ignore
                 }
+                if (is_liquid && !have_liquid_p2tr) {
+                    continue; // Liquid: No p2tr inputs
+                }
+                if (is_liquid && !j_str_is_empty(input, "address_type")) {
+                    continue; // Wallet UTXO: ignore for Liquid
+                }
+                auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
+                prev_txs.emplace(txhash, std::move(tx_hex));
             }
         }
         m_twofactor_data["signing_transactions"] = std::move(prev_txs);
