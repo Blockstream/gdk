@@ -611,13 +611,20 @@ impl Account {
     }
 
     pub fn script_code(&self, path: &DerivationPath) -> BEScript {
-        // FIXME: TAPROOT: elements p2tr
         let public_key = self.public_key(path);
         match (self.network.id(), self.script_type) {
             (NetworkId::Bitcoin(network), ScriptType::P2tr) => {
                 // script_code is the p2tr scriptpubkey for p2tr
                 use gdk_common::bitcoin::Address;
                 Address::p2tr(&crate::EC, public_key.into(), None, network).script_pubkey().into()
+            }
+            (NetworkId::Elements(network), ScriptType::P2tr) => {
+                // script_code is the p2tr scriptpubkey for p2tr
+                use gdk_common::elements::Address;
+                let (x_only, _) = public_key.0.x_only_public_key();
+                Address::p2tr(&crate::EC, x_only, None, None, network.address_params())
+                    .script_pubkey()
+                    .into()
             }
             (_, _) => {
                 // script_code is the p2pkh scriptpubkey for p2pkh/p2wpkh/p2sh-p2wpkh
