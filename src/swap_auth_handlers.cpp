@@ -174,12 +174,24 @@ namespace green {
         const auto& receive = j_arrayref(liquidex_details, "receive", 1).at(0);
         // TODO: We may wish to allow receiving to a different subaccount.
         //       For now, receive to the same subaccount we are sending from
-        const uint32_t subaccount = send.at("subaccount");
+        const auto pointer = j_uint32ref(send, "subaccount");
 
         if (m_receive_address.empty()) {
             // Fetch a new address to receive the swapped asset on
             // TODO: Further validate the inputs
-            const nlohmann::json addr_details = { { "subaccount", subaccount } };
+            if (pointer != 0 && m_net_params.is_electrum()) {
+                // Singlesig: Ensure the subaccount type is segwit v0.
+                // We skip checking subaccount 0 which is always p2sh-p2wsh.
+                // Note that segwit v1 (taproot) does not support liquidex
+                // makers because the signature hash covers the output surjection
+                // proof, which cannot be created without the takers input.
+                const auto subaccount = m_session->get_subaccount(pointer);
+                const auto& sa_type = j_strref(subaccount, "type");
+                if (sa_type != address_type::p2sh_p2wpkh && sa_type != address_type::p2wpkh) {
+                    throw_user_error("Unsupported subaccount type");
+                }
+            }
+            const nlohmann::json addr_details = { { "subaccount", pointer } };
             add_next_handler(new get_receive_address_call(m_session_parent, addr_details));
             return state_type::make_call;
         }
