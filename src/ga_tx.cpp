@@ -1342,11 +1342,11 @@ namespace green {
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo)
     {
         const auto subaccount = j_uint32_or_zero(utxo, "subaccount");
-        const auto pointer = j_uint32ref(utxo, "pointer");
-        const auto is_internal = j_bool_or_false(utxo, "is_internal");
 
-        if (utxo.find("user_path") == utxo.end()) {
-            // Populate the full user path for h/w signing
+        if (!utxo.contains("user_path")) {
+            // Populate the full user path for signing
+            const auto pointer = j_uint32ref(utxo, "pointer");
+            const auto is_internal = j_bool_or_false(utxo, "is_internal");
             utxo["user_path"] = session.get_user_pubkeys().get_full_path(subaccount, pointer, is_internal);
         }
 
@@ -1355,12 +1355,12 @@ namespace green {
             return;
         }
 
-        if (utxo.find("service_xpub") == utxo.end()) {
+        if (!utxo.contains("service_xpub")) {
             // Populate the service xpub for h/w signing
             utxo["service_xpub"] = session.get_green_pubkeys().get_subaccount(subaccount).to_base58();
         }
 
-        if (utxo.find("recovery_xpub") == utxo.end() && session.get_recovery_pubkeys().have_subaccount(subaccount)) {
+        if (!utxo.contains("recovery_xpub") && session.get_recovery_pubkeys().have_subaccount(subaccount)) {
             // Populate the recovery xpub for h/w signing
             utxo["recovery_xpub"] = session.get_recovery_pubkeys().get_subaccount(subaccount).to_base58();
         }
