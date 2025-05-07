@@ -285,7 +285,7 @@ namespace green {
 
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
-        const auto credentials = signer->get_credentials();
+        auto credentials = signer->get_credentials();
         {
             locker_t locker(m_mutex);
             set_signer(locker, signer);
@@ -293,6 +293,8 @@ namespace green {
             if (signer->is_descriptor_watch_only()) {
                 m_blobserver.reset(); // No blobserver for descriptor wallets
                 locker.unlock();
+                // Descriptor WO doesn't support the master blinding key
+                j_erase(credentials, "master_blinding_key");
                 auto login_data = rust_call("login_wo", credentials, m_session);
 
                 const auto fingerprint_hex = j_strref(login_data, "master_xpub_fingerprint");
