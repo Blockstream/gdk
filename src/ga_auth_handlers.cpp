@@ -491,11 +491,7 @@ namespace green {
 
         const auto& sa_type = j_strref(m_details, "type");
         if (sa_type == p2tr) {
-            if (m_net_params.is_liquid()) {
-                // FIXME: TAPROOT: Support p2tr for Liquid
-                throw_user_error("Invalid account type"); // FIXME: res::
-            }
-            if (!m_signer->supports_p2tr()) {
+            if (!m_signer->supports_p2tr(m_net_params.is_liquid())) {
                 throw_user_error("session signer does not support p2tr subaccounts");
             }
         } else if (m_net_params.is_electrum()) {
@@ -1198,7 +1194,7 @@ namespace green {
         auto signer = get_signer();
         GDK_RUNTIME_ASSERT(signer);
         std::vector<std::string> ss_sa_types = { p2sh_p2wpkh, p2wpkh, p2pkh };
-        if (!m_net_params.is_liquid() && signer->supports_p2tr()) {
+        if (signer->supports_p2tr(m_net_params.is_liquid())) {
             ss_sa_types.push_back(p2tr);
         }
 

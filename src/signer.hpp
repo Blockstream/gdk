@@ -76,7 +76,7 @@ namespace green {
         bool supports_external_blinding() const;
 
         // Returns true if this signer supports signing pay-to-taproot inputs
-        bool supports_p2tr() const;
+        bool supports_p2tr(bool is_liquid) const;
 
         // Returns how this signer supports the Anti-Exfil protocol
         ae_protocol_support_level get_ae_protocol_support() const;

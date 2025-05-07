@@ -73,17 +73,20 @@ namespace green {
         static const nlohmann::json GREEN_DEVICE_JSON{ { "device_type", "green-backend" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", false },
             { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
-            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true } };
+            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true },
+            { "supports_liquid_p2tr", true } };
 
         static const nlohmann::json WATCH_ONLY_DEVICE_JSON{ { "device_type", "watch-only" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
             { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
-            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true } };
+            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true },
+            { "supports_liquid_p2tr", true } };
 
         static const nlohmann::json SOFTWARE_DEVICE_JSON{ { "device_type", "software" }, { "supports_low_r", true },
             { "supports_arbitrary_scripts", true }, { "supports_host_unblinding", true },
             { "supports_external_blinding", true }, { "supports_liquid", liquid_support_level::lite },
-            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true } };
+            { "supports_ae_protocol", ae_protocol_support_level::none }, { "supports_p2tr", true },
+            { "supports_liquid_p2tr", true } };
 
         static nlohmann::json get_device_json(const nlohmann::json& hw_device, const nlohmann::json& credentials)
         {
@@ -112,6 +115,7 @@ namespace green {
             json_add_if_missing(ret, "supports_liquid", liquid_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_ae_protocol", ae_protocol_support_level::none, overwrite_null);
             json_add_if_missing(ret, "supports_p2tr", false, overwrite_null);
+            json_add_if_missing(ret, "supports_liquid_p2tr", false, overwrite_null);
             json_add_if_missing(ret, "device_type", std::string("hardware"), overwrite_null);
             const auto device_type = j_str_or_empty(ret, "device_type");
             if (device_type == "hardware") {
@@ -245,7 +249,10 @@ namespace green {
 
     bool signer::supports_external_blinding() const { return j_boolref(m_device, "supports_external_blinding"); }
 
-    bool signer::supports_p2tr() const { return j_boolref(m_device, "supports_p2tr"); }
+    bool signer::supports_p2tr(bool is_liquid) const
+    {
+        return j_boolref(m_device, is_liquid ? "supports_liquid_p2tr" : "supports_p2tr");
+    }
 
     ae_protocol_support_level signer::get_ae_protocol_support() const { return m_device.at("supports_ae_protocol"); }
 
