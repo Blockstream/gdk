@@ -1401,6 +1401,8 @@ namespace green {
     std::vector<std::string> sign_transaction(
         session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs)
     {
+        const auto& net_params = session.get_network_parameters();
+        const bool is_liquid = net_params.is_liquid();
         std::vector<std::string> sigs(inputs.size());
 
         for (size_t i = 0; i < inputs.size(); ++i) {
@@ -1418,8 +1420,8 @@ namespace green {
             const uint32_t pointer = j_uint32_or_zero(utxo, "pointer");
             const bool is_internal = j_bool_or_false(utxo, "is_internal");
             const auto path = session.get_user_pubkeys().get_full_path(subaccount, pointer, is_internal);
-            if (j_strref(utxo, "address_type") == address_type::p2tr) {
-                const auto sig = session.get_nonnull_signer()->schnorr_sign(path, message);
+            if (is_p2tr) {
+                const auto sig = session.get_nonnull_signer()->schnorr_sign(path, message, is_liquid);
                 std::vector<unsigned char> sig_with_sighash{ sig.begin(), sig.end() };
                 if (sighash_flags != WALLY_SIGHASH_DEFAULT) {
                     // Include the sighash flags when non-default, per BIP 341
