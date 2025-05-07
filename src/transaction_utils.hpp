@@ -44,6 +44,8 @@ namespace green {
 
     std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo, bool verify_script = true);
 
+    std::vector<unsigned char> get_scriptpubkey_from_utxo(session_impl& session, const nlohmann::json& utxo);
+
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,
         green_pubkeys& pubkeys, user_pubkeys& usr_pubkeys, green_recovery_pubkeys& recovery_pubkeys,
         const nlohmann::json& utxo);

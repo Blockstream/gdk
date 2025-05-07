@@ -365,6 +365,11 @@ namespace green {
 
     std::string get_address_from_utxo(session_impl& session, const nlohmann::json& utxo, bool verify_script)
     {
+        if (!verify_script) {
+            if (const auto addr = j_str(utxo, "address"); addr) {
+                return *addr;
+            }
+        }
         using namespace address_type;
         const auto& net_params = session.get_network_parameters();
         const auto& addr_type = j_strref(utxo, "address_type");
@@ -403,6 +408,28 @@ namespace green {
         GDK_RUNTIME_ASSERT(addr_type == address_type::p2wsh || addr_type == address_type::csv);
         const auto witness_program = witness_script(script, WALLY_SCRIPT_SHA256);
         return base58_address(net_params.btc_p2sh_version(), witness_program);
+    }
+
+    std::vector<unsigned char> get_scriptpubkey_from_utxo(session_impl& session, const nlohmann::json& utxo)
+    {
+        if (const auto scriptpubkey = j_str(utxo, "scriptpubkey"); scriptpubkey) {
+            return h2b(*scriptpubkey);
+        }
+        const auto addr_type = j_str_or_empty(utxo, "address_type");
+        if (!addr_type.empty()) {
+            try {
+                constexpr bool verify_script = false;
+                const auto derived_address = get_address_from_utxo(session, utxo, verify_script);
+                const auto& net_params = session.get_network_parameters();
+                constexpr bool allow_unconfidential = true;
+                return scriptpubkey_from_address(net_params, derived_address, allow_unconfidential);
+            } catch (const std::exception& e) {
+                // Unable to compute, e.g. a watch-only or unsynced session
+            }
+        }
+        // Not a wallet utxo or unable to compute the script.
+        // Caller must fetch scriptpubkey from the prevout tx.
+        return {};
     }
 
     static std::vector<unsigned char> scriptsig_multisig(byte_span_t prevout_script, byte_span_t user_sig,
