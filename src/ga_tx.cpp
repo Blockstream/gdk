@@ -349,8 +349,9 @@ namespace green {
 
                 result["addressees"] = std::move(addressees);
 
+                const auto& prev_inputs = prev_tx.at("inputs");
                 if (!change_index.has_value() && !is_redeposit) {
-                    for (const auto& in : prev_tx["inputs"]) {
+                    for (const auto& in : prev_inputs) {
                         if (j_bool_or_false(in, "is_relevant")) {
                             // Use the first inputs subaccount as our change subaccount
                             // FIXME: When the server supports multiple subaccount sends,
@@ -364,26 +365,37 @@ namespace green {
                 }
 
                 // Add the existing inputs as UTXOs
+                auto&& is_tr
+                    = [](const auto& in) -> bool { return j_str_or_empty(in, "address_type") == address_type::p2tr; };
+                const bool are_signing_p2tr = std::any_of(prev_inputs.begin(), prev_inputs.end(), is_tr);
+
                 // Fetch them from the inputs and re-order them as required
                 std::map<uint32_t, nlohmann::json> tx_inputs_map;
-                for (const auto& input : prev_tx.at("inputs")) {
+                for (const auto& input : prev_inputs) {
                     if (!j_bool_or_false(input, "is_relevant")) {
                         // FIXME: Allow RBF of mixed wallet/non-wallet input txs
                         throw_user_error("Cannot RBF a transaction with non-wallet inputs");
                     }
                     nlohmann::json utxo(input);
                     // Note pt_idx on endpoints is the index within the tx, not the previous tx!
-                    const uint32_t i = input.at("pt_idx");
+                    const uint32_t i = utxo.at("pt_idx");
                     GDK_RUNTIME_ASSERT(i < tx.get_num_inputs());
                     utxo["txhash"] = b2h_rev(tx.get_input(i).txhash);
                     utxo["pt_idx"] = tx.get_input(i).index;
                     utxo["sequence"] = tx.get_input(i).sequence;
                     calculate_input_subtype(utxo, tx, i);
-                    const auto script = session.output_script_from_utxo(utxo);
-                    utxo["prevout_script"] = b2h(script);
+                    utxo_add_paths(session, utxo);
                     if (is_electrum) {
                         const auto user_key = session.keys_from_utxo(utxo).at(0);
                         utxo["public_key"] = b2h(user_key.get_public_key());
+                    }
+                    const auto script = session.output_script_from_utxo(utxo);
+                    utxo["prevout_script"] = b2h(script);
+                    if (are_signing_p2tr && !utxo.contains("scriptpubkey")) {
+                        const auto scriptpubkey = get_scriptpubkey_from_utxo(session, utxo);
+                        if (!scriptpubkey.empty()) {
+                            utxo["scriptpubkey"] = b2h(scriptpubkey);
+                        }
                     }
                     tx_inputs_map.emplace(i, std::move(utxo));
                 }
