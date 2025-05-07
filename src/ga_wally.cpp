@@ -140,7 +140,6 @@ namespace green {
 
     std::vector<unsigned char> xpub_hdkey::get_tweaked_xonly_key(bool is_liquid) const
     {
-        GDK_RUNTIME_ASSERT(!is_liquid); // FIXME: TAPROOT: Support p2tr for Liquid
         const uint32_t flags = is_liquid ? EC_FLAG_ELEMENTS : 0;
         pub_key_t tweaked;
         GDK_VERIFY(wally_ec_public_key_bip341_tweak(
