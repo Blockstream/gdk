@@ -731,15 +731,48 @@ namespace green {
         }
 
         nlohmann::json prev_txs; // FIXME: allow caller to pass in (e.g. from PSBT)
-        if (is_local_signer && have_inputs_to_sign && !is_liquid) {
+        if (is_local_signer && have_inputs_to_sign) {
             // BTC: Provide the previous txs data for validation, even
-            // for segwit, in order to mitigate the segwit fee attack.
-            // (Liquid txs are explicit fee and so not affected)
-            for (const auto& input : inputs) {
-                std::string txhash = input.at("txhash");
-                if (!prev_txs.contains(txhash)) {
-                    auto tx_hex = m_session->get_raw_transaction_details(txhash).to_hex();
-                    prev_txs.emplace(std::move(txhash), std::move(tx_hex));
+            //      for segwit, in order to mitigate the segwit fee attack.
+            // Liquid: Don't provide previous txs, but do include required
+            //         taproot data if we are signing a p2tr input. Note this
+            //         is required because not all callers provide the
+            //         required data (e.g. liquidex proposals don't provide
+            //         asset_tag).
+            auto&& is_tr = [](const auto& in) -> bool {
+                return !j_bool_or_false(in, "skip_signing") && j_str_or_empty(in, "address_type") == address_type::p2tr;
+            };
+            const bool are_signing_p2tr = std::any_of(inputs.begin(), inputs.end(), is_tr);
+
+            for (auto& input : inputs) {
+                bool need_fields = false;
+                if (is_liquid) {
+                    if (!are_signing_p2tr) {
+                        continue;
+                    }
+                    need_fields = j_bool_or_false(input, "skip_signing") || !input.contains("scriptpubkey")
+                        || !input.contains("asset_tag") || !input.contains("commitment");
+                    if (!need_fields) {
+                        continue;
+                    }
+                } else if (are_signing_p2tr) {
+                    // Bitcoin p2tr
+                    need_fields = !input.contains("scriptpubkey") || !input.contains("satoshi");
+                }
+                const auto& txhash = j_strref(input, "txhash");
+                const auto utxo_tx = m_session->get_raw_transaction_details(txhash);
+                if (need_fields) {
+                    const auto& prevout = utxo_tx.get_output(j_uint32ref(input, "pt_idx"));
+                    input["scriptpubkey"] = b2h(gsl::make_span(prevout.script, prevout.script_len));
+                    if (is_liquid) {
+                        input["commitment"] = b2h(gsl::make_span(prevout.value, prevout.value_len));
+                        input["asset_tag"] = b2h(gsl::make_span(prevout.asset, prevout.asset_len));
+                    } else {
+                        input["satoshi"] = prevout.satoshi;
+                    }
+                }
+                if (!is_liquid && !prev_txs.contains(txhash)) {
+                    prev_txs.emplace(txhash, utxo_tx.to_hex());
                 }
             }
         }

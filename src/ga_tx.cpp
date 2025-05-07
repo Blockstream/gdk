@@ -152,38 +152,10 @@ namespace green {
 
             for (size_t i = 0; i < utxos.size(); ++i) {
                 const auto& utxo = utxos.at(i);
-                std::vector<unsigned char> script;
-                if (const auto scriptpubkey = j_str(utxo, "scriptpubkey"); scriptpubkey) {
-                    // Caller provided the scriptpubkey
-                    script = h2b(*scriptpubkey);
-                } else {
-                    const auto addr_type = j_str_or_empty(utxo, "address_type");
-                    // For signing, Taproot requires the scriptpubkey rather
-                    // than the scriptcode in "prevout_script".
-                    if (addr_type == p2pkh || addr_type == p2tr) {
-                        // For p2pkh/p2tr, the scriptpubkey is the same as scriptcode
-                        script = j_bytesref(utxo, "prevout_script");
-                    } else if (addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
-                        // For p2wpkh/p2sh-p2wpkh, compute scriptpubkey from the pubkey
-                        script = j_bytesref(utxo, "prevout_script");
-                        const auto script_type = scriptpubkey_get_type(script);
-                        GDK_RUNTIME_ASSERT(script_type == WALLY_SCRIPT_TYPE_P2PKH);
-                        const auto public_key = j_bytesref(utxo, "public_key");
-                        if (addr_type == p2wpkh) {
-                            script = scriptpubkey_p2wpkh_from_public_key(public_key);
-                        } else {
-                            script = scriptpubkey_p2sh_p2wpkh_from_public_key(public_key);
-                        }
-                    } else {
-                        // For unknown/non-wallet UTXOs, fetch scriptpubkey
-                        // from the inputs UTXO.
-                        const auto& txhash_hex = j_strref(utxo, "txhash");
-                        const auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
-                        const auto& txout = utxo_tx.get_output(j_uint32ref(utxo, "pt_idx"));
-                        script.assign(txout.script, txout.script + txout.script_len);
-                    }
+
+                if (auto script = j_bytes_or_empty(utxo, "scriptpubkey"); !script.empty()) {
+                    GDK_VERIFY(wally_map_add_integer(scripts.get(), i, script.data(), script.size()));
                 }
-                GDK_VERIFY(wally_map_add_integer(scripts.get(), i, script.data(), script.size()));
 
                 if (is_liquid) {
                     const auto asset_tag = j_bytesref(utxo, "asset_tag");
@@ -195,7 +167,8 @@ namespace green {
                     }
                     GDK_VERIFY(wally_map_add_integer(values.get(), i, ct_value.data(), ct_value.size()));
                 } else {
-                    const auto value = boost::endian::native_to_little(j_amountref(utxo).value());
+                    const auto satoshi = j_amountref(utxo).value();
+                    const auto value = boost::endian::native_to_little(satoshi);
                     const auto value_p = reinterpret_cast<const unsigned char*>(&value);
                     GDK_VERIFY(wally_map_add_integer(values.get(), i, value_p, sizeof(value)));
                 }
