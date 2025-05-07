@@ -9,7 +9,9 @@ use gdk_common::bitcoin::hashes::Hash;
 use gdk_common::bitcoin::CompressedPublicKey;
 use gdk_common::{bitcoin, elements};
 
-use gdk_common::be::{BEAddress, BEOutPoint, BEScript, BETransaction, BETransactions, BETxid};
+use gdk_common::be::{
+    BEAddress, BEOutPoint, BEScript, BEScriptConvert, BETransaction, BETransactions, BETxid,
+};
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
@@ -898,6 +900,7 @@ pub fn discover_account(
     proxy: Option<&str>,
     account_xpub: &Xpub,
     script_type: ScriptType,
+    network_id: NetworkId,
     gap_limit: u32,
 ) -> Result<bool, Error> {
     use gdk_common::electrum_client::ElectrumApi;
@@ -908,9 +911,29 @@ pub fn discover_account(
     let external_xpub = account_xpub.ckd_pub(&crate::EC, 0.into())?;
     for index in 0..gap_limit {
         let child_key = external_xpub.ckd_pub(&crate::EC, index.into())?;
-        // Every network has the same scriptpubkey
-        let script = bitcoin_address(&child_key.to_pub(), script_type, bitcoin::Network::Bitcoin)
-            .script_pubkey();
+
+        let script = match (network_id, script_type) {
+            (NetworkId::Elements(network), ScriptType::P2tr) => {
+                // Elements p2tr uses a custom key tweak
+                let (x_only, _) = child_key.to_pub().0.x_only_public_key();
+                BEScript::Elements(
+                    elements::Address::p2tr(
+                        &crate::EC,
+                        x_only,
+                        None,
+                        None,
+                        network.address_params(),
+                    )
+                    .script_pubkey(),
+                )
+                .into_bitcoin()
+            }
+            (_, _) => {
+                // All other scriptpubkeys are network-independent
+                bitcoin_address(&child_key.to_pub(), script_type, bitcoin::Network::Bitcoin)
+                    .script_pubkey()
+            }
+        };
 
         if client.script_subscribe(&script)?.is_some() {
             return Ok(true);

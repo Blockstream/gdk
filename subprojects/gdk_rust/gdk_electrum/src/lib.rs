@@ -986,6 +986,7 @@ impl ElectrumSession {
             self.proxy.as_deref(),
             &opt.xpub,
             opt.script_type,
+            self.network.id(),
             self.gap_limit,
         )
     }
