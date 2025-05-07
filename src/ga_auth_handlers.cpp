@@ -873,6 +873,8 @@ namespace green {
 
     auth_handler::state_type psbt_sign_call::call_impl()
     {
+        const auto& net_params = m_session->get_network_parameters();
+
         m_session->ensure_full_session();
         if (!m_is_synced) {
             sync_scriptpubkeys(*m_session);
@@ -880,6 +882,12 @@ namespace green {
         }
 
         m_psbt = std::make_unique<Psbt>(j_strref(m_details, "psbt"), m_net_params.is_liquid());
+        if (net_params.is_liquid()) {
+            const auto genesis_hash = m_psbt->get_genesis_blockhash();
+            if (!genesis_hash.empty() && genesis_hash != net_params.get_genesis_hash()) {
+                throw_user_error("Invalid network"); // PSET is for a different chain
+            }
+        }
         m_signing_details = m_psbt->to_json(*m_session, std::move(m_details.at("utxos")));
 
         if (m_signing_details.empty()) {

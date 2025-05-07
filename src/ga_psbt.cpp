@@ -678,6 +678,18 @@ namespace green {
         return result;
     }
 
+    std::vector<unsigned char> Psbt::get_genesis_blockhash() const
+    {
+        size_t have_genesis = false;
+        if (m_is_liquid) {
+            GDK_VERIFY(wally_psbt_has_global_genesis_blockhash(m_psbt.get(), &have_genesis));
+        }
+        if (!have_genesis) {
+            return {};
+        }
+        return { m_psbt->genesis_blockhash, m_psbt->genesis_blockhash + sizeof(m_psbt->genesis_blockhash) };
+    }
+
     void Psbt::from_json(session_impl& session, const nlohmann::json& details)
     {
         GDK_RUNTIME_ASSERT(!m_psbt);
