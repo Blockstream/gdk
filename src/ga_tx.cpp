@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <boost/algorithm/string/predicate.hpp>
+#include <boost/endian/conversion.hpp>
 #include <ctime>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -129,60 +130,77 @@ namespace green {
             }
         }
 
-        static auto get_input_scriptpubkeys(session_impl& session, const std::vector<nlohmann::json>& utxos)
+        using map_ptr = std::shared_ptr<struct wally_map>;
+
+        static map_ptr map_init(size_t alloc_size)
         {
-            using namespace address_type;
-            wally_map* scripts = nullptr;
-            try {
-                GDK_VERIFY(wally_map_init_alloc(utxos.size(), nullptr, &scripts));
-                for (size_t i = 0; i < utxos.size(); ++i) {
-                    const auto& utxo = utxos.at(i);
-                    std::vector<unsigned char> script;
-                    if (const auto scriptpubkey = j_str(utxo, "scriptpubkey"); scriptpubkey) {
-                        // Caller provided the scriptpubkey
-                        script = h2b(*scriptpubkey);
-                    } else {
-                        const auto addr_type = j_str_or_empty(utxo, "address_type");
-                        // For signing, Taproot requires the scriptpubkey rather
-                        // than the scriptcode in "prevout_script".
-                        if (addr_type == p2pkh || addr_type == p2tr) {
-                            // For p2pkh/p2tr, the scriptpubkey is the same as scriptcode
-                            script = j_bytesref(utxo, "prevout_script");
-                        } else if (addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
-                            // For p2wpkh/p2sh-p2wpkh, compute scriptpubkey from the pubkey
-                            script = j_bytesref(utxo, "prevout_script");
-                            const auto script_type = scriptpubkey_get_type(script);
-                            GDK_RUNTIME_ASSERT(script_type == WALLY_SCRIPT_TYPE_P2PKH);
-                            const auto public_key = j_bytesref(utxo, "public_key");
-                            if (addr_type == p2wpkh) {
-                                script = scriptpubkey_p2wpkh_from_public_key(public_key);
-                            } else {
-                                script = scriptpubkey_p2sh_p2wpkh_from_public_key(public_key);
-                            }
-                        } else {
-                            // For unknown/non-wallet UTXOs, fetch scriptpubkey
-                            // from the inputs UTXO.
-                            const auto& txhash_hex = j_strref(utxo, "txhash");
-                            const auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
-                            const auto& txout = utxo_tx.get_output(j_uint32ref(utxo, "pt_idx"));
-                            script.assign(txout.script, txout.script + txout.script_len);
-                        }
-                    }
-                    GDK_VERIFY(wally_map_add_integer(scripts, i, script.data(), script.size()));
-                }
-            } catch (const std::exception& e) {
-                wally_map_free(scripts);
-                throw;
+            wally_map* m = nullptr;
+            if (alloc_size) {
+                GDK_VERIFY(wally_map_init_alloc(alloc_size, nullptr, &m));
             }
-            return scripts;
+            return { m, wally_map_free };
         }
 
-        static auto get_input_values(const std::vector<nlohmann::json>& utxos)
+        static std::tuple<map_ptr, map_ptr, map_ptr> get_signing_data(
+            session_impl& session, const std::vector<nlohmann::json>& utxos)
         {
-            std::vector<uint64_t> values(utxos.size());
-            std::transform(
-                utxos.begin(), utxos.end(), values.begin(), [](const auto& u) { return j_amountref(u).value(); });
-            return values;
+            using namespace address_type;
+            const bool is_liquid = session.get_network_parameters().is_liquid();
+            auto scripts = map_init(utxos.size());
+            auto values = map_init(utxos.size());
+            auto assets = map_init(is_liquid ? utxos.size() : 0);
+
+            for (size_t i = 0; i < utxos.size(); ++i) {
+                const auto& utxo = utxos.at(i);
+                std::vector<unsigned char> script;
+                if (const auto scriptpubkey = j_str(utxo, "scriptpubkey"); scriptpubkey) {
+                    // Caller provided the scriptpubkey
+                    script = h2b(*scriptpubkey);
+                } else {
+                    const auto addr_type = j_str_or_empty(utxo, "address_type");
+                    // For signing, Taproot requires the scriptpubkey rather
+                    // than the scriptcode in "prevout_script".
+                    if (addr_type == p2pkh || addr_type == p2tr) {
+                        // For p2pkh/p2tr, the scriptpubkey is the same as scriptcode
+                        script = j_bytesref(utxo, "prevout_script");
+                    } else if (addr_type == p2wpkh || addr_type == p2sh_p2wpkh) {
+                        // For p2wpkh/p2sh-p2wpkh, compute scriptpubkey from the pubkey
+                        script = j_bytesref(utxo, "prevout_script");
+                        const auto script_type = scriptpubkey_get_type(script);
+                        GDK_RUNTIME_ASSERT(script_type == WALLY_SCRIPT_TYPE_P2PKH);
+                        const auto public_key = j_bytesref(utxo, "public_key");
+                        if (addr_type == p2wpkh) {
+                            script = scriptpubkey_p2wpkh_from_public_key(public_key);
+                        } else {
+                            script = scriptpubkey_p2sh_p2wpkh_from_public_key(public_key);
+                        }
+                    } else {
+                        // For unknown/non-wallet UTXOs, fetch scriptpubkey
+                        // from the inputs UTXO.
+                        const auto& txhash_hex = j_strref(utxo, "txhash");
+                        const auto utxo_tx = session.get_raw_transaction_details(txhash_hex);
+                        const auto& txout = utxo_tx.get_output(j_uint32ref(utxo, "pt_idx"));
+                        script.assign(txout.script, txout.script + txout.script_len);
+                    }
+                }
+                GDK_VERIFY(wally_map_add_integer(scripts.get(), i, script.data(), script.size()));
+
+                if (is_liquid) {
+                    const auto asset_tag = j_bytesref(utxo, "asset_tag");
+                    GDK_VERIFY(wally_map_add_integer(assets.get(), i, asset_tag.data(), asset_tag.size()));
+                    auto ct_value = j_bytes_or_empty(utxo, "commitment");
+                    if (ct_value.empty()) {
+                        const auto value = tx_confidential_value_from_satoshi(j_amountref(utxo).value());
+                        ct_value.assign(std::begin(value), std::end(value));
+                    }
+                    GDK_VERIFY(wally_map_add_integer(values.get(), i, ct_value.data(), ct_value.size()));
+                } else {
+                    const auto value = boost::endian::native_to_little(j_amountref(utxo).value());
+                    const auto value_p = reinterpret_cast<const unsigned char*>(&value);
+                    GDK_VERIFY(wally_map_add_integer(values.get(), i, value_p, sizeof(value)));
+                }
+            }
+            return { scripts, assets, values };
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
@@ -1225,25 +1243,23 @@ namespace green {
     std::vector<unsigned char> Tx::get_signature_hash(
         session_impl& session, const std::vector<nlohmann::json>& utxos, size_t index, uint32_t sighash_flags) const
     {
+        const auto& net_params = session.get_network_parameters();
         std::vector<unsigned char> ret(SHA256_LEN);
         const nlohmann::json& utxo = utxos.at(index);
         const auto& addr_type = j_strref(utxo, "address_type");
         const bool is_p2tr = addr_type == address_type::p2tr;
 
-        GDK_RUNTIME_ASSERT(m_is_liquid == session.get_network_parameters().is_liquid());
+        GDK_RUNTIME_ASSERT(m_is_liquid == net_params.is_liquid());
         validate_sighash_flags(sighash_flags, is_p2tr, m_is_liquid);
 
         if (is_p2tr) {
-            // FIXME: TAPROOT: Support p2tr for Liquid
-            GDK_RUNTIME_ASSERT_MSG(!m_is_liquid, "Taproot is not yet supported for Liquid");
-
-            using map_ptr = std::unique_ptr<struct wally_map, decltype(&wally_map_free)>;
-            const map_ptr scripts(get_input_scriptpubkeys(session, utxos), wally_map_free);
-            const auto values = get_input_values(utxos);
+            map_ptr scripts, assets, values;
+            std::tie(scripts, assets, values) = get_signing_data(session, utxos);
+            const auto genesis = net_params.get_genesis_hash();
             const uint32_t key_version = 0;
-            GDK_VERIFY(wally_tx_get_btc_taproot_signature_hash(m_tx.get(), index, scripts.get(), values.data(),
-                values.size(), nullptr, 0, key_version, WALLY_NO_CODESEPARATOR, nullptr, 0, sighash_flags, 0,
-                ret.data(), ret.size()));
+            GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, scripts.get(), assets.get(), values.get(),
+                NULL, 0, key_version, WALLY_NO_CODESEPARATOR, NULL, 0, genesis.empty() ? NULL : genesis.data(),
+                genesis.size(), sighash_flags, WALLY_SIGTYPE_SW_V1, nullptr, ret.data(), ret.size()));
             return ret;
         }
 
