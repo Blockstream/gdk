@@ -746,6 +746,12 @@ namespace green {
 
             for (auto& input : inputs) {
                 bool need_fields = false;
+                if (are_signing_p2tr && !input.contains("scriptpubkey")) {
+                    const auto scriptpubkey = get_scriptpubkey_from_utxo(*m_session, input);
+                    if (!scriptpubkey.empty()) {
+                        input["scriptpubkey"] = b2h(scriptpubkey);
+                    }
+                }
                 if (is_liquid) {
                     if (!are_signing_p2tr) {
                         continue;
