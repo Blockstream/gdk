@@ -1,10 +1,23 @@
 # Changelog
 
+## Release 0.75.2 - 08-05-01
+
+### Fixed
+- GA_login_user: Fix singlesig descriptor watch-only re-login on an existing session.
+- Liquid(testnet): Fix the Liquid testnet explorer URL in network parameters.
+
+### Changed
+- Build: Update rust to 1.81.0, which is now the MSRV for building gdk.
+- Python: Update the Python wheel license classifiers for newer build tools.
+- Dependencies: Update rust dependencies.
+
+
 ## Release 0.75.1 - 25-04-01
 
 ### Fixed
 - GA_create_transaction: Return an invalid amount error instead of
   an assertion failure if any output amount in a transaction is 0.
+
 
 ## Release 0.75.0 - 25-03-20
 
