@@ -1,6 +1,6 @@
 # Changelog
 
-## Release 0.75.2 - 08-05-01
+## Release 0.75.2 - 25-05-08
 
 ### Fixed
 - GA_login_user: Fix singlesig descriptor watch-only re-login on an existing session.
@@ -8,6 +8,7 @@
 
 ### Changed
 - Build: Update rust to 1.81.0, which is now the MSRV for building gdk.
+- Python: Remove support for Python 3.8.
 - Python: Update the Python wheel license classifiers for newer build tools.
 - Dependencies: Update rust dependencies.
 
