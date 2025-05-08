@@ -5,7 +5,7 @@ dnf upgrade almalinux-release -y
 yum update -yqq
 yum install -yqq swig perl-core autoconf libstdc++-static clang
 
-python_versions=(cp38-cp38 cp39-cp39 cp310-cp310 cp311-cp311)
+python_versions=(cp39-cp39 cp310-cp310 cp311-cp311)
 
 
 /opt/python/${python_versions[0]}/bin/python -m venv /root/tmp-python-env
