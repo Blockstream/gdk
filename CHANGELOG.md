@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Liquid(Singlesig): Add support for BIP-86 P2TR (Taproot) wallets.
+- HWW: Add a new device JSON key ``"supports_liquid_p2tr"`` to indicate P2TR
+  inputs can be signed by the device.
+
+### Fixed
+
+### Changed
+
+
 ## Release 0.75.2 - 25-05-08
 
 ### Fixed
