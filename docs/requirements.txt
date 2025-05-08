@@ -4,4 +4,4 @@ readthedocs-sphinx-ext
 docutils
 mkdocs
 jinja2
-
+snowballstemmer==2.2.0
