@@ -69,12 +69,10 @@ namespace green {
         // TODO: too slow. lacks validation.
         static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
         {
-            constexpr size_t base = 256;
-
             std::array<unsigned char, SHA256_LEN> repr{};
             size_t i = repr.size() - 1;
-            for (boost::multiprecision::checked_uint256_t num(input); num; num = num / base, --i) {
-                repr[i] = static_cast<unsigned char>(num % base);
+            for (boost::multiprecision::checked_uint256_t num(input); num; num >>= 8, --i) {
+                repr[i] = static_cast<unsigned char>(num % 256);
             }
 
             return repr;
