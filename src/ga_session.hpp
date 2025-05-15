@@ -192,8 +192,6 @@ namespace green {
             const std::string& name, const std::string& receiving_id, const std::optional<xpub_hdkey>& recovery_key,
             uint32_t required_ca);
 
-        std::pair<std::string, std::string> sign_challenge(locker_t& locker, const std::string& challenge);
-
         void set_fee_estimates(locker_t& locker, const nlohmann::json& fee_estimates);
 
         nlohmann::json refresh_http_data(const std::string& page, const std::string& key, bool refresh);
