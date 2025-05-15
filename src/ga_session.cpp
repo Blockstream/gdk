@@ -17,7 +17,6 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/algorithm/string/split.hpp>
 #include <boost/lexical_cast.hpp>
-#include <boost/multiprecision/cpp_int.hpp>
 #include <nlohmann/json.hpp>
 
 #include "assertion.hpp"
@@ -65,18 +64,6 @@ namespace green {
         static const std::string TXN_OPTIONAL("optional");
         static const std::array<const std::string, 4> TX_NTFY_FIELDS
             = { "subaccounts", "txhash", "value", TXN_OPTIONAL };
-
-        // TODO: too slow. lacks validation.
-        static std::array<unsigned char, SHA256_LEN> uint256_to_base256(const std::string& input)
-        {
-            std::array<unsigned char, SHA256_LEN> repr{};
-            size_t i = repr.size() - 1;
-            for (boost::multiprecision::checked_uint256_t num(input); num; num >>= 8, --i) {
-                repr[i] = static_cast<unsigned char>(num % 256);
-            }
-
-            return repr;
-        }
 
         static bool ignore_tx_notification(const nlohmann::json& details)
         {
@@ -347,19 +334,6 @@ namespace green {
         }
 
         return m_nlocktimes;
-    }
-
-    std::pair<std::string, std::string> ga_session::sign_challenge(
-        session_impl::locker_t& locker, const std::string& challenge)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        GDK_RUNTIME_ASSERT(m_signer);
-
-        const auto path_bytes = get_random_bytes<8>();
-        const auto path = bytes_to_bip32_path(path_bytes);
-        const auto challenge_hash = uint256_to_base256(challenge);
-
-        return { sig_only_to_der_hex(m_signer->ecdsa_sign(path, challenge_hash)), b2h(path_bytes) };
     }
 
     void ga_session::set_fee_estimates(session_impl::locker_t& locker, const nlohmann::json& fee_estimates)
