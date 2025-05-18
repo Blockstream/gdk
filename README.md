@@ -76,10 +76,6 @@ Build output is placed in `build-<target>`, e.g. `build-clang`, `build-gcc` sub-
 
 \* Cmake introduces the concept of ``COMPONENT``s .GDK install is now split into two components: ``gdk-runtime`` includes only the dynamic library (with symbol files) and the python-wheel (if built and available); ``gdk-dev`` includes static library libgreenaddress-full.a, header files and all the header files for languages bindings like java and swift. CI as well as ``tools/build.sh --install <path>`` will always install everything.
 
-### To clean:
-
-`tools/clean.sh`
-
 ### Docker based deps & build (apple platforms excluded)
 
 This doesn't require any of the previous steps but requires docker installed; it will build the project
