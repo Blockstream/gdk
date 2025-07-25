@@ -49,8 +49,8 @@ namespace green {
         // Remove keys added by add_ae_host_data()
         static void remove_ae_host_data(nlohmann::json& data)
         {
-            data.erase("ae_host_entropy");
-            data.erase("ae_host_commitment");
+            j_erase(data, "ae_host_entropy");
+            j_erase(data, "ae_host_commitment");
         }
 
         // If the hww is populated and supports the AE signing protocol, add
@@ -519,7 +519,7 @@ namespace green {
                 const std::array<uint32_t, 2> mnemonic_path{ harden(3), harden(m_subaccount) };
                 const nlohmann::json credentials = { { "mnemonic", std::move(recovery_mnemonic) } };
                 m_details["recovery_xpub"] = signer{ m_net_params, {}, credentials }.get_bip32_xpub(mnemonic_path);
-                m_details.erase("recovery_mnemonic");
+                j_erase(m_details, "recovery_mnemonic");
             }
         }
 
@@ -563,8 +563,8 @@ namespace green {
         }
 
         // Prevent the caller passing internal flags
-        m_details.erase("discovered");
-        m_details.erase("is_already_created");
+        j_erase(m_details, "discovered");
+        j_erase(m_details, "is_already_created");
         // Create the subaccount
         m_result = m_session->create_subaccount(m_details, m_subaccount, m_subaccount_xpub);
         // Ensure the server created the subaccount number we expected
@@ -650,7 +650,7 @@ namespace green {
         bool have_checked_full_session = false;
 
         if (!m_details.empty()) {
-            m_details.erase("utxos"); // Not needed anymore
+            j_erase(m_details, "utxos"); // Not needed anymore
         }
         if (!j_str_is_empty(m_details, "error")) {
             // Can't sign a tx with an error, return it as-is
@@ -707,7 +707,7 @@ namespace green {
                 const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), tx_signature_hash);
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
                 input["skip_signing"] = true;
-                input.erase("private_key");
+                j_erase(input, "private_key");
             } else if (!j_bool_or_false(input, "skip_signing")) {
                 // Wallet input we have been asked to sign. Must be spendable by us
                 const auto& addr_type = j_strref(input, "address_type");
@@ -1184,7 +1184,7 @@ namespace green {
     auth_handler::state_type blind_transaction_call::call_impl()
     {
         if (!m_details.empty()) {
-            m_details.erase("utxos"); // Not needed for blinding
+            j_erase(m_details, "utxos"); // Not needed for blinding
         }
         const bool is_liquid = m_net_params.is_liquid();
 
@@ -1200,7 +1200,7 @@ namespace green {
             // nonces the service requires.
             m_details["blinding_nonces_required"] = tx_has_amp_inputs(*m_session, m_details);
             blind_transaction(*m_session, m_details, get_hw_reply());
-            m_details.erase("blinding_nonces_required");
+            j_erase(m_details, "blinding_nonces_required");
             m_result = std::move(m_details);
             return state_type::done;
         }
@@ -2026,7 +2026,7 @@ namespace green {
     void send_transaction_call::initialize()
     {
         if (!m_details.empty()) {
-            m_details.erase("utxos"); // Not needed anymore
+            j_erase(m_details, "utxos"); // Not needed for blinding
         }
         if (!j_str_is_empty(m_details, "error")) {
             // Can't send a tx with an error, return it as-is
@@ -2436,7 +2436,7 @@ namespace green {
             m_result["password"] = password;
         }
         if (m_result.contains("username")) {
-            m_result.erase("password");
+            j_erase(m_result, "password");
         }
         return state_type::done;
     }

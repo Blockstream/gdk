@@ -470,7 +470,7 @@ namespace green {
         for (auto& item : subaccounts.items()) {
             auto& value = item.value();
             if (j_str_or_empty(value, "name").empty()) {
-                value.erase("name");
+                j_erase(value, "name");
             }
         }
         return subaccounts;

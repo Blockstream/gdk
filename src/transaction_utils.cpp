@@ -717,7 +717,7 @@ namespace green {
                 if (auto p = bip21.find("amount"); p != bip21.end()) {
                     // Note liquid amounts are also encoded just as BTC amounts
                     amount::strip_non_satoshi_keys(addressee);
-                    addressee.erase("satoshi");
+                    j_erase(addressee, "satoshi");
                     addressee["btc"] = p->get<std::string>();
                 }
                 addressee["bip21-params"] = std::move(bip21);

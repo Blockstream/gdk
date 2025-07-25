@@ -63,10 +63,10 @@ namespace green {
             nlohmann::json::array_t& inputs, nlohmann::json::array_t& outputs)
         {
             GDK_RUNTIME_ASSERT(inputs.size() == 1 && outputs.size() == 1);
-            const auto input_scalar = j_bytesref(inputs[0], "scalar");
-            const auto output_scalar = j_bytesref(outputs[0], "scalar");
-            outputs[0].erase("scalar");
-            inputs[0].erase("scalar");
+            const auto input_scalar = j_bytesref(inputs.front(), "scalar");
+            const auto output_scalar = j_bytesref(outputs.front(), "scalar");
+            j_erase(inputs.front(), "scalar");
+            j_erase(outputs.front(), "scalar");
             return { b2h(ec_scalar_subtract(input_scalar, output_scalar)) };
         }
 

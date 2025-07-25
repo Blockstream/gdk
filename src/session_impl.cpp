@@ -335,7 +335,7 @@ namespace green {
         } catch (const std::exception& ex) {
             result["error"] = ex.what();
         }
-        result.erase("body");
+        j_erase(result, "body");
         return result;
     }
 
@@ -419,8 +419,8 @@ namespace green {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         auto np = m_net_params.get_json();
         np.update(get_proxy_settings(locker));
-        np.erase("wamp_cert_pins"); // WMP certs are huge & unused, remove them
-        np.erase("wamp_cert_roots");
+        j_erase(np, "wamp_cert_pins"); // WAMP certs are huge & unused, remove them
+        j_erase(np, "wamp_cert_roots");
         return { { "network", std::move(np) }, { "timeout", timeout_secs } };
     }
 

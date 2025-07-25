@@ -204,8 +204,8 @@ namespace green {
             if (m_code.empty() || m_method.empty()) {
                 if (!m_twofactor_data.empty()) {
                     // Remove any previous auth attempts
-                    m_twofactor_data.erase("method");
-                    m_twofactor_data.erase("code");
+                    j_erase(m_twofactor_data, "method");
+                    j_erase(m_twofactor_data, "code");
                 }
             } else {
                 m_twofactor_data["method"] = m_method;

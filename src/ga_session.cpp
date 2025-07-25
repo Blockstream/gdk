@@ -816,7 +816,7 @@ namespace green {
                 // in tx_list format, cache them, and notify that data instead.
                 const bool is_deposit = satoshi >= 0;
                 details["type"] = is_deposit ? "incoming" : "outgoing";
-                details.erase("value");
+                j_erase(details, "value");
             } else {
                 // TODO: figure out what type is for liquid
             }
@@ -855,7 +855,7 @@ namespace green {
 
             details["initial_timestamp"] = m_earliest_block_time;
             j_rename(details, "count", "block_height");
-            details.erase("diverged_count");
+            j_erase(details, "diverged_count");
 
             auto& last = m_last_block_notification;
             bool treat_as_reorg = false;
@@ -1854,10 +1854,10 @@ namespace green {
         if (mark_unconfidential) {
             utxo["is_confidential"] = false;
             utxo["is_blinded"] = true;
-            utxo.erase("error");
+            j_erase(utxo, "error");
         }
-        utxo.erase("range_proof");
-        utxo.erase("surj_proof");
+        j_erase(utxo, "range_proof");
+        j_erase(utxo, "surj_proof");
     }
 
     bool ga_session::unblind_utxo(session_impl::locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,
@@ -2013,7 +2013,7 @@ namespace green {
                 // UTXO was previously processed but could not be unblinded: try again
                 updated_blinding_cache |= unblind_utxo(locker, utxo, for_txhash, missing);
                 if (!utxo.contains("error")) {
-                    utxo.erase("value"); // Only remove value if we unblinded it
+                    j_erase(utxo, "value"); // Only remove value if we unblinded it
                 }
             } else if (address_type_p == utxo.end()) {
                 // This UTXO has not been processed yet
@@ -2036,12 +2036,12 @@ namespace green {
                     utxo["satoshi"] = value;
                 }
                 if (!utxo.contains("error")) {
-                    utxo.erase("value"); // Only remove value if we unblinded it
+                    j_erase(utxo, "value"); // Only remove value if we unblinded it
                 }
                 json_add_if_missing(utxo, "subtype", 0u);
                 json_add_if_missing(utxo, "is_internal", false);
                 utxo["address_type"] = std::move(addr_type);
-                utxo.erase("script_type");
+                j_erase(utxo, "script_type");
             }
         }
 
@@ -2179,7 +2179,7 @@ namespace green {
                 outputs.emplace_back(std::move(it.second));
             }
             tx_details["outputs"] = std::move(outputs);
-            tx_details.erase("eps");
+            j_erase(tx_details, "eps");
 
             if (!is_liquid) {
                 GDK_RUNTIME_ASSERT(unique_asset_ids.size() == 1 && *unique_asset_ids.begin() == "btc");
@@ -2214,7 +2214,7 @@ namespace green {
                         if (!addressee.empty()) {
                             ep["addressee"] = std::move(addressee);
                         }
-                        ep.erase("social_source");
+                        j_erase(ep, "social_source");
                     }
                 }
                 can_cpfp = !is_confirmed;
@@ -2236,7 +2236,7 @@ namespace green {
                             if (!addressee.empty()) {
                                 ep["addressee"] = std::move(addressee);
                             }
-                            ep.erase("social_destination");
+                            j_erase(ep, "social_destination");
                         }
                         tx_type = "outgoing"; // We have at least one non-wallet output
                     }
@@ -2350,9 +2350,9 @@ namespace green {
         m_cache->get_transactions(subaccount, first, count,
             { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
                   uint32_t spv_status, nlohmann::json& tx_json) {
-                // TODO: Remove transaction_size.erase when cache version
+                // TODO: Remove j_erase(transaction_size) when cache version
                 // is upgraded beyond 1.3 and clears transactions.
-                tx_json.erase("transaction_size");
+                j_erase(tx_json, "transaction_size");
                 tx_json["spv_verified"] = spv_get_status_string(spv_status);
                 result.emplace_back(std::move(tx_json));
             } });
@@ -2557,7 +2557,7 @@ namespace green {
         j_rename(address, "ad", "address"); // Returned by wamp call get_my_addresses
         json_add_if_missing(address, "subtype", 0, true); // Convert null subtype to 0
         j_rename(address, "addr_type", "address_type");
-        address.erase("script_type");
+        j_erase(address, "script_type");
 
         // Ensure the the server returned a script
         const auto server_script = j_bytesref(address, "script");

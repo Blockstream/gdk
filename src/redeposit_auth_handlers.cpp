@@ -132,7 +132,7 @@ namespace green {
         }
         for (const auto& asset_id : to_erase) {
             // Remove any assets that don't have expired UTXOs
-            utxos.erase(asset_id);
+            j_erase(utxos, asset_id);
         }
         if (utxos.empty()) {
             // No expired UTXOs to redeposit

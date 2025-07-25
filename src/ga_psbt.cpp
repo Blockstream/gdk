@@ -510,7 +510,7 @@ namespace green {
                     utxo["user_sighash"] = psbt_input.sighash;
                 }
                 for (const auto& key : { "user_status", "witness", "script_sig" }) {
-                    utxo.erase(key);
+                    j_erase(utxo, key);
                 }
                 utxo_add_paths(session, utxo);
                 if (!txin.script || !txin.witness) {
@@ -619,7 +619,7 @@ namespace green {
                     // Singlesig: Outputs on the internal chain are change
                     j_rename(jsonout, "is_internal", "is_change");
                     for (const auto& key : { "branch", "subtype" }) {
-                        jsonout.erase(key);
+                        j_erase(jsonout, key);
                     }
                 }
             }
@@ -633,7 +633,7 @@ namespace green {
                 if (!is_wallet_output) {
                     // FIXME: wallet and non-wallet outputs are inconsistent
                     for (const auto& key : { "is_confidential", "unconfidential_address" }) {
-                        jsonout.erase(key);
+                        j_erase(jsonout, key);
                     }
                 }
             }

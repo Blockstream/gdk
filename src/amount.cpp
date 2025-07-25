@@ -5,6 +5,7 @@
 
 #include "exception.hpp"
 #include "ga_strings.hpp"
+#include "json_utils.hpp"
 #include "wally_wrapper.h"
 #include <boost/multiprecision/cpp_dec_float.hpp>
 #include <nlohmann/json.hpp>
@@ -159,7 +160,7 @@ namespace green {
     void amount::strip_non_satoshi_keys(nlohmann::json& amount_json)
     {
         for (const auto& key : NON_SATOSHI_KEYS) {
-            amount_json.erase(key);
+            j_erase(amount_json, key);
         }
     }
 

@@ -113,10 +113,10 @@ namespace green {
         {
             // Fix fields from a bumped tx output or receive address to what addressees expect
             for (const auto& key : { "is_output", "is_relevant", "is_spent", "script_type", "pt_idx" }) {
-                addressee.erase(key);
+                j_erase(addressee, key);
             }
             if (j_str_is_empty(addressee, "address_type")) {
-                addressee.erase("address_type");
+                j_erase(addressee, "address_type");
             } else {
                 utxo_add_paths(session, addressee);
                 if (!addressee.contains("scriptpubkey")) {
@@ -229,7 +229,7 @@ namespace green {
                     // Remove subtype which is not returned in transaction outputs
                     // FIXME: Should be added to get_transactions results or replaced
                     // with a descriptor going forward
-                    output.erase("subtype");
+                    j_erase(output, "subtype");
                 }
             }
 
@@ -663,7 +663,7 @@ namespace green {
             result["transaction_outputs"] = nlohmann::json::array();
             result["fee"] = 0u;
             result["network_fee"] = 0u;
-            result.erase("change_amount");
+            j_erase(result, "change_amount");
 
             auto fee_rate = j_amount(result, "fee_rate");
             if (!fee_rate) {
