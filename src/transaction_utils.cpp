@@ -588,7 +588,7 @@ namespace green {
             utxo_add_paths(session, utxo);
 
             // Populate the prevout script if missing so signing can use it later
-            if (utxo.find("prevout_script") == utxo.end()) {
+            if (!utxo.contains("prevout_script")) {
                 utxo["prevout_script"] = b2h(session.output_script_from_utxo(utxo));
             }
 

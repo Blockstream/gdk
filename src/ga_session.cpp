@@ -718,7 +718,7 @@ namespace green {
 
         const bool current_is_fiat = m_limits_data.at("is_fiat").get<bool>();
         const bool new_is_fiat = details.at("is_fiat").get<bool>();
-        GDK_RUNTIME_ASSERT(new_is_fiat == (details.find("fiat") != details.end()));
+        GDK_RUNTIME_ASSERT(new_is_fiat == details.contains("fiat"));
 
         if (current_is_fiat != new_is_fiat) {
             return false;
@@ -2143,7 +2143,7 @@ namespace green {
                 const bool is_tx_output = ep.at("is_output");
                 const bool is_relevant = ep.at("is_relevant");
 
-                if (is_relevant && ep.find("error") == ep.end()) {
+                if (is_relevant && !ep.contains("error")) {
                     const auto asset_id = j_assetref(is_liquid, ep);
                     unique_asset_ids.emplace(asset_id);
 
@@ -2984,7 +2984,7 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(j_str_is_empty(details, "error"));
         // We must have a tx, the server will ensure it has been signed by the user
-        GDK_RUNTIME_ASSERT(details.find("transaction") != details.end());
+        GDK_RUNTIME_ASSERT(details.contains("transaction"));
 
         nlohmann::json result = details;
 

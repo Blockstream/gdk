@@ -1963,7 +1963,7 @@ namespace green {
             // This function takes a full amount json, e.g. {'btc': 1234}
             auto details = m_limit_details;
             const bool is_fiat = details.at("is_fiat").get<bool>();
-            GDK_RUNTIME_ASSERT(is_fiat == (details.find("fiat") != details.end()));
+            GDK_RUNTIME_ASSERT(is_fiat == details.contains("fiat"));
             m_limit_details = { { "is_fiat", is_fiat }, { "per_tx", 0 } };
             if (is_fiat) {
                 m_limit_details["total"] = amount::get_fiat_cents(details["fiat"]);

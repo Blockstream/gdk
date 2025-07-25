@@ -185,13 +185,14 @@ namespace green {
             const bool is_electrum = net_params.is_electrum();
             const auto policy_asset = net_params.get_policy_asset();
 
-            if (result.find("previous_transaction") == result.end()) {
+            const auto prev_tx_p = result.find("previous_transaction");
+            if (prev_tx_p == result.end()) {
                 return std::make_pair(false, false);
             }
 
             // RBF or CPFP. The previous transaction must be in the format
             // returned from the get_transactions call
-            const auto& prev_tx = result["previous_transaction"];
+            const auto& prev_tx = *prev_tx_p;
             bool is_rbf = false, is_cpfp = false;
             if (j_bool_or_false(prev_tx, "can_rbf")) {
                 is_rbf = true;
@@ -419,7 +420,7 @@ namespace green {
                 // the tx as a redeposit to let the regular creation logic
                 // handle it.
                 // FIXME: Create a greedy receive address
-                if (result.find("utxos") == result.end()) {
+                if (!result.contains("utxos")) {
                     // Add a single output from the old tx as our new tx input
                     std::vector<nlohmann::json> utxos;
                     for (const auto& output : prev_tx.at("outputs")) {
