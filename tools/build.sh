@@ -27,7 +27,7 @@ function build_dependencies() {
         echo "using external-deps-dir dependencies from ${EXTERNAL_DEPS_DIR}"
     else
         echo "building external dependencies in ${EXTERNAL_DEPS_DIR}"
-        ./tools/builddeps.sh --parallel $parallel --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR} $*
+        ./tools/builddeps.sh --parallel $NUM_JOBS --buildtype ${BUILDTYPE} --prefix ${EXTERNAL_DEPS_DIR} $*
     fi
 }
 
@@ -43,7 +43,12 @@ python_version=3
 enable_python=false
 no_deps_rebuild=false
 bcur=TRUE
-parallel=$(cat /proc/cpuinfo | grep ^processor | wc -l)
+if [ -z "${NUM_JOBS}" ]; then
+    if [ -f /proc/cpuinfo ]; then
+        NUM_JOBS=${NUM_JOBS:-$(cat /proc/cpuinfo | grep ^processor | wc -l)}
+    fi
+    NUM_JOBS=${NUM_JOBS:-4}
+fi
 devmode=FALSE # cmake bool
 verbose=false
 
@@ -75,7 +80,7 @@ while true; do
         --ndk ) BUILD="$1"; NDK_ARCH="$2"; shift 2 ;;
         --python-version) enable_python=true; python_version="$2"; shift 2 ;;
         --external-deps-dir) EXTERNAL_DEPS_DIR=$2; shift 2;;
-        --parallel) parallel=$2; shift 2;;
+        --parallel) NUM_JOBS=$2; shift 2;;
         -- ) shift; break ;;
         *) break ;;
     esac
@@ -172,11 +177,11 @@ fi
 cmake ${cmake_options}
 
 if [[ "${BUILD}" == "--ndk" ]]; then
-    cmake --build $bld_root --parallel $parallel $cmake_verbose --target green_gdk_java green_gdk_syms
+    cmake --build $bld_root --parallel $NUM_JOBS $cmake_verbose --target green_gdk_java green_gdk_syms
 elif [[ "$enable_python" == "true" ]] ; then
-    cmake --build $bld_root --parallel $parallel $cmake_verbose --target python-wheel
+    cmake --build $bld_root --parallel $NUM_JOBS $cmake_verbose --target python-wheel
 else
-    cmake --build $bld_root --parallel $parallel $cmake_verbose
+    cmake --build $bld_root --parallel $NUM_JOBS $cmake_verbose
 fi
 
 if [[ "$install" == "false" ]]; then
