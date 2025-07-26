@@ -220,7 +220,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DEVENT__DISABLE_REGRESS:BOOL=TRUE \
     -DEVENT__DISABLE_DEBUG_MODE:BOOL=TRUE \
     -DEVENT__DISABLE_TESTS:BOOL=TRUE \
-    -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE
+    -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -289,7 +290,8 @@ prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
-    -DCMAKE_BUILD_TYPE=${cmake_build_type}
+    -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -308,7 +310,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DBOOST_ROOT:PATH=${GDK_BUILD_ROOT} \
     -DMSGPACK_USE_STATIC_BOOST:BOOL=ON \
     -DMSGPACK_BUILD_DOCS:BOOL=OFF \
-    -DMSGPACK_CXX14:BOOL=ON
+    -DMSGPACK_CXX14:BOOL=ON \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -329,7 +332,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DAUTOBAHN_BUILD_EXAMPLES:BOOL=OFF \
-    -DCMAKE_PREFIX_PATH=${GDK_BUILD_ROOT}
+    -DCMAKE_PREFIX_PATH=${GDK_BUILD_ROOT} \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
