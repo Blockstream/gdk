@@ -88,7 +88,7 @@ impl PinClient {
     fn handshake_server(&self) -> Result<HandShake> {
         let response = self
             .agent
-            .post(&format!("{}/start_handshake", self.pin_server_url))
+            .post(&format!("{}start_handshake", self.pin_server_url))
             .set("content-length", "0")
             .call()
             .map_err(|_| crate::Error::HandshakeFailed)?;
@@ -104,7 +104,7 @@ impl PinClient {
 
         let response = self
             .agent
-            .post(&format!("{}/{endpoint}", self.pin_server_url))
+            .post(&format!("{}{endpoint}", self.pin_server_url))
             .send_json(request)
             .map_err(|_| crate::Error::ServerCallFailed)?;
 
