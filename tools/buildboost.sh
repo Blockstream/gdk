@@ -39,6 +39,11 @@ ${CXX}
 <compileflags>"--sysroot=${SDK_SYSROOT}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
+<compileflags>"-DBOOST_LOG_WITHOUT_EVENT_LOG"
+<compileflags>"-DBOOST_LOG_WITHOUT_SYSLOG"
+<compileflags>"-DBOOST_LOG_WITHOUT_IPC"
+<compileflags>"-DBOOST_LOG_WITHOUT_DEBUG_OUTPUT"
+<compileflags>"-DBOOST_LOG_WITHOUT_SETTINGS_PARSERS"
 $(compile_flags $@)
 <archiver>$AR
 <ranlib>$RANLIB
@@ -71,6 +76,11 @@ ${CXX}
 <compileflags>"-isysroot ${SDK_SYSROOT}"
 <compileflags>"-fvisibility=hidden"
 <compileflags>"-DBOOST_LOG_NO_ASIO"
+<compileflags>"-DBOOST_LOG_WITHOUT_EVENT_LOG"
+<compileflags>"-DBOOST_LOG_WITHOUT_SYSLOG"
+<compileflags>"-DBOOST_LOG_WITHOUT_IPC"
+<compileflags>"-DBOOST_LOG_WITHOUT_DEBUG_OUTPUT"
+<compileflags>"-DBOOST_LOG_WITHOUT_SETTINGS_PARSERS"
 $(compile_flags $@)
 <linkflags>"${LDFLAGS}"
 <linkflags>"-isysroot ${SDK_SYSROOT}"
@@ -106,7 +116,7 @@ else
     EXTRAFLAGS=""
     LINKFLAGS=""
 
-    cxxflags="$CXXFLAGS -fvisibility=hidden -DBOOST_LOG_NO_ASIO ${@}"
+    cxxflags="$CXXFLAGS -fvisibility=hidden -DBOOST_LOG_NO_ASIO -DBOOST_LOG_WITHOUT_EVENT_LOG -DBOOST_LOG_WITHOUT_SYSLOG -DBOOST_LOG_WITHOUT_IPC -DBOOST_LOG_WITHOUT_DEBUG_OUTPUT -DBOOST_LOG_WITHOUT_SETTINGS_PARSERS ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}
     ./b2 --clean
     ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
