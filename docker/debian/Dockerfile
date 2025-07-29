@@ -1,7 +1,7 @@
 # Debian (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t blockstream/gdk-debian-ci -f docker/debian/Dockerfile
 #
-FROM debian:bullseye@sha256:2d2786922ceb0b2c5172e2fee1f0c83bc045afc6d96574305fc74bb8300f75de AS base
+FROM debian:bullseye@sha256:25c0cab214b810db1b3c8adef5a12a92596979abddf86bb364e8d9c9d111df9f AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
