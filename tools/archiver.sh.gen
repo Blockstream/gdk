@@ -10,6 +10,7 @@ libevent_extra=$<TARGET_FILE:libevent::extra>
 libeventpthreads=$<$<TARGET_EXISTS:libevent::pthreads>:$<TARGET_FILE:libevent::pthreads>>
 boost_log=$<TARGET_FILE:Boost::log>
 boost_chrono=$<TARGET_FILE:Boost::chrono>
+boost_filesystem=$<TARGET_FILE:Boost::filesystem>
 boost_date_time=$<TARGET_FILE:Boost::date_time>
 boost_system=$<TARGET_FILE:Boost::system>
 boost_thread=$<TARGET_FILE:Boost::thread>
@@ -22,7 +23,7 @@ tinycbor=$<TARGET_PROPERTY:PkgConfig::TinyCBOR,INTERFACE_LINK_LIBRARIES>
 urc=$<TARGET_FILE:urc::urc>
 
 
-libraries="libgreen_gdk_partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent_core $libevent_extra $libeventpthreads $boost_log $boost_log $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
+libraries="libgreen_gdk_partial.a $gdk_rust $sqlite3 $wally $secp256k1 $libevent_core $libevent_extra $libeventpthreads $boost_log $boost_log $boost_filesystem $boost_chrono $boost_date_time $boost_system $boost_thread $openssl_ssl $openssl_crypto $zlib $tor $bc_ur $tinycbor $urc"
 
 
 if [ "$(uname)" = "Darwin" ]; then

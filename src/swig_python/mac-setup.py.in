@@ -14,6 +14,7 @@ extra_objects = [
     "@_libevent_extra_LINK_LIBRARIES@",
     "@_libevent_pthreads_LINK_LIBRARIES@",
     "@Boost_LIBRARY_DIRS@/libboost_log.a",
+    "@Boost_LIBRARY_DIRS@/libboost_filesystem.a",
     "@Boost_LIBRARY_DIRS@/libboost_chrono.a",
     "@Boost_LIBRARY_DIRS@/libboost_date_time.a",
     "@Boost_LIBRARY_DIRS@/libboost_system.a",

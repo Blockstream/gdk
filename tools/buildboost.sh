@@ -23,12 +23,14 @@ if (($# > 0)); then
     shift
 fi
 
+BOOTSTRAP_LIBS="--with-libraries=chrono,date_time,filesystem,log,system,thread"
+B2_LIBS="--with-chrono --with-date_time --with-filesystem --with-log --with-system --with-thread"
 
 boost_src_home="${PRJ_SUBDIR}"
 boost_bld_home="${GDK_BUILD_ROOT}"
 cd $boost_src_home
 if [ \( "$BUILD" = "--ndk" \) ]; then
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
+    ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > $boost_src_home/tools/build/src/user-config.jam << EOF
 using clang : :
@@ -54,7 +56,7 @@ $LDFLAGS
 ;
 EOF
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags=-fPIC toolset=clang target-os=android link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS cxxflags=-fPIC toolset=clang target-os=android link=static release install
     if [ "$(uname)" = "Darwin" ]; then
        ${RANLIB} $boost_bld_home/lib/*.a
     fi
@@ -63,7 +65,7 @@ elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
           ${boost_src_home}/tools/build/src/engine/build.sh
               gsed -i "s!B2_CXXFLAGS_DEBUG=.*!B2_CXXFLAGS_DEBUG=\"-O0 -g -p -isysroot $(xcrun --show-sdk-path)\"!" \
           ${boost_src_home}/tools/build/src/engine/build.sh
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
+    ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS
 
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
@@ -88,7 +90,7 @@ $(compile_flags $@)
 ;
 EOF
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system toolset=darwin-arm target-os=iphone link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS toolset=darwin-arm target-os=iphone link=static release install
 elif [ \( "$BUILD" = "--mingw-w64" \) ]; then
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
@@ -102,9 +104,9 @@ $(compile_flags $@)
 <target-os>windows
 ;
 EOF
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread
+    ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS address-model=64 architecture=x86 toolset=gcc target-os=windows link=static release install
 else
     TOOLSET=$COMPILER
     if [[ ${CC} = *"clang"* ]]; then
@@ -117,7 +119,7 @@ else
     LINKFLAGS=""
 
     cxxflags="$CXXFLAGS -fvisibility=hidden -DBOOST_LOG_NO_ASIO -DBOOST_LOG_WITHOUT_EVENT_LOG -DBOOST_LOG_WITHOUT_SYSLOG -DBOOST_LOG_WITHOUT_IPC -DBOOST_LOG_WITHOUT_DEBUG_OUTPUT -DBOOST_LOG_WITHOUT_SETTINGS_PARSERS ${@}"
-    ./bootstrap.sh --prefix="$boost_bld_home" --with-libraries=chrono,date_time,log,system,thread --with-toolset=${TOOLSET}
+    ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS --with-toolset=${TOOLSET}
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 --with-chrono --with-date_time --with-log --with-thread --with-system cxxflags="$cxxflags" $LINKFLAGS link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS cxxflags="$cxxflags" $LINKFLAGS link=static release install
 fi
