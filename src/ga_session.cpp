@@ -255,7 +255,6 @@ namespace green {
 
     ga_session::ga_session(network_parameters&& net_params)
         : session_impl(std::move(net_params))
-        , m_spv_enabled(m_net_params.is_spv_enabled())
         , m_min_fee_rate(m_net_params.is_liquid() ? DEFAULT_MIN_FEE_LIQUID : DEFAULT_MIN_FEE)
         , m_earliest_block_time(0)
         , m_next_subaccount(0)
@@ -267,8 +266,6 @@ namespace green {
         , m_multi_call_category(0)
         , m_cache(std::make_shared<cache>(m_net_params, m_net_params.network()))
         , m_user_agent(std::string(GDK_COMMIT) + " " + m_net_params.user_agent())
-        , m_spv_thread_done(false)
-        , m_spv_thread_stop(false)
     {
         m_user_pubkeys = std::make_unique<green_user_pubkeys>(m_net_params);
 
@@ -287,25 +284,11 @@ namespace green {
         m_wamp.reset();
         m_notify = false;
         no_std_exception_escape([this] { reset_all_session_data(true); });
-        no_std_exception_escape([this] {
-            locker_t locker(m_mutex);
-            constexpr bool do_start = false;
-            download_headers_ctl(locker, do_start);
-        });
     }
 
-    void ga_session::reconnect_hint_session(const nlohmann::json& hint, const nlohmann::json& /*proxy*/)
+    void ga_session::reconnect_hint_session(const nlohmann::json& /*hint*/, const nlohmann::json& /*proxy*/)
     {
-        if (const auto hint_p = hint.find("hint"); hint_p != hint.end()) {
-            if (*hint_p != "connect") {
-                // Stop any outstanding header sync when disconnecting. Leave
-                // resuming until after the session is authed and we know what
-                // the current block is.
-                locker_t locker(m_mutex);
-                constexpr bool do_start = false;
-                download_headers_ctl(locker, do_start);
-            }
-        }
+        // Currently a no-op
     }
 
     void ga_session::emit_notification(nlohmann::json details, bool async)
@@ -897,10 +880,6 @@ namespace green {
                 reorg_block = last_seen_block_height - num_reorg_blocks;
                 GDK_LOG(debug) << "Tx sync: removing " << num_reorg_blocks << " blocks from cache tip "
                                << last_seen_block_height;
-
-                // We can't trust the SPV state of any txs younger than the
-                // max reorg depth, so clear them.
-                m_spv_verified_txs.clear();
             }
 
             // Update the tx cache.
@@ -929,10 +908,6 @@ namespace green {
             last = details;
             m_cache->set_latest_block(last["block_height"]);
             m_cache->save_db();
-
-            // Start syncing headers for SPV (if enabled)
-            constexpr bool do_start = true;
-            download_headers_ctl(locker, do_start);
 
             locker.unlock();
             if (treat_as_reorg) {
@@ -2268,65 +2243,10 @@ namespace green {
         // Set tx memos in the returned txs from the blob cache
         session_impl::postprocess_transactions(tx_list);
 
-        // Update SPV status
-        locker_t locker(m_mutex);
-        const uint32_t current_block = m_last_block_notification["block_height"];
-        const uint32_t num_reorg_blocks = std::min(m_net_params.get_max_reorg_blocks(), current_block);
-        const uint32_t reorg_block = current_block - num_reorg_blocks;
-        bool are_downloading = false;
-
-        nlohmann::json spv_params;
-        if (m_spv_enabled) {
-            constexpr uint32_t timeout_secs = 10;
-            spv_params = get_net_call_params(locker, timeout_secs);
-        }
-
+        // TODO: Remove SPV verification status in a later release
         for (auto& tx_details : tx_list) {
-            const uint32_t tx_block_height = tx_details["block_height"];
-            auto& spv_verified = tx_details["spv_verified"];
-
-            if (tx_block_height && tx_block_height < reorg_block && spv_verified == "verified") {
-                continue; // Verified and committed beyond our reorg depth
-            }
-            if (!m_spv_enabled) {
-                spv_verified = "disabled";
-                continue; // Not already verified and SPV is disabled
-            }
-            if (!tx_block_height) {
-                spv_verified = "unconfirmed";
-                continue; // Need to be confirmed before we can verify
-            }
-
-            const std::string txhash_hex = tx_details["txhash"];
-            spv_params["txid"] = txhash_hex;
-            spv_params["height"] = tx_block_height;
-
-            std::string spv_status;
-            if (m_spv_verified_txs.count(txhash_hex)) {
-                GDK_LOG(debug) << txhash_hex << " cached as verified";
-                spv_status = "verified"; // Previously verified
-            } else {
-                spv_status = spv_get_status_string(spv_verify_tx(spv_params));
-                GDK_LOG(debug) << txhash_hex << " status " << spv_status;
-            }
-            if (!are_downloading && spv_status == "in_progress") {
-                // Start syncing headers for SPV if we aren't already doing it
-                constexpr bool do_start = true;
-                download_headers_ctl(locker, do_start);
-                are_downloading = true;
-            }
-            if (spv_status == "verified") {
-                if (tx_block_height < reorg_block) {
-                    // Verified and committed beyond our reorg depth, update the cache
-                    m_cache->set_transaction_spv_verified(txhash_hex);
-                } else {
-                    // Not committed beyond reorg depth: cache in memory only
-                    m_spv_verified_txs.insert(txhash_hex);
-                }
-            }
-            spv_verified = std::move(spv_status);
+            tx_details["spv_verified"] = "disabled";
         }
-        m_cache->save_db(); // No-op if unchanged
     }
 
     nlohmann::json ga_session::get_transactions(const nlohmann::json& details)
@@ -2349,11 +2269,11 @@ namespace green {
 
         m_cache->get_transactions(subaccount, first, count,
             { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
-                  uint32_t spv_status, nlohmann::json& tx_json) {
+                  nlohmann::json& tx_json) {
                 // TODO: Remove j_erase(transaction_size) when cache version
                 // is upgraded beyond 1.3 and clears transactions.
                 j_erase(tx_json, "transaction_size");
-                tx_json["spv_verified"] = spv_get_status_string(spv_status);
+                tx_json["spv_verified"] = "disabled";
                 result.emplace_back(std::move(tx_json));
             } });
 
@@ -3102,85 +3022,6 @@ namespace green {
 
         locker_t locker(m_mutex);
         m_nlocktime = nlocktime;
-    }
-
-    void ga_session::download_headers_ctl(session_impl::locker_t& locker, bool do_start)
-    {
-        GDK_RUNTIME_ASSERT(locker.owns_lock());
-        if (!m_spv_enabled || m_net_params.is_liquid()) {
-            return; // SPV is not enabled or we are on Liquid: nothing to do
-        }
-
-        if (m_spv_thread) {
-            // A thread downloading headers already exists
-            if (!m_spv_thread_done) {
-                // Thread is still running
-                if (do_start) {
-                    // Let the existing thread continue running
-                    return;
-                }
-                // Ask and wait for the thread to die
-                m_spv_thread_stop = true;
-                while (!m_spv_thread_done) {
-                    unique_unlock unlocker(locker);
-                    std::this_thread::sleep_for(100ms);
-                }
-            }
-            // Thread is finished, join and delete it
-            m_spv_thread->join();
-            m_spv_thread.reset();
-        }
-
-        m_spv_thread_done = false;
-        m_spv_thread_stop = false;
-
-        if (do_start) {
-            // Start up a new sync thread
-            GDK_RUNTIME_ASSERT(!m_spv_thread);
-            m_spv_thread.reset(new std::thread([this] { download_headers_thread_fn(); }));
-        }
-    }
-
-    void ga_session::download_headers_thread_fn()
-    {
-        nlohmann::json spv_params;
-        uint32_t last_fetched_height = 0;
-
-        // Loop downloading block headers until we are caught up, then exit
-        GDK_LOG(info) << "spv_download_headers: starting sync";
-        for (;;) {
-            try {
-                uint32_t block_height;
-                {
-                    locker_t locker(m_mutex);
-                    if (m_spv_thread_stop) {
-                        GDK_LOG(info) << "spv_download_headers: exit requested";
-                        break; // We have been asked to terminate; do so
-                    }
-                    block_height = m_last_block_notification["block_height"];
-                    if (spv_params.empty()) {
-                        constexpr uint32_t timeout_secs = 10;
-                        spv_params = get_net_call_params(locker, timeout_secs);
-                    }
-                }
-                const auto ret = rust_call("spv_download_headers", spv_params);
-                const auto fetched_height = ret.at("height");
-                GDK_LOG(debug) << "spv_download_headers:" << fetched_height << '/' << block_height;
-                if (fetched_height == block_height) {
-                    break; // Caught up, exit
-                }
-                // Use a short delay for initial header loading, longer
-                // if we are waiting for the current block.
-                const auto delay_ms = fetched_height == last_fetched_height ? 1000ms : 50ms;
-                last_fetched_height = fetched_height;
-                std::this_thread::sleep_for(delay_ms);
-            } catch (const std::exception& e) {
-                GDK_LOG(warning) << "spv_download_headers exception:" << e.what();
-                break; // Exception, exit
-            }
-        }
-        locker_t locker(m_mutex);
-        m_spv_thread_done = true;
     }
 
 } // namespace green

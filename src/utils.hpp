@@ -137,13 +137,6 @@ namespace green {
     // Make a call into rust code and return the result
     nlohmann::json rust_call(const std::string& method, const nlohmann::json& details, void* session = nullptr);
 
-    // Return the SPV verification status of a tx
-    uint32_t spv_verify_tx(const nlohmann::json& details);
-
-    // Convert an SPV status into one of:
-    // "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed"
-    std::string spv_get_status_string(uint32_t spv_status);
-
     std::string gdb_dump_json(const nlohmann::json& json);
 
     // Check if str represents a valid utf-8 string

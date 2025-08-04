@@ -247,37 +247,12 @@ namespace green {
 
     void init_rust(const nlohmann::json& details) { rust_call("init", details); }
 
-    namespace {
-        static const std::array<const char*, 6> SPV_STATUS_NAMES
-            = { "in_progress", "verified", "not_verified", "disabled", "not_longest", "unconfirmed" };
-        static constexpr size_t SPV_STATUS_DISABLED = 3;
-
-        void write_length32(uint32_t len, std::vector<unsigned char>::iterator it)
-        {
-            *it++ = (unsigned char)(len >> 0);
-            *it++ = (unsigned char)(len >> 8);
-            *it++ = (unsigned char)(len >> 16);
-            *it = (unsigned char)(len >> 24);
-        }
-    } // namespace
-
-    uint32_t spv_verify_tx(const nlohmann::json& details)
+    static void write_length32(uint32_t len, std::vector<unsigned char>::iterator it)
     {
-        try {
-            const size_t spv_status = rust_call("spv_verify_tx", details);
-            GDK_LOG(debug) << "spv_verify_tx:" << details.at("txid") << ":" << details.at("height") << "="
-                           << spv_get_status_string(spv_status);
-            return spv_status;
-        } catch (const std::exception& e) {
-            GDK_LOG(warning) << "spv_verify_tx exception:" << e.what();
-            return SPV_STATUS_DISABLED;
-        }
-    }
-
-    std::string spv_get_status_string(uint32_t spv_status)
-    {
-        GDK_RUNTIME_ASSERT_MSG(spv_status < SPV_STATUS_NAMES.size(), "Unknown SPV status");
-        return SPV_STATUS_NAMES[spv_status];
+        *it++ = (unsigned char)(len >> 0);
+        *it++ = (unsigned char)(len >> 8);
+        *it++ = (unsigned char)(len >> 16);
+        *it = (unsigned char)(len >> 24);
     }
 
     uint32_t get_uniform_uint32_t(uint32_t upper_bound)

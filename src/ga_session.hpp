@@ -206,11 +206,6 @@ namespace green {
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
         nlohmann::json decrypt_with_pin_impl(const nlohmann::json& details, bool is_login);
 
-        // Start/stop background header downloads
-        void download_headers_ctl(locker_t& locker, bool do_start);
-        void download_headers_thread_fn();
-
-        const bool m_spv_enabled;
         std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         std::array<uint32_t, 32> m_gait_path;
         nlohmann::json m_limits_data;
@@ -244,13 +239,6 @@ namespace green {
         std::set<uint32_t> m_synced_subaccounts;
         const std::string m_user_agent;
         std::shared_ptr<wamp_transport> m_wamp;
-
-        // SPV header downloading
-        std::shared_ptr<std::thread> m_spv_thread; // Header download thread
-        std::atomic_bool m_spv_thread_done; // True when m_spv_thread has exited
-        std::atomic_bool m_spv_thread_stop; // True when we want m_spv_thread to stop
-        // Txs that are SPV verified but not yet confirmed beyond the reorg limit
-        std::set<std::string> m_spv_verified_txs;
     };
 
 } // namespace green

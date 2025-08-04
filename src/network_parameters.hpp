@@ -58,7 +58,6 @@ namespace green {
         bool is_development() const;
         bool is_electrum() const;
         bool use_tor() const;
-        bool is_spv_enabled() const;
         bool electrum_tls() const;
         std::string user_agent() const;
         std::string get_connection_string(const std::string& prefix) const;

@@ -219,9 +219,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
             { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "tx_explorer_onion_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -265,9 +262,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "02721cc509aa0c2f4a90628e9da0391b196abeabc6393ed4789dd6222c43c489" },
             { "service_pubkey", "02c408c3bb8a3d526103fb93246f54897bdd997904d3e18295b49a26965cb41b7f" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/tx/" },
             { "wamp_cert_pins", nlohmann::json::array({"default"}) },
@@ -311,9 +305,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
             { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "tx_explorer_onion_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -357,9 +348,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "c660eec6d9c536f4121854146da22e02d4c91d72af004d41729b9a592f0788e5" },
             { "service_pubkey", "02c47d84a5b256ee3c29df89642d14b6ed73d17a2b8af0aca18f6f1900f1633533" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -398,9 +386,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "e9a563d68686999af372a33157209c6860fe79197a4dafd9ec1dbaa49523351d" },
             { "service_pubkey", "0322c5f5c9c4b9d1c3e22ca995e200d724c2d7d8b6953f7b38fddf9296053c961f" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/" },
             { "wamp_cert_pins", nlohmann::json::array({"default"}) },
@@ -439,9 +424,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "green" },
             { "service_chain_code", "b60befcc619bb1c212732770fe181f2f1aa824ab89f8aab49f2e13e3a56f0f04" },
             { "service_pubkey", "036307e560072ed6ce0aa5465534fb5c258a2ccfbc257f369e8e7a181b16d897b3" },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -485,9 +467,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquid/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquid/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -531,9 +510,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", std::string() },
             { "tx_explorer_onion_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -572,9 +548,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -613,9 +586,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/testnet/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/testnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -654,9 +624,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://mempool.space/signet/tx/" },
             { "tx_explorer_onion_url", "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/signet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -695,9 +662,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "http://127.0.0.1:8080/tx/" },
             { "tx_explorer_onion_url", std::string() },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -741,9 +705,6 @@ static std::map<std::string, std::shared_ptr<nlohmann::json>> registered_network
             { "server_type", "electrum" },
             { "service_chain_code", std::string() },
             { "service_pubkey", std::string() },
-            { "spv_multi", false },
-            { "spv_servers", nlohmann::json::array() },
-            { "spv_enabled", false },
             { "tx_explorer_url", "https://blockstream.info/liquidtestnet/tx/" },
             { "tx_explorer_onion_url", "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/liquidtestnet/tx/" },
             { "wamp_cert_pins", nlohmann::json::array() },
@@ -795,9 +756,6 @@ namespace green {
             set_override(defaults, "price_onion_url", user_overrides, empty);
             set_override(defaults, "price_url", user_overrides, empty);
             set_override(defaults, "proxy", user_overrides, empty);
-            set_override(defaults, "spv_enabled", user_overrides, false);
-            set_override(defaults, "spv_multi", user_overrides, false);
-            set_override(defaults, "spv_servers", user_overrides, nlohmann::json::array());
             set_override(defaults, "use_tor", user_overrides, false);
             set_override(defaults, "user_agent", user_overrides, empty);
             set_override(defaults, "blob_server_onion_url", user_overrides, empty);
@@ -947,7 +905,6 @@ namespace green {
     bool network_parameters::is_development() const { return m_details.at("development"); }
     bool network_parameters::is_electrum() const { return m_details.value("server_type", std::string()) == "electrum"; }
     bool network_parameters::use_tor() const { return m_details.value("use_tor", false); }
-    bool network_parameters::is_spv_enabled() const { return m_details.at("spv_enabled"); }
     std::string network_parameters::user_agent() const { return m_details.value("user_agent", std::string()); }
     std::string network_parameters::get_connection_string(const std::string& config_prefix) const
     {

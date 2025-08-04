@@ -27,9 +27,9 @@ namespace green {
         constexpr int VERSION = 1;
         constexpr int MINOR_VERSION = 0x3;
         constexpr const char* KV_SELECT = "SELECT value FROM KeyValue WHERE key = ?1;";
-        constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
+        constexpr const char* TX_SELECT = "SELECT timestamp, txid, block, spent, data FROM Tx "
                                           "WHERE subaccount = ?1 ORDER BY timestamp DESC LIMIT ?2 OFFSET ?3;";
-        constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, spent, spv_status, data FROM Tx "
+        constexpr const char* TXID_SELECT = "SELECT timestamp, txid, block, spent, data FROM Tx "
                                             "WHERE subaccount = ?1 AND txid = ?2;";
         constexpr const char* TX_LATEST = "SELECT MAX(timestamp) FROM Tx WHERE subaccount = ?1;";
         constexpr const char* TX_EARLIEST_MEMPOOL
@@ -39,7 +39,6 @@ namespace green {
         constexpr const char* TX_UPSERT = "INSERT INTO Tx(subaccount, timestamp, txid, block, spent, spv_status, data) "
                                           "VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7) "
                                           "ON CONFLICT(subaccount, timestamp) DO UPDATE SET data = ?4;";
-        constexpr const char* TX_SPV_UPDATE = "UPDATE Tx SET spv_status = ?1 WHERE txid = ?2;";
         constexpr const char* TX_DELETE_ALL = "DELETE FROM Tx WHERE subaccount = ?1 AND timestamp >= ?2;";
         constexpr const char* TXDATA_INSERT = "INSERT INTO TxData(txid, rawtx) VALUES (?1, ?2) "
                                               "ON CONFLICT(txid) DO NOTHING;";
@@ -315,15 +314,14 @@ namespace green {
 
             const uint32_t block = get_uint32(stmt, 2);
             const uint32_t spent = get_uint32(stmt, 3);
-            const uint32_t spv_status = get_uint32(stmt, 4);
 
-            const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 5));
-            const size_t len = sqlite3_column_bytes(stmt.get(), 5);
+            const auto data = reinterpret_cast<const unsigned char*>(sqlite3_column_blob(stmt.get(), 4));
+            const size_t len = sqlite3_column_bytes(stmt.get(), 4);
             try {
                 const auto txhash_hex = b2h_rev({ txid, txid_len });
                 const auto span = gsl::make_span(data, len);
                 auto tx_json = nlohmann::json::from_msgpack(span.begin(), span.end());
-                callback(timestamp, txhash_hex, block, spent, spv_status, tx_json);
+                callback(timestamp, txhash_hex, block, spent, tx_json);
             } catch (const std::exception& ex) {
                 GDK_LOG(error) << "Tx callback exception: " << ex.what();
                 return false; // Stop iterating on any exception
@@ -417,7 +415,6 @@ namespace green {
         , m_stmt_tx_earliest_mempool_search(get_stmt(true, m_db, TX_EARLIEST_MEMPOOL))
         , m_stmt_tx_earliest_block_search(get_stmt(true, m_db, TX_EARLIEST_BLOCK))
         , m_stmt_tx_upsert(get_stmt(true, m_db, TX_UPSERT))
-        , m_stmt_tx_spv_update(get_stmt(true, m_db, TX_SPV_UPDATE))
         , m_stmt_tx_delete_all(get_stmt(true, m_db, TX_DELETE_ALL))
         , m_stmt_txdata_insert(get_stmt(true, m_db, TXDATA_INSERT))
         , m_stmt_txdata_search(get_stmt(true, m_db, TXDATA_SELECT))
@@ -602,7 +599,7 @@ namespace green {
         bind_blob(m_stmt_txid_search, 2, txid);
         if (get_tx(m_stmt_txid_search, callback)) {
             // At most one txid should be available
-            auto&& dummy_cb = [](uint64_t, const std::string&, uint32_t, uint32_t, uint32_t, nlohmann::json&) {};
+            auto&& dummy_cb = [](uint64_t, const std::string&, uint32_t, uint32_t, nlohmann::json&) {};
             GDK_RUNTIME_ASSERT(!get_tx(m_stmt_txid_search, dummy_cb));
         }
     }
@@ -662,20 +659,11 @@ namespace green {
         bind_blob(m_stmt_tx_upsert, 3, txid);
         bind_int(m_stmt_tx_upsert, 4, tx_json.at("block_height"));
         bind_int(m_stmt_tx_upsert, 5, 0); // 0 = Unknown spent status
-        bind_int(m_stmt_tx_upsert, 6, 3); // SPV_STATUS_DISABLED
+        constexpr size_t SPV_STATUS_DISABLED = 3;
+        bind_int(m_stmt_tx_upsert, 6, SPV_STATUS_DISABLED);
         bind_blob(m_stmt_tx_upsert, 7, tx_data);
         step_final(m_stmt_tx_upsert);
         m_require_write = true;
-    }
-
-    void cache::set_transaction_spv_verified(const std::string& txhash_hex)
-    {
-        const auto txid = h2b_rev(txhash_hex);
-        const auto _{ stmt_clean(m_stmt_tx_spv_update) };
-        bind_int(m_stmt_tx_spv_update, 1, 1); // SPV_STATUS_VERIFIED
-        bind_blob(m_stmt_tx_spv_update, 2, txid);
-        step_final(m_stmt_tx_spv_update);
-        check_db_changed();
     }
 
     void cache::delete_transactions(uint32_t subaccount, uint64_t start_ts)
@@ -727,7 +715,7 @@ namespace green {
 
         get_transaction(subaccount, txhash_hex,
             { [&existing_tx, &existing_tx_block](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t block,
-                  uint32_t /*spent*/, uint32_t /*spv_status*/, nlohmann::json& tx_json) {
+                  uint32_t /*spent*/, nlohmann::json& tx_json) {
                 existing_tx = std::move(tx_json);
                 existing_tx_block = block;
             } });

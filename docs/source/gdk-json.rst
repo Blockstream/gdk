@@ -49,7 +49,6 @@ Connection parameters JSON
       "proxy": "localhost:9150",
       "use_tor": true,
       "user_agent": "green_android v2.33",
-      "spv_enabled": false,
       "min_fee_rate": 1000,
       "cert_expiry_threshold": 1
       "gap_limit": 20,
@@ -65,7 +64,6 @@ Connection parameters JSON
           If a proxy is given and Tor is enabled, the proxy must support
           resolving ``".onion"`` domains.
 :user_agent: The user agent string to pass to the server for multisig connections.
-:spv_enabled: ``true`` to enable SPV verification for the session, ``false`` otherwise.
 :min_fee_rate: ``null`` to use the default minimum fee (which can change according to
     the network conditions), or an integer giving the fee rate in satoshis per 1000 bytes.
     Note that overriding the default fee rate only affects transaction construction; the
@@ -472,8 +470,7 @@ Describes a users transaction history returned by `GA_get_transactions`.
 :rbf_optin: A boolean indicating whether the transaction is RBF-enabled.
 :satoshi: A map of asset names to the signed satoshi total for that asset in the
     transaction. Negative numbers represent outgoing amounts, positive incoming.
-:spv_verified: The SPV status of the transaction, one of ``"in_progress"``, ``"verified"``,
-    ``"not_verified"``, ``"disabled"``, ``"not_longest"`` or ``"unconfirmed"``.
+:spv_verified: SPV status of the transaction, currently always ``"disabled"``.
 :transaction_vsize: The size of the transaction in vbytes.
 :transaction_weight: The weight of the transaction.
 :txhash: The txid of the transaction.

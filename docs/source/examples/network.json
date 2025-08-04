@@ -37,9 +37,6 @@
     "server_type": "green",
     "service_chain_code": "e9a563d68686999af372a33157209c6860fe79197a4dafd9ec1dbaa49523351d",
     "service_pubkey": "0322c5f5c9c4b9d1c3e22ca995e200d724c2d7d8b6953f7b38fddf9296053c961f",
-    "spv_enabled": false,
-    "spv_multi": false,
-    "spv_servers": [],
     "tx_explorer_onion_url": "http://explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion/tx/",
     "tx_explorer_url": "https://blockstream.info/tx/",
     "wamp_cert_pins": [
