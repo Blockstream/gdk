@@ -29,7 +29,6 @@ pub struct NetworkParameters {
     pub validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
     pub sync_interval: Option<u32>,
-    pub spv_enabled: Option<bool>,
     asset_registry_url: Option<String>,
     asset_registry_onion_url: Option<String>,
 

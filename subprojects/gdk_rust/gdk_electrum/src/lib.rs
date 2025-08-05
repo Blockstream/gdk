@@ -8,7 +8,6 @@ extern crate gdk_common;
 
 use gdk_common::log::{debug, info, trace, warn};
 use gdk_pin_client::{Pin, PinClient, PinData};
-use headers::bitcoin::HEADERS_FILE_MUTEX;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -56,12 +55,9 @@ use std::str::FromStr;
 use std::time::{Duration, SystemTime};
 use std::{iter, thread};
 
-use crate::headers::bitcoin::HeadersChain;
-use crate::headers::liquid::Verifier;
 use crate::headers::ChainOrVerifier;
 use crate::spv::SpvCrossValidator;
 use electrum_client::{Client, ElectrumApi};
-use gdk_common::bitcoin::blockdata::constants::DIFFCHANGE_INTERVAL;
 pub use gdk_common::notification::{NativeNotif, Notification, TransactionNotification};
 use gdk_common::rand::seq::SliceRandom;
 use gdk_common::rand::thread_rng;
@@ -72,7 +68,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, RwLock};
 use std::thread::JoinHandle;
 
-const CROSS_VALIDATION_RATE: u8 = 4; // Once every 4 thread loop runs, or roughly 28 seconds
 pub const DEFAULT_GAP_LIMIT: u32 = 20;
 const FEE_ESTIMATE_INTERVAL: Duration = Duration::from_secs(120);
 
@@ -583,121 +578,6 @@ impl ElectrumSession {
         }
 
         let sync_interval = self.network.sync_interval.unwrap_or(1);
-
-        if self.network.spv_enabled.unwrap_or(false) {
-            let checker = match self.network.id() {
-                NetworkId::Bitcoin(network) => {
-                    ChainOrVerifier::Chain(HeadersChain::new(&self.network.state_dir, network)?)
-                }
-                NetworkId::Elements(network) => {
-                    let verifier = Verifier::new(network);
-                    ChainOrVerifier::Verifier(verifier)
-                }
-            };
-
-            let cross_validator =
-                SpvCrossValidator::from_network(&self.network, &self.proxy, self.timeout)?;
-
-            let mut headers = Headers {
-                store: self.store()?,
-                checker,
-                cross_validator,
-            };
-
-            let headers_url = self.url.clone();
-            let proxy = self.proxy.clone();
-            let notify_blocks = self.notify.clone();
-            let chunk_size = DIFFCHANGE_INTERVAL as usize;
-            let user_wants_to_sync = self.user_wants_to_sync.clone();
-            let max_reorg_blocks = self.network.max_reorg_blocks.unwrap_or(144);
-
-            let headers_handle = thread::spawn(move || {
-                info!("starting headers thread");
-                let mut round = 0u8;
-
-                'outer: loop {
-                    if wait_or_close(&user_wants_to_sync, 7) {
-                        info!("closing headers thread");
-                        break;
-                    }
-                    let mut _lock;
-                    if let ChainOrVerifier::Chain(chain) = &headers.checker {
-                        _lock = HEADERS_FILE_MUTEX
-                            .get(&chain.network)
-                            .expect("unreachable because map populate with every enum variants")
-                            .lock()
-                            .unwrap();
-                    }
-
-                    if let Ok(client) = headers_url.build_client(proxy.as_deref(), None) {
-                        loop {
-                            if !user_wants_to_sync.load(Ordering::Relaxed) {
-                                info!("closing headers thread");
-                                break 'outer;
-                            }
-                            match headers.ask(chunk_size, &client) {
-                                Ok(headers_found) => {
-                                    if headers_found < chunk_size {
-                                        break;
-                                    } else {
-                                        info!("headers found: {}", headers_found);
-                                    }
-                                }
-                                Err(Error::InvalidHeaders) => {
-                                    warn!("invalid headers");
-                                    // this should handle reorgs and also broke IO writes update
-                                    headers.store.lock().unwrap().cache.txs_verif.clear();
-                                    if let Err(e) = headers.remove(max_reorg_blocks) {
-                                        warn!("failed removing headers: {:?}", e);
-                                        break;
-                                    }
-                                    // XXX clear affected blocks/txs more surgically?
-                                }
-                                Err(Error::Common(BtcEncodingError(_)))
-                                | Err(Error::Common(ElementsEncodingError(_))) => {
-                                    // We aren't able to decode the blockheaders returned by the server,
-                                    // do not sync headers further.
-                                    break 'outer;
-                                }
-                                Err(e) => {
-                                    warn!("error while asking headers {}", e);
-                                    thread::sleep(Duration::from_millis(500));
-                                }
-                            }
-                        }
-
-                        match headers.get_proofs(&client) {
-                            Ok(found) => {
-                                if found > 0 {
-                                    info!("found proof {}", found)
-                                }
-                            }
-                            Err(e) => warn!("error in getting proofs {:?}", e),
-                        }
-
-                        if round % CROSS_VALIDATION_RATE == 0 {
-                            let status_changed = headers.cross_validate();
-                            if status_changed {
-                                // TODO: improve block notification
-                                if let Ok(store_read) = headers.store.lock() {
-                                    let tip_height = store_read.cache.tip_height();
-                                    let tip_hash = store_read.cache.tip_block_hash();
-                                    let tip_prev_hash = store_read.cache.tip_prev_block_hash();
-                                    notify_blocks.block_from_hashes(
-                                        tip_height,
-                                        &tip_hash,
-                                        &tip_prev_hash,
-                                    );
-                                }
-                            }
-                        }
-
-                        round = round.wrapping_add(1);
-                    }
-                }
-            });
-            self.handles.push(headers_handle);
-        }
 
         let mut syncer = Syncer {
             accounts: self.accounts.clone(),

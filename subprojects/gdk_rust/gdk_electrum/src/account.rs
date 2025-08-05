@@ -15,8 +15,8 @@ use gdk_common::be::{
 use gdk_common::error::fn_err;
 use gdk_common::model::{
     parse_path, AccountInfo, AddressDataResult, AddressPointer, GetPreviousAddressesOpt,
-    GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses, SPVVerifyTxResult,
-    TxListItem, Txo, UpdateAccountOpt,
+    GetTransactionsOpt, GetTxInOut, PreviousAddress, PreviousAddresses, TxListItem, Txo,
+    UpdateAccountOpt,
 };
 use gdk_common::scripts::{p2pkh_script, ScriptType};
 use gdk_common::slip132::slip132_version;
@@ -376,12 +376,6 @@ impl Account {
             let type_ = tx.type_(&satoshi, is_redeposit);
             let user_signed = type_.user_signed();
 
-            let spv_verified = if self.network.spv_enabled.unwrap_or(false) {
-                store.spv_verification_status(self.num(), tx_id)
-            } else {
-                SPVVerifyTxResult::Disabled
-            };
-
             let rbf_optin = tx.rbf_optin();
             let can_rbf = height.is_none() && rbf_optin && user_signed;
 
@@ -592,7 +586,7 @@ impl Account {
                 rbf_optin,
                 can_cpfp: false,
                 can_rbf,
-                spv_verified: spv_verified.to_string(),
+                spv_verified: "disabled".to_string(),
                 fee,
                 fee_rate,
                 inputs,
