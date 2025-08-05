@@ -17,7 +17,6 @@ use gdk_common::be::*;
 use gdk_common::model::*;
 use gdk_common::session::Session;
 use gdk_common::{NetworkId, NetworkParameters, State};
-use gdk_electrum::spv;
 use gdk_electrum::{ElectrumSession, TransactionNotification};
 
 use crate::RpcNodeExt;
@@ -297,46 +296,10 @@ impl TestSession {
         panic!("electrs_tip always return error")
     }
 
-    pub fn spv_verify_tx(&mut self, txid: &str, height: u32, headers_to_download: Option<usize>) {
-        let tip = self.electrs_tip() as u32;
-        let network = self.network.clone();
-        utils::spv_verify_tx(network, tip, txid, height, headers_to_download);
-    }
-
     /// stop the bitcoin node in the test session
     pub fn stop(&mut self) {
         self.session.disconnect().unwrap();
         self.node.stop().unwrap();
-    }
-
-    pub fn get_spv_cross_validation(&self) -> Option<spv::CrossValidationResult> {
-        let store = self.session.store().unwrap();
-        let store = store.lock().unwrap();
-        store.cache.cross_validation_result.clone()
-    }
-
-    /// wait for the spv cross validation status to change
-    pub fn wait_spv_cross_validation_change(&self, wait_for: bool) -> spv::CrossValidationResult {
-        for _ in 0..60 {
-            if let Some(result) = self.get_spv_cross_validation() {
-                if result.is_valid() == wait_for {
-                    return result;
-                }
-            }
-            thread::sleep(Duration::from_secs(1));
-        }
-        panic!("timeout waiting for spv cross-validation change");
-    }
-
-    /// wait for the spv validation status of a transaction to change
-    pub fn wait_tx_spv_change(&self, txid: &str, wait_for: &str) {
-        for _ in 0..60 {
-            if self.get_tx_from_list(0, txid).spv_verified == wait_for {
-                return;
-            }
-            thread::sleep(Duration::from_secs(1));
-        }
-        panic!("timeout waiting for tx spv change");
     }
 
     fn wait_tx_ntf(

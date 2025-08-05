@@ -198,55 +198,6 @@ pub struct GetAvailableCurrenciesParams {
     pub url: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVCommonParams {
-    /// In which network we are verifying the transaction
-    pub network: crate::network::NetworkParameters,
-
-    /// Maximum timeout for network calls,
-    /// the final timeout in seconds is roughly equivalent to 2 + `timeout` * 2
-    ///
-    /// Cannot be specified if `network.proxy` is non empty.
-    pub timeout: Option<u8>,
-
-    /// If callers are not handling a cache of the already verified tx, they can set this params to
-    /// to enable the cache in the callee side.
-    /// Encryption is needed to encrypt the cache content to avoid leaking the txids of the transactions
-    pub encryption_key: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVVerifyTxParams {
-    #[serde(flatten)]
-    pub params: SPVCommonParams,
-
-    /// The `txid` of the transaction to verify
-    pub txid: String,
-
-    /// The `height` of the block containing the transaction to be verified
-    pub height: u32,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVDownloadHeadersParams {
-    #[serde(flatten)]
-    pub params: SPVCommonParams,
-
-    /// Number of headers to download at every attempt, it defaults to 2016, useful to set lower
-    /// for testing
-    pub headers_to_download: Option<usize>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
-pub struct SPVDownloadHeadersResult {
-    /// Current height tip of the headers downloaded
-    pub height: u32,
-
-    /// A reorg happened, any proof with height higher than this struct height must be considered
-    /// invalid
-    pub reorg: bool,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum SPVVerifyTxResult {

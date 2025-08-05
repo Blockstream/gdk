@@ -14,12 +14,12 @@ use std::str::FromStr;
 use std::sync::Once;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use gdk_common::model::{InitParam, SPVDownloadHeadersParams, SPVVerifyTxParams};
+use gdk_common::model::InitParam;
 
 use crate::error::Error;
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
-use gdk_electrum::{headers, sweep, ElectrumSession};
+use gdk_electrum::{sweep, ElectrumSession};
 use serde::Serialize;
 
 pub const GA_OK: i32 = 0;
@@ -310,14 +310,6 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
             gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
             to_string(&json!("".to_string()))
-        }
-        "spv_verify_tx" => {
-            let param: SPVVerifyTxParams = serde_json::from_str(input)?;
-            to_string(&headers::spv_verify_tx(&param)?.as_i32())
-        }
-        "spv_download_headers" => {
-            let param: SPVDownloadHeadersParams = serde_json::from_str(input)?;
-            to_string(&headers::download_headers(&param)?)
         }
         "refresh_assets" => {
             let param: gdk_registry::RefreshAssetsParams = serde_json::from_str(input)?;
