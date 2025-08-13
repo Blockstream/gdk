@@ -338,7 +338,7 @@ namespace green {
             if (new_signer->is_watch_only()) {
                 m_result = m_session->login_wo(new_signer);
                 m_signer = new_signer;
-                return state_type::done;
+                return upload_confidential_addresses();
             }
 
             m_signer = new_signer;
@@ -439,6 +439,11 @@ namespace green {
         }
 
         // Check whether we need to upload confidential addresses.
+        return upload_confidential_addresses();
+    }
+
+    auth_handler::state_type login_user_call::upload_confidential_addresses()
+    {
         std::unique_ptr<upload_ca_handler> handler_p;
         for (const auto& sa : m_session->get_subaccounts()) {
             const size_t required_ca = sa.value("required_ca", 0);
