@@ -27,6 +27,7 @@ namespace green {
     private:
         state_type call_impl() override;
         state_type request_subaccount_xpubs();
+        void upload_ca();
 
         nlohmann::json m_hw_device;
         nlohmann::json m_credential_data;

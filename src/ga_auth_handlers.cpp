@@ -439,6 +439,12 @@ namespace green {
         }
 
         // Check whether we need to upload confidential addresses.
+        upload_ca();
+        return state_type::done;
+    }
+
+    void login_user_call::upload_ca()
+    {
         std::unique_ptr<upload_ca_handler> handler_p;
         for (const auto& sa : m_session->get_subaccounts()) {
             const size_t required_ca = sa.value("required_ca", 0);
@@ -454,7 +460,6 @@ namespace green {
         if (handler_p) {
             add_next_handler(handler_p.release());
         }
-        return state_type::done;
     }
 
     auth_handler::state_type login_user_call::request_subaccount_xpubs()
