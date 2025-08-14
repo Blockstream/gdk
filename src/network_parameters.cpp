@@ -17,54 +17,6 @@ static std::vector<std::string> default_wamp_cert_roots = {
 // TODO: generate these from pem file?
 // https://www.identrust.com/certificates/trustid/root-download-x3.html
 
-// subject: '/C=US/O=Let's Encrypt/CN=E1'
-// issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
-// not before: Fri Sep  4 00:00:00 2020
-// not after: Mon Sep 15 16:00:00 2025
-R"(
------BEGIN CERTIFICATE-----
-MIICxjCCAk2gAwIBAgIRALO93/inhFu86QOgQTWzSkUwCgYIKoZIzj0EAwMwTzEL
-MAkGA1UEBhMCVVMxKTAnBgNVBAoTIEludGVybmV0IFNlY3VyaXR5IFJlc2VhcmNo
-IEdyb3VwMRUwEwYDVQQDEwxJU1JHIFJvb3QgWDIwHhcNMjAwOTA0MDAwMDAwWhcN
-MjUwOTE1MTYwMDAwWjAyMQswCQYDVQQGEwJVUzEWMBQGA1UEChMNTGV0J3MgRW5j
-cnlwdDELMAkGA1UEAxMCRTEwdjAQBgcqhkjOPQIBBgUrgQQAIgNiAAQkXC2iKv0c
-S6Zdl3MnMayyoGli72XoprDwrEuf/xwLcA/TmC9N/A8AmzfwdAVXMpcuBe8qQyWj
-+240JxP2T35p0wKZXuskR5LBJJvmsSGPwSSB/GjMH2m6WPUZIvd0xhajggEIMIIB
-BDAOBgNVHQ8BAf8EBAMCAYYwHQYDVR0lBBYwFAYIKwYBBQUHAwIGCCsGAQUFBwMB
-MBIGA1UdEwEB/wQIMAYBAf8CAQAwHQYDVR0OBBYEFFrz7Sv8NsI3eblSMOpUb89V
-yy6sMB8GA1UdIwQYMBaAFHxClq7eS0g7+pL4nozPbYupcjeVMDIGCCsGAQUFBwEB
-BCYwJDAiBggrBgEFBQcwAoYWaHR0cDovL3gyLmkubGVuY3Iub3JnLzAnBgNVHR8E
-IDAeMBygGqAYhhZodHRwOi8veDIuYy5sZW5jci5vcmcvMCIGA1UdIAQbMBkwCAYG
-Z4EMAQIBMA0GCysGAQQBgt8TAQEBMAoGCCqGSM49BAMDA2cAMGQCMHt01VITjWH+
-Dbo/AwCd89eYhNlXLr3pD5xcSAQh8suzYHKOl9YST8pE9kLJ03uGqQIwWrGxtO3q
-YJkgsTgDyj2gJrjubi1K9sZmHzOa25JK1fUpE8ZwYii6I4zPPS/Lgul/
------END CERTIFICATE-----)",
-
-// backup
-//
-// subject: '/C=US/O=Let's Encrypt/CN=E2'
-// issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
-// not before: Fri Sep  4 00:00:00 2020
-// not after: Mon Sep 15 16:00:00 2025
-R"(
------BEGIN CERTIFICATE-----
-MIICxjCCAkygAwIBAgIQTtI99q9+x/mwxHJv+VEqdzAKBggqhkjOPQQDAzBPMQsw
-CQYDVQQGEwJVUzEpMCcGA1UEChMgSW50ZXJuZXQgU2VjdXJpdHkgUmVzZWFyY2gg
-R3JvdXAxFTATBgNVBAMTDElTUkcgUm9vdCBYMjAeFw0yMDA5MDQwMDAwMDBaFw0y
-NTA5MTUxNjAwMDBaMDIxCzAJBgNVBAYTAlVTMRYwFAYDVQQKEw1MZXQncyBFbmNy
-eXB0MQswCQYDVQQDEwJFMjB2MBAGByqGSM49AgEGBSuBBAAiA2IABCOaLO3lixmN
-YVWex+ZVYOiTLgi0SgNWtU4hufk50VU4Zp/LbBVDxCsnsI7vuf4xp4Cu+ETNggGE
-yBqJ3j8iUwe5Yt/qfSrRf1/D5R58duaJ+IvLRXeASRqEL+VkDXrW3qOCAQgwggEE
-MA4GA1UdDwEB/wQEAwIBhjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYBBQUHAwEw
-EgYDVR0TAQH/BAgwBgEB/wIBADAdBgNVHQ4EFgQUbZkq9U0C6+MRwWC6km+NPS7x
-6kQwHwYDVR0jBBgwFoAUfEKWrt5LSDv6kviejM9ti6lyN5UwMgYIKwYBBQUHAQEE
-JjAkMCIGCCsGAQUFBzAChhZodHRwOi8veDIuaS5sZW5jci5vcmcvMCcGA1UdHwQg
-MB4wHKAaoBiGFmh0dHA6Ly94Mi5jLmxlbmNyLm9yZy8wIgYDVR0gBBswGTAIBgZn
-gQwBAgEwDQYLKwYBBAGC3xMBAQEwCgYIKoZIzj0EAwMDaAAwZQIxAPJCN9qpyDmZ
-tX8K3m8UYQvK51BrXclM6WfrdeZlUBKyhTXUmFAtJw4X6A0x9mQFPAIwJa/No+KQ
-UAM1u34E36neL/Zba7ombkIOchSgx1iVxzqtFWGddgoG+tppRPWhuhhn
------END CERTIFICATE-----)",
-
 // subject: '/C=US/O=Google Trust Services LLC/CN=GTS Root R1'
 // issuer: '/C=US/O=Google Trust Services LLC/CN=GTS Root R1'
 // not before: Wed Jun 22 00:00:00 2016
@@ -141,18 +93,6 @@ emyPxgcYxn/eR44/KJ4EBs+lVDR3veyJm+kXQ99b21/+jh5Xos1AnX5iItreGCc=
 };
 
 static std::vector<std::string> default_wamp_cert_pins = {
-    // subject: '/C=US/O=Let's Encrypt/CN=E1'
-    // issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X2'
-    // not before: Fri Sep  4 00:00:00 2020
-    // not after: Mon Sep 15 16:00:00 2025
-    "46494e30379059df18be52124305e606fc59070e5b21076ce113954b60517cda",
-
-    // subject: '/C=US/O=Let's Encrypt/CN=R3'
-    // issuer: '/C=US/O=Internet Security Research Group/CN=ISRG Root X1'
-    // not before: Fri Sep  4 00:00:00 2020
-    // not after: Mon Sep 15 16:00:00 2025
-    "67add1166b020ae61b8f5fc96813c04c2aa589960796865572a3c7e737613dfd",
-
     // subject: 'C=US, O=Google Trust Services LLC, CN=GTS CA 1D4'
     // issuer: 'C=US, O=Google Trust Services LLC, CN=GTS Root R1'
     // not before: 'Aug 13 00:00:42 2020 GMT'
