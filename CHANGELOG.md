@@ -1,17 +1,28 @@
 # Changelog
 
-## Unreleased
+## Release 0.76.0 - 25-08-20
 
 ### Added
 
 - Liquid(Singlesig): Add support for BIP-86 P2TR (Taproot) wallets.
+- Liquid(AMP): Ensure watch-only AMP accounts do not run out of addresses.
 - HWW: Add a new device JSON key ``"supports_liquid_p2tr"`` to indicate P2TR
   inputs can be signed by the device.
 
+### Changed
+- Testnets: The PIN server for testnets has been changed to a testing instance.
+  You will need to recreate PIN logins for test wallets with a PIN login enabled.
+
 ### Fixed
 
-### Changed
+- PSET: Populate the ELIP-0101 genesis hash field for created PSETs.
+- PSET: Add protection against signing PSETs for different networks than the current one.
+- Liquidex: Prevent creating swaps with unsupported address types.
 
+### Removed
+- SPV: Remove SPV support, which was unstable and causing increased support overhead.
+  Users that do not trust esplora to behave honesty should run their own electrum server
+  rather than relying on SPV.
 
 ## Release 0.75.2 - 25-05-08
 
