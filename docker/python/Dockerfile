@@ -1,7 +1,8 @@
 # Manylinux (main build) image. Build with:
 # DOCKER_BUILDKIT=1 docker build . -t greenaddress/gdk-python-builder -f docker/python/Dockerfile
 #
-FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:f40d8d97b891cce332ec974b35f7e44c5e164da51ba89eff92a5a799ec2a0c21 AS base
+FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:a0bac0e8aa5a77d4746ff0dc80cd3ea5208c0297f56201641dd139d93291759d AS base
+#FROM quay.io/pypa/manylinux_2_34_x86_64@sha256:fa538e6c36fe23e8334813c7586dfca3657907312784d2adbf420ec6367d27b7 AS base
 WORKDIR /root
 COPY ./tools ./tools
 COPY ./cmake/profiles ./cmake/profiles
