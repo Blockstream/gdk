@@ -25,7 +25,7 @@ build-wheel-release:
   when: manual
   parallel:
     matrix:
-      - PYTHON_VERSION: [cp310-cp310, cp311-cp311] # , cp39-cp39 included in the previous job
+      - PYTHON_VERSION: [cp310-cp310, cp311-cp311, cp312-cp312, cp313-cp313] # , cp39-cp39 included in the previous job
 
 
 release-python:
