@@ -23,6 +23,7 @@ for python_version in "${python_versions[@]}";
 do
     source /root/python-${python_version}-venv/bin/activate
     pip install -r tools/requirements.txt
+    pip install setuptools
     deactivate
 done
 
