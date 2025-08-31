@@ -1,5 +1,10 @@
 # Changelog
 
+## Release 0.76.1 - 25-09-02
+
+### Added
+- Python: Add Python 3.12 and 3.13 x86_64 wheels.
+
 ## Release 0.76.0 - 25-08-20
 
 ### Added
