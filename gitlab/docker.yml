@@ -18,7 +18,7 @@
   rules:
     - if: $CI_COMMIT_BRANCH
       changes:
-        paths: [docker/*, tools/*, $DOCKER_BUILD_CONTEXT/*, cmake/profiles/*, gitlab/docker.yml]
+        paths: [docker/*, tools/*, $DOCKER_BUILD_CONTEXT/*, cmake/profiles/*, gitlab/docker.yml, src/CMakeLists.txt, src/*/CMakeLists.txt]
         compare_to: master
   script:
     - docker pull ${IMAGE}:latest || true
