@@ -750,6 +750,9 @@ namespace green {
                 GDK_VERIFY(wally_psbt_generate_input_explicit_proofs(m_psbt.get(), i, satoshi, asset_id.data(),
                     asset_id.size(), abf.data(), abf.size(), vbf.data(), vbf.size(), nonce.data(), nonce.size()));
             }
+            if (auto sighash_flags = j_uint32(input, "user_sighash"); sighash_flags) {
+                GDK_VERIFY(wally_psbt_set_input_sighash(m_psbt.get(), i, *sighash_flags));
+            }
         }
 
         const auto& outputs = j_arrayref(details, "transaction_outputs");
