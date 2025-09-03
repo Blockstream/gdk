@@ -94,7 +94,7 @@ target_include_directories(green_gdk
 #### wallycore special
 #cmake 3.24 ==> $<LINK_LIBRARY:WHOLE_ARCHIVE,PkgConfig::wallycore>
 target_include_directories(
-    green_gdk SYSTEM PRIVATE $<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_INCLUDE_DIRECTORIES>
+    green_gdk PRIVATE $<TARGET_PROPERTY:PkgConfig::wallycore,INTERFACE_INCLUDE_DIRECTORIES>
 )
 set(_gdkLinkOptions ${GDK_LINK_OPTIONS})
 if(APPLE)
