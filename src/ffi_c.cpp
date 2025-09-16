@@ -139,49 +139,56 @@ struct GA_session final : public green::session {
     int NAME(T1 A1)                                                                                                    \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1) BODY, A1);                                                                    \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1) { BODY }, A1);                                                                            \
     }
 
 #define GDK_DEFINE_C_FUNCTION_2(NAME, T1, A1, T2, A2, BODY)                                                            \
     int NAME(T1 A1, T2 A2)                                                                                             \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2) BODY, A1, A2);                                                         \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2) { BODY }, A1, A2);                                                                 \
     }
 
 #define GDK_DEFINE_C_FUNCTION_3(NAME, T1, A1, T2, A2, T3, A3, BODY)                                                    \
     int NAME(T1 A1, T2 A2, T3 A3)                                                                                      \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3) BODY, A1, A2, A3);                                              \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3) { BODY }, A1, A2, A3);                                                      \
     }
 
 #define GDK_DEFINE_C_FUNCTION_4(NAME, T1, A1, T2, A2, T3, A3, T4, A4, BODY)                                            \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4)                                                                               \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4) BODY, A1, A2, A3, A4);                                   \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4) { BODY }, A1, A2, A3, A4);                                           \
     }
 
 #define GDK_DEFINE_C_FUNCTION_5(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, BODY)                                    \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5)                                                                        \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5) BODY, A1, A2, A3, A4, A5);                        \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5) { BODY }, A1, A2, A3, A4, A5);                                \
     }
 
 #define GDK_DEFINE_C_FUNCTION_6(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, BODY)                            \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6)                                                                 \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6) BODY, A1, A2, A3, A4, A5, A6);             \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6) { BODY }, A1, A2, A3, A4, A5, A6);                     \
     }
 
 #define GDK_DEFINE_C_FUNCTION_7(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, T7, A7, BODY)                    \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7)                                                          \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7) BODY, A1, A2, A3, A4, A5, A6, A7);  \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7) { BODY }, A1, A2, A3, A4, A5, A6, A7);          \
     }
 
 #define GDK_DEFINE_C_FUNCTION_8(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, T7, A7, T8, A8, BODY)            \
@@ -189,15 +196,17 @@ struct GA_session final : public green::session {
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
         return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8) BODY, A1, A2, A3, A4, A5, A6, A7, A8);   \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8) { BODY }, A1, A2, A3, A4, A5, A6, A7,    \
+            A8);                                                                                                       \
     }
 
 #define GDK_DEFINE_C_FUNCTION_9(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, T7, A7, T8, A8, T9, A9, BODY)    \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9)                                            \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9) BODY, A1, A2, A3, A4, \
-            A5, A6, A7, A8, A9);                                                                                       \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9) { BODY }, A1, A2, A3, A4, A5, A6, \
+            A7, A8, A9);                                                                                               \
     }
 
 #define GDK_DEFINE_C_FUNCTION_10(                                                                                      \
@@ -205,8 +214,9 @@ struct GA_session final : public green::session {
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9, T10 A10)                                   \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9, T10 A10) BODY, A1,    \
-            A2, A3, A4, A5, A6, A7, A8, A9, A10);                                                                      \
+        return c_invoke(                                                                                               \
+            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6, T7 A7, T8 A8, T9 A9, T10 A10) { BODY }, A1, A2, A3,    \
+            A4, A5, A6, A7, A8, A9, A10);                                                                              \
     }
 
 int GA_init(const GA_json* config)
