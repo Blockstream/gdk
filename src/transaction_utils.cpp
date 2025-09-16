@@ -199,7 +199,7 @@ namespace green {
                     }
                 }
             } catch (const std::exception&) {
-                // Return id_invalid_address below
+                ; // Return id_invalid_address below
             }
             if (error.empty()) {
                 error = res::id_invalid_address;
@@ -425,7 +425,7 @@ namespace green {
                 constexpr bool allow_unconfidential = true;
                 return scriptpubkey_from_address(net_params, derived_address, allow_unconfidential);
             } catch (const std::exception& e) {
-                // Unable to compute, e.g. a watch-only or unsynced session
+                ; // Unable to compute, e.g. a watch-only or unsynced session
             }
         }
         // Not a wallet utxo or unable to compute the script.

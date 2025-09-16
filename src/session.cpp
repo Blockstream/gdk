@@ -39,6 +39,7 @@ namespace green {
                 const auto what = e.what();
                 GDK_LOG(debug) << preamble << what;
             } catch (const std::exception&) {
+                ; // Ignore errors
             }
         }
     } // namespace

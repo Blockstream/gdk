@@ -1243,6 +1243,7 @@ namespace green {
                 m_synced_subaccounts.clear();
             }
         } catch (const std::exception& ex) {
+            ; // Ignore errors
         }
     }
 
@@ -1796,6 +1797,7 @@ namespace green {
             fiat_rate = wamp_cast_nil(m_wamp->call(locker, "login.set_pricing_source_v2", currency, exchange));
             ok = true;
         } catch (const std::exception& e) {
+            ; // Ignore errors
         }
 
         if (!ok) {

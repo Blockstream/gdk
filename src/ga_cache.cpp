@@ -109,6 +109,7 @@ namespace green {
                 GDK_LOG(error) << "DB error: " << err_msg;
                 return err_msg;
             } catch (const std::exception&) {
+                ; // Ignore errors
             }
             return "Unknown DB error";
         }
@@ -498,7 +499,7 @@ namespace green {
                         m_require_write = true;
                     }
                 } catch (const std::exception&) {
-                    // Ignore errors; fetch blob from server or recreate instead
+                    ; // Ignore errors; fetch blob from server or recreate instead
                 }
             } else {
                 // Loaded DB successfully

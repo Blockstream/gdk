@@ -149,7 +149,7 @@ namespace green {
                     ret.first = details.value("error", std::string());
                     ret.second = details.value("message", std::string());
                 } catch (const std::exception&) {
-                    // Ignore
+                    ; // Ignore
                 }
             }
             return ret;
@@ -717,7 +717,7 @@ namespace green {
                 public_key_hex = b2h(master_key.get_public_key());
             }
         } catch (const std::exception&) {
-            // Fall through...
+            ; // Fall through...
         }
         if (chain_code_hex.empty() || public_key_hex.empty()) {
             throw user_error("Invalid credentials");
@@ -736,6 +736,7 @@ namespace green {
                 message.pop_back();
             }
         } catch (const std::exception&) {
+            ; // Ignore errors
         }
         GDK_LOG(info) << context << (*context ? " " : "") << "ignoring exception:" << message;
         return true;
@@ -757,6 +758,7 @@ namespace green {
             (void)nlohmann::json(str).dump();
             return true;
         } catch (const std::exception&) {
+            ; // Ignore errors
         }
         return false;
     }
@@ -808,6 +810,7 @@ extern "C" int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
         GDK_VERIFY(bip39_mnemonic_validate(nullptr, mnemonic));
         *valid = GA_TRUE;
     } catch (const std::exception& e) {
+        ; // Ignore errors
     }
     return GA_OK;
 }

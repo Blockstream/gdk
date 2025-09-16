@@ -57,11 +57,13 @@ namespace green {
             try {
                 message = get_diagnostic_information(e);
             } catch (const std::exception&) {
+                ; // Ignore errors
             }
         } catch (const std::exception& e) {
             try {
                 message = e.what();
             } catch (const std::exception&) {
+                ; // Ignore errors
             }
         }
         return nsee_log_info(message, context);
