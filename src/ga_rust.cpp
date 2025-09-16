@@ -29,7 +29,7 @@ namespace green {
         : session_impl(std::move(net_params))
     {
         auto np = m_net_params.get_json();
-        const auto res = GDKRUST_create_session(&m_session, np.dump().c_str());
+        const auto res = GDKRUST_create_session(reinterpret_cast<void*>(&m_session), np.dump().c_str());
         GDK_RUNTIME_ASSERT(res == GA_OK && m_session);
         m_user_pubkeys = std::make_unique<bip44_pubkeys>(m_net_params);
     }
