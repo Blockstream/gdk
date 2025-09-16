@@ -150,7 +150,7 @@ namespace green {
         // Allow changing the value only if it is not already set
         GDK_RUNTIME_ASSERT(!var.has_value() || var == new_value);
         if (!var.has_value()) {
-            var.emplace(std::move(new_value));
+            var.emplace(std::forward<T>(new_value));
             return true;
         }
         return false;
