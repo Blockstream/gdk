@@ -247,8 +247,9 @@ namespace green {
         case ga_redeem_p2sh_fortified:
             return address_type::p2sh;
             break;
+        default:
+            return {};
         }
-        return {};
     }
 
     uint32_t address_type_to_script_type(const std::string& addr_type)
