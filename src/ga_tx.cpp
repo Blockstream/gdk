@@ -561,7 +561,7 @@ namespace green {
             const auto policy_asset = net_params.get_policy_asset();
             const amount dust_threshold = session.get_dust_threshold(policy_asset);
             const auto network_fee = j_amount_or_zero(result, "network_fee");
-            const ssize_t num_utxos = manual_selection ? 0 : utxos.size();
+            const ssize_t num_utxos = manual_selection ? 0 : gsl::narrow<ssize_t>(utxos.size());
             const bool is_greedy = addressee.greedy_index.has_value();
             bool added_change = false;
 
@@ -1222,7 +1222,7 @@ namespace green {
     {
         const size_t weight = get_adjusted_weight(net_params);
         const size_t vsize = Tx::vsize_from_weight(weight);
-        const auto fee = static_cast<double>(vsize) * fee_rate / 1000.0;
+        const auto fee = static_cast<double>(vsize) * static_cast<double>(fee_rate) / 1000.0;
         return static_cast<uint64_t>(std::ceil(fee));
     }
 

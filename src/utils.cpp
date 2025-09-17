@@ -70,7 +70,7 @@ namespace green {
 #elif !defined(_MSC_VER) && (defined(__x86_64__) || defined(__amd64__))
             uint64_t r1 = 0, r2 = 0;
             __asm__ volatile("rdtsc" : "=a"(r1), "=d"(r2)); // Constrain r1 to rax and r2 to rdx.
-            return (r2 << 32) | r1;
+            return gsl::narrow<int64_t>((r2 << 32) | r1);
 #else
             // Fall back to using C++11 clock (usually microsecond or nanosecond precision)
             return std::chrono::high_resolution_clock::now().time_since_epoch().count();
@@ -560,7 +560,8 @@ namespace green {
         // Initialise result with supplied prefix bytes and decompressed length
         result.resize(prefix_len + sizeof(uint32_t) + compressed_len);
         std::copy(prefix.begin(), prefix.end(), result.begin());
-        write_length32(bytes_len, result.begin() + prefix_len);
+        const auto offset_len = gsl::narrow<std::vector<unsigned char>::difference_type>(prefix_len);
+        write_length32(bytes_len, result.begin() + offset_len);
         // Add the compressed data
         int z_result = compress2(result.data() + prefix_len + sizeof(uint32_t), &compressed_len, bytes.data(),
             bytes_len, Z_BEST_COMPRESSION);
@@ -657,7 +658,7 @@ namespace green {
     static EVP_PKEY* pubkey_from_pem(std::string_view pem)
     {
         using BIO_ptr = std::unique_ptr<BIO, decltype(&BIO_free)>;
-        BIO_ptr input(BIO_new_mem_buf(pem.data(), pem.size()), BIO_free);
+        BIO_ptr input(BIO_new_mem_buf(pem.data(), gsl::narrow<int>(pem.size())), BIO_free);
         return PEM_read_bio_PUBKEY(input.get(), nullptr, nullptr, nullptr);
     }
 

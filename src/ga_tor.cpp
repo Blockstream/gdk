@@ -502,9 +502,10 @@ namespace green {
                 argv_conf.emplace_back("notice");
             }
 #endif
-            int conf_res
-                = tor_main_configuration_set_command_line(tor_conf, argv_conf.size(), (char**)argv_conf.data());
-            GDK_RUNTIME_ASSERT(!conf_res);
+            const auto tor_argc = gsl::narrow<int>(argv_conf.size());
+            auto tor_argv = const_cast<char**>(argv_conf.data());
+            const int ret = tor_main_configuration_set_command_line(tor_conf, tor_argc, tor_argv);
+            GDK_RUNTIME_ASSERT(!ret);
 
             GDK_LOG(info) << "tor_run_main begins";
             tor_run_main(tor_conf);

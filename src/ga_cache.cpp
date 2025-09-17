@@ -155,7 +155,7 @@ namespace green {
             if (f.is_open()) {
                 for (size_t written = 0; written != encrypted_len; written = f.tellp()) {
                     auto p = reinterpret_cast<const char*>(&cyphertext[written]);
-                    f.write(p, encrypted_len - written);
+                    f.write(p, gsl::narrow<std::streamsize>(encrypted_len - written));
                 }
             }
         }
@@ -176,7 +176,7 @@ namespace green {
             size_t read = 0;
             while (read != cyphertext.size()) {
                 auto p = reinterpret_cast<char*>(&cyphertext[read]);
-                f.read(p, cyphertext.size() - read);
+                f.read(p, gsl::narrow<std::streamsize>(cyphertext.size() - read));
                 read += f.gcount();
             }
 
@@ -222,8 +222,9 @@ namespace green {
             }
 
             const auto tmpdb = get_new_memory_db();
+            const auto plaintext_size = static_cast<sqlite3_int64>(plaintext.size());
             const int rc = sqlite3_deserialize(
-                tmpdb.get(), "main", plaintext.data(), plaintext.size(), plaintext.size(), SQLITE_DESERIALIZE_READONLY);
+                tmpdb.get(), "main", plaintext.data(), plaintext_size, plaintext_size, SQLITE_DESERIALIZE_READONLY);
 
             if (rc != SQLITE_OK) {
                 GDK_LOG(info) << "Bad sqlite3_deserialize for file " << path << " RC " << rc;
@@ -363,7 +364,8 @@ namespace green {
 
         static void bind_blob(cache::sqlite3_stmt_ptr& stmt, int column, byte_span_t blob)
         {
-            if (sqlite3_bind_blob(stmt.get(), column, blob.data(), blob.size(), SQLITE_STATIC) != SQLITE_OK) {
+            const auto blob_size = gsl::narrow<int>(blob.size());
+            if (sqlite3_bind_blob(stmt.get(), column, blob.data(), blob_size, SQLITE_STATIC) != SQLITE_OK) {
                 GDK_RUNTIME_ASSERT_MSG(false, db_log_error(stmt));
             }
         }

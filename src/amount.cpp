@@ -33,7 +33,8 @@ namespace green {
 
         template <typename T> static std::string fmt(const T& fiat, size_t dp = 2)
         {
-            return fiat_type(fiat).str(dp, std::ios_base::fixed | std::ios_base::showpoint);
+            const auto flags = std::ios_base::fixed | std::ios_base::showpoint;
+            return fiat_type(fiat).str(gsl::narrow<std::streamsize>(dp), flags);
         }
     } // namespace
 
