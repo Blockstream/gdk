@@ -328,7 +328,7 @@ namespace green {
                 bool is_redeposit = false;
                 if (change_index.has_value()) {
                     // Found an output paying to ourselves.
-                    const auto& output = prev_tx.at("outputs").at(change_index.value());
+                    const auto& output = prev_tx.at("outputs").at(change_index.value()); // NOLINT (unchecked optional)
                     const std::string address = output.at("address");
                     if (addressees.empty()) {
                         // We didn't pay anyone else; this is actually a re-deposit

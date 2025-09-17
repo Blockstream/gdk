@@ -59,7 +59,9 @@ namespace green {
         if (addressees.size() < utxos.size()) {
             // Fetch a new address for the next asset to redeposit
             const bool is_fee = get_nth_asset_id(addressees.size()) == policy_asset;
-            nlohmann::json details{ { "subaccount", is_fee ? *m_fee_subaccount : *m_subaccount } };
+            const auto& subaccount = is_fee ? m_fee_subaccount : m_subaccount;
+            GDK_RUNTIME_ASSERT(subaccount.has_value());
+            nlohmann::json details{ { "subaccount", *subaccount } };
             add_next_handler(new get_receive_address_call(m_session_parent, std::move(details)));
             return state_type::make_call;
         }

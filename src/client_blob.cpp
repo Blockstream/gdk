@@ -113,7 +113,7 @@ namespace green {
 
     pbkdf2_hmac256_t client_blob::get_key() const
     {
-        GDK_RUNTIME_ASSERT(has_key());
+        GDK_RUNTIME_ASSERT(m_key.has_value());
         return m_key.value();
     }
 

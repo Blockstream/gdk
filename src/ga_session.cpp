@@ -1198,6 +1198,7 @@ namespace green {
         if (!signer->is_watch_only()) {
             m_blob->compute_keys(public_key);
         }
+        GDK_RUNTIME_ASSERT(m_local_encryption_key.has_value());
         m_cache->load_db(m_local_encryption_key.value(), signer);
         // Save the cache in case we carried forward data from a previous version
         m_cache->save_db(); // No-op if unchanged
