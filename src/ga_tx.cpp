@@ -1210,7 +1210,7 @@ namespace green {
                 constexpr size_t VI_MAX_8 = 252; // Max single-byte varint value
                 if (get_num_outputs() == VI_MAX_8) {
                     // Encoding num_outputs+1 will require an extra byte of base weight
-                    weight += (1 * 4);
+                    weight += 1ul * 4ul;
                 }
             }
             weight += blinding_weight;

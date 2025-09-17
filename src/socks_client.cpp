@@ -123,7 +123,7 @@ namespace green {
             }
 
             const bool is_single_byte = m_response[3] != 0x1 && m_response[3] != 0x4;
-            const size_t response_size = is_single_byte ? 1 : m_response[3] * 4 + sizeof(uint16_t);
+            const size_t response_size = is_single_byte ? 1 : m_response[3] * 4ul + sizeof(uint16_t);
             m_response.resize(response_size);
 
             asio::async_read(m_stream, asio::buffer(m_response),

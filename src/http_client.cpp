@@ -276,7 +276,7 @@ namespace green {
 
         NET_ERROR_CODE_CHECK("on write", ec);
         get_lowest_layer().expires_after(m_timeout);
-        m_response.body_limit(64 * 1024 * 1024);
+        m_response.body_limit(64ul * 1024ul * 1024ul);
         async_read();
     }
 
