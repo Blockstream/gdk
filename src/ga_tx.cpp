@@ -121,7 +121,6 @@ namespace green {
                 utxo_add_paths(session, addressee);
                 if (!addressee.contains("scriptpubkey")) {
                     const auto& net_params = session.get_network_parameters();
-                    std::string error;
                     const bool allow_unconfidential = true; // Change may not yet be blinded
                     const auto spk
                         = scriptpubkey_from_address(net_params, addressee.at("address"), allow_unconfidential);
@@ -329,7 +328,7 @@ namespace green {
                 if (change_index.has_value()) {
                     // Found an output paying to ourselves.
                     const auto& output = prev_tx.at("outputs").at(change_index.value()); // NOLINT (unchecked optional)
-                    const std::string address = output.at("address");
+                    GDK_RUNTIME_ASSERT(output.contains("address"));
                     if (addressees.empty()) {
                         // We didn't pay anyone else; this is actually a re-deposit
                         addressees.emplace_back(output);

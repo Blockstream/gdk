@@ -801,7 +801,7 @@ namespace green {
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_liquid = net_params.is_liquid();
-        std::string address = addressee.at("address"); // Assume its a standard address
+        GDK_RUNTIME_ASSERT(addressee.contains("address"));
         const bool is_blinded = addressee.value("is_blinded", false);
         const auto asset_id_hex = j_assetref(is_liquid, addressee);
 
