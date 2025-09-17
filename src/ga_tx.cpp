@@ -302,7 +302,7 @@ namespace green {
                     bool is_change = false;
                     if (is_relevant && !change_index.has_value()) {
                         // No change found so far; this output is possibly change
-                        if (!is_electrum) {
+                        if (!is_electrum) { // NOLINT (bugprone-branch-clone fixes)
                             // Multisig: Treat the first wallet output as change, as we
                             // don't have internal addresses to mark change explicitly
                             is_change = true;
