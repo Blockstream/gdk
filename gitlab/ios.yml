@@ -24,7 +24,6 @@ build_osx_ios:
   tags:
     - osx-m1
   stage: build
-  needs: [ build_clang_osx ]
   variables:
     INSTALL_PATH: "gdk-iphone"
     PLATFORM: "iphone"
@@ -35,7 +34,6 @@ build_osx_ios_sim_arm64:
   tags:
     - osx-m1
   stage: build
-  needs: [ build_clang_osx ]
   variables:
     INSTALL_PATH: "gdk-iphonesim-arm64"
     PLATFORM: "iphonesim"
@@ -46,7 +44,6 @@ build_osx_ios_sim_x86_64:
   tags:
     - osx-ia
   stage: build
-  needs: [ build_clang_osx ]
   variables:
     INSTALL_PATH: "gdk-iphonesim-x86_64"
     PLATFORM: "iphonesim"

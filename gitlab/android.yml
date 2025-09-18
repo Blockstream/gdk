@@ -6,7 +6,6 @@ include:
 build-android:
   extends: .android-image
   stage: build
-  needs: [ test_format ]
   variables:
     INSTALL_PATH: "gdk-android-jni"
   parallel:

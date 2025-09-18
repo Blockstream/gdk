@@ -6,7 +6,7 @@ include:
 
 .linux-wheel:
   extends: [.python-image, .py_release ]
-  stage: build
+  stage: prebuild
   needs: [ test_format ]
   script:
     - source /root/python-$PYTHON_VERSION-venv/bin/activate
@@ -44,6 +44,7 @@ release-python:
     paths:
     - $CI_PROJECT_DIR/gdk_dist
     when: on_success
+
 
 jumbo-release-python:
   extends: .debian-image

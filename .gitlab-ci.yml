@@ -2,11 +2,14 @@
 stages:
   - format
   - docker_build
+  - prebuild
+  - rust
   - build
-  - test
   - release
   - publish
+  - test
   - clean-up
+
 
 include:
   - gitlab/common.yml
@@ -14,6 +17,7 @@ include:
   - gitlab/android.yml
   - gitlab/ios.yml
   - gitlab/docker.yml
+
 
 ## disables MR-triggered pipelines and allows only branch-triggered pipelines
 workflow:
@@ -23,22 +27,27 @@ workflow:
     - when: always
 
 
-
 test_format:
   extends: .debian-image
   stage: format
-  needs: []
   script:
     - if grep 'json({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
     - if grep -P '^ +nlohmann::json [a-z0-9_]+\({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
     - ./tools/format.sh && git diff --exit-code
 
 
+test_clang_tidy:
+  extends: .debian-image
+  stage: test
+  needs: [ upload-python-gcloud ]
+  script:
+    - (echo "#define GDK_COMMIT \"$(git rev-parse HEAD)}\""; echo "") > include/version.h
+    - ./tools/clang-tidy.sh /prebuild/clang
+
 
 build_gcc_bullseye:
   extends: .debian-image
   stage: build
-  needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16 --enable-tests
     - cmake --build build-gcc --target green_gdk_java --parallel 16
@@ -51,6 +60,7 @@ build_gcc_bullseye:
       - build-gcc/CTestTestfile.cmake
       - install-java
 
+
 test_gcc_bullseye:
   extends: .debian-image
   stage: test
@@ -60,11 +70,9 @@ test_gcc_bullseye:
     - ctest
 
 
-
 build_clang_bullseye:
   extends: .debian-image
   stage: build
-  needs: [ test_format ]
   script:
     - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
     - cmake --install build-clang --prefix install-clang
@@ -75,11 +83,10 @@ build_clang_bullseye:
       - install-clang
 
 
-
 test_rust:
   extends: .debian-image
-  needs: [ test_format ]
-  stage: test
+  stage: rust
+  needs: [ rust_audit ]
   variables:
     OPENSSL_DIR: "/prebuild/clang"
     RUSTFLAGS: "-C instrument-coverage"
@@ -102,36 +109,34 @@ test_rust:
       junit: subprojects/gdk_rust/target/nextest/ci/junit.xml
   allow_failure: true
 
+
 rust_audit:
   extends: .debian-image
-  needs: [ test_format ]
-  stage: test
+  stage: rust
   allow_failure: true
   script:
     - cd subprojects/gdk_rust/
     - cargo audit -D warnings --ignore RUSTSEC-2021-0127
 
 
-
 build_clang_fedora:
   extends: .fedora-image
   stage: build
-  needs: [ test_format ]
   script:
     - source /root/.cargo/env
     - ./tools/build.sh --clang --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/clang --parallel 16
 
+
 build_gcc_ubuntu20.04:
   extends: .ubuntu-image
   stage: build
-  needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
+
 
 build_gcc_ubuntu2004_arm64:
   extends: .ubuntu-arm64-image
   stage: build
-  needs: [ test_format ]
   when: manual
   script:
     - source /root/.cargo/env
@@ -145,11 +150,9 @@ build_gcc_ubuntu2004_arm64:
       - install-java
 
 
-
 build_mingw64_windows:
   extends: .debian-image
   stage: build
-  needs: [ test_format ]
   variables:
     INSTALL_PATH: "install-gdk"
   script:
@@ -162,7 +165,6 @@ build_mingw64_windows:
     - build-windows-mingw-w64/archiver.sh
 
 
-
 build_clang_osx:
   extends:
     - .osx_env
@@ -172,7 +174,7 @@ build_clang_osx:
       - RUNNER: [ia, m1]
   tags:
     - osx-$RUNNER
-  stage: build
+  stage: prebuild
   needs: [ test_format ]
   script:
     - python3.9 -m venv venv
@@ -191,7 +193,6 @@ build_aws_lambda:
     - .aws-lambda-image
     - .py_release
   stage: build
-  needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --python-version=3.10 --buildtype release --install $INSTALL_PATH --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
     - mkdir -p wheelhouse

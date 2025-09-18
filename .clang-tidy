@@ -1,7 +1,6 @@
 ---
-Checks:          '-*,boost-*,bugprone-*,clang-analyzer-*,misc-*,performance-*,portability-*,readability-*,-readability-named-parameter,-readability-static-definition-in-anonymous-namespace,-readability-uppercase-literal-suffix,-readability-magic-numbers,-readability-implicit-bool-conversion,-readability-isolate-declaration'
-HeaderFilterRegex: ''
-WarningsAsErrors: ''
-AnalyzeTemporaryDtors: false
+Checks:  '-*,-clang-*,bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-reserved-identifier,-bugprone-assignment-in-if-condition,-bugprone-unused-return-value,-bugprone-exception-escape'
 FormatStyle:     none
+HeaderFilterRegex: 'include/*.h,subprojects/*/*.h'
+WarningsAsErrors: '-*,-clang-*,bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-reserved-identifier,-bugprone-assignment-in-if-condition,-bugprone-unused-return-value,-bugprone-exception-escape'
 ---
