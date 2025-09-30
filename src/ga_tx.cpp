@@ -911,6 +911,7 @@ namespace green {
     {
         std::swap(m_is_liquid, rhs.m_is_liquid);
         std::swap(m_tx, rhs.m_tx);
+        std::swap(m_sighash_cache, rhs.m_sighash_cache);
     }
 
     uint32_t Tx::get_flags() const
@@ -1253,6 +1254,10 @@ namespace green {
             sighash_type = WALLY_SIGTYPE_SW_V0;
         }
 
+        if (!m_sighash_cache) {
+            m_sighash_cache = map_init(16);
+        }
+
         map_ptr scripts, assets, values;
         std::tie(scripts, assets, values) = get_signing_data(session, utxos);
 
@@ -1265,7 +1270,7 @@ namespace green {
 
         GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, scripts.get(), assets.get(), values.get(),
             script_ptr, script.size(), key_version, WALLY_NO_CODESEPARATOR, NULL, 0, genesis_ptr, genesis.size(),
-            sighash_flags, sighash_type, nullptr, ret.data(), ret.size()));
+            sighash_flags, sighash_type, m_sighash_cache.get(), ret.data(), ret.size()));
 
         return ret;
     }

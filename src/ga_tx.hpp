@@ -93,6 +93,7 @@ namespace green {
         };
         std::unique_ptr<struct wally_tx, tx_deleter> m_tx;
         bool m_is_liquid;
+        mutable std::shared_ptr<struct wally_map> m_sighash_cache;
     };
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo);
