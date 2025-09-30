@@ -157,8 +157,14 @@ namespace green {
                 }
 
                 if (is_liquid) {
-                    const auto asset_tag = j_bytesref(utxo, "asset_tag");
-                    GDK_VERIFY(wally_map_add_integer(assets.get(), i, asset_tag.data(), asset_tag.size()));
+                    // asset_tag is not currently present when the taker signs a liquidex asset swap.
+                    // Since taproot swaps are not currently supported, just skip adding the asset and let signing fail
+                    // later if not caught.
+                    // TODO: Add support for taproot swaps.
+                    const auto asset_tag = j_bytes_or_empty(utxo, "asset_tag");
+                    if (!asset_tag.empty()) {
+                        GDK_VERIFY(wally_map_add_integer(assets.get(), i, asset_tag.data(), asset_tag.size()));
+                    }
                     auto ct_value = j_bytes_or_empty(utxo, "commitment");
                     if (ct_value.empty()) {
                         const auto value = tx_confidential_value_from_satoshi(j_amountref(utxo).value());
@@ -1232,39 +1238,35 @@ namespace green {
         std::vector<unsigned char> ret(SHA256_LEN);
         const nlohmann::json& utxo = utxos.at(index);
         const auto& addr_type = j_strref(utxo, "address_type");
+        const auto genesis = net_params.get_genesis_hash();
         const bool is_p2tr = addr_type == address_type::p2tr;
+        const bool is_segwit = address_type_is_segwit(addr_type);
+        const uint32_t key_version = 0;
 
         GDK_RUNTIME_ASSERT(m_is_liquid == net_params.is_liquid());
         validate_sighash_flags(sighash_flags, is_p2tr, m_is_liquid);
 
+        uint32_t sighash_type = WALLY_SIGTYPE_PRE_SW;
         if (is_p2tr) {
-            map_ptr scripts, assets, values;
-            std::tie(scripts, assets, values) = get_signing_data(session, utxos);
-            const auto genesis = net_params.get_genesis_hash();
-            const uint32_t key_version = 0;
-            GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, scripts.get(), assets.get(), values.get(),
-                NULL, 0, key_version, WALLY_NO_CODESEPARATOR, NULL, 0, genesis.empty() ? NULL : genesis.data(),
-                genesis.size(), sighash_flags, WALLY_SIGTYPE_SW_V1, nullptr, ret.data(), ret.size()));
-            return ret;
+            sighash_type = WALLY_SIGTYPE_SW_V1;
+        } else if (is_segwit) {
+            sighash_type = WALLY_SIGTYPE_SW_V0;
         }
 
-        const bool is_segwit = address_type_is_segwit(addr_type);
-        const uint32_t flags = is_segwit ? WALLY_TX_FLAG_USE_WITNESS : 0;
-        const auto satoshi = j_amountref(utxo).value();
-        const auto script = j_bytesref(utxo, "prevout_script");
-        if (!m_is_liquid) {
-            GDK_VERIFY(wally_tx_get_btc_signature_hash(m_tx.get(), index, script.data(), script.size(), satoshi,
-                sighash_flags, flags, ret.data(), ret.size()));
-        } else {
-            // Liquid case - has a value-commitment in place of a satoshi value
-            auto ct_value = j_bytes_or_empty(utxo, "commitment");
-            if (ct_value.empty()) {
-                const auto value = tx_confidential_value_from_satoshi(satoshi);
-                ct_value.assign(std::begin(value), std::end(value));
-            }
-            GDK_VERIFY(wally_tx_get_elements_signature_hash(m_tx.get(), index, script.data(), script.size(),
-                ct_value.data(), ct_value.size(), sighash_flags, flags, ret.data(), ret.size()));
+        map_ptr scripts, assets, values;
+        std::tie(scripts, assets, values) = get_signing_data(session, utxos);
+
+        std::vector<unsigned char> script;
+        if (sighash_type != WALLY_SIGTYPE_SW_V1) {
+            script = j_bytesref(utxo, "prevout_script");
         }
+        const unsigned char* script_ptr = script.empty() ? nullptr : script.data();
+        const unsigned char* genesis_ptr = genesis.empty() ? nullptr : genesis.data();
+
+        GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, scripts.get(), assets.get(), values.get(),
+            script_ptr, script.size(), key_version, WALLY_NO_CODESEPARATOR, NULL, 0, genesis_ptr, genesis.size(),
+            sighash_flags, sighash_type, nullptr, ret.data(), ret.size()));
+
         return ret;
     }
 
