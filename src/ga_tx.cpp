@@ -129,18 +129,16 @@ namespace green {
             }
         }
 
-        using map_ptr = std::shared_ptr<struct wally_map>;
-
-        static map_ptr map_init(size_t alloc_size)
+        static wally_map_ptr map_init(size_t alloc_size)
         {
             wally_map* m = nullptr;
             if (alloc_size) {
                 GDK_VERIFY(wally_map_init_alloc(alloc_size, nullptr, &m));
             }
-            return { m, wally_map_free };
+            return wally_map_ptr(m);
         }
 
-        static std::tuple<map_ptr, map_ptr, map_ptr> get_signing_data(
+        static std::tuple<wally_map_ptr, wally_map_ptr, wally_map_ptr> get_signing_data(
             session_impl& session, const std::vector<nlohmann::json>& utxos)
         {
             using namespace address_type;
@@ -178,7 +176,7 @@ namespace green {
                     GDK_VERIFY(wally_map_add_integer(values.get(), i, value_p, sizeof(value)));
                 }
             }
-            return { scripts, assets, values };
+            return { std::move(scripts), std::move(assets), std::move(values) };
         }
 
         // Check if a tx to bump is present, and if so add the details required to bump it
@@ -907,11 +905,16 @@ namespace green {
         GDK_RUNTIME_ASSERT(m_tx);
     }
 
+    Tx::~Tx() {}
+
     void Tx::swap(Tx& rhs)
     {
         std::swap(m_is_liquid, rhs.m_is_liquid);
         std::swap(m_tx, rhs.m_tx);
         std::swap(m_sighash_cache, rhs.m_sighash_cache);
+        std::swap(m_scripts, rhs.m_scripts);
+        std::swap(m_values, rhs.m_values);
+        std::swap(m_assets, rhs.m_assets);
     }
 
     uint32_t Tx::get_flags() const
@@ -1255,20 +1258,21 @@ namespace green {
         }
 
         if (!m_sighash_cache) {
+            // First time signing any input for this tx: initialize signing cache and fetching all signing data
+            // TODO: Use a wally constant for the cache size when available
             m_sighash_cache = map_init(16);
+            std::tie(m_scripts, m_assets, m_values) = get_signing_data(session, utxos);
         }
-
-        map_ptr scripts, assets, values;
-        std::tie(scripts, assets, values) = get_signing_data(session, utxos);
 
         std::vector<unsigned char> script;
         if (sighash_type != WALLY_SIGTYPE_SW_V1) {
+            // Pre-segwit or segwit v0 input: provide the scriptcode (prevout script)
             script = j_bytesref(utxo, "prevout_script");
         }
         const unsigned char* script_ptr = script.empty() ? nullptr : script.data();
         const unsigned char* genesis_ptr = genesis.empty() ? nullptr : genesis.data();
 
-        GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, scripts.get(), assets.get(), values.get(),
+        GDK_VERIFY(wally_tx_get_input_signature_hash(m_tx.get(), index, m_scripts.get(), m_assets.get(), m_values.get(),
             script_ptr, script.size(), key_version, WALLY_NO_CODESEPARATOR, NULL, 0, genesis_ptr, genesis.size(),
             sighash_flags, sighash_type, m_sighash_cache.get(), ret.data(), ret.size()));
 
@@ -1345,6 +1349,13 @@ namespace green {
                 const auto signature_hash = get_signature_hash(session, inputs, i, sighash_flags);
                 GDK_RUNTIME_ASSERT(ec_sig_verify(public_key, signature_hash, sig, flags));
             }
+        }
+    }
+
+    void wally_map_deleter::operator()(struct wally_map* p)
+    {
+        if (p) {
+            wally_map_free(p);
         }
     }
 
