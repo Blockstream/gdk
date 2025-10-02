@@ -7,6 +7,10 @@
 #include <optional>
 
 namespace green {
+    struct wally_map_deleter {
+        void operator()(struct wally_map* p);
+    };
+    using wally_map_ptr = std::unique_ptr<struct wally_map, wally_map_deleter>;
 
     class network_parameters;
     class session_impl;
@@ -17,6 +21,7 @@ namespace green {
         Tx(byte_span_t tx_bin, bool is_liquid);
         Tx(const std::string& tx_hex, bool is_liquid);
         Tx(struct wally_tx* tx, bool is_liquid); // Takes ownership
+        ~Tx();
 
         Tx(Tx&& rhs) = default;
         Tx(Tx& rhs) = delete;
@@ -92,8 +97,9 @@ namespace green {
             void operator()(struct wally_tx* p);
         };
         std::unique_ptr<struct wally_tx, tx_deleter> m_tx;
+        mutable wally_map_ptr m_scripts, m_assets, m_values;
+        mutable wally_map_ptr m_sighash_cache;
         bool m_is_liquid;
-        mutable std::shared_ptr<struct wally_map> m_sighash_cache;
     };
 
     void utxo_add_paths(session_impl& session, nlohmann::json& utxo);
