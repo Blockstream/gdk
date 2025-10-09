@@ -2257,6 +2257,7 @@ namespace green {
         const uint32_t subaccount = details.at("subaccount");
         const uint32_t first = details.at("first");
         const uint32_t count = details.at("count");
+        const std::set<std::string> asset_ids = details.at("assets");
         nlohmann::json::array_t result;
         result.reserve(std::min(count, 1000u)); // Prevent reallocs for reasonable fetches
         locker_t locker(m_mutex);
@@ -2271,13 +2272,29 @@ namespace green {
         }
 
         m_cache->get_transactions(subaccount, first, count,
-            { [&result](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/, uint32_t /*spent*/,
-                  nlohmann::json& tx_json) {
-                // TODO: Remove j_erase(transaction_size) when cache version
-                // is upgraded beyond 1.3 and clears transactions.
-                j_erase(tx_json, "transaction_size");
-                tx_json["spv_verified"] = "disabled";
-                result.emplace_back(std::move(tx_json));
+            { [&result, &asset_ids](uint64_t /*ts*/, const std::string& /*txhash*/, uint32_t /*block*/,
+                  uint32_t /*spent*/, nlohmann::json& tx_json) {
+                bool add_to_result = asset_ids.empty();
+
+                if (!add_to_result) {
+                    auto match_asset = [&](const nlohmann::json& item) {
+                        return item.contains("asset_id") && asset_ids.count(item.at("asset_id"));
+                    };
+
+                    // Check both input and output utxos for matching asset
+                    if (std::any_of(tx_json["inputs"].begin(), tx_json["inputs"].end(), match_asset)
+                        || std::any_of(tx_json["outputs"].begin(), tx_json["outputs"].end(), match_asset)) {
+                        add_to_result = true;
+                    }
+                }
+
+                if (add_to_result) {
+                    // TODO: Remove j_erase(transaction_size) when cache version
+                    // is upgraded beyond 1.3 and clears transactions.
+                    j_erase(tx_json, "transaction_size");
+                    tx_json["spv_verified"] = "disabled";
+                    result.emplace_back(std::move(tx_json));
+                }
             } });
 
         return nlohmann::json(std::move(result));
