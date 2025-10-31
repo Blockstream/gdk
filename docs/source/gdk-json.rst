@@ -1387,10 +1387,27 @@ deleted, any frozen outputs it contained will be unspendable forever.
 Transactions details JSON
 -------------------------
 
+Describes parameters for fetching transactions using `GA_get_transactions`.
+
 .. code-block:: json
 
-  {"subaccount":0,"first":0,"count":30}
+  {
+    "subaccount": 0,
+    "first": 0,
+    "count": 30,
+    "assets": [
+      "46a1492fcacdb9acd99649613ef1d1e6eba456db51e89c808a64ff78f037bcda",
+      "a2eed83459548e56b3c66ab46fa1ae6d4dacf38d2371222a810fcb1afd38d1cf"
+    ],
+    "policy_asset_only": false
+  }
 
+
+:subaccount: Mandatory. The subaccount to fetch transactions for.
+:first: Mandatory. The starting index of the transaction to fetch, used for pagination. Defaults to 0.
+:count: Mandatory. The number of transactions to fetch, used for pagination. Defaults to 30.
+:assets: Optional, Liquid only. If given, only transactions containing at least one of the given asset ids are returned. Must must not be given if ``"policy_asset_only"`` is present.
+:policy_asset_only: Optional, Liquid only. If ``true``, only transactions containing policy asset exclusively are returned. Must must not be given if ``"assets"`` is present.
 
 
 .. _network:

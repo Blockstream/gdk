@@ -1338,10 +1338,22 @@ namespace green {
 
     auth_handler::state_type get_transactions_call::call_impl()
     {
+        if (!m_net_params.is_liquid()) {
+            // Parameters only supported for Liquid
+            GDK_RUNTIME_ASSERT_MSG(!m_details.contains("assets"), "assets key is only supported for Liquid networks");
+            GDK_RUNTIME_ASSERT_MSG(!m_details.contains("policy_asset_only"),
+                "policy_asset_only key is only supported for Liquid networks");
+        } else {
+            // Prevent passing both assets and policy_asset_only filters at the same time
+            GDK_RUNTIME_ASSERT_MSG(
+                !j_array(m_details, "assets").has_value() || !j_bool(m_details, "policy_asset_only").has_value(),
+                "Cannot specify both assets and policy_asset_only keys");
+        }
+
         if (m_net_params.is_electrum()) {
             // FIXME: Move rust to ga_session interface
             auto txs = m_session->get_transactions(m_details);
-            m_session->postprocess_transactions(txs);
+            m_session->postprocess_transactions(txs, m_details);
             m_result = { { "transactions", std::move(txs) } };
             return state_type::done;
         }
@@ -1364,7 +1376,7 @@ namespace green {
             m_details["sync_ts"] = m_result["sync_ts"];
             auto txs = m_session->get_transactions(m_details);
             if (!txs.is_boolean()) {
-                m_session->postprocess_transactions(txs);
+                m_session->postprocess_transactions(txs, m_details);
                 m_result = { { "transactions", std::move(txs) } };
                 return state_type::done;
             }

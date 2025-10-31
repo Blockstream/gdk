@@ -112,7 +112,7 @@ namespace green {
         virtual nlohmann::json get_transactions(const nlohmann::json& details) = 0;
         virtual nlohmann::json sync_transactions(uint32_t subaccount, unique_pubkeys_and_scripts_t& missing);
         virtual void store_transactions(uint32_t subaccount, nlohmann::json& txs);
-        virtual void postprocess_transactions(nlohmann::json& tx_list);
+        virtual void postprocess_transactions(nlohmann::json& tx_list, const nlohmann::json& details);
         void check_tx_memo(const std::string& memo) const;
 
         virtual void set_notification_handler(GA_notification_handler handler, void* context);

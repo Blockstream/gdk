@@ -2241,10 +2241,10 @@ namespace green {
         m_cache->save_db(); // No-op if unchanged
     }
 
-    void ga_session::postprocess_transactions(nlohmann::json& tx_list)
+    void ga_session::postprocess_transactions(nlohmann::json& tx_list, const nlohmann::json& details)
     {
         // Set tx memos in the returned txs from the blob cache
-        session_impl::postprocess_transactions(tx_list);
+        session_impl::postprocess_transactions(tx_list, details);
 
         // TODO: Remove SPV verification status in a later release
         for (auto& tx_details : tx_list) {

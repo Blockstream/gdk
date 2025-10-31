@@ -130,7 +130,7 @@ namespace green {
 
         nlohmann::json sync_transactions(uint32_t subaccount, unique_pubkeys_and_scripts_t& missing);
         void store_transactions(uint32_t subaccount, nlohmann::json& txs);
-        void postprocess_transactions(nlohmann::json& tx_list);
+        void postprocess_transactions(nlohmann::json& tx_list, const nlohmann::json& details);
         nlohmann::json get_transactions(const nlohmann::json& details);
 
     private:

@@ -43,6 +43,32 @@ namespace green {
             return msgpack::unpack(reinterpret_cast<const char*>(buffer.data()), buffer.size());
         }
 
+        static bool filter_transaction(
+            const nlohmann::json& tx_json, const std::set<std::string>& asset_ids, const std::string& policy_asset)
+        {
+            auto&& match = [&asset_ids, &policy_asset](const nlohmann::json& in_out) {
+                const auto asset_id = j_str(in_out, "asset_id");
+                if (!asset_ids.empty()) {
+                    // Match if the tx input/output asset is in our set.
+                    return asset_id ? asset_ids.count(*asset_id) != 0 : false;
+                }
+                if (asset_id && !j_str_or_empty(in_out, "script").empty()) {
+                    // Match if the tx input/output asset is not the policy asset.
+                    // Skip this check for fee outputs which are always the policy asset.
+                    return *asset_id != policy_asset;
+                }
+                return false;
+            };
+
+            const auto& inputs = j_ref(tx_json, "inputs");
+            const auto& outputs = j_ref(tx_json, "outputs");
+            const bool match_found = std::any_of(inputs.begin(), inputs.end(), match)
+                || std::any_of(outputs.begin(), outputs.end(), match);
+            // For policy asset filtering, we want to filter out txs that don't contain
+            // only policy asset utxos, so filter if there is a match.
+            // For asset list filtering, filter if no utxos matched (i.e. none are in our set).
+            return !policy_asset.empty() ? match_found : !match_found;
+        }
     } // namespace
 
     std::shared_ptr<session_impl> session_impl::create(const nlohmann::json& net_params)
@@ -1015,9 +1041,25 @@ namespace green {
         // Overriden for multisig
     }
 
-    void session_impl::postprocess_transactions(nlohmann::json& tx_list)
+    void session_impl::postprocess_transactions(nlohmann::json& tx_list, const nlohmann::json& details)
     {
         // Set tx memos in the returned txs from the blob cache
+
+        if (m_net_params.is_liquid()) {
+            const auto asset_ids = details.value("assets", std::set<std::string>{});
+            const auto policy_asset_only = j_bool_or_false(details, "policy_asset_only");
+            const auto policy_asset = policy_asset_only ? m_net_params.get_policy_asset() : "";
+            if (!asset_ids.empty() || !policy_asset.empty()) {
+                for (auto tx_json = tx_list.begin(); tx_json != tx_list.end(); /* no-op */) {
+                    if (filter_transaction(*tx_json, asset_ids, policy_asset)) {
+                        tx_json = tx_list.erase(tx_json);
+                    } else {
+                        ++tx_json;
+                    }
+                }
+            }
+        }
+
         locker_t locker(m_mutex);
 
         sync_client_blob(locker);
