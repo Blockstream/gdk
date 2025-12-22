@@ -52,13 +52,6 @@ fi
 devmode=FALSE # cmake bool
 verbose=false
 
-
-if [ "$(uname)" = "Darwin" ]; then
-    GETOPT='/usr/local/opt/gnu-getopt/bin/getopt'
-elif [ "$(uname)" = "FreeBSD" ]; then
-    GETOPT='/usr/local/bin/getopt'
-fi
-
 if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
