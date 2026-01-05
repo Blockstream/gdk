@@ -52,6 +52,11 @@ fi
 devmode=FALSE # cmake bool
 verbose=false
 
+if ! have_cmd getopt; then
+    echo "ERROR: getopt must be present in PATH"
+    exit 1
+fi
+
 if [ -f "/.dockerenv" ] && [ -f "/root/.cargo/env" ]; then
     source /root/.cargo/env
 fi
