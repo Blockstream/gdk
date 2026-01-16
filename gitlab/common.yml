@@ -71,3 +71,12 @@
     - echo "prebuild subdir is ${PREBUILT_SUBDIR}"
     - mkdir -p $CI_BUILDS_DIR/downloads # Global shared download directory
     - ln -s $CI_BUILDS_DIR/downloads downloads
+    - brew install llvm@17
+    - export BREW_PREFIX=$( [[ $(uname -m) == "arm64" ]] && echo "/opt/homebrew" || echo "/usr/local" )
+    - export LLVM_PATH="$BREW_PREFIX/opt/llvm@17"
+    - export PATH="$LLVM_PATH/bin:$PATH"
+    - export CC="$LLVM_PATH/bin/clang"
+    - export CXX="$LLVM_PATH/bin/clang++"
+    - export LDFLAGS="-L$LLVM_PATH/lib"
+    - export CPPFLAGS="-I$LLVM_PATH/include"
+    - export CMAKE_PREFIX_PATH="$LLVM_PATH"

@@ -10,6 +10,7 @@ include:
     - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --${PLATFORM} static --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
+    - rustup target add aarch64-apple-ios-sim
     - ./tools/build.sh --${PLATFORM} static --buildtype release --no-deps-rebuild --external-deps-dir $PREBUILT_DIR --parallel 16 --install $INSTALL_PATH
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
@@ -22,7 +23,7 @@ include:
 build_osx_ios:
   extends: .ios_release
   tags:
-    - osx-m1
+    - osx-m4
   stage: build
   variables:
     INSTALL_PATH: "gdk-iphone"
@@ -32,7 +33,7 @@ build_osx_ios:
 build_osx_ios_sim_arm64:
   extends: .ios_release
   tags:
-    - osx-m1
+    - osx-m4
   stage: build
   variables:
     INSTALL_PATH: "gdk-iphonesim-arm64"
