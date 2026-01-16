@@ -6,7 +6,7 @@ dnf install -yq @development-tools autoconf pkg-config libtool clang which pytho
 
 pip install --require-hashes -r tools/requirements.txt
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.81.0
+curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.85.0
 source /root/.cargo/env
 
 

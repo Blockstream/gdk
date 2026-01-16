@@ -22,7 +22,7 @@ RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/android-armeabi-v7
     ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/android-x86_64
 
 
-FROM rust:1.81-bullseye AS builderrust
+FROM rust:1.85-bullseye AS builderrust
 RUN rustup component add rustfmt clippy llvm-tools-preview
 RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
@@ -43,7 +43,7 @@ COPY --from=builderrust /usr/local/rustup /usr/local/rustup
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.81.0
+ENV RUST_VERSION=1.85.0
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # predownloading rust dependencies

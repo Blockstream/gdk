@@ -23,7 +23,7 @@ FROM base AS buildermingw
 RUN mkdir -p /prebuild/mingw-w64
 RUN ./tools/builddeps.sh --mingw-w64 --prefix /prebuild/mingw-w64
 
-FROM rust:1.81-bullseye AS builderrust
+FROM rust:1.85-bullseye AS builderrust
 WORKDIR /root
 COPY ./docker/debian/install_rust_tools.sh ./docker/debian/install_rust_tools.sh
 RUN ./docker/debian/install_rust_tools.sh
@@ -53,7 +53,7 @@ ENV BITCOIND_EXEC=/root/bin/bitcoind
 
 ENV CARGO_HOME=/usr/local/cargo
 ENV RUSTUP_HOME=/usr/local/rustup
-ENV RUST_VERSION=1.81.0
+ENV RUST_VERSION=1.85.0
 ENV PATH="/usr/local/cargo/bin:${PATH}"
 
 # predownloading rust dependencies
