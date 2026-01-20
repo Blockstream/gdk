@@ -720,8 +720,10 @@ namespace green {
 
             const bool belongs_to_wallet = is_wallet_utxo(input);
             if (belongs_to_wallet) {
-                // Wallet UTXO. Add the relevant keypaths
-                auto keys = add_keypaths(session, &psbt_input, nullptr, psbt_input.keypaths, tx_version, input);
+                // Wallet UTXO. Add the relevant keypaths and signatures.
+                // Dummy sigs are already ignored in add_keypaths.
+                const auto sigs = tx.get_input_signatures(session.get_network_parameters(), input, i);
+                auto keys = add_keypaths(session, &psbt_input, nullptr, psbt_input.keypaths, tx_version, input, &sigs);
                 add_input_scripts(psbt_input.psbt_fields, input, keys);
             }
             if (m_is_liquid) {
