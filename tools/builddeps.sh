@@ -380,13 +380,14 @@ build ${name} ${BCUR_SRCDIR}
 
 # build tinyCBOR
 name="tinycbor"
-source_url="https://github.com/Blockstream/tinycbor/archive/refs/tags/v0.6.0-memfile-rc1.tar.gz"
-source_name="tinycbor-0.6.0-memfile-rc1"
-source_filename="tinycbor-0.6.0-memfile-rc1.tar.gz"
-source_hash="92a5c9c3622b823a54ba887889ffa90dea15493383f21a42fee02c652fa6e8af"
+source_url="https://github.com/Blockstream/tinycbor/archive/refs/tags/v0.6.1-memfile.1.tar.gz"
+source_name="tinycbor-0.6.1-memfile.1"
+source_filename="tinycbor-0.6.1-memfile.1.tar.gz"
+source_hash="877f57b6ae0dd3f79ab5363af26af943cf231301b5d49bf676c533d42028c131"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-export BCUR_SRCDIR=`pwd`/tmp/${source_name}
-build ${name} ${BCUR_SRCDIR}
+export cmake_build_type=${cmake_build_type}
+export TINYCBOR_SRCDIR=`pwd`/tmp/${source_name}
+build ${name} ${TINYCBOR_SRCDIR}
 
 
 # build ur-c
