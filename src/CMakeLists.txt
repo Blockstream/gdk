@@ -3,7 +3,7 @@ include(GNUInstallDirs)
 # version file
 find_package(Git REQUIRED)
 execute_process(
-    COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+    COMMAND ${GIT_EXECUTABLE} rev-parse --short=8 HEAD
     RESULT_VARIABLE VCS_SHA_RESULT
     OUTPUT_VARIABLE VCS_SHA
     OUTPUT_STRIP_TRAILING_WHITESPACE

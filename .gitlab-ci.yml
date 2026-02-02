@@ -41,7 +41,7 @@ test_clang_tidy:
   stage: test
   needs: [ upload-python-gcloud ]
   script:
-    - (echo "#define GDK_COMMIT \"$(git rev-parse HEAD)}\""; echo "") > include/version.h
+    - (echo "#define GDK_COMMIT \"$(git rev-parse --short=8 HEAD)}\""; echo "") > include/version.h
     - ./tools/clang-tidy.sh /prebuild/clang
 
 
