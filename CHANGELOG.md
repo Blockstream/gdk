@@ -1,18 +1,20 @@
 # Changelog
 
-## Release 0.76.2 - 26-01-26
+## Release 0.76.3 - 26-02-04
 
 ### Added
 - Liquid: Support filtering by asset id in GA_get_transactions.
 - PSBT: Include any user_sighash override when creating a PSBT from tx json.
-- PSBT: Include existing tx signatures when creating PSBT from json.
+- PSBT: Include existing tx signatures when creating PSBT from tx json.
 
 ### Changed
 - Build: Update Rust to 1.85.0.
 - Transactions: Use new signature hashing from Wally for all address types.
 - Transactions: Enable signature hash caching for faster signing with tx json.
-- Dependencies: Update Rust dependency to use adler2 instead of adler.
+- Dependencies: Update Rust dependency adler2 instead of adler, bytes.
+- Dependencies: Update libwally to 1.5.2, tinycbor.
 - Build: Include Wally as non-system private library
+- Login: use the short git sha in the login user agent
 
 ### Fixed
 
