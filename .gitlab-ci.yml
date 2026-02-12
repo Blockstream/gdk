@@ -1,13 +1,13 @@
 
 stages:
-  - format
+  - lint
   - docker_build
   - prebuild
   - rust
   - build
+  - test
   - release
   - publish
-  - test
   - clean-up
 
 
@@ -29,7 +29,7 @@ workflow:
 
 test_format:
   extends: .debian-image
-  stage: format
+  stage: lint
   script:
     - if grep 'json({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
     - if grep -P '^ +nlohmann::json [a-z0-9_]+\({}' src/*pp; then echo "The json brace initializer ctor is not supported by some compilers, use j_empty instead"; echo exit 1; fi
@@ -38,16 +38,19 @@ test_format:
 
 test_clang_tidy:
   extends: .debian-image
-  stage: test
-  needs: [ upload-python-gcloud ]
+  stage: lint
   script:
     - (echo "#define GDK_COMMIT \"$(git rev-parse --short=8 HEAD)}\""; echo "") > include/version.h
-    - ./tools/clang-tidy.sh /prebuild/clang
+    - TARGET_BRANCH=${CI_MERGE_REQUEST_TARGET_BRANCH_NAME:-$CI_DEFAULT_BRANCH}
+    - echo "Running clang-tidy against $TARGET_BRANCH"
+    - git fetch origin "$TARGET_BRANCH"
+    - ./tools/clang-tidy.sh /prebuild/clang $TARGET_BRANCH
 
 
 build_gcc_bullseye:
   extends: .debian-image
   stage: build
+  needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16 --enable-tests
     - cmake --build build-gcc --target green_gdk_java --parallel 16
