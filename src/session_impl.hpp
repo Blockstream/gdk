@@ -80,8 +80,9 @@ namespace green {
         void disconnect();
         virtual void disconnect_session();
 
-        // Make an http request to an arbitrary host governed by 'params'.
-        virtual nlohmann::json http_request(nlohmann::json params);
+        nlohmann::json http_request(nlohmann::json params);
+        nlohmann::json http_request(locker_t& locker, nlohmann::json params);
+
         virtual void refresh_assets(nlohmann::json params);
         nlohmann::json get_assets(nlohmann::json params);
         virtual nlohmann::json validate_asset_domain_name(const nlohmann::json& params);
@@ -295,6 +296,9 @@ namespace green {
         bool is_twofactor_reset_active(locker_t& locker) const;
 
         virtual nlohmann::json get_subaccounts_impl(locker_t& locker) = 0;
+
+        // Make an http request to an arbitrary host governed by 'params'.
+        nlohmann::json http_request_impl(nlohmann::json params);
 
         // ** Under no circumstances must this mutex ever be made recursive **
         mutable std::mutex m_mutex;

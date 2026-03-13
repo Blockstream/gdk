@@ -225,13 +225,8 @@ namespace green {
         __builtin_unreachable();
     }
 
-    nlohmann::json session_impl::http_request(nlohmann::json params)
+    nlohmann::json session_impl::http_request_impl(nlohmann::json params)
     {
-        GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
-        const auto proxy_settings = get_proxy_settings();
-        params.update(select_url(params["urls"], proxy_settings["use_tor"]));
-        params["proxy"] = proxy_settings["proxy"];
-
         nlohmann::json result;
         try {
             auto root_certificates = m_net_params.gait_wamp_cert_roots();
@@ -262,7 +257,9 @@ namespace green {
 
             constexpr uint8_t num_redirects = 5;
             for (uint8_t i = 0; i < num_redirects; ++i) {
+                GDK_LOG(debug) << "http_request attempt " << static_cast<int>(i + 1);
                 result = get();
+                GDK_LOG(debug) << "http_request response: " << result.dump();
                 if (!result.value("location", std::string{}).empty()) {
                     GDK_RUNTIME_ASSERT_MSG(!m_net_params.use_tor(), "redirection over Tor is not supported");
                     params.update(parse_url(result["location"]));
@@ -275,6 +272,33 @@ namespace green {
             GDK_LOG(warning) << "Error http_request: " << ex.what();
         }
         return result;
+    }
+
+    nlohmann::json session_impl::http_request(nlohmann::json params)
+    {
+        GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
+        const auto proxy_settings = get_proxy_settings();
+        params.update(select_url(params["urls"], proxy_settings["use_tor"]));
+        params["proxy"] = proxy_settings["proxy"];
+
+        return http_request_impl(std::move(params));
+    }
+
+    nlohmann::json session_impl::http_request(session_impl::locker_t& locker, nlohmann::json params)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        GDK_LOG(debug) << "http_request: " << params.dump();
+
+        GDK_RUNTIME_ASSERT_MSG(!params.contains("proxy"), "http_request: proxy is not supported");
+        const auto proxy_settings = get_proxy_settings(locker);
+        params.update(select_url(params["urls"], proxy_settings["use_tor"]));
+        params["proxy"] = proxy_settings["proxy"];
+
+        GDK_LOG(debug) << "proxy modifications: " << params.dump();
+
+        // Call the existing implementation without the lock setup
+        return http_request_impl(std::move(params));
     }
 
     nlohmann::json session_impl::get_registry_config()
