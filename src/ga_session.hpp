@@ -110,7 +110,7 @@ namespace green {
         std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& message);
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
-        nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
+        nlohmann::json convert_amount(const nlohmann::json& amount_json);
 
         bool encache_blinding_data(const std::string& pubkey_hex, const std::string& script_hex,
             const std::string& nonce_hex, const std::string& blinding_pubkey_hex);
@@ -120,7 +120,7 @@ namespace green {
         amount get_min_fee_rate() const;
         amount get_default_fee_rate() const;
         uint32_t get_block_height() const;
-        nlohmann::json get_spending_limits() const;
+        nlohmann::json get_spending_limits();
         bool is_spending_limits_decrease(const nlohmann::json& details);
 
         std::pair<std::string, bool> get_cached_master_blinding_key();
@@ -165,8 +165,8 @@ namespace green {
             bool watch_only, bool is_relogin);
         void update_fiat_rate(locker_t& locker, const std::string& rate_str);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
-        nlohmann::json get_spending_limits(locker_t& locker) const;
-        nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json) const;
+        nlohmann::json get_spending_limits(locker_t& locker);
+        nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json);
         nlohmann::json convert_fiat_cents(locker_t& locker, amount::value_type fiat_cents) const;
         nlohmann::json get_settings(locker_t& locker) const;
         bool unblind_utxo(locker_t& locker, nlohmann::json& utxo, const std::string& for_txhash,

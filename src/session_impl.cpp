@@ -996,7 +996,7 @@ namespace green {
         return j_bool_or_false(m_login_data, "reset_2fa_active");
     }
 
-    nlohmann::json session_impl::get_spending_limits() const
+    nlohmann::json session_impl::get_spending_limits()
     {
         // Singlesig does not support spending limits. Overridden for multisig.
         auto limits = convert_amount({ { "satoshi", 0 } });

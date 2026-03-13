@@ -668,7 +668,7 @@ namespace green {
         throw std::runtime_error("ack_system_message not implemented");
     }
 
-    nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json) const
+    nlohmann::json ga_rust::convert_amount(const nlohmann::json& amount_json)
     {
         nlohmann::json pricing;
 

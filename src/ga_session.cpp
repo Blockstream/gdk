@@ -672,13 +672,13 @@ namespace green {
         return m_last_block_notification["block_height"];
     }
 
-    nlohmann::json ga_session::get_spending_limits() const
+    nlohmann::json ga_session::get_spending_limits()
     {
         locker_t locker(m_mutex);
         return get_spending_limits(locker);
     }
 
-    nlohmann::json ga_session::get_spending_limits(locker_t& locker) const
+    nlohmann::json ga_session::get_spending_limits(locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
 
@@ -1556,13 +1556,13 @@ namespace green {
         m_system_message_ack = std::string();
     }
 
-    nlohmann::json ga_session::convert_amount(const nlohmann::json& amount_json) const
+    nlohmann::json ga_session::convert_amount(const nlohmann::json& amount_json)
     {
         locker_t locker(m_mutex);
         return convert_amount(locker, amount_json);
     }
 
-    nlohmann::json ga_session::convert_amount(locker_t& locker, const nlohmann::json& amount_json) const
+    nlohmann::json ga_session::convert_amount(locker_t& locker, const nlohmann::json& amount_json)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         return amount::convert(amount_json, m_fiat_currency, m_fiat_rate);

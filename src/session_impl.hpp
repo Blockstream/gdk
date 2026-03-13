@@ -197,13 +197,13 @@ namespace green {
 
         nlohmann::json cache_control(const nlohmann::json& details);
 
-        virtual nlohmann::json convert_amount(const nlohmann::json& amount_json) const = 0;
+        virtual nlohmann::json convert_amount(const nlohmann::json& amount_json) = 0;
 
         virtual amount get_min_fee_rate() const = 0;
         virtual amount get_default_fee_rate() const = 0;
         virtual uint32_t get_block_height() const = 0;
         amount get_dust_threshold(const std::string& asset_id) const;
-        virtual nlohmann::json get_spending_limits() const;
+        virtual nlohmann::json get_spending_limits();
         virtual bool is_spending_limits_decrease(const nlohmann::json& limit_details) = 0;
 
         virtual void save_cache();

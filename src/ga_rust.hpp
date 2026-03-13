@@ -107,7 +107,7 @@ namespace green {
         std::pair<std::string, std::vector<uint32_t>> get_system_message_info(const std::string& system_message);
         void ack_system_message(const std::string& message_hash_hex, const std::string& sig_der_hex);
 
-        nlohmann::json convert_amount(const nlohmann::json& amount_json) const;
+        nlohmann::json convert_amount(const nlohmann::json& amount_json);
 
         void upload_confidential_addresses(uint32_t subaccount, const std::vector<std::string>& confidential_addresses);
 
