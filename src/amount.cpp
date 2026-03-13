@@ -65,8 +65,8 @@ namespace green {
         const auto fiat_p = amount_json.find("fiat");
         const bool have_asset_info = amount_json.contains("asset_info");
         const auto asset_json = amount_json.value("asset_info", nlohmann::json::object());
-        const auto precision = asset_json.value("precision", 0);
-        const auto asset_id = asset_json.value("asset_id", "");
+        const auto precision = j_uint32_or_zero(asset_json, "precision");
+        const auto asset_id = j_str_or_empty(asset_json, "asset_id");
         const auto asset_p = amount_json.find(asset_id);
         const auto end_p = amount_json.end();
         const int key_count = (satoshi_p != end_p) + (btc_p != end_p) + (mbtc_p != end_p) + (ubtc_p != end_p)
@@ -76,16 +76,16 @@ namespace green {
             throw user_error(res::id_no_amount_specified);
         }
 
-        if (precision < 0 || precision > 8) {
+        if (precision > 8) {
             throw user_error("Invalid precision");
         }
 
         // If either the fiat rate or currency is not available, use any provided values
         // from the amount json instead and indicate that the conversion is out of date
-        const std::string old_fiat_rate = amount_json.value("fiat_rate", std::string());
+        const std::string old_fiat_rate = j_str_or_empty(amount_json, "fiat_rate");
         const std::string& fiat_rate_used(fiat_rate.empty() ? old_fiat_rate : fiat_rate);
 
-        const std::string old_fiat_ccy = amount_json.value("fiat_currency", std::string());
+        const std::string old_fiat_ccy = j_str_or_empty(amount_json, "fiat_currency");
         const std::string& fiat_ccy_used(fiat_currency.empty() ? old_fiat_ccy : fiat_currency);
 
         const bool is_current = !fiat_rate.empty() && !fiat_currency.empty();
