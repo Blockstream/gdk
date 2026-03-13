@@ -143,9 +143,19 @@ namespace green {
             { "fiat_rate", nullptr }, { "is_current", is_current } };
 
         if (!fiat_rate_used.empty()) {
+            const auto calculated_fiat = conversion_type(fiat_rate_used) * satoshi_conv;
+            std::string formated_result;
+            if (have_asset_info) {
+                if (precision) {
+                    formated_result = fmt(fiat_type(calculated_fiat / COIN_VALUE_WITH_PRECISION), precision);
+                } else {
+                    formated_result = fmt(fiat_type(calculated_fiat));
+                }
+            } else {
+                formated_result = fmt(fiat_type(calculated_fiat / COIN_VALUE_DECIMAL));
+            }
+            result["fiat"] = formated_result;
             result["fiat_rate"] = fiat_rate_used;
-            result["fiat"]
-                = fmt(fiat_type(conversion_type(fiat_rate_used) * conversion_type(satoshi) / COIN_VALUE_DECIMAL));
         }
 
         if (have_asset_info) {
