@@ -163,7 +163,7 @@ namespace green {
             const std::string& user_agent, bool with_blob);
         nlohmann::json on_post_login(locker_t& locker, nlohmann::json& login_data, const std::string& root_bip32_xpub,
             bool watch_only, bool is_relogin);
-        void update_fiat_rate(locker_t& locker, const std::string& rate_str);
+        void update_fiat_rate(locker_t& locker, const nlohmann::json& rate_json, bool is_btc);
         void update_spending_limits(locker_t& locker, const nlohmann::json& limits);
         nlohmann::json get_spending_limits(locker_t& locker);
         nlohmann::json convert_amount(locker_t& locker, const nlohmann::json& amount_json);
@@ -205,6 +205,13 @@ namespace green {
 
         std::vector<unsigned char> get_pin_password(const std::string& pin, const std::string& pin_identifier);
         nlohmann::json decrypt_with_pin_impl(const nlohmann::json& details, bool is_login);
+
+        std::string get_btc_fiat_rate(locker_t& locker, const std::string& currency, const std::string& exchange);
+        std::string get_asset_fiat_rate(locker_t& locker, const std::string& asset_id, const std::string& currency);
+        nlohmann::json get_fiat_rates(
+            locker_t& locker, bool is_btc, const std::string& currency, const std::string& exchange);
+        nlohmann::json fetch_fiat_rate(
+            locker_t& locker, bool is_btc, const std::string& currency, const std::string& exchange = std::string());
 
         std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         std::array<uint32_t, 32> m_gait_path;

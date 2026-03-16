@@ -251,6 +251,19 @@ namespace green {
             }
             return ret;
         }
+
+        static bool is_cache_timestamp_expired(const std::string& cached_timestamp_str, bool is_btc)
+        {
+            const auto cache_refresh_secs = is_btc ? 60u : 3600u;
+
+            // Cache timestamp validation
+            const auto timestamp = cached_timestamp_str.empty() ? 0 : std::stoull(cached_timestamp_str);
+            const auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+
+            GDK_LOG(debug) << "Cache timestamp: " << timestamp << ", now: " << now
+                           << ", difference: " << now - timestamp;
+            return now - timestamp > cache_refresh_secs;
+        }
     } // namespace
 
     ga_session::ga_session(network_parameters&& net_params)
@@ -428,6 +441,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         GDK_RUNTIME_ASSERT(m_signer);
         const bool is_main_net = m_net_params.is_main_net();
+        const bool is_liquid = m_net_params.is_liquid();
 
         nlohmann::json old_settings;
         if (is_relogin) {
@@ -464,7 +478,19 @@ namespace green {
         }
         m_fiat_source = m_login_data["exchange"];
         m_fiat_currency = m_login_data["fiat_currency"];
-        update_fiat_rate(locker, j_str_or_empty(m_login_data, "fiat_exchange"));
+
+        // Clear cache fiat rates timestamp cache
+        m_cache->clear_key_value("btc_fiat_rate_ts");
+        m_cache->clear_key_value("all_assets_fiat_rates_ts");
+
+        // Fetch initial fiat rates for the session and store then in the cache
+        auto result = fetch_fiat_rate(locker, /*is_btc=*/true, m_fiat_currency, m_fiat_source);
+        update_fiat_rate(locker, result, /*is_btc=*/true);
+        if (is_liquid) {
+            // Fetching also asset rates for Liquid session
+            result = fetch_fiat_rate(locker, /*is_btc=*/false, m_fiat_currency);
+            update_fiat_rate(locker, result, /*is_btc=*/false);
+        }
 
         if (watch_only) {
             // Check whether the user has locally overriden their pricing source
@@ -623,19 +649,30 @@ namespace green {
         return post_login_data;
     }
 
-    void ga_session::update_fiat_rate(session_impl::locker_t& locker, const std::string& rate_str)
+    void ga_session::update_fiat_rate(session_impl::locker_t& locker, const nlohmann::json& rates, bool is_btc)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        // TODO: Remove None check when backends are fixed
-        if (rate_str.empty() || rate_str == "None") {
-            m_fiat_rate.clear(); // No rate available
-            return;
+
+        const std::string_view rate_key = is_btc ? "btc_fiat_rate" : "all_assets_fiat_rates";
+        const std::string_view timestamp_key = is_btc ? "btc_fiat_rate_ts" : "all_assets_fiat_rates_ts";
+
+        const auto timestamp = m_cache->get_key_value_string(timestamp_key);
+        if (is_cache_timestamp_expired(timestamp, is_btc)) {
+            // Clear the cache after cache expired and not valid rates received
+            GDK_LOG(debug) << "Cache expired for " << (is_btc ? "BTC" : "assets") << " fiat rate, clearing cache";
+            m_cache->clear_key_value(rate_key);
+            m_cache->clear_key_value(timestamp_key);
         }
-        try {
-            m_fiat_rate = amount::format_amount(rate_str, 8);
-        } catch (const std::exception& e) {
-            m_fiat_rate.clear();
-            GDK_LOG(error) << "failed to update fiat rate from string '" << rate_str << "': " << e.what();
+
+        // Store the rate in the cache as a serialized JSON string
+        if (!rates.empty()) {
+            const auto data = is_btc ? rates : rates.value("data", nlohmann::json::object());
+            if (!data.empty()) {
+                const auto now = std::to_string(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
+                GDK_LOG(debug) << "Updating cache " << (is_btc ? "BTC" : "assets") << " fiat rate";
+                m_cache->upsert_key_value(rate_key, ustring_span(data.dump()));
+                m_cache->upsert_key_value(timestamp_key, ustring_span(now));
+            }
         }
     }
 
@@ -921,37 +958,6 @@ namespace green {
         });
     }
 
-    void ga_session::on_new_tickers(nlohmann::json details)
-    {
-        std::string fiat_source, fiat_currency, fiat_rate;
-        {
-            locker_t locker(m_mutex);
-
-            no_std_exception_escape([&]() {
-                const auto exchange_p = details.find(m_fiat_source);
-                if (exchange_p != details.end()) {
-                    const auto rate_p = exchange_p->find(m_fiat_currency);
-                    if (rate_p != exchange_p->end()) {
-                        fiat_source = m_fiat_source;
-                        fiat_currency = m_fiat_currency;
-                        fiat_rate = *rate_p;
-                        update_fiat_rate(locker, fiat_rate);
-                    }
-                }
-            });
-        }
-        if (!fiat_rate.empty()) {
-            emit_notification(
-                { { "event", "ticker" },
-                    { "ticker",
-                        { { "exchange", std::move(fiat_source) }, { "currency", std::move(fiat_currency) },
-                            { "rate", std::move(fiat_rate) } } } },
-                false);
-        } else {
-            GDK_LOG(warning) << "Ignoring irrelevant ticker update";
-        }
-    }
-
     void ga_session::derive_wallet_identifiers(
         locker_t& locker, nlohmann::json& login_data, const std::vector<unsigned char>& entropy, bool is_relogin)
     {
@@ -1098,13 +1104,6 @@ namespace green {
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
         const auto receiving_id = j_strref(m_login_data, "receiving_id");
-
-        {
-            unique_unlock unlocker(locker);
-            const bool is_initial = true;
-            m_wamp->subscribe(
-                "com.greenaddress.tickers", [this](nlohmann::json event) { on_new_tickers(event); }, is_initial);
-        }
 
         if (m_blobserver) {
             session_impl::subscribe_all(locker);
@@ -1565,7 +1564,45 @@ namespace green {
     nlohmann::json ga_session::convert_amount(locker_t& locker, const nlohmann::json& amount_json)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        return amount::convert(amount_json, m_fiat_currency, m_fiat_rate);
+        const bool is_liquid = m_net_params.is_liquid();
+        const bool has_asset_info = amount_json.contains("asset_info");
+
+        if (!is_liquid) {
+            GDK_RUNTIME_ASSERT_MSG(!has_asset_info, "asset_info key is only supported for Liquid networks");
+        }
+
+        auto fiat_rate = j_str_or_empty(amount_json, "fiat_rate");
+        auto currency = j_str(amount_json, "fiat_currency").value_or(m_fiat_currency);
+        auto exchange = j_str(amount_json, "fiat_source").value_or(m_fiat_source);
+
+        if (amount_json.contains("pricing")) {
+            // Has an explicit pricing object, use the exchange and currency from the object
+            // instead of what is set in the session settings
+            const auto& pricing = j_ref(amount_json, "pricing");
+            currency = j_str(pricing, "currency").value_or(currency);
+            exchange = j_str(pricing, "exchange").value_or(exchange);
+        }
+
+        if (is_liquid && has_asset_info) {
+            // Liquid: We have "asset_info" so fetch the rate for the asset
+            const auto& asset_info = j_ref(amount_json, "asset_info");
+            const auto& asset_id = j_strref(asset_info, "asset_id");
+            const auto rate = get_asset_fiat_rate(locker, asset_id, currency);
+            GDK_LOG(debug) << "Got asset rate: " << rate;
+            if (!rate.empty()) {
+                fiat_rate = amount::format_amount(rate, 8);
+            }
+        } else {
+            // Bitcoin or Liquid without asset_info: fetch the (L)BTC rate
+            const auto rate = get_btc_fiat_rate(locker, currency, exchange);
+            GDK_LOG(debug) << "Got (L)BTC rate: " << rate;
+            if (!rate.empty()) {
+                fiat_rate = amount::format_amount(rate, 8);
+            }
+        }
+
+        GDK_LOG(debug) << "convert_amount: amount_json=" << amount_json.dump() << ", fiat_rate=" << fiat_rate;
+        return amount::convert(amount_json, currency, fiat_rate);
     }
 
     nlohmann::json ga_session::convert_fiat_cents(session_impl::locker_t& locker, amount::value_type fiat_cents) const
@@ -1790,11 +1827,16 @@ namespace green {
         session_impl::locker_t& locker, const std::string& currency, const std::string& exchange, bool is_login)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        std::optional<std::string> fiat_rate;
+        nlohmann::json btc_fiat_rate, all_assets_rates;
         bool ok = false;
+        const bool is_liquid = m_net_params.is_liquid();
 
         try {
-            fiat_rate = wamp_cast_nil(m_wamp->call(locker, "login.set_pricing_source_v2", currency, exchange));
+            btc_fiat_rate = fetch_fiat_rate(locker, /*is_btc=*/true, currency, exchange);
+            if (is_liquid) {
+                // Also fetch asset rates
+                all_assets_rates = fetch_fiat_rate(locker, /*is_btc=*/false, currency);
+            }
             ok = true;
         } catch (const std::exception& e) {
             ; // Ignore errors
@@ -1816,9 +1858,15 @@ namespace green {
             }
             throw user_error(error);
         }
+        GDK_LOG(debug) << "Setting pricing source: exchange=" << exchange << ", currency=" << currency;
         m_fiat_source = exchange;
         m_fiat_currency = currency;
-        update_fiat_rate(locker, fiat_rate.value_or(std::string()));
+        update_fiat_rate(locker, btc_fiat_rate, /*is_btc=*/true);
+        m_cache->clear_key_value("btc_fiat_rate_ts");
+        if (is_liquid) {
+            update_fiat_rate(locker, all_assets_rates, /*is_btc=*/false);
+            m_cache->clear_key_value("all_assets_rates_ts");
+        }
         if (m_watch_only) {
             // Watch-only session setting a new pricing source: cache it.
             m_cache->upsert_key_value("currency", ustring_span(currency));
@@ -3027,4 +3075,80 @@ namespace green {
         m_nlocktime = nlocktime;
     }
 
+    std::string ga_session::get_btc_fiat_rate(
+        locker_t& locker, const std::string& currency, const std::string& exchange)
+    {
+        auto rates = get_fiat_rates(locker, true, currency, exchange);
+        return j_str_or_empty(rates, "rate");
+    }
+
+    std::string ga_session::get_asset_fiat_rate(
+        locker_t& locker, const std::string& asset_id, const std::string& currency)
+    {
+        auto rates = get_fiat_rates(locker, false, currency, "");
+        return j_str_or_empty(rates, asset_id);
+    }
+
+    // Fetch cached rate if valid, otherwise fetch fresh rate from server and update cache
+    nlohmann::json ga_session::get_fiat_rates(
+        locker_t& locker, bool is_btc, const std::string& currency, const std::string& exchange)
+    {
+        // Select appropriate cache keys and cache limit based on type
+        const auto& rate_key = is_btc ? "btc_fiat_rate" : "all_assets_fiat_rates";
+        const auto& timestamp_key = is_btc ? "btc_fiat_rate_ts" : "all_assets_fiat_rates_ts";
+        const auto cached_timestamp_str = m_cache->get_key_value_string(timestamp_key);
+        const bool is_default = (currency == m_fiat_currency) && (!is_btc || exchange == m_fiat_source);
+
+        if (is_default && !is_cache_timestamp_expired(cached_timestamp_str, is_btc)) {
+            // If the cache is still valid, return the cached rate
+            const auto cached_rate = m_cache->get_key_value_string(rate_key);
+            GDK_LOG(debug) << "Cached price: " << cached_rate;
+            if (!cached_rate.empty()) {
+                return json_parse(cached_rate);
+            }
+        }
+
+        // Cache is expired or invalid or different currency/source from settings
+        // fetch fresh data
+        GDK_LOG(debug) << "Cache miss or different currency/source - fetching fresh fiat rates";
+        auto rates = fetch_fiat_rate(locker, is_btc, currency, exchange);
+        if (rates.empty() || rates.contains("error")) {
+            GDK_LOG(error) << "Failed to fetch fiat rates, error: " << j_str_or_empty(rates, "error");
+            return nlohmann::json();
+        }
+        if (is_default) {
+            update_fiat_rate(locker, rates, is_btc);
+        }
+        return is_btc ? rates : rates.value("data", nlohmann::json{});
+    }
+
+    // Fetch the fiat rate for either BTC or assets from the server, depending on the is_btc flag.
+    // For BTC rate, both exchange and currency must be specified, while for asset rate only the currency is needed.
+    nlohmann::json ga_session::fetch_fiat_rate(
+        locker_t& locker, bool is_btc, const std::string& currency, const std::string& exchange)
+    {
+        const auto price_url = m_net_params.get_price_url();
+
+        // Construct the appropriate endpoint based on whether we're fetching a BTC or asset rate
+        std::string endpoint;
+        if (is_btc) {
+            endpoint = price_url + "/v0/venues/" + exchange + "/pairs/XBT/" + currency;
+        } else {
+            endpoint = price_url + "/v1/liquid/" + currency;
+        }
+
+        GDK_LOG(debug) << "Fetching price from " << endpoint;
+
+        // Make the HTTP request to fetch the price data.
+        // TODO: Support Tor when there is price server Tor endpoint
+        const auto result = http_request(locker, { { "method", "GET" }, { "urls", { std::move(endpoint) } } });
+
+        if (result.contains("body")) {
+            // Parse the response to JSON
+            return json_parse(j_strref(result, "body"));
+        }
+
+        GDK_LOG(error) << "Price response missing body!";
+        return nlohmann::json();
+    }
 } // namespace green
