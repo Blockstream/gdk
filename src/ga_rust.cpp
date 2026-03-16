@@ -672,27 +672,41 @@ namespace green {
     {
         nlohmann::json pricing;
 
-        auto param_pricing = amount_json.value("pricing", nlohmann::json::object());
+        const auto param_pricing = amount_json.value("pricing", nlohmann::json::object());
         if (param_pricing.empty()) {
             pricing = get_settings().value("pricing", nlohmann::json({ { "currency", "" }, { "exchange", "" } }));
         } else {
             pricing = param_pricing;
         }
 
-        std::string currency = amount_json.value("fiat_currency", pricing["currency"]);
-        std::string exchange = pricing["exchange"];
+        std::string currency = j_str(amount_json, "fiat_currency").value_or(j_str(pricing, "currency").value_or(""));
+        std::string exchange = j_str(pricing, "exchange").value_or("");
+
+        if (!m_net_params.is_liquid()) {
+            GDK_RUNTIME_ASSERT_MSG(
+                !amount_json.contains("asset_info"), "asset_info key is only supported for Liquid networks");
+        }
+        const auto asset_info = amount_json.value("asset_info", nlohmann::json::object());
+        std::string asset_id = j_str_or_empty(asset_info, "asset_id");
 
         std::string fiat_rate;
 
-        if (!currency.empty() && !exchange.empty()) {
+        if (!currency.empty() && (!exchange.empty() || !asset_id.empty())) {
             auto currency_query = nlohmann::json({ { "currencies", currency } });
+            if (!asset_id.empty()) {
+                currency_query["asset_id"] = asset_id;
+            }
             currency_query["price_url"] = m_net_params.get_price_url();
-            currency_query["fallback_rate"] = amount_json.value("fiat_rate", "");
+            currency_query["fallback_rate"] = j_str(amount_json, "fiat_rate").value_or("");
             currency_query["exchange"] = exchange;
+            // Use a longer cache limit for asset pricing, as it is updated less frequently
+            currency_query["cache_refresh_secs"] = asset_id.empty() ? 60u : 3600u;
 
             try {
-                auto xrates = rust_call("exchange_rates", currency_query, m_session)["currencies"];
-                fiat_rate = xrates.value(currency, "");
+                auto xrates = rust_call("exchange_rates", currency_query, m_session)
+                                  .value("currencies", nlohmann::json::object());
+                GDK_LOG(debug) << "exchange_rates result: " << xrates.dump();
+                fiat_rate = j_str(xrates, currency).value_or("");
             } catch (const std::exception& ex) {
                 GDK_LOG(warning) << "cannot fetch exchange rate " << ex.what();
             }

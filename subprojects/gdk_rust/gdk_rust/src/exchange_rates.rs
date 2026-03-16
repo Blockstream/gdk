@@ -1,7 +1,9 @@
+use std::str::FromStr;
 use std::thread;
 use std::time::{Duration, SystemTime};
 
-use gdk_common::exchange_rates::{Currency, Pair, Ticker};
+use gdk_common::elements::AssetId;
+use gdk_common::exchange_rates::{Currency, Pair, PairBase, Ticker};
 use gdk_common::log::{debug, info};
 use gdk_common::session::Session;
 use gdk_common::ureq;
@@ -14,21 +16,29 @@ pub(crate) fn fetch_cached<S: Session>(
     sess: &mut S,
     params: &ConvertAmountParams,
 ) -> Result<Option<Ticker>, Error> {
-    let pair = Pair::new(Currency::BTC, params.currency);
+    let pair = if let Some(asset_id) = params.asset_id {
+        Pair::new_asset(asset_id, params.currency)
+    } else {
+        Pair::new(Currency::BTC, params.currency)
+    };
 
-    if let Some(rate) = sess.get_cached_rate(&pair, params.cache_limit) {
+    let cache_refresh_secs = Duration::from_secs(params.cache_refresh_secs);
+    if !sess.is_cache_rate_expired(&pair, &cache_refresh_secs) {
         debug!("hit exchange rate cache");
-        return Ok(Some(Ticker::new(pair, rate)));
+        let rate = sess.get_cached_rate(&pair, &cache_refresh_secs);
+        return Ok(Some(Ticker::new(
+            pair,
+            match rate {
+                Some(it) => it,
+                None => return Ok(None),
+            },
+        )));
     }
 
     if sess.network_parameters().development {
         // TODO: remove once mocked up price endpoint is available in localtest
         if &params.exchange == "BROKEN" {
             return Ok(None);
-        } else {
-            let ticker = Ticker::new(pair, 1.1);
-            sess.cache_ticker(ticker);
-            return Ok(Some(ticker));
         }
     }
 
@@ -41,10 +51,28 @@ pub(crate) fn fetch_cached<S: Session>(
     let exchange = params.exchange.clone();
 
     let handle = thread::spawn(move || {
-        let ticker = self::fetch(&agent, currency, &url, &exchange)?;
         let cache = &mut *cache.lock().unwrap();
-        cache.insert(ticker.pair, (SystemTime::now(), ticker.rate));
-        Ok::<_, Error>(Some(ticker))
+        let ticker = match pair.base() {
+            PairBase::Currency(_) => {
+                let t = self::fetch(&agent, currency, &url, &exchange)?;
+                let now = SystemTime::now();
+                cache.insert(t.pair, (now, t.rate));
+                Some(t)
+            }
+            PairBase::Asset(_) => {
+                let assets = self::fetch_assets(&agent, currency, &url)?;
+                let mut ticker = None;
+                let now = SystemTime::now();
+                for asset in &assets {
+                    if asset.pair.base() == pair.base() {
+                        ticker = Some(asset.clone());
+                    }
+                    cache.insert(asset.pair, (now, asset.rate));
+                }
+                ticker
+            }
+        };
+        Ok::<_, Error>(ticker)
     });
 
     if params.fallback_rate.is_none() {
@@ -81,16 +109,65 @@ pub(crate) fn fetch(
 
     let response = agent.get(&endpoint).call()?.into_json::<ExchangeRateResponse>()?;
 
-    let ticker = Ticker::new(pair, response.rate.parse::<f64>().unwrap());
+    let result = response
+        .rate
+        .parse::<f64>()
+        .map(|r| {
+            let ticker = Ticker::new(pair, r);
+            info!("got exchange rate {:?}", ticker);
+            ticker
+        })
+        .map_err(|e| Error::from(format!("Failed to parse exchange rate: {}", e)));
 
-    info!("got exchange rate {:?}", ticker);
-    Ok(ticker)
+    result
+}
+
+pub(crate) fn fetch_assets(
+    agent: &ureq::Agent,
+    currency: Currency,
+    url: &str,
+) -> Result<Vec<Ticker>, Error> {
+    use std::collections::HashMap;
+
+    #[derive(serde::Deserialize, Debug)]
+    struct AssetPricesResponse {
+        currency: Currency,
+        data: HashMap<String, String>,
+    }
+
+    let endpoint = format!("{}/v1/liquid/{}", url, currency.to_string());
+
+    info!("fetching asset prices for {} from {}", currency, endpoint);
+
+    let response = agent.get(&endpoint).call()?.into_json::<AssetPricesResponse>()?;
+    let mut result = Vec::new();
+
+    for (asset_id, price) in response.data.iter() {
+        let rate = price
+            .parse::<f64>()
+            .map_err(|e| Error::from(format!("Failed to parse asset price: {}", e)))?;
+        let asset_id = AssetId::from_str(asset_id)
+            .map_err(|e| Error::from(format!("Failed to parse asset id: {}", e)))?;
+
+        let pair = Pair::new_asset(asset_id, response.currency);
+        result.push(Ticker::new(pair, rate));
+    }
+
+    info!("got {} asset prices for {}", result.len(), currency);
+    debug!("result: {:?}", result);
+
+    Ok(result)
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]
 pub(crate) struct ConvertAmountParams {
     #[serde(default, rename(deserialize = "currencies"))]
     pub(crate) currency: Currency,
+
+    // Optional asset id to fetch the exchange rate for.
+    // If not provided, the exchange rate for `BTC-currency` will be fetched.
+    #[serde(default)]
+    asset_id: Option<AssetId>,
 
     /// The url of the endpoint used to fetch the exchange rate data.
     #[serde(rename = "price_url")]
@@ -104,11 +181,11 @@ pub(crate) struct ConvertAmountParams {
     exchange: String,
 
     #[serde(default = "one_minute")]
-    cache_limit: Duration,
+    cache_refresh_secs: u64,
 }
 
-fn one_minute() -> Duration {
-    Duration::from_secs(60)
+fn one_minute() -> u64 {
+    60
 }
 
 fn deserialize_rate<'de, D>(deserializer: D) -> Result<Option<f64>, D::Error>

@@ -5,6 +5,8 @@ use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime};
 
 use crate::Error;
+use elements::AssetId;
+use log::debug;
 use serde::{de, ser};
 
 /// The exchange rates cache. The keys are currency pairs (like BTC-USD)
@@ -17,11 +19,27 @@ pub trait ExchangeRatesCacher {
     fn xr_cache(&self) -> ExchangeRatesCache;
 
     /// Returns the exchange rate of `pair` if it's cached, `None` otherwise.
-    fn get_cached_rate(&self, pair: &Pair, cache_limit: Duration) -> Option<f64> {
+    fn get_cached_rate(&self, pair: &Pair, cache_refresh_secs: &Duration) -> Option<f64> {
         let cache = self.xr_cache();
         let cache = &*cache.lock().unwrap();
         let &(time_fetched, rate) = cache.get(pair)?;
-        (time_fetched + cache_limit > SystemTime::now()).then(|| rate)
+        (time_fetched + *cache_refresh_secs > SystemTime::now()).then(|| rate)
+    }
+
+    fn is_cache_rate_expired(&self, pair: &Pair, cache_refresh_secs: &Duration) -> bool {
+        let cache = self.xr_cache();
+        let cache = &*cache.lock().unwrap();
+        let &(time_fetched, _) = match cache.get(pair) {
+            Some(rate) => rate,
+            None => return true,
+        };
+        debug!(
+            "cache time fetched: {:?}, now: {:?}, refresh secs: {:?}",
+            time_fetched,
+            SystemTime::now(),
+            cache_refresh_secs
+        );
+        time_fetched + *cache_refresh_secs <= SystemTime::now()
     }
 
     /// Caches `ticker` for future queries.
@@ -213,29 +231,51 @@ impl fmt::Display for Currency {
 }
 
 #[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
-pub struct Pair(Currency, Currency);
+pub enum PairBase {
+    Currency(Currency),
+    Asset(AssetId),
+}
+
+#[derive(Debug, PartialEq, Eq, Copy, Clone, Hash)]
+pub struct Pair {
+    base: PairBase,
+    quote: Currency,
+}
 
 impl Pair {
     pub fn new(c1: Currency, c2: Currency) -> Pair {
-        Pair(c1, c2)
+        Pair {
+            base: PairBase::Currency(c1),
+            quote: c2,
+        }
     }
 
-    pub fn first(&self) -> Currency {
-        self.0
+    pub fn new_asset(asset_id: AssetId, currency: Currency) -> Pair {
+        Pair {
+            base: PairBase::Asset(asset_id),
+            quote: currency,
+        }
     }
 
-    pub fn second(&self) -> Currency {
-        self.1
+    pub fn base(&self) -> &PairBase {
+        &self.base
+    }
+
+    pub fn quote(&self) -> Currency {
+        self.quote
     }
 }
 
 impl fmt::Display for Pair {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}{}", self.first(), self.second())
+        match &self.base {
+            PairBase::Currency(currency) => write!(f, "{}{}", currency, self.quote),
+            PairBase::Asset(asset_id) => write!(f, "{}{}", asset_id, self.quote),
+        }
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Ticker {
     pub pair: Pair,
     pub rate: f64,
