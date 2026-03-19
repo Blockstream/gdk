@@ -315,6 +315,20 @@ namespace green {
         }
     }
 
+    void ga_session::emit_price_update(locker_t& locker, bool is_btc)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+
+        nlohmann::json ticker{ { "type", is_btc ? "BTC" : "assets" }, { "currency", m_fiat_currency } };
+        if (is_btc) {
+            ticker["exchange"] = m_fiat_source;
+        }
+        GDK_LOG(debug) << "Emitting price update: " << ticker.dump();
+
+        unique_unlock unlocker(locker);
+        emit_notification({ { "event", "ticker" }, { "ticker", ticker } }, true);
+    }
+
     std::shared_ptr<ga_session::nlocktime_t> ga_session::update_nlocktime_info(session_impl::locker_t& locker)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
@@ -672,6 +686,8 @@ namespace green {
                 GDK_LOG(debug) << "Updating cache " << (is_btc ? "BTC" : "assets") << " fiat rate";
                 m_cache->upsert_key_value(rate_key, ustring_span(data.dump()));
                 m_cache->upsert_key_value(timestamp_key, ustring_span(now));
+
+                emit_price_update(locker, is_btc);
             }
         }
     }

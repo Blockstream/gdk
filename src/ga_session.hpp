@@ -213,6 +213,8 @@ namespace green {
         nlohmann::json fetch_fiat_rate(
             locker_t& locker, bool is_btc, const std::string& currency, const std::string& exchange = std::string());
 
+        void emit_price_update(locker_t& locker, bool is_btc);
+
         std::optional<pbkdf2_hmac512_t> m_local_encryption_key;
         std::array<uint32_t, 32> m_gait_path;
         nlohmann::json m_limits_data;
