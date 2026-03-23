@@ -70,7 +70,7 @@ oldT=$(date +%s)
 export OPENSSL_INCLUDE_DIR=$OPENSSL_INCLUDE_DIR
 export OPENSSL_LIB_DIR=$( dirname ${OPENSSL_CRYPTO_LIB} )
 export OPENSSL_STATIC=1
-# echo "cargo args: ${CARGO_ARGS[*]}"
+echo "cargo args: ${CARGO_ARGS[*]}"
 cargo build "${CARGO_ARGS[@]}"
 ARTIFACT_FULL_PATH=$(find ${ARTIFACT_PATH_HINT} -name ${ARTIFACT})
 
@@ -88,6 +88,7 @@ fi
 if [ "$(uname)" = "Darwin" ]; then
     echo "stripping away unwanted symbols"
     APPLE_KEEP="${SOURCE_DIR}/apple-exported-symbols"
+    echo "ld ${LD_ARCH} -o ${OUTPUT_DIR}/${ARTIFACT} -r -exported_symbols_list "${APPLE_KEEP}" ${ARTIFACT_FULL_PATH}"
     ld ${LD_ARCH} -o ${OUTPUT_DIR}/${ARTIFACT} -r -exported_symbols_list "${APPLE_KEEP}" ${ARTIFACT_FULL_PATH}
 else
     cp ${ARTIFACT_FULL_PATH} ${OUTPUT_DIR}
