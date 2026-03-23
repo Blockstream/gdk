@@ -7,6 +7,12 @@ init_apple_environment()
 
 set(CMAKE_OSX_DEPLOYMENT_TARGET 10.15 CACHE INTERNAL "")
 
-set(CMAKE_LIBRARY_ARCHITECTURE "${CMAKE_HOST_SYSTEM_PROCESSOR}-apple-darwin")
+if(${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "arm64")
+    set(RUST_ARCH "aarch64")
+else()
+    set(RUST_ARCH ${CMAKE_HOST_SYSTEM_PROCESSOR})
+endif()
 
-set(_rustTriple "${CMAKE_HOST_SYSTEM_PROCESSOR}-apple-darwin")
+set(CMAKE_LIBRARY_ARCHITECTURE "${RUST_ARCH}-apple-darwin")
+
+set(_rustTriple "${RUST_ARCH}-apple-darwin")
