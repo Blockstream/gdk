@@ -1,5 +1,18 @@
 # Changelog
 
+## Release 0.77.0 - 26-03-24
+
+### Added
+- Liquid: Return asset prices in convert_amount() when "asset_info" is given and a fiat price for the asset is available.
+
+### Changed
+- Pricing: Multisig sessions now use the Green Price Server for pricing as singlesig does.
+- Network(Liquid): "price_url" and "price_onion_url" in network parameters now refers to a Liquid specific price server. Note that prices of BTC from Bitcoin sessions and L-BTC from Liquid sessions may therefore now be out of sync.
+- Bitcoin: Passing "asset_info" to convert_amount() is now an error, must use Liquid session (Note this is a breaking change).
+
+### Fixed
+
+
 ## Release 0.76.3 - 26-02-04
 
 ### Added
@@ -17,6 +30,7 @@
 - Login: use the short git sha in the login user agent
 
 ### Fixed
+
 
 ## Release 0.76.1 - 25-09-02
 
@@ -46,6 +60,7 @@
 - SPV: Remove SPV support, which was unstable and causing increased support overhead.
   Users that do not trust esplora to behave honesty should run their own electrum server
   rather than relying on SPV.
+
 
 ## Release 0.75.2 - 25-05-08
 
