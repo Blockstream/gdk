@@ -1,5 +1,15 @@
 # Changelog
 
+## Release 0.77.1 - 26-03-26
+
+### Added
+
+### Changed
+
+### Fixed
+- rust: fix usage of pricing cache when: settings change, different currency then in settings, asset id without price
+
+
 ## Release 0.77.0 - 26-03-24
 
 ### Added
