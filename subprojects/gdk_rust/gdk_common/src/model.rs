@@ -573,7 +573,7 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn update(&mut self, json: &serde_json::Value) -> Result<(), Error> {
+    pub fn update(&mut self, json: &serde_json::Value) -> Result<bool, Error> {
         if let Some(unit) = json.get("unit").and_then(|v| v.as_str()) {
             self.unit = unit.to_string();
         }
@@ -584,23 +584,26 @@ impl Settings {
         if let Some(altimeout) = json.get("altimeout").and_then(|v| v.as_u64()) {
             self.altimeout = altimeout as u32;
         }
+        let mut pricing_changed = false;
         if let Some(pricing) = json.get("pricing") {
             if let Some(currency) = pricing.get("currency").and_then(|v| v.as_str()) {
                 if !currency.is_empty() {
                     let currency = Currency::from_str(currency)?;
                     self.pricing.currency = currency.to_string();
+                    pricing_changed = true;
                 }
             }
             if let Some(exchange) = pricing.get("exchange").and_then(|v| v.as_str()) {
                 if !exchange.is_empty() {
                     self.pricing.exchange = exchange.to_string();
+                    pricing_changed = true;
                 }
             }
         }
         if let Some(sound) = json.get("sound").and_then(|v| v.as_bool()) {
             self.sound = sound;
         }
-        Ok(())
+        Ok(pricing_changed)
     }
 }
 
@@ -620,16 +623,22 @@ pub struct UpdateAccountOpt {
 /// see comment for struct Settings
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Pricing {
-    currency: String,
-    exchange: String,
+    pub currency: String,
+    pub exchange: String,
+}
+
+impl Default for Pricing {
+    fn default() -> Self {
+        Pricing {
+            currency: "USD".to_string(),
+            exchange: "BITFINEX".to_string(),
+        }
+    }
 }
 
 impl Default for Settings {
     fn default() -> Self {
-        let pricing = Pricing {
-            currency: "USD".to_string(),
-            exchange: "BITFINEX".to_string(),
-        };
+        let pricing = Pricing::default();
         Settings {
             unit: "BTC".to_string(),
             required_num_blocks: 12,

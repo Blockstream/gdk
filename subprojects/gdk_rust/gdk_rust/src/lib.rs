@@ -14,7 +14,7 @@ use std::str::FromStr;
 use std::sync::Once;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
-use gdk_common::model::InitParam;
+use gdk_common::model::{InitParam, Pricing};
 
 use crate::error::Error;
 use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
@@ -175,10 +175,17 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
     let input = serde_json::from_str(input)?;
 
     if method == "exchange_rates" {
+        let pricing = match match sess.backend {
+            GdkBackend::Electrum(ref mut s) => s.get_settings(),
+        } {
+            Some(it) => it.pricing,
+            None => Pricing::default(),
+        };
+
         let params = serde_json::from_value(input)?;
 
         let ticker = match sess.backend {
-            GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, &params),
+            GdkBackend::Electrum(ref mut s) => exchange_rates::fetch_cached(s, &params, &pricing),
         }?;
 
         let rate = ticker.map(|t| format!("{:.8}", t.rate)).unwrap_or_default();

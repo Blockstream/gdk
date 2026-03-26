@@ -5,6 +5,7 @@ use std::time::{Duration, SystemTime};
 use gdk_common::elements::AssetId;
 use gdk_common::exchange_rates::{Currency, Pair, PairBase, Ticker};
 use gdk_common::log::{debug, info};
+use gdk_common::model::Pricing;
 use gdk_common::session::Session;
 use gdk_common::ureq;
 use serde::{de::Deserializer, Deserialize};
@@ -15,6 +16,7 @@ use crate::Error;
 pub(crate) fn fetch_cached<S: Session>(
     sess: &mut S,
     params: &ConvertAmountParams,
+    pricing_settings: &Pricing,
 ) -> Result<Option<Ticker>, Error> {
     let pair = if let Some(asset_id) = params.asset_id {
         Pair::new_asset(asset_id, params.currency)
@@ -23,7 +25,10 @@ pub(crate) fn fetch_cached<S: Session>(
     };
 
     let cache_refresh_secs = Duration::from_secs(params.cache_refresh_secs);
-    if !sess.is_cache_rate_expired(&pair, &cache_refresh_secs) {
+    if pricing_settings.currency == params.currency.to_string()
+        && (sess.network_parameters().liquid || pricing_settings.exchange == params.exchange)
+        && !sess.is_cache_rate_expired(&pair, &cache_refresh_secs)
+    {
         debug!("hit exchange rate cache");
         let rate = sess.get_cached_rate(&pair, &cache_refresh_secs);
         return Ok(Some(Ticker::new(

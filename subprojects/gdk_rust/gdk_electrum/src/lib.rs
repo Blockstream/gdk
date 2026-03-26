@@ -1022,7 +1022,10 @@ impl ElectrumSession {
 
     pub fn change_settings(&mut self, value: &Value) -> Result<(), Error> {
         let mut settings = self.get_settings().ok_or_else(|| Error::StoreNotLoaded)?;
-        settings.update(value)?;
+        if settings.update(value)? {
+            debug!("pricing settings changed, clearing cache");
+            self.xr_cache.lock()?.clear();
+        }
         self.store()?.lock()?.insert_settings(Some(settings.clone()))?;
         self.notify.settings(&settings);
         Ok(())

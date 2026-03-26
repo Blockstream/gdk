@@ -29,9 +29,17 @@ pub trait ExchangeRatesCacher {
     fn is_cache_rate_expired(&self, pair: &Pair, cache_refresh_secs: &Duration) -> bool {
         let cache = self.xr_cache();
         let cache = &*cache.lock().unwrap();
-        let &(time_fetched, _) = match cache.get(pair) {
-            Some(rate) => rate,
-            None => return true,
+        let &(time_fetched, _) = match pair.base() {
+            PairBase::Asset(_) => match cache.iter().find_map(|(cached_pair, time_rate)| {
+                matches!(cached_pair.base(), PairBase::Asset(_)).then_some(time_rate)
+            }) {
+                Some(time_rate) => time_rate,
+                None => return true,
+            },
+            PairBase::Currency(_) => match cache.get(pair) {
+                Some(time_rate) => time_rate,
+                None => return true,
+            },
         };
         debug!(
             "cache time fetched: {:?}, now: {:?}, refresh secs: {:?}",
