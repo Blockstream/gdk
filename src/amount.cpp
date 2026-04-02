@@ -117,7 +117,8 @@ namespace green {
             }
             const std::string fiat_str = *fiat_p;
             const conversion_type btc_decimal = conversion_type(fiat_str) / conversion_type(fiat_rate_used);
-            satoshi = (btc_type(btc_decimal) * COIN_VALUE_DECIMAL).convert_to<signed_value_type>();
+            const auto& coin_value_precision = have_asset_info ? COIN_VALUE_WITH_PRECISION : COIN_VALUE_DECIMAL;
+            satoshi = (btc_type(btc_decimal) * coin_value_precision).convert_to<signed_value_type>();
         }
 
         // Check upper limit for btc type (ie. non-asset) inputs
