@@ -1,5 +1,15 @@
 # Changelog
 
+## Release 0.77.2 - 26-04-03
+
+### Added
+
+### Changed
+
+### Fixed
+- pricing: fix convert_amount() fiat to satoshi conversion to account for asset precision
+
+
 ## Release 0.77.1 - 26-03-26
 
 ### Added
