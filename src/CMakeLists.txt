@@ -147,14 +147,17 @@ get_library_install_dir(_libInstallDir)
 install(
     TARGETS green_gdk
     EXPORT "green_gdk-target"
-    RUNTIME EXCLUDE_FROM_ALL
     OBJECTS EXCLUDE_FROM_ALL
     ARCHIVE
         COMPONENT gdk-dev
         EXCLUDE_FROM_ALL
     LIBRARY DESTINATION ${_libInstallDir}
-            COMPONENT gdk-runtime
-            OPTIONAL
+        COMPONENT gdk-runtime
+        OPTIONAL
+    RUNTIME
+        COMPONENT gdk-dev
+        OPTIONAL
+        EXCLUDE_FROM_ALL
     PUBLIC_HEADER
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/gdk
         COMPONENT gdk-dev
