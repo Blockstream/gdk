@@ -17,10 +17,14 @@ pub(crate) fn call(
 ) -> Result<Option<(Value, String)>> {
     let start = Instant::now();
 
-    let mut request =
-        agent.get(url).timeout(Duration::from_secs(30)).set("If-Modified-Since", last_modified);
+    let mut request = agent
+        .get(url)
+        .config()
+        .timeout_global(Some(Duration::from_secs(30)))
+        .build()
+        .header("If-Modified-Since", last_modified);
     for param in custom_params {
-        request = request.set(param.0, param.1);
+        request = request.header(param.0, param.1);
     }
     let response = request.call()?;
 
@@ -33,14 +37,16 @@ pub(crate) fn call(
     }
 
     let last_modified = response
-        .header("Last-Modified")
-        .or_else(|| response.header("last-modified"))
+        .headers()
+        .get("Last-Modified")
+        .or_else(|| response.headers().get("last-modified"))
+        .and_then(|v| v.to_str().ok())
         .unwrap_or_default()
         .to_string();
 
     // `respone.into_json()` is slow because of many syscalls. See:
     // https://github.com/algesten/ureq/pull/506.
-    let buffered_reader = BufReader::new(response.into_reader());
+    let buffered_reader = BufReader::new(response.into_body().into_reader());
     let value = serde_json::from_reader(buffered_reader)?;
 
     info!("END call {} {} took: {:?}", &url, status, start.elapsed());

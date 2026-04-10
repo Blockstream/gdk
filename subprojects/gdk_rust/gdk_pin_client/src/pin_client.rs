@@ -89,11 +89,11 @@ impl PinClient {
         let response = self
             .agent
             .post(&format!("{}start_handshake", self.pin_server_url))
-            .set("content-length", "0")
-            .call()
+            .header("content-length", "0")
+            .send_empty()
             .map_err(|_| crate::Error::HandshakeFailed)?;
 
-        serde_json::from_reader(response.into_reader()).map_err(Into::into)
+        response.into_body().read_json().map_err(|_| crate::Error::HandshakeFailed)
     }
 
     fn call_server(&self, request: &PinServerRequest, op: ServerOp) -> Result<PinServerResponse> {
@@ -108,7 +108,7 @@ impl PinClient {
             .send_json(request)
             .map_err(|_| crate::Error::ServerCallFailed)?;
 
-        serde_json::from_reader(response.into_reader()).map_err(Into::into)
+        response.into_body().read_json().map_err(|_| crate::Error::ServerCallFailed)
     }
 }
 

@@ -1798,7 +1798,8 @@ fn fetch_available_currencies(
 
     let endpoint = format!("{url}/v0/venues");
 
-    let response = agent.get(&endpoint).call()?.into_json::<HashMap<String, ExchangeInfos>>()?;
+    let response =
+        agent.get(&endpoint).call()?.into_body().read_json::<HashMap<String, ExchangeInfos>>()?;
 
     let map = response.into_iter().map(|(exchange, infos)| {
         let currencies = infos.pairs.into_iter().map(|(first, second)| {

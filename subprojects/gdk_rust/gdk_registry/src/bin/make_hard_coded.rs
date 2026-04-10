@@ -60,7 +60,11 @@ fn main() -> Result<()> {
 }
 
 fn liquid_icons(agent: &ureq::Agent) -> Result<Icons> {
-    let icons = agent.get(LIQUID_ICONS_ENDPOINT).call()?.into_json::<Icons>()?;
+    let icons = agent
+        .get(LIQUID_ICONS_ENDPOINT)
+        .call()?
+        .into_body()
+        .read_json::<Icons>()?;
 
     println!("Downloaded {} assets icons", icons.len());
 
@@ -68,7 +72,11 @@ fn liquid_icons(agent: &ureq::Agent) -> Result<Icons> {
 }
 
 fn liquid_assets(agent: &ureq::Agent, icons: &HashMap<AssetId, String>) -> Result<Assets> {
-    let mut assets = agent.get(LIQUID_ASSETS_ENDPOINT).call()?.into_json::<Assets>()?;
+    let mut assets = agent
+        .get(LIQUID_ASSETS_ENDPOINT)
+        .call()?
+        .into_body()
+        .read_json::<Assets>()?;
 
     println!("Downloaded {} assets information", assets.len());
 

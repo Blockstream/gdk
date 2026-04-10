@@ -198,16 +198,16 @@ impl NetworkParameters {
 /// Creates a new [`ureq::Agent`] from an optional proxy string, using
 /// [`NETWORK_REQUEST_TIMEOUT`] as timeout.
 pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ureq::Error> {
-    let mut builder = ureq::AgentBuilder::new().timeout(NETWORK_REQUEST_TIMEOUT);
+    let mut builder = ureq::Agent::config_builder().timeout_global(Some(NETWORK_REQUEST_TIMEOUT));
 
     if let Some(proxy) = maybe_proxy {
         if !proxy.is_empty() {
             let proxy = ureq::Proxy::new(proxy)?;
-            builder = builder.proxy(proxy);
+            builder = builder.proxy(Some(proxy));
         }
     }
 
-    Ok(builder.build())
+    Ok(builder.build().new_agent())
 }
 
 #[cfg(test)]

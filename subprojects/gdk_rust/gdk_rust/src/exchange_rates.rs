@@ -112,7 +112,7 @@ pub(crate) fn fetch(
 
     info!("fetching {} price data from {}", pair, endpoint);
 
-    let response = agent.get(&endpoint).call()?.into_json::<ExchangeRateResponse>()?;
+    let response = agent.get(&endpoint).call()?.into_body().read_json::<ExchangeRateResponse>()?;
 
     let result = response
         .rate
@@ -144,7 +144,7 @@ pub(crate) fn fetch_assets(
 
     info!("fetching asset prices for {} from {}", currency, endpoint);
 
-    let response = agent.get(&endpoint).call()?.into_json::<AssetPricesResponse>()?;
+    let response = agent.get(&endpoint).call()?.into_body().read_json::<AssetPricesResponse>()?;
     let mut result = Vec::new();
 
     for (asset_id, price) in response.data.iter() {
