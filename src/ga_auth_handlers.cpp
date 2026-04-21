@@ -177,6 +177,9 @@ namespace green {
 
         auth_handler::state_type upload_ca_handler::call_impl()
         {
+            if (j_bool_or_false(m_session->get_twofactor_config().at("twofactor_reset"), "is_active")) {
+                return state_type::done;
+            }
             if (m_num_generated_addrs < m_num_required_addrs) {
                 // Generate addresses to blind and upload, in a restartable fashion
                 // TODO: Server support for returning multiple addresses for AMP subaccounts
