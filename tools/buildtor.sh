@@ -34,7 +34,7 @@ case $target_triple in
         CONFIGURE_ARGS+=" --enable-android --host=${target_triple} --build=${host_triple}"
         ;;
     *-apple-ios | *-apple-iossimulator)
-        CONFIGURE_ARGS+=" ac_cv_func__NSGetEnviron=no --host=arm-apple-darwin"
+        CONFIGURE_ARGS+=" ac_cv_func__NSGetEnviron=no ac_cv_func_pipe2=no --host=arm-apple-darwin"
         ;;
     *-w64-mingw32)
         CONFIGURE_ARGS+=" --host=${target_triple} --build=${host_triple}"
