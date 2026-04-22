@@ -988,6 +988,12 @@ namespace green {
         };
     }
 
+    bool session_impl::is_twofactor_reset_active() const
+    {
+        locker_t locker(m_mutex);
+        return is_twofactor_reset_active(locker);
+    }
+
     bool session_impl::is_twofactor_reset_active(locker_t& locker) const
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());

@@ -228,6 +228,8 @@ namespace green {
         virtual std::vector<unsigned char> output_script_from_utxo(const nlohmann::json& utxo);
         std::vector<xpub_hdkey> keys_from_utxo(const nlohmann::json& utxo);
 
+        bool is_twofactor_reset_active() const;
+
     protected:
         // Locking per-session assumes the following thread safety model:
         // 1) Implementations noted "idempotent" can be called from multiple
