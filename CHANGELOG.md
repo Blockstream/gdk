@@ -1,5 +1,19 @@
 # Changelog
 
+## Release 0.77.3 - 26-04-28
+
+### Added
+
+### Changed
+- Singlesig: Increase Electrum sync interval from 1 to 2 seconds.
+- Dependencies: Update libwally to 1.5.3.
+- Dependencies: Update Rust dependency ureq to 3.3.0.
+- Build: Install runtime for gdk-dev component for use with mingw.
+
+### Fixed
+- Liquid: Fix AMP login under 2FA reset by avoiding confidential addresses upload.
+
+
 ## Release 0.77.2 - 26-04-03
 
 ### Added
