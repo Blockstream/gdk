@@ -96,7 +96,7 @@ impl TestSession {
 
         let mut network = NetworkParameters::default();
         network.electrum_url = Some(electrs.electrum_url.clone());
-        network.sync_interval = Some(1);
+        network.sync_interval = Some(2);
         network.development = true;
         network.set_asset_registry_url("https://assets.blockstream.info".to_string());
 

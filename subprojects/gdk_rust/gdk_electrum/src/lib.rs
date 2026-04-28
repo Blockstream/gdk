@@ -577,7 +577,7 @@ impl ElectrumSession {
             });
         }
 
-        let sync_interval = self.network.sync_interval.unwrap_or(1);
+        let sync_interval = self.network.sync_interval.unwrap_or(2);
 
         let mut syncer = Syncer {
             accounts: self.accounts.clone(),
