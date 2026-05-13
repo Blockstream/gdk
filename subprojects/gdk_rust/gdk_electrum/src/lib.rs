@@ -165,12 +165,13 @@ pub struct ElectrumSession {
 
     pub store: Option<Store>,
 
-    /// Spent utxos
+    /// Recently broadcast spent UTXOs.
     ///
-    /// Remember the spent utxos to avoid using them in transaction that are created after
-    /// the previous send/broadcast tx, but before the next sync.
-    ///
-    /// This set it emptied after every sync.
+    /// Inputs from locally broadcast transactions are kept here so coin selection
+    /// does not reuse them before the next sync observes the spend through Electrum.
+    /// Entries are removed once sync sees a transaction spending the same outpoint.
+    /// The set is in-memory only so in any case it is somehow missed to remove them
+    /// they are spent any way and it will be reset after a restart.
     pub recent_spent_utxos: Arc<RwLock<HashSet<BEOutPoint>>>,
 
     xr_cache: ExchangeRatesCache,
@@ -1063,6 +1064,10 @@ impl ElectrumSession {
         let confidential_utxos_only = opt.confidential_utxos_only.unwrap_or(false);
 
         for outpoint in outpoints {
+            // Skip if recently spent
+            if self.recent_spent_utxos.read()?.contains(&outpoint) {
+                continue;
+            }
             let utxo = account.txo(&outpoint, acc_store)?;
             let confirmations = match utxo.height {
                 None | Some(0) => 0,
@@ -1299,12 +1304,20 @@ impl Syncer {
             (account_nums, accounts_values)
         };
         let mut updated_txs: HashMap<BETxid, BETransaction> = HashMap::new();
+        let mut synced_spent_utxos = HashSet::new();
 
         for account in accounts_values {
-            self.sync_account(&account, client, last_statuses, &mut updated_txs, first_sync)?;
+            self.sync_account(
+                &account,
+                client,
+                last_statuses,
+                &mut updated_txs,
+                &mut synced_spent_utxos,
+                first_sync,
+            )?;
         }
 
-        self.empty_recent_spent_utxos()?;
+        self.remove_recent_spent_utxos(&synced_spent_utxos)?;
 
         // TODO: skip this computation if it's the first sync (no transaction notifications)
         let tx_ntfs = self.create_tx_notifications(updated_txs, &account_nums)?;
@@ -1381,6 +1394,7 @@ impl Syncer {
         client: &Client,
         last_statuses: &mut ScriptStatuses,
         updated_txs: &mut HashMap<BETxid, BETransaction>,
+        synced_spent_utxos: &mut HashSet<BEOutPoint>,
         first_sync: bool,
     ) -> Result<(), Error> {
         let map_script_txids = self.create_map_script_txids(account)?;
@@ -1589,6 +1603,7 @@ impl Syncer {
                     // Do not emit notifications for previous transactions that we fetched to
                     // compute the fee.
                     if !new_txs.is_previous.contains(&tx.0) {
+                        synced_spent_utxos.extend(tx.1.previous_outputs());
                         updated_txs.insert(tx.0, tx.1.clone());
                     }
                 }
@@ -1636,9 +1651,15 @@ impl Syncer {
         Ok(script_txid)
     }
 
-    fn empty_recent_spent_utxos(&self) -> Result<(), Error> {
+    fn remove_recent_spent_utxos(
+        &self,
+        synced_spent_utxos: &HashSet<BEOutPoint>,
+    ) -> Result<(), Error> {
+        if synced_spent_utxos.is_empty() {
+            return Ok(());
+        }
         let mut recent_spent_utxos = self.recent_spent_utxos.write()?;
-        *recent_spent_utxos = HashSet::new();
+        recent_spent_utxos.retain(|outpoint| !synced_spent_utxos.contains(outpoint));
         Ok(())
     }
 
