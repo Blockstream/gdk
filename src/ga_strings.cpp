@@ -1556,6 +1556,10 @@ namespace green {
         }; // Quick setup 2FA account, ideal for active spenders (2FA expires if you don\'t move funds for 1 year).
         const std::string id_radio_firmware{ "id_radio_firmware" }; // Radio firmware
         const std::string id_rate{ "id_rate" }; // Rate
+        const std::string id_rate_limited{ "id_rate_limited" }; // Rate limited response
+        const std::string id_rate_connection_limited{
+            "id_rate_connection_limited"
+        }; // Rate connection limited response
         const std::string id_rate_us{ "id_rate_us" }; // Rate us
         const std::string id_rate_your_experience{ "id_rate_your_experience" }; // Rate your experience
         const std::string id_read_more{ "id_read_more" }; // Read more

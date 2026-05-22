@@ -904,6 +904,8 @@ namespace green {
         extern const std::string id_quick_setup_2fa_account_ideal;
         extern const std::string id_radio_firmware;
         extern const std::string id_rate;
+        extern const std::string id_rate_limited;
+        extern const std::string id_rate_connection_limited;
         extern const std::string id_rate_us;
         extern const std::string id_rate_your_experience;
         extern const std::string id_read_more;

@@ -214,8 +214,36 @@ impl Error {
                 "id_invalid_pin"
             }
             PinClient(_) => "id_connection_failed",
+            ClientError(electrum_client::Error::Protocol(ref v)) => {
+                match v.get("code").and_then(serde_json::Value::as_i64) {
+                    Some(-32002) => "id_rate_limited",
+                    Some(-32003) => "id_rate_connection_limited",
+                    _ => "id_unknown",
+                }
+            }
             _ => "id_unknown",
         }
         .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::Error;
+    use gdk_common::electrum_client;
+    use serde_json::json;
+
+    #[test]
+    fn to_gdk_code_maps_electrum_rate_limit() {
+        assert_eq!(
+            Error::ClientError(electrum_client::Error::Protocol(json!({"code": -32002})))
+                .to_gdk_code(),
+            "id_rate_limited"
+        );
+        assert_eq!(
+            Error::ClientError(electrum_client::Error::Protocol(json!({"code": -32003})))
+                .to_gdk_code(),
+            "id_rate_connection_limited"
+        );
     }
 }
