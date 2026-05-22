@@ -10,7 +10,7 @@ case $target_triple in
     *-linux-gnu)
         CONFIGURE_ARGS+=" enable-ec_nistp_64_gcc_128"
         openssl_triple="linux-${HOST_ARCH}"
-        if [ "${CC}" == "clang" ]; then
+        if [ "${CC}" = "clang" ] && [ "${HOST_ARCH}" != "aarch64" ]; then
             openssl_triple+="-clang"
         fi
         ;;
