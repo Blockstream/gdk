@@ -3,7 +3,7 @@ if(MINGW OR APPLE)
     return()
 endif()
 
-if(DEFINED ENV{JAVA_HOME})
+if(DEFINED ENV{JAVA_HOME} AND NOT "$ENV{JAVA_HOME}" STREQUAL "")
     message("using java in $ENV{JAVA_HOME}")
     set(JAVA_HOME $ENV{JAVA_HOME})
 else()
