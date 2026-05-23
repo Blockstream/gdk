@@ -1,5 +1,18 @@
 # Changelog
 
+## Release 0.77.4 - 26-05-22
+
+### Added
+- Singlesig: Add new GDK errors when rate limited by Electrum.
+
+### Changed
+- Dependencies: Update Rust dependencies rand, openssl and rustls-webpki.
+
+### Fixed
+- Singlesig: Fix get_unspent_outputs returning just-spent utxos before getting new utxos from sync.
+- Build: Small fixes for OpenSSL build and JAVA_HOME variable usage.
+
+
 ## Release 0.77.3 - 26-04-28
 
 ### Added
