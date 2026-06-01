@@ -1,3 +1,8 @@
+.dockerhub_auth: &dockerhub_auth
+  - test -n "$DOCKER_AUTH_CONFIG_B64" || { echo "DOCKER_AUTH_CONFIG_B64 not set"; exit 1; }
+  - mkdir -p $HOME/.docker
+  - echo "$DOCKER_AUTH_CONFIG_B64" | base64 -d > $HOME/.docker/config.json
+  - chmod 0600 $HOME/.docker/config.json
 
 .build_setup:
   stage: docker_build
@@ -21,6 +26,8 @@
       changes:
         paths: [docker/*, tools/*, $DOCKER_BUILD_CONTEXT/*, cmake/profiles/*, gitlab/docker.yml, CMakeLists.txt, src/CMakeLists.txt, src/*/CMakeLists.txt]
         compare_to: master
+  before_script:
+    - *dockerhub_auth
   script:
     - docker pull ${IMAGE}:latest || true
     - >
