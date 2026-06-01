@@ -7,7 +7,9 @@ include:
   extends: .osx_env
   script:
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/${PLATFORM}"
-    - virtualenv venv && source venv/bin/activate && pip install -r ./tools/requirements.txt
+    - uv venv --python 3.14 venv-3.14
+    - source venv-3.14/bin/activate
+    - uv pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --${PLATFORM} static --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - rustup target add aarch64-apple-ios-sim
