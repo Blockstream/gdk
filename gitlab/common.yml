@@ -9,7 +9,7 @@
   tags: [ ga ]
 
 .python-image:
-  image: blockstream/gdk-python-builder@sha256:69d9f4e4ad1a1489da2a9125f76133d31fdbe331e18e11f0f7de69aae55f585e
+  image: blockstream/gdk-python-builder@sha256:e7e3fb17307b140a49a582c99750b38df1b0bf26d2f4fd568454e85ff4521c47
   tags: [ ga ]
 
 .ubuntu-image:
@@ -61,7 +61,7 @@
     # is left in an unconsistent state, just change the BUILD_IDX and you are good to go.
 .osx_env:
   variables:
-    BUILD_IDX: "0"
+    BUILD_IDX: "1"
     GDK_KEEP_DOWNLOADS: "1"
     UV_CACHE_DIR: "$CI_BUILDS_DIR/downloads/uv-cache"
     UV_PYTHON_INSTALL_DIR: "$CI_BUILDS_DIR/downloads/uv-python"

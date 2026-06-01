@@ -14,25 +14,25 @@ include:
     - auditwheel repair -w wheelhouse $INSTALL_PATH/share/python/*.whl
 
 
-build-linux-wheel-cp39:
+build-linux-wheel-cp313:
   extends: .linux-wheel
   variables:
-    PYTHON_VERSION: cp39-cp39
+    PYTHON_VERSION: cp313-cp313
 
 
-build-wheel-release:
+build-linux-wheel-release:
   extends: .linux-wheel
   when: manual
   parallel:
     matrix:
-      - PYTHON_VERSION: [cp310-cp310, cp311-cp311, cp312-cp312, cp313-cp313] # , cp39-cp39 included in the previous job
+      - PYTHON_VERSION: [cp39-cp39, cp310-cp310, cp311-cp311, cp312-cp312, cp314-cp314]
 
 
 release-python:
   tags:
     - garelease
   stage: release
-  needs: [build-linux-wheel-cp39, build_clang_osx]
+  needs: [build-linux-wheel-cp313, build_clang_osx]
   script:
     - mkdir gdk_dist
     - find wheelhouse/ -name *.whl -exec mv {} gdk_dist/ \;
@@ -49,7 +49,7 @@ release-python:
 jumbo-release-python:
   extends: .debian-image
   stage: release
-  needs: [build-linux-wheel-cp39, build_clang_osx, build-wheel-release]
+  needs: [build-linux-wheel-cp313, build_clang_osx, build-linux-wheel-release, build_osx_wheel_release]
   script:
     - suffix=${CI_COMMIT_TAG}
     - if [ -z ${suffix} ]; then suffix=${CI_COMMIT_SHORT_SHA}; fi
