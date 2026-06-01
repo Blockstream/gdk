@@ -43,7 +43,7 @@ esac
 
 mkdir build
 cd build
-../configure ${CONFIGURE_ARGS}
+../configure ${CONFIGURE_ARGS} ${CONFIGURE_LIBDIR_ARG}
 
 make libtor.a -j ${NUM_JOBS}
 make install

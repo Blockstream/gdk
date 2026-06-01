@@ -9,6 +9,7 @@ cmake -B ./build -S . \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=ON \
     -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}" \
-    -DBUILD_SHARED_LIBS:BOOL=OFF
+    -DBUILD_SHARED_LIBS:BOOL=OFF \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build ./build --parallel $NUM_JOBS
 cmake --install ./build

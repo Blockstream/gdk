@@ -70,7 +70,7 @@ esac
 CFLAGS+=" ${EXTRA_FLAGS}"
 LDFLAGS+=" ${EXTRA_FLAGS}"
 
-./configure ${CONFIGURE_ARGS}
+./configure ${CONFIGURE_ARGS} ${CONFIGURE_LIBDIR_ARG}
 make libsqlite3.la -j${NUM_JOBS}
 make install-data
 make install-libLTLIBRARIES

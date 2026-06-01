@@ -8,7 +8,6 @@
 !./tools/buildopenssl.sh
 !./tools/buildtinycbor.sh
 !./tools/buildtor.sh
-!./tools/zlib-1.3.patch
 !./tools/libevent-2.1.12.patch
 !./docker/android-bookworm/install_deps.sh
 !./docker/android/install_deps.sh

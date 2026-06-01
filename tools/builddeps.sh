@@ -179,17 +179,16 @@ build ${name} ${WALLYCORE_SRCDIR}
 
 # building zlib
 name="zlib"
-source_url="https://github.com/madler/zlib/archive/v1.3.tar.gz"
-source_name="zlib-1.3"
+source_url="https://github.com/madler/zlib/releases/download/v1.3.2/zlib-1.3.2.tar.gz"
+source_name="zlib-1.3.2"
 source_filename="${source_name}.tar.gz"
-source_hash="b5b06d60ce49c8ba700e0ba517fa07de80b5d4628a037f4be8ad16955be7a7c0"
+source_hash="bb329a0a2cd0274d05519d61c667c062e06990d72e125ee2dfa8de64f0119d16"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
-# WARNING: https://github.com/madler/zlib/issues/856
-cd tmp && patch -p1 < ${GDK_SOURCE_ROOT}/tools/zlib-1.3.patch && cd -
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
-    -DCMAKE_BUILD_TYPE=${cmake_build_type}
+    -DCMAKE_BUILD_TYPE=${cmake_build_type} \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --target zlibstatic zlib --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 # no better way to avoid installing dynamic lib, not to tell cmake to import static zlib
@@ -197,9 +196,9 @@ find ${GDK_BUILD_ROOT}/lib -name "libz.so*" -type l -delete
 find ${GDK_BUILD_ROOT}/lib -name "libz.so*" -type f -delete
 find ${GDK_BUILD_ROOT}/lib -name "libz*.dylib" -type f -delete
 find ${GDK_BUILD_ROOT}/lib -name "libz.dll*" -type f -delete
-# https://github.com/madler/zlib/issues/652
+# rename produced static library to match the name expected by other dependencies
 if [ ${BUILD} == "--mingw-w64" ]; then
-    mv ${GDK_BUILD_ROOT}/lib/libzlibstatic.a ${GDK_BUILD_ROOT}/lib/libz.a
+    mv ${GDK_BUILD_ROOT}/lib/libzs.a ${GDK_BUILD_ROOT}/lib/libz.a
 fi
 
 
@@ -221,7 +220,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DEVENT__DISABLE_DEBUG_MODE:BOOL=TRUE \
     -DEVENT__DISABLE_TESTS:BOOL=TRUE \
     -DEVENT__DISABLE_BENCHMARK:BOOL=TRUE \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -275,7 +275,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DJSON_BuildTests:BOOL=OFF \
     -DJSON_Install:BOOL=ON \
     -DJSON_MultipleHeaders:BOOL=ON \
-    -DJSON_SystemInclude:BOOL=ON
+    -DJSON_SystemInclude:BOOL=ON \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -291,7 +292,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
     -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -311,7 +313,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DMSGPACK_USE_STATIC_BOOST:BOOL=ON \
     -DMSGPACK_BUILD_DOCS:BOOL=OFF \
     -DMSGPACK_CXX14:BOOL=ON \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -333,7 +336,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DAUTOBAHN_BUILD_EXAMPLES:BOOL=OFF \
     -DCMAKE_PREFIX_PATH=${GDK_BUILD_ROOT} \
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -351,7 +355,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_BUILD_TYPE=${cmake_build_type} \
     -DGSL_STANDALONE_PROJECT:BOOL=OFF \
     -DGSL_TEST:BOOL=OFF \
-    -DGSL_INSTALL:BOOL=ON
+    -DGSL_INSTALL:BOOL=ON \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 
@@ -405,7 +410,8 @@ cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DFETCH_DEPS:BOOL=OFF \
     -DENABLE_TESTS:BOOL=OFF \
     -DCMAKE_PREFIX_PATH="${GDK_BUILD_ROOT}" \
-    -DBUILD_SHARED_LIBS:BOOL=OFF
+    -DBUILD_SHARED_LIBS:BOOL=OFF \
+    ${CMAKE_INSTALL_LIBDIR_ARG}
 cmake --build tmp/${source_name}/build --parallel $NUM_JOBS
 cmake --install tmp/${source_name}/build
 

@@ -45,7 +45,7 @@ case ${target_triple} in
 esac
 
 
-./configure ${CONFIGURE_ARGS}
+./configure ${CONFIGURE_ARGS} ${CONFIGURE_LIBDIR_ARG}
 make clean -k || echo >/dev/null
 make -j${NUM_JOBS}
 make -o configure install -j${NUM_JOBS}

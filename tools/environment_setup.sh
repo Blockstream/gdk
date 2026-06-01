@@ -26,6 +26,8 @@ case $BUILD in
         export CXX="clang++"
         export AR="ar"
         export RANLIB="ranlib"
+        export CMAKE_INSTALL_LIBDIR_ARG="-DCMAKE_INSTALL_LIBDIR=lib"
+        export CONFIGURE_LIBDIR_ARG="--libdir=${GDK_BUILD_ROOT}/lib"
         CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/clang.cmake
         if [ $HOST_PLATFORM == "darwin" ]; then
             export target_triple="${HOST_ARCH}-apple-darwin"
@@ -43,6 +45,8 @@ case $BUILD in
         export CXX="g++"
         export AR="ar"
         export RANLIB="ranlib"
+        export CMAKE_INSTALL_LIBDIR_ARG="-DCMAKE_INSTALL_LIBDIR=lib"
+        export CONFIGURE_LIBDIR_ARG="--libdir=${GDK_BUILD_ROOT}/lib"
         CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/gcc.cmake
         ;;
 
@@ -55,7 +59,7 @@ case $BUILD in
         export ANDROID_VERSION="23"
         export SDK_SYSROOT="${NDK_TOOLSDIR}/sysroot"
         SDK_LDFLAGS="-fuse-ld=lld"
-        case $TARGET_ARCH in 
+        case $TARGET_ARCH in
             armeabi-v7a)
                 export target_triple="armv7a-linux-android"
                 CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/android-armeabi-v7a.cmake

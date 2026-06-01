@@ -49,7 +49,7 @@ endif()
 find_package(Boost 1.87.0 EXACT REQUIRED COMPONENTS date_time thread filesystem log chrono system)
 # zlib
 set(ZLIB_ROOT ${CMAKE_PREFIX_PATH})
-find_package(ZLIB 1.3 EXACT REQUIRED)
+find_package(ZLIB 1.3.2 EXACT REQUIRED)
 # openSSL
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL 1.1.1 EXACT REQUIRED)

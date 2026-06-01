@@ -71,6 +71,6 @@ esac
 openssl_prefix="${GDK_BUILD_ROOT}"
 cd "${PRJ_SUBDIR}"
 
-./Configure $openssl_triple --prefix=${openssl_prefix} ${CONFIGURE_ARGS}
+./Configure $openssl_triple --prefix=${openssl_prefix} ${CONFIGURE_ARGS} ${CONFIGURE_LIBDIR_ARG}
 make -j${NUM_JOBS} 2>/dev/null
 make -j${NUM_JOBS} install_sw
