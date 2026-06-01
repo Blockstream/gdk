@@ -29,9 +29,16 @@ For Mac OSX:
 
 Install Xcode and brew if not installed, then
 ```
-brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig (optional) gnu-getopt gnu-tar
+brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig gnu-getopt (optional) gnu-tar
 xcode-select --install
 ```
+
+**IMPORTANT:** Since the build scripts require GNU-style `getopt` rather than the macOS BSD-style version, ensure that `gnu-getopt` is installed and added to your PATH right before running the build script:
+
+```bash
+$ PATH="$(brew --prefix gnu-getopt)/bin:$PATH" ./tools/build.sh ...
+```
+
 You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.X/bin`
 
 ## cmake build:
