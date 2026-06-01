@@ -50,7 +50,6 @@ test_clang_tidy:
 build_gcc_bullseye:
   extends: .debian-image
   stage: build
-  needs: [ test_format ]
   script:
     - ./tools/build.sh --gcc --buildtype release --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16 --enable-tests
     - cmake --build build-gcc --target green_gdk_java --parallel 16
@@ -180,15 +179,51 @@ build_clang_osx:
   stage: prebuild
   needs: [ test_format ]
   script:
-    - python3.9 -m venv venv
-    - source venv/bin/activate
-    - pip install -r ./tools/requirements.txt
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
-    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
     - mkdir -p wheelhouse
-    - cp $INSTALL_PATH/share/python/* wheelhouse
+    - uv venv --python 3.14 venv-3.14
+    - source venv-3.14/bin/activate
+    - uv pip install -r ./tools/requirements.txt
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
+    - cp $INSTALL_PATH/share/python/*.whl wheelhouse
+    - deactivate
+
+
+build_osx_wheel_release:
+  extends:
+    - .osx_env
+    - .py_release
+  when: manual
+  parallel:
+    matrix:
+      - RUNNER: [ia, m4]
+  tags:
+    - osx-$RUNNER
+  stage: prebuild
+  needs: [ test_format ]
+  script:
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
+    - mkdir -p wheelhouse
+    - uv venv --python 3.9 venv-3.9
+    - source venv-3.9/bin/activate
+    - uv pip install -r ./tools/requirements.txt
+    - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
+    - deactivate
+    # Build release-wheel variants 3.10-3.13 reusing the same C++/Rust build artifacts.
+    - for PYTHON_VERSION in 3.10 3.11 3.12 3.13; do
+    -   uv venv --python $PYTHON_VERSION venv-$PYTHON_VERSION
+    -   source venv-$PYTHON_VERSION/bin/activate
+    -   uv pip install -r ./tools/requirements.txt
+    -   cmake build-clang -DPython_FIND_VIRTUALENV=ONLY -DPython_EXECUTABLE=$PWD/venv-$PYTHON_VERSION/bin/python
+    -   cmake --build build-clang --target python-wheel --parallel 16
+    -   cmake --install build-clang --prefix $INSTALL_PATH --component gdk-python
+    -   cp $INSTALL_PATH/share/python/*.whl wheelhouse
+    -   deactivate
+    - done
 
 
 build_aws_lambda:
