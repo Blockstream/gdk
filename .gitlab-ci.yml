@@ -179,14 +179,14 @@ build_clang_osx:
   stage: prebuild
   needs: [ test_format ]
   script:
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
-    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
-    - mkdir -p wheelhouse
     - uv venv --python 3.14 venv-3.14
     - source venv-3.14/bin/activate
     - uv pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
+    - mkdir -p wheelhouse
     - cp $INSTALL_PATH/share/python/*.whl wheelhouse
     - deactivate
 
@@ -204,14 +204,15 @@ build_osx_wheel_release:
   stage: prebuild
   needs: [ test_format ]
   script:
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
-    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
-    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
-    - mkdir -p wheelhouse
     - uv venv --python 3.9 venv-3.9
     - source venv-3.9/bin/activate
     - uv pip install -r ./tools/requirements.txt
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
+    - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
+    - mkdir -p wheelhouse
+    - cp $INSTALL_PATH/share/python/*.whl wheelhouse
     - deactivate
     # Build release-wheel variants 3.10-3.13 reusing the same C++/Rust build artifacts.
     - for PYTHON_VERSION in 3.10 3.11 3.12 3.13; do
