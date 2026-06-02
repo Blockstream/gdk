@@ -12,7 +12,7 @@ set(SDK_NAME iphoneos)
 set(CMAKE_C_COMPILER_TARGET arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
 set(CMAKE_CXX_COMPILER_TARGET arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
 set(CMAKE_LIBRARY_ARCHITECTURE arm64-apple-ios${CMAKE_OSX_DEPLOYMENT_TARGET})
-execute_process(COMMAND xcodebuild -version -sdk iphone Path
+execute_process(COMMAND xcodebuild -version -sdk iphoneos Path
     OUTPUT_VARIABLE CMAKE_OSX_SYSROOT
     OUTPUT_STRIP_TRAILING_WHITESPACE
     ERROR_VARIABLE _execError
