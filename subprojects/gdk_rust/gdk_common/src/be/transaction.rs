@@ -7,6 +7,7 @@ use bitcoin::consensus::encode::serialize as btc_ser;
 use bitcoin::hashes::hex::FromHex;
 use bitcoin::hashes::Hash;
 use bitcoin::Sequence;
+use elements::confidential::{Asset, Value};
 use elements::encode::deserialize as elm_des;
 use elements::encode::serialize as elm_ser;
 use elements::hex::ToHex;
@@ -14,6 +15,42 @@ use log::trace;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::{Deref, DerefMut};
+
+fn get_unblinded<'a>(
+    tx: &elements::Transaction,
+    vout: u32,
+    all_unblinded: &'a HashMap<elements::OutPoint, elements::TxOutSecrets>,
+) -> Option<&'a elements::TxOutSecrets> {
+    let outpoint = elements::OutPoint {
+        txid: tx.txid(),
+        vout,
+    };
+    let output = tx.output.get(vout as usize)?;
+    all_unblinded.get(&outpoint).filter(|secrets| check_comm(output, secrets))
+}
+
+pub fn check_comm(output: &elements::TxOut, secrets: &elements::TxOutSecrets) -> bool {
+    let asset_matches = match output.asset {
+        Asset::Confidential(_) => {
+            Asset::new_confidential(&crate::EC, secrets.asset, secrets.asset_bf) == output.asset
+        }
+        _ => true,
+    };
+    let value_matches = match output.value {
+        Value::Confidential(_) => {
+            Value::new_confidential_from_assetid(
+                &crate::EC,
+                secrets.value,
+                secrets.asset,
+                secrets.value_bf,
+                secrets.asset_bf,
+            ) == output.value
+        }
+        _ => true,
+    };
+
+    asset_matches && value_matches
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash)]
 pub enum BETransaction {
@@ -138,11 +175,7 @@ impl BETransaction {
         match self {
             Self::Bitcoin(tx) => Some(tx.output[vout as usize].value.to_sat()),
             Self::Elements(tx) => {
-                let outpoint = elements::OutPoint {
-                    txid: tx.txid(),
-                    vout,
-                };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.value)
+                get_unblinded(tx, vout, all_unblinded).map(|unblinded| unblinded.value)
             }
         }
     }
@@ -180,12 +213,19 @@ impl BETransaction {
         match self {
             Self::Bitcoin(_) => None,
             Self::Elements(tx) => {
-                let outpoint = elements::OutPoint {
-                    txid: tx.txid(),
-                    vout,
-                };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset.clone())
+                get_unblinded(tx, vout, all_unblinded).map(|unblinded| unblinded.asset)
             }
+        }
+    }
+
+    pub fn get_unblinded(
+        &self,
+        vout: u32,
+        all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
+    ) -> Option<elements::TxOutSecrets> {
+        match self {
+            Self::Bitcoin(_) => None,
+            Self::Elements(tx) => get_unblinded(tx, vout, all_unblinded).copied(),
         }
     }
 
@@ -197,11 +237,7 @@ impl BETransaction {
         match self {
             Self::Bitcoin(_) => None,
             Self::Elements(tx) => {
-                let outpoint = elements::OutPoint {
-                    txid: tx.txid(),
-                    vout,
-                };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.asset_bf.to_hex())
+                get_unblinded(tx, vout, all_unblinded).map(|unblinded| unblinded.asset_bf.to_hex())
             }
         }
     }
@@ -214,11 +250,7 @@ impl BETransaction {
         match self {
             Self::Bitcoin(_) => None,
             Self::Elements(tx) => {
-                let outpoint = elements::OutPoint {
-                    txid: tx.txid(),
-                    vout,
-                };
-                all_unblinded.get(&outpoint).map(|unblinded| unblinded.value_bf.to_hex())
+                get_unblinded(tx, vout, all_unblinded).map(|unblinded| unblinded.value_bf.to_hex())
             }
         }
     }
@@ -380,15 +412,21 @@ impl BETransaction {
                 let mut result = HashMap::new();
                 for input in tx.input.iter() {
                     let outpoint = input.previous_output;
-                    if let Some(unblinded) = all_unblinded.get(&outpoint) {
+                    if let (Some(value), Some(asset)) = (
+                        all_txs.get_previous_output_value(
+                            &BEOutPoint::Elements(outpoint),
+                            all_unblinded,
+                        ),
+                        all_txs.get_previous_output_asset(outpoint, all_unblinded),
+                    ) {
                         trace!(
                             "tx_id: {} unblinded previous output {} {}",
                             tx.txid(),
                             outpoint,
-                            unblinded.value
+                            value
                         );
-                        let asset_id_str = unblinded.asset.to_hex();
-                        *result.entry(asset_id_str).or_default() -= unblinded.value as i64;
+                        let asset_id_str = asset.to_hex();
+                        *result.entry(asset_id_str).or_default() -= value as i64;
                         // TODO check overflow
                     }
                 }
@@ -397,7 +435,7 @@ impl BETransaction {
                         txid: tx.txid(),
                         vout: i,
                     };
-                    if let Some(unblinded) = all_unblinded.get(&outpoint) {
+                    if let Some(unblinded) = get_unblinded(tx, i, all_unblinded) {
                         trace!(
                             "tx_id: {} unblinded output {} {}",
                             tx.txid(),

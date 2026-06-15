@@ -639,10 +639,7 @@ impl Account {
         let script_pubkey = tx.output_script(vout);
         let account_path = acc_store.get_path(&script_pubkey)?;
         let satoshi = tx.output_value(vout, &acc_store.unblinded).unwrap_or_default();
-        let txoutsecrets = match outpoint {
-            BEOutPoint::Bitcoin(_) => None,
-            BEOutPoint::Elements(o) => acc_store.unblinded.get(&o).cloned(),
-        };
+        let txoutsecrets = tx.get_unblinded(vout, &acc_store.unblinded);
 
         let txoutcommitments = match tx {
             BETransaction::Bitcoin(_) => None,
@@ -687,8 +684,8 @@ impl Account {
                 let script_pubkey = txe.tx.output_script(vout);
                 if !script_pubkey.is_empty() && acc_store.paths.contains_key(&script_pubkey) {
                     let outpoint = txe.tx.outpoint(vout);
-                    if let BEOutPoint::Elements(outpoint) = outpoint {
-                        if acc_store.unblinded.get(&outpoint).is_none() {
+                    if matches!(outpoint, BEOutPoint::Elements(_)) {
+                        if txe.tx.get_unblinded(vout, &acc_store.unblinded).is_none() {
                             // If Liquid, ignore outputs we cannot unblind
                             continue;
                         }

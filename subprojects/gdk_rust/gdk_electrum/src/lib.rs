@@ -1848,12 +1848,13 @@ fn unblind_output(
             let script = output.script_pubkey.clone();
             let blinding_key = asset_blinding_key_to_ec_private_key(master_blinding, &script);
             let txout_secrets = output.unblind(&EC, blinding_key)?;
-            info!(
-                "Unblinded outpoint:{} asset:{} value:{}",
-                outpoint.map(|out| out.to_string()).unwrap_or_default(),
-                txout_secrets.asset.to_string(),
-                txout_secrets.value
-            );
+            let outpoint = outpoint.map(|out| out.to_string()).unwrap_or_default();
+            let asset = txout_secrets.asset.to_string();
+            let value = txout_secrets.value;
+            if !check_comm(&output, &txout_secrets) {
+                return Err(Error::Generic("unblinded asset does not match commitment".into()));
+            }
+            debug!("Unblinded outpoint:{outpoint} asset:{asset} value:{value}");
 
             Ok(txout_secrets)
         }
