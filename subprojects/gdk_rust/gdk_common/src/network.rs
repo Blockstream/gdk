@@ -202,12 +202,31 @@ pub fn build_request_agent(maybe_proxy: Option<&str>) -> Result<ureq::Agent, ure
 
     if let Some(proxy) = maybe_proxy {
         if !proxy.is_empty() {
-            let proxy = ureq::Proxy::new(proxy)?;
+            let proxy = build_proxy(proxy)?;
             builder = builder.proxy(Some(proxy));
         }
     }
 
     Ok(builder.build().new_agent())
+}
+
+fn build_proxy(proxy: &str) -> Result<ureq::Proxy, ureq::Error> {
+    let proxy = ureq::Proxy::new(proxy.trim())?;
+    if proxy.protocol() != ureq::ProxyProtocol::Socks5 {
+        return Ok(proxy);
+    }
+
+    let mut proxy_builder = ureq::Proxy::builder(ureq::ProxyProtocol::Socks5)
+        .host(proxy.host())
+        .port(proxy.port())
+        .resolve_target(false);
+    if let Some(username) = proxy.username() {
+        proxy_builder = proxy_builder.username(username);
+    }
+    if let Some(password) = proxy.password() {
+        proxy_builder = proxy_builder.password(password);
+    }
+    proxy_builder.build()
 }
 
 #[cfg(test)]
