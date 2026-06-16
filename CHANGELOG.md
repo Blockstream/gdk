@@ -1,13 +1,13 @@
 # Changelog
 
-## Release 0.77.5 - 26-06-15
+## Release 0.77.6 - 26-06-16
 
 ### Added
 - Python: Add Python 3.14 wheels for release
 - Python: Add OSX Python wheels from 3.10-3.14 for release
 
 ### Changed
-- Dependencies: Update zlib to 1.3.2, libwally
+- Dependencies: Update zlib to 1.3.2, libwally to 1.5.4
 - Dependencies: Update for Rust dependency
 
 ### Fixed
