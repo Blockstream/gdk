@@ -1908,6 +1908,9 @@ namespace green {
                     m_twofactor_data = { { "is_sms_backup", true } };
                 }
                 const auto data = j_str_or_empty(m_details, "data");
+                if (m_method_to_update == "sms" && !data.empty() && !is_valid_sms_2fa_phone_number(data)) {
+                    throw user_error(res::id_invalid_phone_number_format);
+                }
                 m_auth_data = m_session->init_enable_twofactor(m_method_to_update, data, m_twofactor_data);
             } else {
                 // gauth doesn't have an init_enable step

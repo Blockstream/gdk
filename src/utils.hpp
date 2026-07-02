@@ -144,6 +144,8 @@ namespace green {
     // Check if str represents a valid utf-8 string
     bool is_valid_utf8(const std::string& str);
 
+    bool is_valid_sms_2fa_phone_number(const std::string& number);
+
     // Set an optional variable, which must be empty or have the same value
     template <typename T> static bool set_optional_variable(std::optional<T>& var, T&& new_value)
     {

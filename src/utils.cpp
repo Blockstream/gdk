@@ -763,6 +763,11 @@ namespace green {
         return false;
     }
 
+    bool is_valid_sms_2fa_phone_number(const std::string& number)
+    {
+        return boost::algorithm::starts_with(number, "+") && !boost::algorithm::starts_with(number, "+0");
+    }
+
 } // namespace green
 
 namespace {
