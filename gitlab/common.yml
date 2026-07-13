@@ -73,7 +73,7 @@
     - mkdir -p "$UV_CACHE_DIR" "$UV_PYTHON_INSTALL_DIR"
     - ln -s $CI_BUILDS_DIR/downloads downloads
     - brew install llvm@17
-    - export BREW_PREFIX=$( [[ $(uname -m) == "arm64" ]] && echo "/opt/homebrew" || echo "/usr/local" )
+    - export BREW_PREFIX="$(brew --prefix)"
     - export LLVM_PATH="$BREW_PREFIX/opt/llvm@17"
     - export PATH="$LLVM_PATH/bin:$PATH"
     - export CC="$LLVM_PATH/bin/clang"

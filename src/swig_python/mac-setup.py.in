@@ -25,7 +25,6 @@ extra_objects = [
     "@OPENSSL_SSL_LIBRARY@",
     "@OPENSSL_CRYPTO_LIBRARY@",
     "@ZLIB_LIBRARIES@",
-    "${Python_LIBRARIES}",
     ]
 
 

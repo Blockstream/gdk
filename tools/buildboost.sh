@@ -67,9 +67,16 @@ elif [ \( "$BUILD" = "--iphone" \) -o \( "$BUILD" = "--iphonesim" \) ]; then
           ${boost_src_home}/tools/build/src/engine/build.sh
     ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS
 
+    BOOST_DARWIN_ARCH="arm"
+    BOOST_DARWIN_TOOLSET="darwin-arm"
+    if [ "$BUILD" = "--iphonesim" ] && [ "${SDK_ARCH}" = "x86_64" ]; then
+        BOOST_DARWIN_ARCH="x86"
+        BOOST_DARWIN_TOOLSET="darwin-x86"
+    fi
+
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
-using darwin : arm :
+using darwin : ${BOOST_DARWIN_ARCH} :
 ${CXX}
 :
 <root>${SDK_SYSROOT}
@@ -90,7 +97,7 @@ $(compile_flags $@)
 ;
 EOF
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 $B2_LIBS toolset=darwin-arm target-os=iphone link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS toolset=${BOOST_DARWIN_TOOLSET} target-os=iphone link=static release install
 elif [ \( "$BUILD" = "--mingw-w64" \) ]; then
     rm -rf "$boost_src_home/tools/build/src/user-config.jam"
     cat > "$boost_src_home/tools/build/src/user-config.jam" << EOF
@@ -117,9 +124,22 @@ else
 
     EXTRAFLAGS=""
     LINKFLAGS=""
+    B2_TARGET_ARGS=""
+
+    if [ "$(uname)" = "Darwin" ] && [ "${BUILD}" = "--clang" ] && [[ "${target_triple}" = *"-apple-darwin" ]]; then
+        TARGET_CPU="${target_triple%%-*}"
+        case "${TARGET_CPU}" in
+            arm64|aarch64)
+                B2_TARGET_ARGS="architecture=arm address-model=64 target-os=darwin"
+                ;;
+            x86_64)
+                B2_TARGET_ARGS="architecture=x86 address-model=64 target-os=darwin"
+                ;;
+        esac
+    fi
 
     cxxflags="$CXXFLAGS -fvisibility=hidden -DBOOST_LOG_NO_ASIO -DBOOST_LOG_WITHOUT_EVENT_LOG -DBOOST_LOG_WITHOUT_SYSLOG -DBOOST_LOG_WITHOUT_IPC -DBOOST_LOG_WITHOUT_DEBUG_OUTPUT -DBOOST_LOG_WITHOUT_SETTINGS_PARSERS ${@}"
     ./bootstrap.sh --prefix="$boost_bld_home" $BOOTSTRAP_LIBS --with-toolset=${TOOLSET}
     ./b2 --clean
-    ./b2 -j$NUM_JOBS -d0 $B2_LIBS cxxflags="$cxxflags" $LINKFLAGS link=static release install
+    ./b2 -j$NUM_JOBS -d0 $B2_LIBS $B2_TARGET_ARGS cxxflags="$cxxflags" $LINKFLAGS link=static release install
 fi

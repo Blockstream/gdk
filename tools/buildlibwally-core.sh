@@ -33,6 +33,13 @@ case ${target_triple} in
         CONFIGURE_ARGS+=" --disable-swig-java --host=${target_triple} --build=${host_triple}"
         ;;
     *-apple-darwin)
+        if [ "${target_triple}" != "${host_triple}" ]; then
+            AUTOCONF_HOST="${target_triple}"
+            if [ "${AUTOCONF_HOST}" = "arm64-apple-darwin" ]; then
+                AUTOCONF_HOST="aarch64-apple-darwin"
+            fi
+            CONFIGURE_ARGS+=" --disable-swig-java --host=${AUTOCONF_HOST} --build=${host_triple}"
+        fi
         CFLAGS+=" -I${JAVA_HOME}/include -I${JAVA_HOME}/include/darwin"
         ;&
     *)

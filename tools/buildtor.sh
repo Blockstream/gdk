@@ -34,10 +34,26 @@ case $target_triple in
         CONFIGURE_ARGS+=" --enable-android --host=${target_triple} --build=${host_triple}"
         ;;
     *-apple-ios | *-apple-iossimulator)
-        CONFIGURE_ARGS+=" ac_cv_func__NSGetEnviron=no ac_cv_func_pipe2=no --host=arm-apple-darwin"
+        if [[ "${target_triple}" == "x86_64-apple-iossimulator" ]]; then
+            AUTOCONF_HOST="x86_64-apple-darwin"
+        elif [[ "${target_triple}" == *"-apple-iossimulator" ]]; then
+            AUTOCONF_HOST="arm-apple-darwin"
+        else
+            AUTOCONF_HOST="arm-apple-darwin"
+        fi
+        CONFIGURE_ARGS+=" ac_cv_func__NSGetEnviron=no ac_cv_func_pipe2=no --host=${AUTOCONF_HOST} --build=${host_triple}"
         ;;
     *-w64-mingw32)
         CONFIGURE_ARGS+=" --host=${target_triple} --build=${host_triple}"
+        ;;
+    *-apple-darwin)
+        if [ "${target_triple}" != "${host_triple}" ]; then
+            AUTOCONF_HOST="${target_triple}"
+            if [ "${AUTOCONF_HOST}" = "arm64-apple-darwin" ]; then
+                AUTOCONF_HOST="aarch64-apple-darwin"
+            fi
+            CONFIGURE_ARGS+=" --host=${AUTOCONF_HOST} --build=${host_triple}"
+        fi
         ;;
 esac
 

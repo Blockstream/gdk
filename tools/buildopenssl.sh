@@ -17,7 +17,18 @@ case $target_triple in
 
     *-apple-darwin)
         CONFIGURE_ARGS+=""
-        openssl_triple="darwin64-${HOST_ARCH}-cc"
+        case $target_triple in
+            x86_64-apple-darwin)
+                openssl_triple="darwin64-x86_64-cc"
+                ;;
+            arm64-apple-darwin | aarch64-apple-darwin)
+                openssl_triple="darwin64-arm64-cc"
+                ;;
+            *)
+                echo "Unsupported macOS target triple for OpenSSL: ${target_triple}"
+                exit 1
+                ;;
+        esac
         ;;
 
     armv7a-linux-android)

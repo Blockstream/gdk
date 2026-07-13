@@ -49,6 +49,46 @@ if [ -n "$TRIPLE" ]; then
     ARTIFACT_PATH_HINT=${OUTPUT_DIR}/${TRIPLE}
 fi
 
+if [ "$(uname)" = "Darwin" ]; then
+    case "${TRIPLE}" in
+        aarch64-apple-ios)
+            APPLE_SDK="iphoneos"
+            APPLE_MIN_FLAG="-miphoneos-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+            APPLE_CLANG_TARGET="arm64-apple-ios${MACOSX_DEPLOYMENT_TARGET}"
+            ;;
+        x86_64-apple-ios)
+            APPLE_SDK="iphonesimulator"
+            APPLE_MIN_FLAG="-mios-simulator-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+            APPLE_CLANG_TARGET="x86_64-apple-ios${MACOSX_DEPLOYMENT_TARGET}-simulator"
+            ;;
+        aarch64-apple-ios-sim)
+            APPLE_SDK="iphonesimulator"
+            APPLE_MIN_FLAG="-mios-simulator-version-min=${MACOSX_DEPLOYMENT_TARGET}"
+            APPLE_CLANG_TARGET="arm64-apple-ios${MACOSX_DEPLOYMENT_TARGET}-simulator"
+            ;;
+        *)
+            APPLE_SDK=""
+            APPLE_CLANG_TARGET=""
+            ;;
+    esac
+
+    if [ -n "${APPLE_SDK}" ]; then
+        APPLE_CC=$(xcrun --sdk ${APPLE_SDK} --find clang)
+        export SDKROOT=$(xcrun --sdk ${APPLE_SDK} --show-sdk-path)
+        export IPHONEOS_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}
+
+        APPLE_TARGET_CFLAGS="--target=${APPLE_CLANG_TARGET} -isysroot ${SDKROOT} ${APPLE_MIN_FLAG}"
+        TARGET_ENV_SUFFIX="${TRIPLE//-/_}"
+        TARGET_ENV_SUFFIX_UPPER="${TARGET_ENV_SUFFIX^^}"
+
+        export "CC_${TARGET_ENV_SUFFIX}=${APPLE_CC}"
+        export "CFLAGS_${TARGET_ENV_SUFFIX}=${APPLE_TARGET_CFLAGS}"
+        export "CXXFLAGS_${TARGET_ENV_SUFFIX}=${APPLE_TARGET_CFLAGS}"
+        export "CARGO_TARGET_${TARGET_ENV_SUFFIX_UPPER}_LINKER=${APPLE_CC}"
+        export TARGET_CFLAGS="${APPLE_TARGET_CFLAGS}"
+    fi
+fi
+
 if [[ ${TRIPLE} == *"android"* ]];then
     export PATH=${PATH}:${ANDROID_TOOLCHAIN_ROOT}/bin
     export RUSTFLAGS="-L${SOURCE_DIR}/libgcc"

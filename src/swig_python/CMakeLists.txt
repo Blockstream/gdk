@@ -15,7 +15,18 @@ endif()
 string(TOUPPER ${CMAKE_BUILD_TYPE} _upper_build_type)
 set(_python_C_FLAGS ${CMAKE_C_FLAGS} ${CMAKE_F_FLAGS_${_upper_build_type}})
 set(_python_L_FLAGS "${CMAKE_SHARED_LINKER_FLAGS}")
+set(_python_env_extra)
 if(APPLE)
+    if(DEFINED CMAKE_OSX_ARCHITECTURES)
+        # Ensure setuptools compiles/extensions for the selected macOS target arch, not the host arch.
+        set(_python_archflags "-arch ${CMAKE_OSX_ARCHITECTURES}")
+        set(_python_C_FLAGS "${_python_C_FLAGS} ${_python_archflags}")
+        set(_python_L_FLAGS "${_python_L_FLAGS} ${_python_archflags}")
+        set(_python_env_extra
+            "ARCHFLAGS=${_python_archflags}"
+            "_PYTHON_HOST_PLATFORM=macosx-${CMAKE_OSX_DEPLOYMENT_TARGET}-${CMAKE_OSX_ARCHITECTURES}"
+        )
+    endif()
     set(_python_L_FLAGS "${_python_L_FLAGS} -framework Security")
 endif()
 
@@ -43,10 +54,11 @@ endif()
 
 add_custom_command(OUTPUT python-wheel-canary-file
     COMMAND cmake -E env
-        LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_pythonLFlags}
-        CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_pythonCFlags}
-        CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_pythonCFlags}
-        CC=${CMAKE_C_COMPILER} CFLAGS=${_pythonCFlags}
+        ${_python_env_extra}
+        LDSHARED=${CMAKE_C_COMPILER} LDFLAGS=${_python_L_FLAGS}
+        CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_python_C_FLAGS}
+        CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_python_C_FLAGS}
+        CC=${CMAKE_C_COMPILER} CFLAGS=${_python_C_FLAGS}
         ${Python_EXECUTABLE} -m build
     COMMAND touch python-wheel-canary-file
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/green_gdk

@@ -6,13 +6,13 @@ include:
 .ios_release:
   extends: .osx_env
   script:
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/${PLATFORM}"
+    - TARGET_ARCH="${GDK_MACOS_TARGET_ARCH}"
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/${PLATFORM}-${TARGET_ARCH}"
     - uv venv --python 3.14 venv-3.14
     - source venv-3.14/bin/activate
     - uv pip install -r ./tools/requirements.txt
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --${PLATFORM} static --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
-    - rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
     - ./tools/build.sh --${PLATFORM} static --buildtype release --no-deps-rebuild --external-deps-dir $PREBUILT_DIR --parallel 16 --install $INSTALL_PATH
   artifacts:
     name: "$CI_JOB_NAME-$CI_COMMIT_SHORT_SHA"
@@ -28,6 +28,7 @@ build_osx_ios:
     - osx-m4
   stage: build
   variables:
+    GDK_MACOS_TARGET_ARCH: "arm64"
     INSTALL_PATH: "gdk-iphone"
     PLATFORM: "iphone"
 
@@ -38,6 +39,7 @@ build_osx_ios_sim_arm64:
     - osx-m4
   stage: build
   variables:
+    GDK_MACOS_TARGET_ARCH: "arm64"
     INSTALL_PATH: "gdk-iphonesim-arm64"
     PLATFORM: "iphonesim"
 
@@ -45,9 +47,10 @@ build_osx_ios_sim_arm64:
 build_osx_ios_sim_x86_64:
   extends: .ios_release
   tags:
-    - osx-ia
+    - osx-m4
   stage: build
   variables:
+    GDK_MACOS_TARGET_ARCH: "x86_64"
     INSTALL_PATH: "gdk-iphonesim-x86_64"
     PLATFORM: "iphonesim"
 

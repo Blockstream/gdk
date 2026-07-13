@@ -173,16 +173,16 @@ build_clang_osx:
     - .py_release
   parallel:
     matrix:
-      - RUNNER: [ia, m4]
+      - GDK_MACOS_TARGET_ARCH: [arm64, x86_64]
   tags:
-    - osx-$RUNNER
+    - osx-m4
   stage: prebuild
   needs: [ test_format ]
   script:
     - uv venv --python 3.14 venv-3.14
     - source venv-3.14/bin/activate
     - uv pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-$GDK_MACOS_TARGET_ARCH"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
@@ -198,16 +198,16 @@ build_osx_wheel_release:
   when: manual
   parallel:
     matrix:
-      - RUNNER: [ia, m4]
+      - GDK_MACOS_TARGET_ARCH: [arm64, x86_64]
   tags:
-    - osx-$RUNNER
+    - osx-m4
   stage: prebuild
   needs: [ test_format ]
   script:
     - uv venv --python 3.9 venv-3.9
     - source venv-3.9/bin/activate
     - uv pip install -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx"
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-$GDK_MACOS_TARGET_ARCH"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16

@@ -6,12 +6,18 @@ TARGET_ARCH=$2
 
 export HOST_ARCH=$(uname -m)
 export HOST_PLATFORM=$(uname -s | tr '[:upper:]' '[:lower:]')
+
+HOST_ARCH_TRIPLE=${HOST_ARCH}
+if [ "${HOST_ARCH}" = "arm64" ]; then
+    HOST_ARCH_TRIPLE="aarch64"
+fi
+
 case $HOST_PLATFORM in
     linux)
-        export host_triple="${HOST_ARCH}-linux-gnu"
+        export host_triple="${HOST_ARCH_TRIPLE}-linux-gnu"
         ;;
     darwin)
-        export host_triple="${HOST_ARCH}-apple-darwin"
+        export host_triple="${HOST_ARCH_TRIPLE}-apple-darwin"
         ;;
     *)
         echo "Unsupported platform: $HOST_PLATFORM"
@@ -30,12 +36,28 @@ case $BUILD in
         export CONFIGURE_LIBDIR_ARG="--libdir=${GDK_BUILD_ROOT}/lib"
         CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/clang.cmake
         if [ $HOST_PLATFORM == "darwin" ]; then
-            export target_triple="${HOST_ARCH}-apple-darwin"
+            if [ -n "${GDK_MACOS_TARGET_ARCH}" ]; then
+                case "${GDK_MACOS_TARGET_ARCH}" in
+                    arm64|x86_64)
+                        ;;
+                    *)
+                        echo "Unsupported GDK_GDK_MACOS_TARGET_ARCH: ${GDK_MACOS_TARGET_ARCH} (expected arm64 or x86_64)"
+                        exit 1
+                        ;;
+                esac
+                export target_triple="${GDK_MACOS_TARGET_ARCH}-apple-darwin"
+                export CMAKE_OSX_ARCHITECTURES="${GDK_MACOS_TARGET_ARCH}"
+                export SDK_ARCH="${GDK_MACOS_TARGET_ARCH}"
+            else
+                export target_triple="${HOST_ARCH}-apple-darwin"
+                export CMAKE_OSX_ARCHITECTURES="${HOST_ARCH}"
+                export SDK_ARCH="${HOST_ARCH}"
+            fi
             CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/macOS.cmake
             export SDK_SYSROOT=$(xcrun --show-sdk-path)
-            SDK_CFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
-            SDK_CXXFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
-            SDK_LDFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15"
+            SDK_CFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15 -arch ${SDK_ARCH}"
+            SDK_CXXFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15 -arch ${SDK_ARCH}"
+            SDK_LDFLAGS+=" -isysroot${SDK_SYSROOT} -mmacosx-version-min=10.15 -arch ${SDK_ARCH}"
         fi
         ;;
 
@@ -116,13 +138,33 @@ case $BUILD in
         ;;
 
     "--iphonesim")
-        export target_triple="${HOST_ARCH}-apple-iossimulator"
+        TARGET_ARCH_TRIPLE="${HOST_ARCH}"
+        if [ -n "${GDK_MACOS_TARGET_ARCH}" ]; then
+            case "${GDK_MACOS_TARGET_ARCH}" in
+                arm64|x86_64)
+                    SDK_ARCH="${GDK_MACOS_TARGET_ARCH}"
+                    ;;
+                *)
+                    echo "Unsupported GDK_MACOS_TARGET_ARCH: ${GDK_MACOS_TARGET_ARCH} (expected arm64 or x86_64)"
+                    exit 1
+                    ;;
+            esac
+        else
+            SDK_ARCH="${HOST_ARCH}"
+        fi
+
+        if [ "${SDK_ARCH}" = "arm64" ]; then
+            TARGET_ARCH_TRIPLE="aarch64"
+        else
+            TARGET_ARCH_TRIPLE="${SDK_ARCH}"
+        fi
+
+        export target_triple="${TARGET_ARCH_TRIPLE}-apple-iossimulator"
         CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/iphonesimulator.cmake
         export AR=$(xcrun --sdk iphonesimulator --find ar)
         export RANLIB=$(xcrun --sdk iphonesimulator --find ranlib)
         export CC=$(xcrun --sdk iphonesimulator --find cc)
         export CXX=$(xcrun --sdk iphonesimulator --find c++)
-        SDK_ARCH=${HOST_ARCH}
         IOS_PLATFORM=iPhoneSimulator
         export SDK_SYSROOT=$(xcrun --sdk iphonesimulator --show-sdk-path)
         export IOS_SDK_PLATFORM_PATH=$(xcrun --sdk iphonesimulator --show-sdk-platform-path)
