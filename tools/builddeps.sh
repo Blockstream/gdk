@@ -252,10 +252,10 @@ ${GDK_SOURCE_ROOT}/tools/build${name}.sh $CC $BUILD ${CXXFLAGS}
 
 # building tor
 name="tor"
-source_url="https://dist.torproject.org/tor-0.4.8.13.tar.gz"
-source_name="tor-0.4.8.13"
+source_url="https://dist.torproject.org/tor-0.4.9.11.tar.gz"
+source_name="tor-0.4.9.11"
 source_filename="${source_name}.tar.gz"
-source_hash="9baf26c387a2820b3942da572146e6eb77c2bc66862af6297cd02a074e6fba28"
+source_hash="2e6c1720118c812acf0079fd47cf91b6bfaba5d766c321c4d3d2a28d6a11a8ed"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export TOR_SRCDIR=`pwd`/tmp/${source_name}
 build ${name} ${source_name} "tmp"
