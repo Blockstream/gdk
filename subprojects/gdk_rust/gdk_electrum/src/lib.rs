@@ -1725,9 +1725,21 @@ impl Syncer {
         let mut txs = vec![];
         let mut unblinds = vec![];
         let mut is_previous = HashSet::new();
+        let mut previous_txs_to_download = HashSet::new();
 
-        let mut txs_in_db =
-            self.store.lock()?.account_cache(account_num)?.all_txs.keys().cloned().collect();
+        let store_read = self.store.lock()?;
+        let acc_store = store_read.account_cache(account_num)?;
+        let mut txs_in_db: HashSet<BETxid> = acc_store.all_txs.keys().cloned().collect();
+        // Backfill missing prevouts for already-cached history txs too, without cloning them.
+        for txid in history_txs_id {
+            if let Some(txe) = acc_store.all_txs.get(txid) {
+                if !txe.tx.is_elements() {
+                    previous_txs_to_download.extend(txe.tx.previous_output_txids());
+                }
+            }
+        }
+        drop(store_read);
+
         // BETxid has to be converted into bitcoin::Txid for rust-electrum-client
         let txs_to_download: Vec<bitcoin::Txid> =
             history_txs_id.difference(&txs_in_db).map(BETxidConvert::into_bitcoin).collect();
@@ -1739,10 +1751,14 @@ impl Syncer {
                 txs_downloaded.push(tx);
             }
             info!("txs_downloaded {:?}", txs_downloaded.len());
-            let mut previous_txs_to_download = HashSet::new();
+
             for tx in txs_downloaded.into_iter() {
                 let txid = tx.txid();
                 txs_in_db.insert(txid);
+
+                if !tx.is_elements() {
+                    previous_txs_to_download.extend(tx.previous_output_txids());
+                }
 
                 if let BETransaction::Elements(tx) = &tx {
                     info!("compute OutPoint Unblinded");
@@ -1771,40 +1787,33 @@ impl Syncer {
                             }
                         }
                     }
-                } else {
-                    // download all previous output only for bitcoin (to calculate fee of incoming tx)
-                    for previous_txid in tx.previous_output_txids() {
-                        previous_txs_to_download.insert(previous_txid);
-                    }
                 }
                 txs.push((txid, tx));
             }
-
-            let txs_to_download: Vec<bitcoin::Txid> = previous_txs_to_download
-                .difference(&txs_in_db)
-                .map(BETxidConvert::into_bitcoin)
-                .collect();
-
-            if !txs_to_download.is_empty() {
-                let txs_bytes_downloaded =
-                    client.batch_transaction_get_raw(txs_to_download.iter())?;
-                for vec in txs_bytes_downloaded {
-                    let tx = BETransaction::deserialize(&vec, self.network.id())?;
-                    let txid = tx.txid();
-                    if !txs.iter().any(|t| &t.0 == &txid) {
-                        is_previous.insert(txid);
-                    }
-                    txs.push((txid, tx));
-                }
-            }
-            Ok(DownloadTxResult {
-                txs,
-                unblinds,
-                is_previous,
-            })
-        } else {
-            Ok(DownloadTxResult::default())
         }
+
+        let txs_to_download: Vec<bitcoin::Txid> = previous_txs_to_download
+            .difference(&txs_in_db)
+            .map(BETxidConvert::into_bitcoin)
+            .collect();
+
+        if !txs_to_download.is_empty() {
+            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download.iter())?;
+            for vec in txs_bytes_downloaded {
+                let tx = BETransaction::deserialize(&vec, self.network.id())?;
+                let txid = tx.txid();
+                if !txs.iter().any(|t| t.0 == txid) {
+                    is_previous.insert(txid);
+                }
+                txs.push((txid, tx));
+            }
+        }
+
+        Ok(DownloadTxResult {
+            txs,
+            unblinds,
+            is_previous,
+        })
     }
 }
 
