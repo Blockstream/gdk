@@ -232,6 +232,7 @@ build_aws_lambda:
     - .aws-lambda-image
     - .py_release
   stage: build
+  dependencies: []
   script:
     - ./tools/build.sh --gcc --python-version=3.10 --buildtype release --install $INSTALL_PATH --no-deps-rebuild --external-deps-dir /prebuild/gcc --parallel 16
     - mkdir -p wheelhouse
