@@ -1,5 +1,19 @@
 # Changelog
 
+## Release 0.77.7 - 26-07-20
+
+### Added
+
+### Changed
+- Dependencies: Update libwally to 1.5.6, tor to 0.4.9.11
+- Dependencies: Update Rust dependency anyhow
+- Build: enable OSX and iOS builds to cross compile on arm64 and x86
+- 2FA: enforce SMS number format validation to start with '+'
+
+### Fixed
+- Singlesig: Fix issue when increasing gap limit and dependent transactions were not downloaded for fee calculation
+
+
 ## Release 0.77.6 - 26-06-16
 
 ### Added
