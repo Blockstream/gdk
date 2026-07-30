@@ -11,6 +11,7 @@ SOURCE_DIR="$1"; shift
 OUTPUT_DIR="$1"; shift
 ARTIFACT="$1"; shift
 export MACOSX_DEPLOYMENT_TARGET=$1; shift
+GDK_ROOT="$1"; shift
 
 export CC_i686_linux_android=i686-linux-android23-clang
 export CARGO_TARGET_I686_LINUX_ANDROID_LINKER=${CC_i686_linux_android}
@@ -21,6 +22,12 @@ export CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_LINKER=${CC_armv7_linux_androideabi}
 export CC_aarch64_linux_android=aarch64-linux-android23-clang
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=${CC_aarch64_linux_android}
 export AR=${ARCHIVER}
+
+# rustc flags this script must contribute.
+GDK_RUSTC_FLAGS=()
+if [ -n "${GDK_ROOT}" ]; then
+    GDK_RUSTC_FLAGS+=("--remap-path-prefix=${GDK_ROOT}=.")
+fi
 
 export CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse
 
@@ -91,7 +98,7 @@ fi
 
 if [[ ${TRIPLE} == *"android"* ]];then
     export PATH=${PATH}:${ANDROID_TOOLCHAIN_ROOT}/bin
-    export RUSTFLAGS="-L${SOURCE_DIR}/libgcc"
+    GDK_RUSTC_FLAGS+=("-L${SOURCE_DIR}/libgcc")
 elif [[ ${TRIPLE} == "aarch64-apple-ios" ]]; then
     LD_ARCH="-arch arm64 -platform_version ios ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
 elif [[ ${TRIPLE} == "x86_64-apple-ios" ]]; then
@@ -102,6 +109,25 @@ elif [[ ${TRIPLE} == "aarch64-apple-darwin" ]]; then
     LD_ARCH="-arch arm64 -platform_version macos ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
 elif [[ ${TRIPLE} == "x86_64-apple-darwin" ]]; then
     LD_ARCH="-arch x86_64 -platform_version macos ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
+fi
+
+# Cargo uses CARGO_ENCODED_RUSTFLAGS instead of RUSTFLAGS when the encoded
+# variable is set, even when it is empty. Append to the source Cargo will use.
+if [ ${#GDK_RUSTC_FLAGS[@]} -gt 0 ]; then
+    if [ -n "${CARGO_ENCODED_RUSTFLAGS+set}" ]; then
+        _gdk_us=$'\x1f'
+        for _gdk_flag in "${GDK_RUSTC_FLAGS[@]}"; do
+            CARGO_ENCODED_RUSTFLAGS="${CARGO_ENCODED_RUSTFLAGS:+${CARGO_ENCODED_RUSTFLAGS}${_gdk_us}}${_gdk_flag}"
+        done
+        export CARGO_ENCODED_RUSTFLAGS
+        unset _gdk_us _gdk_flag
+    else
+        for _gdk_flag in "${GDK_RUSTC_FLAGS[@]}"; do
+            RUSTFLAGS="${RUSTFLAGS:+${RUSTFLAGS} }${_gdk_flag}"
+        done
+        export RUSTFLAGS
+        unset _gdk_flag
+    fi
 fi
 
 # behaving correctly when no-op
