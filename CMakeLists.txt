@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.10)
 project(gdk VERSION 0.77.7 LANGUAGES C CXX)
 
+# Keep the absolute checkout path out of compiled output.
+if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang|AppleClang")
+    add_compile_options("-ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
