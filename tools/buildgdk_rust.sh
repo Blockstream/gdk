@@ -43,6 +43,7 @@ ARTIFACT_PATH_HINT=${OUTPUT_DIR}
 CARGO_ARGS=()
 CARGO_ARGS+=("--manifest-path=${SOURCE_DIR}/Cargo.toml")
 CARGO_ARGS+=("--target-dir=${OUTPUT_DIR}")
+CARGO_ARGS+=("--locked")
 
 if [ "$BUILDTYPE" == "Release" ]; then
     CARGO_ARGS+=("--release")
