@@ -194,7 +194,7 @@ pub fn determine_electrum_url(network: &NetworkParameters) -> Result<ElectrumUrl
     }
 
     if network.electrum_tls.unwrap_or(false) {
-        Ok(ElectrumUrl::Tls(electrum_url.into(), network.validate_domain.unwrap_or(false)))
+        Ok(ElectrumUrl::Tls(electrum_url.into(), network.validate_domain.unwrap_or(true)))
     } else {
         Ok(ElectrumUrl::Plaintext(electrum_url.into()))
     }
