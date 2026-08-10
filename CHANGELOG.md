@@ -1,5 +1,15 @@
 # Changelog
 
+## Release 0.77.8 - 26-08-10
+
+### Added
+
+### Changed
+- Singlesig: validate certificate domain by default on Electrum TLS connections
+
+### Fixed
+
+
 ## Release 0.77.7 - 26-07-20
 
 ### Added
