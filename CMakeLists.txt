@@ -53,6 +53,18 @@ find_package(ZLIB 1.3.2 EXACT REQUIRED)
 # openSSL
 set(OPENSSL_USE_STATIC_LIBS ON)
 find_package(OpenSSL 1.1.1 EXACT REQUIRED)
+if(WIN32)
+    # Static libcrypto references crypt32 (e_capi.o: Cert*) and ws2_32 (b_addr.o:
+    # getnameinfo). Not every FindOpenSSL records this, and gdk-rust names the same
+    # libraries earlier in the link line, so declare it on the OpenSSL targets: cmake
+    # keeps the last occurrence of a duplicate, which places them after libcrypto.a
+    # where the single-pass mingw linker can resolve against them.
+    foreach(_opensslTarget OpenSSL::Crypto OpenSSL::SSL)
+        if(TARGET ${_opensslTarget})
+            set_property(TARGET ${_opensslTarget} APPEND PROPERTY INTERFACE_LINK_LIBRARIES ws2_32 crypt32)
+        endif()
+    endforeach()
+endif()
 
 #### cmake-based projects with xxx-config.cmake file
 find_package(nlohmann_json REQUIRED CONFIG)
