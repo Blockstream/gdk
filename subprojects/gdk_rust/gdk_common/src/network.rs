@@ -26,7 +26,7 @@ pub struct NetworkParameters {
     pub electrum_tls: Option<bool>,
     pub electrum_url: Option<String>,
     pub electrum_onion_url: Option<String>,
-    pub validate_domain: Option<bool>,
+    pub electrum_tls_validate_domain: Option<bool>,
     pub policy_asset: Option<String>,
     pub sync_interval: Option<u32>,
     asset_registry_url: Option<String>,

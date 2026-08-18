@@ -690,6 +690,7 @@ namespace green {
             set_override(defaults, "cert_expiry_threshold", user_overrides, 1);
             set_override(defaults, "electrum_onion_url", user_overrides, empty);
             set_override(defaults, "electrum_tls", user_overrides, false);
+            set_override(defaults, "electrum_tls_validate_domain", user_overrides, true);
             set_override(defaults, "electrum_url", user_overrides, empty);
             set_override(defaults, "pin_server_onion_url", user_overrides, empty);
             set_override(defaults, "pin_server_url", user_overrides, empty);

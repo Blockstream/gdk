@@ -50,7 +50,7 @@ Connection parameters JSON
       "use_tor": true,
       "user_agent": "green_android v2.33",
       "min_fee_rate": 1000,
-      "cert_expiry_threshold": 1
+      "cert_expiry_threshold": 1,
       "gap_limit": 20,
       "electrum_url": "blockstream.info:993",
       "electrum_onion_url": "explorerzydxu5ecjrkwceayqybizmpjjznk5izmitf2modhcusuqlid.onion:143",
@@ -73,7 +73,8 @@ Connection parameters JSON
 :electrum_url: Optional. For singlesig the Electrum server used to fetch blockchain data. For multisig the Electrum server used for SPV verification. Default value depends on the network.
 :electrum_onion_url: Optional. If ``"use_tor"`` is ``true``, this value is used instead of ``"electrum_url"``. Default value depends on the network.
 :electrum_tls: Optional. Use TLS to connect to the Electrum server. Default value depends on the network (``false`` for local networks, ``true`` otherwise).
-
+:electrum_tls_validate_domain: Optional. Validate the server's TLS certificate and domain for Electrum TLS connections.
+    Setting this to ``false`` disables all TLS verification and is insecure; intended for testing/local servers only. Defaults to ``true``.
 .. note:: When ``"use_tor"`` is ``true``, the caller should pass ``"with_shutdown"`` as ``true`` in
    the :ref:`init-config-arg` passed to `GA_init`, and call `GA_shutdown` on application
    exit if more than one session will be created, or if sessions may be created/destroyed repeatedly.
