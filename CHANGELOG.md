@@ -1,6 +1,18 @@
 # Changelog
 
+## Release 0.77.9 - 26-08-20
+
+### Added
+- Singlesig: added network param override for Electrum TLS validate domain
+
+### Changed
+
+### Fixed
+- Singlesig: fixed TLS certificate validation for Electrum connections by changing to Rustls instead of OpenSSL in Rust
+
+
 ## Release 0.77.8 - 26-08-10
+NOTE: do not use, broken Electrum TLS connection
 
 ### Added
 
