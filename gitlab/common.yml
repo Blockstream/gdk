@@ -40,7 +40,7 @@
 
 
 .gcloud-publish:
-  image: blockstream/gcloud-docker-tf:1.1.7
+  image: harbor.blockstream.io/google/blockstream/public/gcloud-docker-tf:27.3-1.9.8-r1
   tags:
     - ga
   stage: publish
