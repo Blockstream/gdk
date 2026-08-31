@@ -72,7 +72,7 @@ namespace green {
         try {
             return nlohmann::json::parse(src);
         } catch (const std::exception&) {
-            GDK_LOG(debug) << "exception parsing json input: " << src;
+            GDK_LOG(debug) << "exception parsing json input!";
             throw_user_error("Invalid JSON");
         }
     }
