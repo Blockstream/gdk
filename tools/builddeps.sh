@@ -400,7 +400,7 @@ name="ur-c"
 source_url="https://github.com/Blockstream/ur-c/archive/refs/tags/v0.5.0-rc1.tar.gz"
 source_name="ur-c-0.5.0-rc1"
 source_filename="ur-c-0.5.0-rc1.tar.gz"
-source_hash="1f8732869c67f235610cc2eff0709a5ea565c4da3107400d6be3ebf40ac2433b "
+source_hash="1f8732869c67f235610cc2eff0709a5ea565c4da3107400d6be3ebf40ac2433b"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
