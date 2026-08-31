@@ -37,8 +37,14 @@ pub fn now() -> u64 {
 /// i.e. 64 bytes instead of 32
 /// TODO: remove this code once the master blinding key is always (de)serialized as 32 bytes
 
-#[derive(Clone, PartialEq, Debug)]
+#[derive(Clone, PartialEq)]
 pub struct MasterBlindingKey(pub Slip77MasterBlindingKey);
+
+impl fmt::Debug for MasterBlindingKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "MasterBlindingKey(REDACTED)")
+    }
+}
 
 impl serde::Serialize for MasterBlindingKey {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>

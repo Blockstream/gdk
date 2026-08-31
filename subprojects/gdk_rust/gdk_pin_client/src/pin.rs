@@ -11,7 +11,7 @@ pub struct Pin {
 
 impl std::fmt::Debug for Pin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("Pin").field(&self.data).finish()
+        write!(f, "Pin(REDACTED)")
     }
 }
 
