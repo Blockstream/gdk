@@ -52,7 +52,7 @@ set(ZLIB_ROOT ${CMAKE_PREFIX_PATH})
 find_package(ZLIB 1.3.2 EXACT REQUIRED)
 # openSSL
 set(OPENSSL_USE_STATIC_LIBS ON)
-find_package(OpenSSL 1.1.1 EXACT REQUIRED)
+find_package(OpenSSL 3.5.8 EXACT REQUIRED)
 if(WIN32)
     # Static libcrypto references crypt32 (e_capi.o: Cert*) and ws2_32 (b_addr.o:
     # getnameinfo). Not every FindOpenSSL records this, and gdk-rust names the same

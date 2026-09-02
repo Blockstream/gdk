@@ -228,10 +228,10 @@ cmake --install tmp/${source_name}/build
 
 # building openssl
 name="openssl"
-source_url="https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
-source_name="openssl-1.1.1w"
+source_url="https://github.com/openssl/openssl/releases/download/openssl-3.5.8/openssl-3.5.8.tar.gz"
+source_name="openssl-3.5.8"
 source_filename="${source_name}.tar.gz"
-source_hash="cf3098950cb4d853ad95c0841f1f9c6d3dc102dccfcacd521d93925208b76ac8"
+source_hash="a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 export OPENSSL_SRCDIR=`pwd`/tmp/${source_name}
 # building in a subshell to avoid leaking openssl-specific exports

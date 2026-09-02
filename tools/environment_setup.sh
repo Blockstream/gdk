@@ -183,6 +183,9 @@ case $BUILD in
         export CXX=${HOST_ARCH}-w64-mingw32-g++-posix
         export RANLIB=${HOST_ARCH}-w64-mingw32-ranlib
         export RC=${HOST_ARCH}-w64-mingw32-windres
+        # openssl's mingw64 target defaults to a "lib64" libdir; pin it to "lib"
+        # so tor's --with-openssl-dir search finds libssl.a/libcrypto.a
+        export CONFIGURE_LIBDIR_ARG="--libdir=${GDK_BUILD_ROOT}/lib"
         CMAKE_TOOLCHAIN_FILE=${GDK_SOURCE_ROOT}/cmake/profiles/windows-mingw-w64.cmake
         ;;
 
