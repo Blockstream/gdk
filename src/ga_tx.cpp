@@ -257,7 +257,8 @@ namespace green {
                 const auto new_fee_rate = j_amountref(result, "fee_rate");
                 const auto fee_rate = std::max(min_fee_rate.value(), new_fee_rate.value());
                 const auto new_fee = tx.get_fee(net_params, fee_rate);
-                result["network_fee"] = new_fee <= old_fee ? 0 : new_fee;
+                // Only the difference is needed: the previous tx already pays old_fee
+                result["network_fee"] = new_fee <= old_fee ? 0 : new_fee - old_fee.value();
             }
 
             if (is_rbf) {
