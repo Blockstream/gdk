@@ -2504,6 +2504,7 @@ namespace green {
     {
         try {
             std::vector<unsigned char> tx_bin;
+            bool is_cached = false;
             locker_t locker(m_mutex);
             // First, try the local cache
             m_cache->get_transaction_data(txhash_hex, { [&tx_bin](const auto& db_blob) {
@@ -2513,6 +2514,7 @@ namespace green {
             } });
             if (!tx_bin.empty()) {
                 GDK_LOG(debug) << "Tx cache using cached " << txhash_hex;
+                is_cached = true;
             } else {
                 // Not found, ask the server
                 auto server_tx_hex = wamp_cast(m_wamp->call(locker, "txs.get_raw_output", txhash_hex));
@@ -2520,10 +2522,13 @@ namespace green {
                     throw user_error("Transaction not found");
                 }
                 tx_bin = h2b(server_tx_hex);
-                // Cache the result
+            }
+            // Note this verifies that the tx matches txhash_hex
+            Tx tx(tx_bin, m_net_params.is_liquid(), txhash_hex);
+            if (!is_cached) {
                 m_cache->insert_transaction_data(txhash_hex, tx_bin);
             }
-            return Tx(tx_bin, m_net_params.is_liquid());
+            return tx;
         } catch (const std::exception& e) {
             GDK_LOG(warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");

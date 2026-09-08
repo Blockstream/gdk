@@ -883,20 +883,26 @@ namespace green {
         m_tx.reset(p);
     }
 
-    Tx::Tx(byte_span_t tx_bin, bool is_liquid)
+    Tx::Tx(byte_span_t tx_bin, bool is_liquid, const std::string& txhash_hex)
         : m_is_liquid(is_liquid)
     {
         struct wally_tx* p;
         GDK_VERIFY(wally_tx_from_bytes(tx_bin.data(), tx_bin.size(), get_flags(), &p));
         m_tx.reset(p);
+        if (!txhash_hex.empty()) {
+            verify_txid(txhash_hex);
+        }
     }
 
-    Tx::Tx(const std::string& tx_hex, bool is_liquid)
+    Tx::Tx(const std::string& tx_hex, bool is_liquid, const std::string& txhash_hex)
         : m_is_liquid(is_liquid)
     {
         struct wally_tx* p;
         GDK_VERIFY(wally_tx_from_hex(tx_hex.c_str(), get_flags(), &p));
         m_tx.reset(p);
+        if (!txhash_hex.empty()) {
+            verify_txid(txhash_hex);
+        }
     }
 
     Tx::Tx(struct wally_tx* tx, bool is_liquid)
@@ -940,6 +946,11 @@ namespace green {
         std::array<unsigned char, WALLY_TXHASH_LEN> txid;
         GDK_VERIFY(wally_tx_get_txid(m_tx.get(), txid.data(), txid.size()));
         return txid;
+    }
+
+    void Tx::verify_txid(const std::string& txhash_hex) const
+    {
+        GDK_RUNTIME_ASSERT_MSG(b2h_rev(get_txid()) == txhash_hex, "Transaction does not match the requested txid");
     }
 
     struct wally_tx_input& Tx::get_input(size_t index)

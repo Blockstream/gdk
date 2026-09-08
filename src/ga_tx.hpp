@@ -18,8 +18,8 @@ namespace green {
     class Tx {
     public:
         Tx(uint32_t locktime, uint32_t version, bool is_liquid);
-        Tx(byte_span_t tx_bin, bool is_liquid);
-        Tx(const std::string& tx_hex, bool is_liquid);
+        Tx(byte_span_t tx_bin, bool is_liquid, const std::string& txhash_hex = std::string());
+        Tx(const std::string& tx_hex, bool is_liquid, const std::string& txhash_hex = std::string());
         Tx(struct wally_tx* tx, bool is_liquid); // Takes ownership
         ~Tx();
 
@@ -92,6 +92,7 @@ namespace green {
 
     private:
         uint32_t get_flags() const;
+        void verify_txid(const std::string& txhash_hex) const;
 
         struct tx_deleter {
             void operator()(struct wally_tx* p);

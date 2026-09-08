@@ -586,7 +586,7 @@ namespace green {
     {
         try {
             const std::string tx_hex = rust_call("get_transaction_hex", nlohmann::json(txhash_hex), m_session);
-            return Tx(tx_hex, m_net_params.is_liquid());
+            return Tx(tx_hex, m_net_params.is_liquid(), txhash_hex);
         } catch (const std::exception& e) {
             GDK_LOG(warning) << "Error fetching " << txhash_hex << " : " << e.what();
             throw user_error("Transaction not found");
