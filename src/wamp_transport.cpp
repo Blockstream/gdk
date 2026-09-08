@@ -33,7 +33,7 @@ namespace green {
         uint32_t operator()() const
         {
             uint32_t b;
-            get_random_bytes(sizeof(b), &b, sizeof(b));
+            get_random_bytes(&b, sizeof(b));
             return b;
         }
     };

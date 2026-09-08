@@ -198,7 +198,7 @@ namespace green {
     } // namespace
 
     // use the same strategy as bitcoin core
-    void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz)
+    void get_random_bytes(void* output_bytes, std::size_t len)
     {
         static std::mutex curr_state_mutex;
         static std::array<unsigned char, 32> curr_state = { { 0 } };
@@ -207,7 +207,7 @@ namespace green {
         // We only allow fetching up to 32 bytes of random data as bits beyond
         // this expose the final bytes of the sha512 we use to update curr_state.
         GDK_RUNTIME_ASSERT(output_bytes);
-        GDK_RUNTIME_ASSERT(num_bytes <= 32 && num_bytes <= siz);
+        GDK_RUNTIME_ASSERT(len <= 32);
 
         int64_t tsc = GetPerformanceCounter();
 
@@ -235,9 +235,10 @@ namespace green {
             std::copy(hashed.begin() + 32, hashed.end(), curr_state.data());
         }
 
-        std::copy(hashed.begin(), hashed.begin() + siz, static_cast<unsigned char*>(output_bytes));
+        std::copy(hashed.begin(), hashed.begin() + len, static_cast<unsigned char*>(output_bytes));
 
         wally_bzero(hashed.data(), hashed.size());
+        wally_bzero(buf.data(), buf.size());
     }
 
     nlohmann::json rust_call(const std::string& method, const nlohmann::json& details, void* session)
@@ -273,7 +274,7 @@ namespace green {
         if (++m_index == m_entropy.size()) {
             m_index = 0;
             const size_t num_bytes = m_entropy.size() * sizeof(result_type);
-            get_random_bytes(num_bytes, m_entropy.data(), num_bytes);
+            get_random_bytes(m_entropy.data(), num_bytes);
         }
         return m_entropy[m_index];
     }
@@ -611,7 +612,7 @@ namespace green {
         GDK_RUNTIME_ASSERT(static_cast<size_t>(cyphertext.size()) == aes_gcm_encrypt_get_length(plaintext));
 
         std::array<unsigned char, AES_GCM_IV_SIZE> iv;
-        get_random_bytes(iv.size(), iv.data(), iv.size());
+        get_random_bytes(iv.data(), iv.size());
         std::copy(iv.begin(), iv.end(), cyphertext.begin());
         unsigned char* out = cyphertext.data() + iv.size();
 
@@ -791,10 +792,10 @@ namespace {
     }
 } // namespace
 
-extern "C" int GA_get_random_bytes(size_t num_bytes, unsigned char* output_bytes, size_t len)
+extern "C" int GA_get_random_bytes(unsigned char* output_bytes, size_t len)
 {
     try {
-        green::get_random_bytes(num_bytes, output_bytes, len);
+        green::get_random_bytes(output_bytes, len);
         return GA_OK;
     } catch (const std::exception& e) {
         return GA_ERROR;

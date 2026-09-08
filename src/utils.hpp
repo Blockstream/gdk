@@ -15,12 +15,13 @@ namespace green {
 
     class network_parameters;
 
-    void get_random_bytes(std::size_t num_bytes, void* output_bytes, std::size_t siz);
+    void get_random_bytes(void* output_bytes, std::size_t len);
 
     template <std::size_t N> std::array<unsigned char, N> get_random_bytes()
     {
+        static_assert(N <= 32, "cannot fetch more than 32 bytes of random data");
         std::array<unsigned char, N> buff{ { 0 } };
-        get_random_bytes(N, buff.data(), buff.size());
+        get_random_bytes(buff.data(), buff.size());
         return buff;
     }
 

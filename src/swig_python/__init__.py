@@ -347,7 +347,7 @@ def register_network(name, details):
 _old_get_random_bytes = get_random_bytes
 def get_random_bytes(n):
     out = bytearray(n)
-    _old_get_random_bytes(n, out)
+    _old_get_random_bytes(out)
     return bytes(out)
 
 _old_init = init

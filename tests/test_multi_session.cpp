@@ -61,7 +61,7 @@ static void test_async_disconnect(nlohmann::json net_params)
         // the number of loop iterations to test exhaustively against a
         // local server.
         uint32_t delay;
-        get_random_bytes(sizeof(delay), &delay, sizeof(delay));
+        get_random_bytes(&delay, sizeof(delay));
         const auto delay_ms = std::chrono::milliseconds(delay % 100);
 
         // First thread connects in the background

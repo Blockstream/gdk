@@ -9,7 +9,7 @@ int main()
     unsigned char buff[32 * 32];
 
     for (size_t i = 0; i < 32; ++i) {
-        get_random_bytes(32, buff + i * 32, 32);
+        get_random_bytes(buff + i * 32, 32);
     }
     const auto key = sha256(gsl::make_span(buff, sizeof(buff)));
     const auto bad_key = sha256(key);
