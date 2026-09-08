@@ -14,7 +14,7 @@ if have_cmd clang-tidy; then
     files=$(git diff --name-only --format="" origin/$TARGET_BRANCH...HEAD | grep -E '\.(cpp|h|hpp)$' || true)
     if [ ! -z "$files" ]; then
         files=$(echo $files | tr ' ' '\n' | grep -v generated | tr '\n' ' ')
-        cmd="$CLANG_TIDY $files -- -std=c++17 -Iinclude/ -Isubprojects/gdk_rust/ -I${1%/}/include/"
+        cmd="$CLANG_TIDY $files -- -x c++ -std=gnu++17 -DGDK_BUILD -funsigned-char -I. -Isrc/ -Iinclude/ -Isubprojects/gdk_rust/ -isystem ${1%/}/include/"
         echo "$cmd"
         $cmd
     else
