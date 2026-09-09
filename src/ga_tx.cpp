@@ -1429,8 +1429,16 @@ namespace green {
         }
     }
 
-    std::vector<std::string> sign_transaction(
-        session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs)
+    void validate_prev_tx_value(const Tx& prev_tx, const nlohmann::json& utxo)
+    {
+        const auto& prevout = prev_tx.get_output(j_uint32ref(utxo, "pt_idx"));
+        if (prevout.satoshi != j_amountref(utxo).value()) {
+            throw user_error("Previous transaction value mismatch");
+        }
+    }
+
+    std::vector<std::string> sign_transaction(session_impl& session, const Tx& tx,
+        const std::vector<nlohmann::json>& inputs, const nlohmann::json& signing_transactions)
     {
         const auto& net_params = session.get_network_parameters();
         const bool is_liquid = net_params.is_liquid();
@@ -1442,7 +1450,17 @@ namespace green {
             if (utxo.value("skip_signing", false)) {
                 continue;
             }
-            const bool is_p2tr = j_strref(utxo, "address_type") == address_type::p2tr;
+            const auto& addr_type = j_strref(utxo, "address_type");
+            const bool is_p2tr = addr_type == address_type::p2tr;
+            if (!is_liquid && !address_type_is_segwit(addr_type)) {
+                const auto& txhash = j_strref(utxo, "txhash");
+                const auto prev_tx_hex = j_str(signing_transactions, txhash);
+                if (!prev_tx_hex.has_value()) {
+                    throw user_error("Missing previous transaction " + txhash);
+                }
+                // Note the Tx constructor verifies the tx hashes to txhash
+                validate_prev_tx_value(Tx(*prev_tx_hex, is_liquid, txhash), utxo);
+            }
             const auto default_sighash = is_p2tr ? WALLY_SIGHASH_DEFAULT : WALLY_SIGHASH_ALL;
             const auto sighash_flags = j_uint32(utxo, "user_sighash").value_or(default_sighash);
             const auto message = tx.get_signature_hash(session, inputs, i, sighash_flags);

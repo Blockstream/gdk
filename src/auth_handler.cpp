@@ -565,7 +565,8 @@ namespace green {
             result["master_blinding_key"] = b2h(signer->get_master_blinding_key());
         } else if (request == hw_request::sign_tx) {
             const Tx tx(required_data.at("transaction").get<std::string>(), signer->is_liquid());
-            result["signatures"] = sign_transaction(get_session(), tx, required_data.at("transaction_inputs"));
+            result["signatures"] = sign_transaction(
+                get_session(), tx, required_data.at("transaction_inputs"), required_data.at("signing_transactions"));
         } else {
             GDK_LOG(warning) << "Unknown hardware request " << status.dump();
             GDK_RUNTIME_ASSERT_MSG(false, "Unknown hardware request");

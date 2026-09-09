@@ -113,8 +113,10 @@ namespace green {
 
     void create_transaction(session_impl& session, nlohmann::json& details);
 
-    std::vector<std::string> sign_transaction(
-        session_impl& session, const Tx& tx, const std::vector<nlohmann::json>& inputs);
+    void validate_prev_tx_value(const Tx& prev_tx, const nlohmann::json& utxo);
+
+    std::vector<std::string> sign_transaction(session_impl& session, const Tx& tx,
+        const std::vector<nlohmann::json>& inputs, const nlohmann::json& signing_transactions);
 
     void blind_transaction(session_impl& session, nlohmann::json& details, const nlohmann::json& blinding_data);
 

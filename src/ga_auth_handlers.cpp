@@ -709,6 +709,9 @@ namespace green {
                 if (!tx) {
                     tx = std::make_unique<Tx>(j_strref(m_twofactor_data, "transaction"), is_liquid);
                 }
+                if (!is_liquid && !address_type_is_segwit(j_strref(input, "address_type"))) {
+                    validate_prev_tx_value(m_session->get_raw_transaction_details(j_strref(input, "txhash")), input);
+                }
                 const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
                 const auto tx_signature_hash = tx->get_signature_hash(*m_session, inputs, i, sighash_flags);
                 m_sweep_private_keys[i] = input["private_key"];
