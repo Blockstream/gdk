@@ -1,5 +1,22 @@
 # Changelog
 
+## Release 0.78.0 - 26-09-10
+
+### Added
+
+### Changed
+- Signing: Check for pre-segwit inputs that previous transaction hash to the given txid and have correct amounts.
+- Transactions: Validate that fetched transactions from GA backend or Electrum, hash to the requested txid.
+- Dependencies: Update OpenSSL to 3.5.8.
+- JSON: Do not log complete JSON when parsing fails to prevent leaking sensitive data in the logs.
+- Singlesig: Redact sensitive info from debug logs.
+- Get_random_bytes: simplify the interface for callers. (Note this is a breaking change).
+
+### Fixed
+- Transactions: Correct the fee in case of CPFP transaction.
+- Dependencies: Remove unnecessary white space in ur-c source hash.
+
+
 ## Release 0.77.9 - 26-08-20
 
 ### Added
