@@ -1458,8 +1458,8 @@ namespace green {
                 if (!prev_tx_hex.has_value()) {
                     throw user_error("Missing previous transaction " + txhash);
                 }
-                // Note the Tx constructor verifies the tx hashes to txhash
-                validate_prev_tx_value(Tx(*prev_tx_hex, is_liquid, txhash), utxo);
+                const Tx prev_tx(*prev_tx_hex, is_liquid, txhash); // Verifies 'txhash'
+                validate_prev_tx_value(prev_tx, utxo);
             }
             const auto default_sighash = is_p2tr ? WALLY_SIGHASH_DEFAULT : WALLY_SIGHASH_ALL;
             const auto sighash_flags = j_uint32(utxo, "user_sighash").value_or(default_sighash);
