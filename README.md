@@ -29,9 +29,11 @@ For Mac OSX:
 
 Install Xcode and brew if not installed, then
 ```
-brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig gnu-getopt (optional) gnu-tar
+brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig gnu-getopt
 xcode-select --install
 ```
+
+Optionally, install GNU tar with `brew install gnu-tar`.
 
 **IMPORTANT:** Since the build scripts require GNU-style `getopt` rather than the macOS BSD-style version, ensure that `gnu-getopt` is installed and added to your PATH right before running the build script:
 
@@ -48,7 +50,7 @@ Using the tool in ``tools`` you can build in one go all the required dependencie
 $ ./tools/builddeps.sh <options> --prefix <absolute-destination-path>
 ```
 ``<options>`` are:
-- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms. Android build supports following ``<arch>``s
+- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``--mingw-w64`` , ``--iphone static`` , ``--iphonesim static`` : (cross-)build with different compilers, on different platforms. The Apple options include the required `static` argument, as used in CI. Android build supports following ``<arch>``s
     - ``armeabi-v7a``
     - ``arm64-v8a``
     - ``x86``
@@ -67,7 +69,7 @@ A script located in tools is enough to cover most common build use cases
 $ tools/build.sh <options>
 ```
 ``<options>`` are:
-- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``-mingw-w64`` , ``--iphone`` , ``iphonesimulator`` : (cross-)build with different compilers, on different platforms
+- ``--clang`` , ``--gcc`` , ``--ndk <arch>`` , ``--mingw-w64`` , ``--iphone static`` , ``--iphonesim static`` : (cross-)build with different compilers, on different platforms. The Apple options include the required `static` argument, as used in CI.
 - ``--enable-tests``: builds test that can be easily launched using ``ctest`` (if your cmake is <= 3.20 you need to ``cd`` into the build directory, otherwise just use ``--test-dir``)
 - ``--python-version <version>``: builds python-wheels. ``<version>`` can be something as simple as ``3``, you let cmake pick the 3.X version present in your system for you. Or it can be ``venv`` to indicate cmake that you are using a virtual environment and cmake should pick whatever python interpreter you set up in it.
 - ``--parallel <jobs>``: set the number of parallel process that the build-system can spawn, default to CPU count.
@@ -88,16 +90,16 @@ Build output is placed in `build-<target>`, e.g. `build-clang`, `build-gcc` sub-
 This doesn't require any of the previous steps but requires docker installed; it will build the project
 
 ```
-docker build -t greenaddress_sdk -f ./tools/Dockerfile .
+docker build -t greenaddress_sdk -f ./docker/debian/Dockerfile .
 docker run -v $PWD:/root/gdk -it greenaddress_sdk
 ```
 
 This will open a bash shell into the container, where you can then launch builds for any platform.
-The docker container provided by GreenAddress comes with dependencies already built under the ``/prebuid`` folder
+The docker container provided by GreenAddress comes with dependencies already built under the ``/prebuild`` folder
 
 ```bash
-root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebuid/gcc
-root@bab682a071e6:~/gdk# ./tools/build.sh --clang --external-deps-dir /prebuid/clang
+root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebuild/gcc
+root@bab682a071e6:~/gdk# ./tools/build.sh --clang --external-deps-dir /prebuild/clang
 ```
 
 #### Debug builds
