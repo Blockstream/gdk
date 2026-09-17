@@ -4,21 +4,21 @@ GDK is a cross-platform, cross-language library for Blockstream Green wallets.
 
 Read the API documentation at https://gdk.readthedocs.io/en/latest/
 
-## building from source
-### installing required software
+## Building from source
+### Installing required software
 #### Android ndk
 If you want to target Android you will need to download the NDK and set the ANDROID_NDK env variable to the directory you uncompress it to, for example
 `export ANDROID_NDK=$HOME/Downloads/ndk`
 or you can add it to your bash profile `~/.bash_profile`
 
-#### rust
+#### Rust
   1. Install rustup: `curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`
 
   2. Install default rust toolchain: `rustup install 1.85.0`
 
   3. Install additional rust targets for cross-building: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios x86_64-apple-ios`
 
-### platform-specific dependencies
+### Platform-specific dependencies
 For Debian Bullseye:
 ```
 sudo ./docker/debian/install_deps.sh
@@ -43,8 +43,8 @@ $ PATH="$(brew --prefix gnu-getopt)/bin:$PATH" ./tools/build.sh ...
 
 You may also need to change your PATH environment variable to add `$HOME/Library/Python/3.X/bin`
 
-## cmake build:
-#### building dependencies
+## Cmake build:
+#### Building dependencies
 Using the tool in ``tools`` you can build in one go all the required dependencies for gdk
 ```bash
 $ ./tools/builddeps.sh <options> --prefix <absolute-destination-path>
@@ -63,7 +63,7 @@ $ ./tools/builddeps.sh --clang --prefix $HOME/prebuilt/clang
 ```
 downloads, builds and installs all dependencies using clang compiler under ``$HOME/prebuild/clang`` folder
 
-### building gdk
+### Building GDK
 A script located in tools is enough to cover most common build use cases
 ```bash
 $ tools/build.sh <options>
@@ -83,19 +83,19 @@ tools/build.sh --clang --external-deps-dir $HOME/prefix/clang
 Build output is placed in `build-<target>`, e.g. `build-clang`, `build-gcc` sub-directories.
 
 
-\* Cmake introduces the concept of ``COMPONENT``s .GDK install is now split into two components: ``gdk-runtime`` includes only the dynamic library (with symbol files) and the python-wheel (if built and available); ``gdk-dev`` includes static library libgreenaddress-full.a, header files and all the header files for languages bindings like java and swift. CI as well as ``tools/build.sh --install <path>`` will always install everything.
+\* Cmake introduces the concept of ``COMPONENT``s .GDK install is now split into two components: ``gdk-runtime`` includes only the dynamic library (with symbol files) and the python-wheel (if built and available); ``gdk-dev`` includes static library libgreen_gdk_full.a, header files and all the header files for languages bindings like java and swift. CI as well as ``tools/build.sh --install <path>`` will always install everything.
 
 ### Docker based deps & build (apple platforms excluded)
 
 This doesn't require any of the previous steps but requires docker installed; it will build the project
 
 ```
-docker build -t greenaddress_sdk -f ./docker/debian/Dockerfile .
-docker run -v $PWD:/root/gdk -it greenaddress_sdk
+docker build -t gdk-debian -f ./docker/debian/Dockerfile .
+docker run -v $PWD:/root/gdk -it gdk-debian
 ```
 
 This will open a bash shell into the container, where you can then launch builds for any platform.
-The docker container provided by GreenAddress comes with dependencies already built under the ``/prebuild`` folder
+The docker container provided by GDK comes with dependencies already built under the ``/prebuild`` folder
 
 ```bash
 root@bab682a071e6:~/gdk# ./tools/build.sh --gcc --external-deps-dir /prebuild/gcc
