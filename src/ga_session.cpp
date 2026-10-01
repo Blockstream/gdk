@@ -1906,18 +1906,6 @@ namespace green {
         unique_pubkeys_and_scripts_t& missing)
     {
         GDK_RUNTIME_ASSERT(locker.owns_lock());
-        amount::value_type value;
-
-        if (boost::conversion::try_lexical_convert(j_str_or_empty(utxo, "value"), value)) {
-            utxo["satoshi"] = value;
-            utxo["assetblinder"] = ZEROS;
-            utxo["amountblinder"] = ZEROS;
-            const auto asset_tag = j_bytesref(utxo, "asset_tag");
-            GDK_RUNTIME_ASSERT(asset_tag.at(0) == 0x1);
-            utxo["asset_id"] = b2h_rev(gsl::make_span(asset_tag).subspan(1));
-            utxo["is_blinded"] = false;
-            return false; // Cache not updated
-        }
 
         // 1) get_unspent_outputs UTXOs have txhash/pt_idx and implicitly
         // is_output is true but it is not present.
@@ -1935,6 +1923,27 @@ namespace green {
             txhash = utxo.at("txhash");
         } else if (utxo.value("is_output", true)) {
             txhash = for_txhash;
+        }
+
+        amount::value_type value;
+        if (boost::conversion::try_lexical_convert(j_str_or_empty(utxo, "value"), value)) {
+            // Explicit output: take the amount and asset from the tx, not the server
+            GDK_RUNTIME_ASSERT(!txhash.empty());
+            const auto tx = [&] {
+                unique_unlock unlocker(locker);
+                return get_raw_transaction_details(txhash);
+            }();
+            const auto& o = tx.get_output(pt_idx);
+            GDK_RUNTIME_ASSERT(o.asset_len == WALLY_TX_ASSET_CT_ASSET_LEN && o.asset[0] == 0x1);
+            utxo["satoshi"] = tx_confidential_value_to_satoshi({ o.value, o.value_len });
+            GDK_RUNTIME_ASSERT_MSG(utxo["satoshi"] == value,
+                "Value received from the server does not match value in the transaction output");
+            utxo["asset_tag"] = b2h({ o.asset, o.asset_len });
+            utxo["asset_id"] = b2h_rev({ o.asset + 1, o.asset_len - 1 });
+            utxo["assetblinder"] = ZEROS;
+            utxo["amountblinder"] = ZEROS;
+            utxo["is_blinded"] = false;
+            return false; // Cache not updated
         }
 
         const auto script = j_bytesref(utxo, "script");
