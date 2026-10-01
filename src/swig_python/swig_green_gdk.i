@@ -71,7 +71,6 @@ static int python_string_to_GA_json(PyObject* in, struct GA_json** out)
 {
     *out = NULL;
 
-#if PY_MAJOR_VERSION >= 3
     if (!PyUnicode_Check(in)) {
         PyErr_SetString(PyExc_TypeError, "Expected unicode argument for GA_json");
         return GA_ERROR;
@@ -84,20 +83,10 @@ static int python_string_to_GA_json(PyObject* in, struct GA_json** out)
     }
 
     const char* utf8_ntbs = PyBytes_AsString(utf8_encoded);
-#else
-    if (!PyString_Check(in)) {
-        PyErr_SetString(PyExc_TypeError, "Expected string argument for GA_json");
-        return GA_ERROR;
-    }
-
-    const char* utf8_ntbs = PyString_AsString(in);
-#endif
 
     const int result = check_result(GA_convert_string_to_json(utf8_ntbs, out));
 
-#if PY_MAJOR_VERSION >= 3
     Py_DECREF(utf8_encoded);
-#endif
 
     return result;
 }
@@ -258,7 +247,7 @@ static void _python_destroy_GA_auth_handler(PyObject* obj)
 %typemap(argout) char** {
    if (*$1 != NULL) {
        Py_DecRef($result);
-       $result = PyString_FromString(*$1);
+       $result = PyUnicode_FromString(*$1);
        GA_destroy_string(*$1);
    }
 }
@@ -319,7 +308,7 @@ static void _python_destroy_GA_auth_handler(PyObject* obj)
         if (check_result(GA_convert_json_to_string(*$1, &str)) != GA_OK) {
             SWIG_fail;
         }
-        $result = PyString_FromString(str);
+        $result = PyUnicode_FromString(str);
         GA_destroy_string(str);
         GA_destroy_json(*$1);
     }
@@ -329,7 +318,7 @@ static void _python_destroy_GA_auth_handler(PyObject* obj)
 }
 %typemap(argout) uint32_t* {
     Py_DecRef($result);
-    $result = PyInt_FromLong(*$1);
+    $result = PyLong_FromLong(*$1);
 }
 
 /* Tell swig about uin32_t */
