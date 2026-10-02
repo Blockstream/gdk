@@ -108,7 +108,27 @@ namespace green {
             return ret;
         }
 
-        static std::unique_ptr<Tx> liquidex_validate_proposal(const nlohmann::json& proposal)
+        static void liquidex_verify_commitments(
+            const nlohmann::json& proposal_io, const struct wally_tx_output& tx_output)
+        {
+            const auto asset = j_rbytesref(proposal_io, "asset");
+            const auto abf = j_rbytesref(proposal_io, "asset_blinder");
+            const auto value = j_amountref(proposal_io).value();
+            const auto value_blind_proof = j_bytesref(proposal_io, "value_blind_proof");
+            const auto asset_commitment = asset_generator_from_bytes(asset, abf);
+            const auto value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);
+
+            bool have_matched_asset_commitment = tx_output.asset_len == asset_commitment.size()
+                && !memcmp(tx_output.asset, asset_commitment.data(), tx_output.asset_len);
+            GDK_RUNTIME_ASSERT_MSG(have_matched_asset_commitment, "unblinded asset does not match commitment");
+
+            bool value_verifies
+                = explicit_rangeproof_verify(value_blind_proof, value, value_commitment, asset_commitment);
+            GDK_RUNTIME_ASSERT_MSG(value_verifies, "cannot verify unblinded value matches commitment");
+        }
+
+        static std::unique_ptr<Tx> liquidex_validate_proposal(
+            const session_impl& session, const nlohmann::json& proposal)
         {
             constexpr bool is_liquid = true;
             GDK_RUNTIME_ASSERT_MSG(proposal.at("version") == LIQUIDEX_VERSION, "unknown version");
@@ -123,23 +143,12 @@ namespace green {
             GDK_RUNTIME_ASSERT_MSG(
                 tx->get_num_inputs() == 1 && tx->get_num_outputs() == 1, "unexpected number of inputs or outputs");
 
-            // Verify unblinded values match the transaction commitments
-            // TODO: obtain the previous output and verify the input commitments
-            const auto output_asset = j_rbytesref(proposal_output, "asset");
-            const auto output_abf = j_rbytesref(proposal_output, "asset_blinder");
-            const auto output_value = j_amountref(proposal_output).value();
-            const auto value_blind_proof = j_bytesref(proposal_output, "value_blind_proof");
-            const auto output_asset_commitment = asset_generator_from_bytes(output_asset, output_abf);
-            const auto& tx_output = tx->get_output(0);
-            const auto output_value_commitment = gsl::make_span(tx_output.value, tx_output.value_len);
-
-            bool have_matched_asset_commitment = tx_output.asset_len == output_asset_commitment.size()
-                && !memcmp(tx_output.asset, output_asset_commitment.data(), tx_output.asset_len);
-            GDK_RUNTIME_ASSERT_MSG(have_matched_asset_commitment, "unblinded asset does not match commitment");
-
-            bool value_verifies = explicit_rangeproof_verify(
-                value_blind_proof, output_value, output_value_commitment, output_asset_commitment);
-            GDK_RUNTIME_ASSERT_MSG(value_verifies, "cannot verify unblinded value matches commitment");
+            liquidex_verify_commitments(proposal_output, tx->get_output(0));
+            // The makers input commitments live in the prevout it spends
+            const auto& tx_input = tx->get_input(0);
+            const auto prev_tx
+                = session.get_raw_transaction_details(b2h_rev({ tx_input.txhash, sizeof(tx_input.txhash) }));
+            liquidex_verify_commitments(proposal_input, prev_tx.get_output(tx_input.index));
             return tx;
         }
     } // namespace
@@ -292,7 +301,7 @@ namespace green {
         // TODO: allow to take multiple proposal at once
         const auto& proposal = j_arrayref(m_details.at(LIQUIDEX_STR), "proposals", 1).at(0);
         if (!m_tx) {
-            m_tx = liquidex_validate_proposal(proposal);
+            m_tx = liquidex_validate_proposal(*m_session, proposal);
         }
         const auto& proposal_input = proposal.at("inputs").at(0);
         const std::string maker_asset_id = proposal_input.at("asset");
@@ -361,7 +370,7 @@ namespace green {
     void validate_call::liquidex_impl()
     {
         const auto& proposal = m_details.at(LIQUIDEX_STR).at("proposal");
-        liquidex_validate_proposal(proposal);
+        liquidex_validate_proposal(*m_session, proposal);
     }
 
 } // namespace green

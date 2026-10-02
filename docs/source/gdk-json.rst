@@ -1975,7 +1975,8 @@ when validating against a different network, any amount in the addressee will
 not be validated or converted, as the session does not have pricing data for
 other networks than its own.
 
-To validate a LiquiDEX version 1 proposal:
+To validate a LiquiDEX version 1 proposal (Requires network access to verify
+the makers input against the previous output it spends.):
 
 .. code-block:: json
 
