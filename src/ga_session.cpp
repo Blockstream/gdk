@@ -2929,6 +2929,8 @@ namespace green {
         boost::algorithm::split(id_and_password, pin_info, boost::is_any_of(";"));
         GDK_RUNTIME_ASSERT(id_and_password.size() == 2u);
         const auto& password = id_and_password.back();
+        // The server generates the password as str(uuid.uuid4()), 36 chars
+        GDK_RUNTIME_ASSERT(password.size() >= 36u);
 
         // Encrypt the users mnemonic and seed using a key dervied from the
         // PIN password and a randomly generated salt.
