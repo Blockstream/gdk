@@ -1115,7 +1115,7 @@ namespace green {
 
     const struct wally_tx_output& Tx::get_output(size_t index) const
     {
-        GDK_RUNTIME_ASSERT(index < m_tx->num_outputs);
+        GDK_USER_ASSERT(index < m_tx->num_outputs, "Invalid transaction output index");
         return m_tx->outputs[index];
     }
 
@@ -1742,7 +1742,6 @@ namespace green {
         //        but unfortunately it is quite complex so for now we have this duplication.
         const auto& net_params = session.get_network_parameters();
         GDK_RUNTIME_ASSERT(net_params.is_liquid());
-        GDK_RUNTIME_ASSERT(vout < tx.get_num_outputs());
 
         nlohmann::json result = nlohmann::json::object();
         const auto& o = tx.get_output(vout);
