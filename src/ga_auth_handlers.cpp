@@ -723,6 +723,11 @@ namespace green {
                 // Wallet input we have been asked to sign. Must be spendable by us
                 const auto& addr_type = j_strref(input, "address_type");
                 GDK_RUNTIME_ASSERT(!addr_type.empty());
+                // Hardware signers can sign without gdk ever computing (and checking) the sighash - introducing the check
+                // in GDK to create a consistency check between software and hw signers.
+                if (const auto sighash = j_uint32(input, "user_sighash"); sighash.has_value()) {
+                    validate_sighash_flags(*sighash, addr_type == address_type::p2tr, is_liquid);
+                }
                 if (!have_checked_full_session) {
                     // Only full (i.e. non watch-only) sessions can sign wallet inputs
                     m_session->ensure_full_session();

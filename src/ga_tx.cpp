@@ -863,15 +863,16 @@ namespace green {
             }
         }
 
-        static void validate_sighash_flags(uint32_t sighash_flags, bool is_p2tr, bool is_liquid)
-        {
-            if (sighash_flags == WALLY_SIGHASH_ALL || (is_p2tr && sighash_flags == WALLY_SIGHASH_DEFAULT)) {
-                return;
-            }
-            const bool is_valid = is_liquid && sighash_flags == SIGHASH_SINGLE_ANYONECANPAY;
-            GDK_USER_ASSERT(is_valid, "Unsupported sighash type");
-        }
     } // namespace
+
+    void validate_sighash_flags(uint32_t sighash_flags, bool is_p2tr, bool is_liquid)
+    {
+        if (sighash_flags == WALLY_SIGHASH_ALL || (is_p2tr && sighash_flags == WALLY_SIGHASH_DEFAULT)) {
+            return;
+        }
+        const bool is_valid = is_liquid && sighash_flags == SIGHASH_SINGLE_ANYONECANPAY;
+        GDK_USER_ASSERT(is_valid, "Unsupported sighash type");
+    }
 
     void Tx::tx_deleter::operator()(struct wally_tx* p) { wally_tx_free(p); }
 
