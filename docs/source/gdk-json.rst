@@ -594,6 +594,9 @@ To sign with a specific sighash, set ``"user_sighash"`` for the elements of
 ``"transaction_inputs"`` you wish to sign with a certain sighash, otherwise
 ``SIGHASH_ALL`` (``1``) will be used.
 
+(Liquid only) Transactions containing input with ``SIGHASH_SINGLE_ANYONECANPAY``
+must match the LiquiDEX maker proposal format otherwise signing will fail.
+
 Set ``"skip_signing"`` to ``true`` for any input in ``"transaction_inputs"``
 you do not wish to have signed.
 

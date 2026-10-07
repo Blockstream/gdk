@@ -1780,4 +1780,41 @@ namespace green {
         return result;
     }
 
+    // Verify a tx satisfies LiquiDEX maker proposal requirements.
+    // Only called for txs with a SIGHASH_SINGLE_ANYONECANPAY input.
+    void validate_liquidex_maker_tx(session_impl& session, const nlohmann::json& details, std::unique_ptr<Tx>& tx)
+    {
+        GDK_USER_ASSERT(details.at("transaction_inputs").size() == 1,
+            "A transaction containing SIGHASH_SINGLE|ANYONECANPAY can only have one input");
+
+        // The signature only commits to output 0, so any other output could result in funds loss
+        GDK_USER_ASSERT(tx->get_num_outputs() == 1,
+            "A transaction containing SIGHASH_SINGLE|ANYONECANPAY can only have one output");
+
+        // Output must pay to makers wallet
+        const auto& o = tx->get_output(0);
+        const byte_span_t script{ o.script, o.script_len };
+        bool is_ours = !session.get_scriptpubkey_data(script).empty();
+        if (!is_ours) {
+            // Following loop could result in several network calls by get_previous_addresses()
+            for (auto subaccount : session.get_subaccount_pointers()) {
+                session.encache_new_scriptpubkeys(subaccount);
+            }
+            is_ours = !session.get_scriptpubkey_data(script).empty();
+        }
+        GDK_USER_ASSERT(is_ours, "SIGHASH_SINGLE|ANYONECANPAY output must pay to this wallet");
+
+        // Its blinding data must reproduce its commitments, proving its asset and amount
+        const auto& output = details.at("transaction_outputs").at(0);
+        GDK_USER_ASSERT(output.contains("assetblinder") && output.contains("amountblinder"),
+            "SIGHASH_SINGLE|ANYONECANPAY output must be unblindable by this wallet");
+        const auto generator
+            = asset_generator_from_bytes(j_rbytesref(output, "asset_id"), j_rbytesref(output, "assetblinder"));
+        const auto commitment
+            = asset_value_commitment(j_amountref(output).value(), j_rbytesref(output, "amountblinder"), generator);
+        const bool is_proven = o.asset_len == generator.size() && !memcmp(o.asset, generator.data(), o.asset_len)
+            && o.value_len == commitment.size() && !memcmp(o.value, commitment.data(), o.value_len);
+        GDK_USER_ASSERT(is_proven, "SIGHASH_SINGLE|ANYONECANPAY output does not match its blinding data");
+    }
+
 } // namespace green

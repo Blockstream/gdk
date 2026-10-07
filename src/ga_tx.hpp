@@ -111,6 +111,8 @@ namespace green {
         const network_parameters& net_params, nlohmann::json& addr, const std::string& blinding_pubkey_hex);
     nlohmann::json unblind_output(session_impl& session, const Tx& tx, uint32_t vout);
 
+    void validate_liquidex_maker_tx(session_impl& session, const nlohmann::json& details, std::unique_ptr<Tx>& tx);
+
     void create_transaction(session_impl& session, nlohmann::json& details);
 
     void validate_prev_tx_value(const Tx& prev_tx, const nlohmann::json& utxo);
