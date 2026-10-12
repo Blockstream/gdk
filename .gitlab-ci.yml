@@ -47,7 +47,7 @@ test_clang_tidy:
     - ./tools/clang-tidy.sh /prebuild/clang $TARGET_BRANCH
 
 
-build_gcc_bullseye:
+build_gcc_trixie:
   extends: .debian-image
   stage: build
   script:
@@ -63,16 +63,16 @@ build_gcc_bullseye:
       - install-java
 
 
-test_gcc_bullseye:
+test_gcc_trixie:
   extends: .debian-image
   stage: test
-  needs: [build_gcc_bullseye]
+  needs: [build_gcc_trixie]
   script:
     - cd build-gcc
     - ctest
 
 
-build_clang_bullseye:
+build_clang_trixie:
   extends: .debian-image
   stage: build
   script:
@@ -261,7 +261,7 @@ apidocs:
 jumbo-release:
   extends: .debian-image
   stage: release
-  needs: [build-android, build_clang_bullseye, build_gcc_ubuntu2004_arm64]
+  needs: [build-android, build_clang_trixie, build_gcc_ubuntu2004_arm64]
   artifacts:
     expire_in: 7 days
     when: on_success

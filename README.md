@@ -19,7 +19,7 @@ or you can add it to your bash profile `~/.bash_profile`
   3. Install additional rust targets for cross-building: `rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android x86_64-pc-windows-gnu aarch64-apple-ios x86_64-apple-ios`
 
 ### Platform-specific dependencies
-For Debian Bullseye:
+For Debian Trixie:
 ```
 sudo ./docker/debian/install_deps.sh
 ```
