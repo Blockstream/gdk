@@ -9,7 +9,7 @@ apt install --no-install-recommends unzip autoconf automake autotools-dev pkg-co
 uv venv --python python3.9 /root/venv
 uv pip install --python /root/venv --require-hashes -r tools/requirements.txt
 
-curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.85.0
+./tools/install_rustup.sh
 source /root/.cargo/env
 
 

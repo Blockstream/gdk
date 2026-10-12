@@ -19,6 +19,7 @@
 !./docker/ubuntu-arm64/install_deps.sh
 !./docker/ubuntu/install_deps.sh
 !./tools/environment_setup.sh
+!./tools/install_rustup.sh
 !./tools/requirements.txt
 !./tools/requirements-uv.txt
 !./tools/install_uv.sh
