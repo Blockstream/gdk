@@ -9,7 +9,7 @@ COPY ./cmake/profiles ./cmake/profiles
 COPY ./downloads ./downloads
 COPY ./docker/ubuntu-arm64/install_deps.sh ./docker/ubuntu-arm64/install_deps.sh
 RUN ./docker/ubuntu-arm64/install_deps.sh
-ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-arm64
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-arm64
 
 FROM base AS buildergcc
 ENV GDK_KEEP_DOWNLOADS=1

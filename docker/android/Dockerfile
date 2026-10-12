@@ -11,7 +11,7 @@ COPY ./docker/android/install_deps.sh ./docker/android/install_deps.sh
 RUN ./docker/android/install_deps.sh
 
 ENV ANDROID_NDK=/root/android-ndk-r26b
-ENV JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64
+ENV JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 ENV GDK_KEEP_DOWNLOADS=1
 
 
