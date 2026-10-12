@@ -590,6 +590,12 @@ public func getNetworks() throws -> [String: Any]? {
     return try convertOpaqueJsonToDict(o: result!)
 }
 
+public func getRandomBytes(len: Int) throws -> [UInt8] {
+    var bytes = [UInt8](repeating: 0, count: len)
+    try callWrapper(fun: GA_get_random_bytes(&bytes, bytes.count))
+    return bytes
+}
+
 public func getUniformUInt32(upper_bound: UInt32) throws -> UInt32 {
     var result: UInt32 = 0
     try callWrapper(fun: GA_get_uniform_uint32_t(upper_bound, &result))
