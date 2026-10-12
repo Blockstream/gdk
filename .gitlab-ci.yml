@@ -96,7 +96,7 @@ test_rust:
     LLVM_PROFILE_FILE: "coverage-%p-%m.profraw"
     CARGO_REGISTRIES_CRATES_IO_PROTOCOL: "sparse"
   script:
-    - cargo nextest run --profile ci --manifest-path subprojects/gdk_rust/Cargo.toml
+    - cargo nextest run --locked --profile ci --manifest-path subprojects/gdk_rust/Cargo.toml
     - grcov --binary-path subprojects/gdk_rust/target/debug/ -t cobertura --branch --ignore-not-existing --ignore "*cargo*" -o coverage.xml -p `pwd` subprojects/gdk_rust
   artifacts:
     name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
