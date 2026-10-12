@@ -11,6 +11,11 @@ if(NOT Python_FOUND)
     message("python not found: skipping swig python binding")
     return()
 endif()
+find_program(UV_EXECUTABLE uv)
+if(NOT UV_EXECUTABLE)
+    message("uv not found: skipping swig python binding")
+    return()
+endif()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} _upper_build_type)
 set(_python_C_FLAGS ${CMAKE_C_FLAGS} ${CMAKE_F_FLAGS_${_upper_build_type}})
@@ -59,7 +64,8 @@ add_custom_command(OUTPUT python-wheel-canary-file
         CPP=${CMAKE_CXX_COMPILER} CPPFLAGS=${_python_C_FLAGS}
         CXX=${CMAKE_CXX_COMPILER} CXXFLAGS=${_python_C_FLAGS}
         CC=${CMAKE_C_COMPILER} CFLAGS=${_python_C_FLAGS}
-        ${Python_EXECUTABLE} -m build
+        ${UV_EXECUTABLE} build --python ${Python_EXECUTABLE}
+            --build-constraints ${CMAKE_SOURCE_DIR}/tools/requirements.txt --require-hashes
     COMMAND touch python-wheel-canary-file
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/green_gdk
     DEPENDS

@@ -20,6 +20,8 @@
 !./docker/ubuntu/install_deps.sh
 !./tools/environment_setup.sh
 !./tools/requirements.txt
+!./tools/requirements-uv.txt
+!./tools/install_uv.sh
 !./cmake/profiles/
 !./downloads/**
 !./downloads

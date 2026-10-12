@@ -3,8 +3,10 @@ set -e
 
 apt update -qq
 
-apt install --no-install-recommends autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-pip,-virtualenv} python{,-dev}-is-python3 clang{,-format,-tidy} git swig g++-mingw-w64-x86-64 curl cmake libssl-dev libtool-bin openjdk-21-jdk -yqq
-pip3 install --require-hashes -r tools/requirements.txt
+apt install --no-install-recommends autoconf automake autotools-dev pkg-config build-essential libtool python3{,-dev,-venv} python{,-dev}-is-python3 clang{,-format,-tidy} git swig g++-mingw-w64-x86-64 curl cmake libssl-dev libtool-bin openjdk-21-jdk -yqq
+./tools/install_uv.sh
+uv venv /root/venv
+uv pip install --python /root/venv --require-hashes -r tools/requirements.txt
 
 
 if [ -f /.dockerenv ]; then

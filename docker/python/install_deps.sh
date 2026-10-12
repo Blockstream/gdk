@@ -8,22 +8,17 @@ yum install -yqq swig perl-core autoconf libstdc++-static clang
 python_versions=(cp39-cp39 cp310-cp310 cp311-cp311 cp312-cp312 cp313-cp313 cp314-cp314)
 
 
-/opt/python/${python_versions[0]}/bin/python -m venv /root/tmp-python-env
-source /root/tmp-python-env/bin/activate
-pip install virtualenv
+./tools/install_uv.sh /opt/python/${python_versions[0]}/bin/python
 for python_version in "${python_versions[@]}";
 do
     echo "building python environment for ${python_version}"
-    virtualenv -p /opt/python/$python_version/bin/python /root/python-${python_version}-venv
+    uv venv --python /opt/python/$python_version/bin/python /root/python-${python_version}-venv
 done
-deactivate
-rm -rf /root/tmp-python-env
 
 for python_version in "${python_versions[@]}";
 do
     source /root/python-${python_version}-venv/bin/activate
-    pip install -r tools/requirements.txt
-    pip install setuptools
+    uv pip install --require-hashes -r tools/requirements.txt
     deactivate
 done
 

@@ -9,7 +9,9 @@ curl -sL --retry 3 https://github.com/Kitware/CMake/releases/download/v3.18.5/cm
 chmod +x cmake.sh
 ./cmake.sh --skip-license --exclude-subdir --prefix=/usr/local/
 
-pip install --require-hashes -r tools/requirements.txt
+./tools/install_uv.sh
+uv venv --python python3 /root/venv
+uv pip install --python /root/venv --require-hashes -r tools/requirements.txt
 
 curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain 1.85.0
 source /root/.cargo/env

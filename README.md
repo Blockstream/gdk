@@ -29,7 +29,7 @@ For Mac OSX:
 
 Install Xcode and brew if not installed, then
 ```
-brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig gnu-getopt
+brew update && brew install cmake automake autoconf libtool gnu-sed python3 pkg-config swig gnu-getopt uv
 xcode-select --install
 ```
 
@@ -124,6 +124,8 @@ If JAVA_HOME is set while the library is built, a Java wrapper is built exposing
 Similarly, if `--python-version` is passed to `tools/build.sh` a Python wrapper is built, for example:
 
 `./tools/build.sh --install $PWD --gcc --python-version 3.9`
+
+The wheel is built with `uv build`, which installs setuptools into an isolated build environment and checks it against the hashes in `tools/requirements.txt`, so uv must be installed. The Debian and Mac OSX dependency steps above install it.
 
 ### Swift wrapper
 
