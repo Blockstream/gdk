@@ -106,7 +106,7 @@ build_gdk-ubuntu-arm64-builder:
     - docker buildx create builder --use
     - mkdir -p downloads
     - docker buildx build --platform linux/arm64 --load
-        -t ${IMAGE}:${CI_COMMIT_SHA} -t ${IMAGE}:latest
+        -t ${IMAGE}:${CI_COMMIT_SHA}-arm64 -t ${IMAGE}:latest-arm64
         -f ${DOCKER_BUILD_CONTEXT}/Dockerfile . --progress=plain &>docker-build.log
-    - docker push ${IMAGE}:${CI_COMMIT_SHA}
-    - if [ ${CI_COMMIT_BRANCH} == "master" ]; then docker push ${IMAGE}:latest; fi
+    - docker push ${IMAGE}:${CI_COMMIT_SHA}-arm64
+    - if [ ${CI_COMMIT_BRANCH} == "master" ]; then docker push ${IMAGE}:latest-arm64; fi
