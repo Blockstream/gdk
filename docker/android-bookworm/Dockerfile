@@ -22,7 +22,7 @@ RUN ./tools/builddeps.sh --ndk armeabi-v7a --prefix /prebuild/android-armeabi-v7
     ./tools/builddeps.sh --ndk x86_64 --prefix /prebuild/android-x86_64
 
 
-FROM rust:1.85-bullseye AS builderrust
+FROM rust:1.85.0-bookworm@sha256:0ff31c9ffa641a62e48d543fb00b4960955ea375f40776f40f585b89e654cc5e AS builderrust
 RUN rustup component add rustfmt clippy llvm-tools-preview
 RUN rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
 
