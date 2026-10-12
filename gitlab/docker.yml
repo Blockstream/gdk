@@ -13,9 +13,9 @@
     DOCKER_TLS_CERTDIR: ""
     DOCKER_BUILDKIT: 1
     BUILDX_GIT_INFO: false
-  image: docker:23
+  image: docker:23@sha256:afa5d51349001a4293bab02d2988290db5eae393a83405b1f458c0dd44e2f3ca
   services:
-    - docker:23-dind
+    - docker:23-dind@sha256:afa5d51349001a4293bab02d2988290db5eae393a83405b1f458c0dd44e2f3ca
   tags:
     - cloud
   retry:
