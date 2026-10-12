@@ -35,7 +35,8 @@ namespace green {
 
         // Get the path from the subaccount root to a key in a subaccount
         virtual std::vector<uint32_t> get_path_from_subaccount(
-            uint32_t subaccount, uint32_t pointer, bool is_internal) const = 0;
+            uint32_t subaccount, uint32_t pointer, bool is_internal) const
+            = 0;
 
         // Get the full path to a key in a subaccount
         std::vector<uint32_t> get_full_path(uint32_t subaccount, uint32_t pointer, bool is_internal) const;

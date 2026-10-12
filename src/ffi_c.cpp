@@ -55,7 +55,7 @@ namespace {
         try {
             g_thread_error.reset();
             assert_invoke_args(func, std::forward<Args>(args)...);
-            f(std::forward<Args>(args)...);
+            f(std::forward<Args>(args)...); // NOLINT
             g_thread_error.reset();
             return GA_OK;
         } catch (const green::login_error& e) {
@@ -132,55 +132,48 @@ namespace {
 
 } // namespace
 
-struct GA_session final : public green::session {
-};
+struct GA_session final : public green::session {};
 
 #define GDK_DEFINE_C_FUNCTION_1(NAME, T1, A1, BODY)                                                                    \
     int NAME(T1 A1)                                                                                                    \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1) { BODY }, A1);                                                                            \
+        return c_invoke(#NAME, [](T1 A1) { BODY }, A1);                                                                \
     }
 
 #define GDK_DEFINE_C_FUNCTION_2(NAME, T1, A1, T2, A2, BODY)                                                            \
     int NAME(T1 A1, T2 A2)                                                                                             \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2) { BODY }, A1, A2);                                                                 \
+        return c_invoke(#NAME, [](T1 A1, T2 A2) { BODY }, A1, A2);                                                     \
     }
 
 #define GDK_DEFINE_C_FUNCTION_3(NAME, T1, A1, T2, A2, T3, A3, BODY)                                                    \
     int NAME(T1 A1, T2 A2, T3 A3)                                                                                      \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2, T3 A3) { BODY }, A1, A2, A3);                                                      \
+        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3) { BODY }, A1, A2, A3);                                          \
     }
 
 #define GDK_DEFINE_C_FUNCTION_4(NAME, T1, A1, T2, A2, T3, A3, T4, A4, BODY)                                            \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4)                                                                               \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4) { BODY }, A1, A2, A3, A4);                                           \
+        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4) { BODY }, A1, A2, A3, A4);                               \
     }
 
 #define GDK_DEFINE_C_FUNCTION_5(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, BODY)                                    \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5)                                                                        \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5) { BODY }, A1, A2, A3, A4, A5);                                \
+        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5) { BODY }, A1, A2, A3, A4, A5);                    \
     }
 
 #define GDK_DEFINE_C_FUNCTION_6(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, BODY)                            \
     int NAME(T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6)                                                                 \
     {                                                                                                                  \
         call_timer ct(#NAME);                                                                                          \
-        return c_invoke(                                                                                               \
-            #NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6) { BODY }, A1, A2, A3, A4, A5, A6);                     \
+        return c_invoke(#NAME, [](T1 A1, T2 A2, T3 A3, T4 A4, T5 A5, T6 A6) { BODY }, A1, A2, A3, A4, A5, A6);         \
     }
 
 #define GDK_DEFINE_C_FUNCTION_7(NAME, T1, A1, T2, A2, T3, A3, T4, A4, T5, A5, T6, A6, T7, A7, BODY)                    \

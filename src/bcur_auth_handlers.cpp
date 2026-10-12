@@ -17,10 +17,8 @@
 #include <urc/urc.h>
 #else
 namespace ur {
-    class UREncoder {
-    };
-    class URDecoder {
-    };
+    class UREncoder {};
+    class URDecoder {};
 } // namespace ur
 #endif
 

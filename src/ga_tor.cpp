@@ -127,7 +127,7 @@ namespace green {
                             // but terminate at the first character that is not a valid
                             // octal digit if encountered sooner.
                             for (j = 1; j < 3 && (i + j) < value.size() && '0' <= value[i + j] && value[i + j] <= '7';
-                                 ++j) {
+                                ++j) {
                             }
                             // Tor restricts first digit to 0-3 for three-digit octals.
                             // A leading digit of 4-7 would therefore be interpreted as

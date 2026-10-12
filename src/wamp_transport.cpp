@@ -687,8 +687,7 @@ namespace green {
 
         autobahn::wamp_subscription sub;
         // TODO: Set m_last_ping_ts whenever we receive a subscription
-        auto fn = st.first->subscribe(
-            topic, [cb](const autobahn::wamp_event& e) { cb(wamp_cast_json(e)); }, options);
+        auto fn = st.first->subscribe(topic, [cb](const autobahn::wamp_event& e) { cb(wamp_cast_json(e)); }, options);
         for (;;) {
             const auto status = fn.wait_for(boost::chrono::seconds(1));
             if (status == boost::future_status::ready) {
