@@ -729,7 +729,6 @@ namespace green {
                     if (is_liquid && *sighash == SIGHASH_SINGLE_ANYONECANPAY) {
                         // SINGLE|ACP is only allowed for LiquiDEX maker proposal txs
                         if (!tx) {
-                            constexpr bool is_liquid = true;
                             tx = std::make_unique<Tx>(j_strref(request, "transaction"), is_liquid);
                         }
                         validate_liquidex_maker_tx(*m_session, request, tx);
