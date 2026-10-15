@@ -122,6 +122,18 @@ namespace green {
     // Returns true if a tx has AMP inputs
     bool tx_has_amp_inputs(session_impl& session, const nlohmann::json& details);
 
+    // Return the Bitcoin output descriptors for a Green multisig subaccount,
+    // canonical and checksummed, one per script type the subaccount can hold.
+    // 'sa_type' must be "2of2" or "2of3". 'service_xpub' and 'user_xpub' are the
+    // keys green_pubkeys and user_pubkeys return, so the user key is the "/1"
+    // branch below the subaccount root. 'user_fingerprint' and 'user_path' give
+    // that keys origin; pass an empty fingerprint to omit it. 'recovery_xpub' is
+    // required for "2of3" and must be empty otherwise.
+    // Returns no descriptors if the type and keys are inconsistent.
+    std::vector<std::string> get_multisig_descriptors(const network_parameters& net_params, const std::string& sa_type,
+        const std::string& service_xpub, const std::string& user_xpub, byte_span_t user_fingerprint,
+        uint32_span_t user_path, const std::string& recovery_xpub);
+
 } // namespace green
 
 #endif

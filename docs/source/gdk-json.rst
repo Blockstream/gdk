@@ -390,11 +390,18 @@ as the array elements of `GA_get_subaccounts`.
     For singlesig subaccounts, one of ``"p2pkh"``, ``"p2wpkh"``, ``"p2sh-p2wpkh"`` or ``"p2tr"``.
 :bip44_discovered: Singlesig only. Whether or not this subaccount contains at least one transaction.
 :user_path: The BIP32 path for this subaccount.
-:core_descriptors: Singlesig only. The Bitcoin Core compatible output descriptors.
-    One for the external chain and one for internal chain (change),
+:core_descriptors: The Bitcoin Core compatible output descriptors.
+    For singlesig subaccounts, one for the external chain and one for internal chain (change),
     for instance ``"sh(wpkh(tpubDC2Q4xK4XH72H18SiEV2A6HUwUPLhXiTEQXU35r4a41ZVrUv2cgKUMm2fsKTapi8DH4Y8ZVjy8TQtmyWMuH37kjw8fQGJahjWbuQoPm6qRF/0/*))"``
     ``"sh(wpkh(tpubDC2Q4xK4XH72H18SiEV2A6HUwUPLhXiTEQXU35r4a41ZVrUv2cgKUMm2fsKTapi8DH4Y8ZVjy8TQtmyWMuH37kjw8fQGJahjWbuQoPm6qRF/1/*))"``
     for a ``p2sh-p2wpkh`` subaccount.
+    For Bitcoin multisig subaccounts, one descriptor per script type the subaccount can hold:
+    ``p2sh-p2wsh``, then ``p2sh``, then for ``"2of2"`` subaccounts one csv descriptor per
+    csv bucket of the network. Multisig subaccounts use one chain for both receiving and
+    change addresses, so no internal descriptor is returned.
+    Not returned for Liquid subaccounts, or when the subaccounts keys are unavailable.
+    Note the multisig descriptors do not cover legacy version 0 addresses, whose
+    service keys are not derived from the users Green path.
 :slip132_extended_pubkey: Singlesig and Bitcoin only. The extended public key with modified version
     as specified in SLIP-0132 (xpub, ypub, zpub, tpub, upub, vpub).
     Use of this value is discouraged and this field might be removed in the future.

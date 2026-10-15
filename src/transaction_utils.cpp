@@ -26,6 +26,20 @@ namespace green {
         constexpr uint32_t ga_redeem_p2sh_p2wsh_fortified = 159;
         constexpr uint32_t ga_redeem_p2sh_p2wsh_csv_fortified = 162;
 
+        // Format a bip32 path as a key origin suffix, e.g. "/3'/1'". Hardened
+        // elements use "'" to match the descriptors gdk emits for singlesig.
+        std::string format_key_origin_path(uint32_span_t path)
+        {
+            std::string ret;
+            for (const auto element : path) {
+                ret += "/" + std::to_string(unharden(element));
+                if (element != unharden(element)) {
+                    ret += "'";
+                }
+            }
+            return ret;
+        }
+
         static bool isupper(const std::string& s)
         {
             // String is upper case if no lower case characters are found
@@ -324,6 +338,49 @@ namespace green {
             scriptpubkey_multisig_from_bytes(keys, threshold, script);
         }
         return script;
+    }
+
+    std::vector<std::string> get_multisig_descriptors(const network_parameters& net_params, const std::string& sa_type,
+        const std::string& service_xpub, const std::string& user_xpub, byte_span_t user_fingerprint,
+        uint32_span_t user_path, const std::string& recovery_xpub)
+    {
+        GDK_RUNTIME_ASSERT(!net_params.is_liquid());
+        GDK_RUNTIME_ASSERT(!service_xpub.empty() && !user_xpub.empty());
+
+        const bool is_2of3 = sa_type == "2of3";
+        if ((sa_type != "2of2" && !is_2of3) || is_2of3 == recovery_xpub.empty()) {
+            // Describing these would describe scripts the subaccount does not own
+            return {};
+        }
+
+        std::string user_origin;
+        if (!user_fingerprint.empty()) {
+            user_origin = "[" + b2h(user_fingerprint) + format_key_origin_path(user_path) + "]";
+        }
+        // Service and user keys derive at /pointer, the recovery xpub at /1/pointer
+        const auto service = service_xpub + "/*";
+        const auto user = user_origin + user_xpub + "/*";
+
+        // Keys are given in the order the Green scripts use them
+        std::string multi = "multi(2," + service + "," + user;
+        if (is_2of3) {
+            multi += "," + recovery_xpub + "/1/*";
+        }
+        multi += ")";
+
+        const bool is_main_net = net_params.is_main_net();
+        std::vector<std::string> ret;
+        ret.emplace_back(canonicalize_descriptor("sh(wsh(" + multi + "))", is_main_net)); // p2wsh
+        ret.emplace_back(canonicalize_descriptor("sh(" + multi + ")", is_main_net)); // p2sh
+        if (!is_2of3) {
+            // 2of2 subaccounts also hold csv addresses, one script per csv bucket
+            for (const auto csv_blocks : net_params.csv_buckets()) {
+                const auto csv = "sh(wsh(and_v(v:pk(" + user + "),or_d(pk(" + service + "),older("
+                    + std::to_string(csv_blocks) + ")))))";
+                ret.emplace_back(canonicalize_descriptor(csv, is_main_net));
+            }
+        }
+        return ret;
     }
 
     std::vector<unsigned char> multisig_output_script_from_utxo(const network_parameters& net_params,

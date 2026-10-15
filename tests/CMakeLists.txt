@@ -3,6 +3,11 @@ add_executable(test_json test_json.cpp)
 target_include_directories(test_json PRIVATE ${CMAKE_SOURCE_DIR})
 target_link_libraries(test_json PRIVATE green_gdk nlohmann_json::nlohmann_json)
 
+# test descriptors
+add_executable(test_descriptors test_descriptors.cpp)
+target_include_directories(test_descriptors PRIVATE ${CMAKE_SOURCE_DIR})
+target_link_libraries(test_descriptors PRIVATE green_gdk nlohmann_json::nlohmann_json)
+
 # test networks
 add_executable(test_networks test_networks.cpp)
 target_include_directories(test_networks PRIVATE ${CMAKE_SOURCE_DIR})
@@ -32,4 +37,5 @@ target_link_libraries(test_gdk_commit PRIVATE green_gdk)
 
 add_test(NAME test_json COMMAND test_json)
 add_test(NAME test_networks COMMAND test_networks)
+add_test(NAME test_descriptors COMMAND test_descriptors)
 add_test(NAME test_gdk_commit COMMAND test_gdk_commit)

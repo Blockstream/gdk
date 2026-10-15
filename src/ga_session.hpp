@@ -47,6 +47,9 @@ namespace green {
         void change_settings_limits(const nlohmann::json& details, const nlohmann::json& twofactor_data);
 
         nlohmann::json get_subaccounts_impl(locker_t& locker);
+
+        // Add the output descriptors for a multisig subaccount to its details
+        void add_core_descriptors(locker_t& locker, nlohmann::json& details);
         std::vector<uint32_t> get_subaccount_pointers();
         void update_subaccount(uint32_t subaccount, const nlohmann::json& details);
         uint32_t get_next_subaccount(const std::string& sa_type);

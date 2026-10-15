@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- Multisig: Return `core_descriptors` for Bitcoin 2of2 and 2of3 subaccounts, so wallets
+  can be exported to other descriptor-aware software.
+
 ## Release 0.78.0 - 26-09-10
 
 ### Added

@@ -256,6 +256,18 @@ namespace green {
         out.resize(written);
     }
 
+    std::string canonicalize_descriptor(const std::string& descriptor, bool is_main_net)
+    {
+        const uint32_t network = is_main_net ? WALLY_NETWORK_BITCOIN_MAINNET : WALLY_NETWORK_BITCOIN_TESTNET;
+        const uint32_t flags = 0;
+        struct wally_descriptor* d;
+        GDK_VERIFY(wally_descriptor_parse(descriptor.c_str(), nullptr, network, flags, &d));
+        std::unique_ptr<struct wally_descriptor> parsed{ d };
+        char* s;
+        GDK_VERIFY(wally_descriptor_canonicalize(parsed.get(), flags, &s));
+        return make_string(s);
+    }
+
     size_t varbuff_get_length(size_t script_len)
     {
         unsigned char dummy[1] = { 0 };

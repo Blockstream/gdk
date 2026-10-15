@@ -864,6 +864,17 @@ namespace green {
         return j_arrayref(m_details, "csv_buckets") == buckets;
     }
 
+    std::vector<uint32_t> network_parameters::csv_buckets() const
+    {
+        const auto& buckets = j_arrayref(m_details, "csv_buckets");
+        std::vector<uint32_t> ret;
+        ret.reserve(buckets.size());
+        for (const auto& bucket : buckets) {
+            ret.emplace_back(bucket.get<uint32_t>());
+        }
+        return ret;
+    }
+
     bool network_parameters::is_valid_csv_value(uint32_t csv_blocks) const
     {
         const auto& buckets = j_arrayref(m_details, "csv_buckets");

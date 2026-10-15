@@ -1672,9 +1672,48 @@ namespace green {
         nlohmann::json::array_t subaccounts;
         subaccounts.reserve(m_subaccounts.size());
         for (const auto& sa : m_subaccounts) {
-            subaccounts.emplace_back(sa.second);
+            auto details = sa.second;
+            add_core_descriptors(locker, details);
+            subaccounts.emplace_back(std::move(details));
         }
         return nlohmann::json(std::move(subaccounts));
+    }
+
+    void ga_session::add_core_descriptors(session_impl::locker_t& locker, nlohmann::json& details)
+    {
+        GDK_RUNTIME_ASSERT(locker.owns_lock());
+        if (m_net_params.is_liquid() || !m_green_pubkeys || !m_user_pubkeys || !m_signer) {
+            return; // Liquid descriptors are not yet supported
+        }
+        const auto& sa_type = j_strref(details, "type");
+        if (sa_type != "2of2" && sa_type != "2of3") {
+            return; // Only standard Green multisig subaccounts are supported
+        }
+        const auto subaccount = j_uint32ref(details, "pointer");
+        if (!m_user_pubkeys->have_subaccount(subaccount)) {
+            return; // We don't have the users key for this subaccount
+        }
+        std::vector<unsigned char> fingerprint;
+        std::vector<uint32_t> user_path;
+        if (m_signer->has_master_bip32_xpub()) {
+            fingerprint = m_signer->get_master_fingerprint();
+            // The user key is the "/1" branch below the subaccount root
+            user_path = m_user_pubkeys->get_path_to_subaccount(subaccount);
+            user_path.push_back(1);
+        }
+        const auto service_xpub = m_green_pubkeys->get_subaccount(subaccount).to_base58();
+        const auto user_xpub = m_user_pubkeys->get_subaccount(subaccount).to_base58();
+        const auto recovery_xpub = j_str_or_empty(details, "recovery_xpub");
+        try {
+            auto descriptors = get_multisig_descriptors(
+                m_net_params, sa_type, service_xpub, user_xpub, fingerprint, user_path, recovery_xpub);
+            if (!descriptors.empty()) {
+                details["core_descriptors"] = std::move(descriptors);
+            }
+        } catch (const std::exception& e) {
+            // A key we cannot describe must not stop the caller fetching their subaccounts
+            GDK_LOG(warning) << "Cannot create descriptors for subaccount " << subaccount << ": " << e.what();
+        }
     }
 
     std::vector<uint32_t> ga_session::get_subaccount_pointers()
@@ -1771,6 +1810,7 @@ namespace green {
             = insert_subaccount(locker, subaccount, sa_type, name, recv_id, recovery_key, required_ca);
         subaccount_details["hidden"] = false;
         subaccount_details["user_path"] = m_user_pubkeys->get_path_to_subaccount(subaccount);
+        add_core_descriptors(locker, subaccount_details);
 
         if (have_writable_client_blob(locker)) {
             const auto signer_xpubs = m_signer->get_cached_bip32_xpubs_json();

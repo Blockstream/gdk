@@ -27,6 +27,10 @@ namespace std {
     template <> struct default_delete<struct wally_tx_output> {
         void operator()(struct wally_tx_output* ptr) const { wally_tx_output_free(ptr); }
     };
+
+    template <> struct default_delete<struct wally_descriptor> {
+        void operator()(struct wally_descriptor* ptr) const { wally_descriptor_free(ptr); }
+    };
 } // namespace std
 
 namespace green {
@@ -145,6 +149,10 @@ namespace green {
     uint32_t get_csv_blocks_from_csv_script(byte_span_t script);
 
     void scriptpubkey_multisig_from_bytes(byte_span_t keys, uint32_t threshold, std::vector<unsigned char>& out);
+
+    // Validate an output descriptor and return it in canonical form with
+    // its checksum appended. Throws if the descriptor is not valid.
+    std::string canonicalize_descriptor(const std::string& descriptor, bool is_main_net);
 
     size_t varbuff_get_length(size_t script_len);
 
