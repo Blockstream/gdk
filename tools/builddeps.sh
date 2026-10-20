@@ -283,10 +283,10 @@ cmake --install tmp/${source_name}/build
 
 # building websocketpp
 name="websocketpp"
-source_url="https://github.com/blockstream/websocketpp/archive/bc065371c5009cadb30ce0cc680cde010514bebd.tar.gz"
-source_name="websocketpp-bc065371c5009cadb30ce0cc680cde010514bebd"
-source_filename="websocketpp-bc065371c5009cadb30ce0cc680cde010514bebd.tar.gz"
-source_hash="05e9c9ab362ccfb0618f63036791b9041bd85b50b31131ed190394efe1b3e095"
+source_url="https://github.com/blockstream/websocketpp/archive/810b9b8313cd7109674dcefdfa5a859f4d48a6f4.tar.gz"
+source_name="websocketpp-810b9b8313cd7109674dcefdfa5a859f4d48a6f4"
+source_filename="websocketpp-810b9b8313cd7109674dcefdfa5a859f4d48a6f4.tar.gz"
+source_hash="1755897a9baceaf1b0fc1cdbeaee48aefb0e3c2d484605829132bdc0a350ea0e"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 cmake -B tmp/${source_name}/build -S tmp/${source_name} \
     -DCMAKE_INSTALL_PREFIX:PATH=${GDK_BUILD_ROOT} \
