@@ -225,8 +225,8 @@ namespace green {
             // watch only logins, we don't want the server to know the original
             // username/password, since we use these to encrypt the client blob
             // decryption key.
-            const auto u_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U);
-            const auto p_blob = pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P);
+            GDK_AUTO_WIPE(u_blob, pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_U));
+            GDK_AUTO_WIPE(p_blob, pbkdf2_hmac_sha512_256(entropy, signer::WO_SEED_P));
             return { b2h(u_blob), b2h(p_blob) };
         }
 
@@ -1399,14 +1399,14 @@ namespace green {
         const bool is_relogin = set_signer(locker, signer);
 
         const bool is_liquid = m_net_params.is_liquid();
-        const auto credentials = signer->get_credentials();
+        GDK_AUTO_WIPE(credentials, signer->get_credentials());
         const auto& username = j_strref(credentials, "username");
         const auto& password = j_strref(credentials, "password");
         const auto user_agent = get_user_agent(true, m_user_agent);
 
         // First, try using client blob
-        const auto entropy = compute_watch_only_entropy(username, password);
-        const auto u_p = get_green_wo_credentials(entropy);
+        GDK_AUTO_WIPE(entropy, compute_watch_only_entropy(username, password));
+        GDK_AUTO_WIPE(u_p, get_green_wo_credentials(entropy));
         auto login_data = authenticate_wo(locker, u_p.first, u_p.second, user_agent, true);
         if (login_data.empty()) {
             // Client blob login failed: try a non-blob watch only login
@@ -1628,13 +1628,15 @@ namespace green {
     nlohmann::json ga_session::set_wo_credentials(const nlohmann::json& credentials)
     {
         auto ret = session_impl::set_wo_credentials(credentials);
-        std::pair<std::string, std::string> u_p{ j_strref(credentials, "username"), j_strref(credentials, "password") };
+        const auto& username = j_strref(credentials, "username");
+        const auto& password = j_strref(credentials, "password");
+        GDK_AUTO_WIPE(u_p, std::pair<std::string, std::string>{});
         std::string wo_blob_key_hex;
 
-        if (!u_p.first.empty()) {
+        if (!username.empty()) {
             // Enabling watch only login.
             // Derive the username/password to use, encrypt the client blob key for upload
-            const auto entropy = compute_watch_only_entropy(u_p.first, u_p.second);
+            GDK_AUTO_WIPE(entropy, compute_watch_only_entropy(username, password));
             u_p = get_green_wo_credentials(entropy);
             wo_blob_key_hex = encrypt_watch_only_data(entropy, m_blob->get_key());
         }

@@ -15,6 +15,7 @@
 #include "io_runner.hpp"
 #include "json_utils.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 #include "session.hpp"
 #include "session_impl.hpp"
 #include "signer.hpp"
@@ -690,7 +691,7 @@ namespace green {
         ret["warnings"] = nlohmann::json::array();
 
         if (signer->is_watch_only()) {
-            const auto credentials = signer->get_credentials();
+            GDK_AUTO_WIPE(credentials, signer->get_credentials());
             ret.update(set_wo_credentials(credentials));
         }
         return ret;
@@ -762,14 +763,15 @@ namespace green {
         GDK_RUNTIME_ASSERT(m_signer->is_watch_only());
 
         pub_key_t public_key;
-        pbkdf2_hmac256_t blob_key;
+        GDK_AUTO_WIPE(blob_key, pbkdf2_hmac256_t{});
         try {
             GDK_RUNTIME_ASSERT_MSG(m_blobserver, "blobserver must be enabled for rich watch only");
-            const auto credentials = m_signer->get_credentials();
+            GDK_AUTO_WIPE(credentials, m_signer->get_credentials());
             const auto& raw_data = j_strref(credentials, "raw_watch_only_data");
             const auto pubkey_hex_size = public_key.size() * 2;
             public_key = h2b_array<EC_PUBLIC_KEY_LEN>(raw_data.substr(0, pubkey_hex_size));
-            blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(raw_data.substr(pubkey_hex_size, blob_key.size() * 2));
+            GDK_AUTO_WIPE(blob_key_hex, raw_data.substr(pubkey_hex_size, blob_key.size() * 2));
+            blob_key = h2b_array<PBKDF2_HMAC_SHA256_LEN>(blob_key_hex);
         } catch (const std::exception& e) {
             GDK_LOG(error) << "Invalid watch only credentials: " << e.what();
             throw_user_error("Invalid credentials"); // FIXME: res::

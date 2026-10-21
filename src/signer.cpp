@@ -219,7 +219,7 @@ namespace green {
         auto data = j_str_or_empty(credentials, "watch_only_data");
         if (!raw_data.empty() || !data.empty()) {
             // Blobserver rich watch-only login
-            const auto entropy = compute_watch_only_entropy(username, password);
+            GDK_AUTO_WIPE(entropy, compute_watch_only_entropy(username, password));
             if (raw_data.empty()) {
                 raw_data = b2h(decrypt_watch_only_data(entropy, data));
             } else if (data.empty()) {

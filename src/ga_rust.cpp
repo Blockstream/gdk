@@ -285,7 +285,7 @@ namespace green {
 
     nlohmann::json ga_rust::login_wo(std::shared_ptr<signer> signer)
     {
-        auto credentials = signer->get_credentials();
+        GDK_AUTO_WIPE(credentials, signer->get_credentials());
         {
             locker_t locker(m_mutex);
             set_signer(locker, signer);

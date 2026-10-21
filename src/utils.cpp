@@ -334,11 +334,11 @@ namespace green {
 
     std::vector<unsigned char> compute_watch_only_entropy(const std::string& username, const std::string& password)
     {
-        const std::string u_p = username + password;
-        std::vector<unsigned char> entropy;
-        entropy.resize(sizeof(uint32_t) + u_p.size());
+        // Copy strings directly into entropy, which will be wiped on return.
+        GDK_AUTO_WIPE(entropy, std::vector<unsigned char>(sizeof(uint32_t) + username.size() + password.size()));
         write_length32(username.size(), entropy.begin());
-        std::copy(u_p.begin(), u_p.end(), entropy.begin() + sizeof(uint32_t));
+        auto it = std::copy(username.begin(), username.end(), entropy.begin() + sizeof(uint32_t));
+        std::copy(password.begin(), password.end(), it);
         return scrypt(entropy, signer::WATCH_ONLY_SALT);
     }
 
@@ -349,12 +349,14 @@ namespace green {
 
     std::string encrypt_watch_only_data(byte_span_t entropy, byte_span_t data)
     {
-        return aes_cbc_encrypt_to_hex(get_watch_only_aes_key(entropy), data);
+        GDK_AUTO_WIPE(key, get_watch_only_aes_key(entropy));
+        return aes_cbc_encrypt_to_hex(key, data);
     }
 
     std::vector<unsigned char> decrypt_watch_only_data(byte_span_t entropy, const std::string& data_hex)
     {
-        return aes_cbc_decrypt_from_hex(get_watch_only_aes_key(entropy), data_hex);
+        GDK_AUTO_WIPE(key, get_watch_only_aes_key(entropy));
+        return aes_cbc_decrypt_from_hex(key, data_hex);
     }
 
     pub_key_t get_watch_only_cache_encryption_key(byte_span_t entropy, const std::string& extra_entropy)
