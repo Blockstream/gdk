@@ -65,7 +65,12 @@ namespace green {
     {
     }
 
-    auth_handler_impl::~auth_handler_impl() {}
+    auth_handler_impl::~auth_handler_impl()
+    {
+        wipe(m_hw_reply);
+        wipe(m_twofactor_data);
+        wipe(m_result);
+    }
 
     void auth_handler::signal_2fa_request(const std::string& /*action*/) { GDK_RUNTIME_ASSERT(false); }
 
