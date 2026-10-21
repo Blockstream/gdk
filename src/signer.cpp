@@ -174,7 +174,7 @@ namespace green {
             if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
-            bzero_and_free(seed);
+            wipe_and_truncate(seed);
         }
     }
 

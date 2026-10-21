@@ -338,12 +338,12 @@ namespace green {
         auto decompressed = decompress(gsl::make_span(decrypted).subspan(PREFIX.size()));
 
         // Clear and free the decrypted representation immediately
-        bzero_and_free(decrypted);
+        wipe_and_truncate(decrypted);
 
         // Load our blob data from the uncompressed data in msgpack format
         auto new_data = nlohmann::json::from_msgpack(decompressed.begin(), decompressed.end());
         // Clear and free the decompressed representation immediately
-        bzero_and_free(decompressed);
+        wipe_and_truncate(decompressed);
 
         // Check that the new blob has a higher version number:
         // This check prevents the server maliciously returning an old blob
@@ -389,14 +389,14 @@ namespace green {
         auto compressed{ compress(PREFIX, msgpack_data) };
 
         // Clear and free the uncompressed representation immediately
-        bzero_and_free(msgpack_data);
+        wipe_and_truncate(msgpack_data);
 
         // Encrypt the compressed representation
         std::vector<unsigned char> encrypted(aes_gcm_encrypt_get_length(compressed));
         GDK_RUNTIME_ASSERT(aes_gcm_encrypt(*m_key, compressed, encrypted) == encrypted.size());
 
         // Clear and free the compressed representation immediately
-        bzero_and_free(compressed);
+        wipe_and_truncate(compressed);
 
         // Compute and return base64 encoded data and its HMAC
         nlohmann::json details = { { "hmac", compute_hmac(encrypted) }, { "blob", base64_from_bytes(encrypted) } };

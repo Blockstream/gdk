@@ -5,6 +5,9 @@
 #include <array>
 #include <memory>
 #include <new>
+#include <nlohmann/json_fwd.hpp>
+#include <optional>
+#include <type_traits>
 #include <vector>
 
 #include "assertion.hpp"
@@ -32,10 +35,37 @@ namespace green {
 
     template <typename T> void swap_with_default(T& obj) { T().swap(obj); }
 
-    template <typename T> void bzero_and_free(std::vector<T>& data)
+    template <typename T> void wipe_and_truncate(std::vector<T>& data)
     {
         wally_bzero(data.data(), data.size());
         swap_with_default(data);
+    }
+
+    // Only the containers current buffer is wiped.
+    // Buffers abandoned by re-allocation, e.g. when a string grows, cannot be reached.
+    template <typename T> inline void wipe(T& data) noexcept
+    {
+        // e.g. a vector<string> must not be wiped as a whole: only its elements
+        static_assert(std::is_trivially_copyable_v<std::remove_reference_t<decltype(*data.data())>>);
+        if (!data.empty()) {
+            wally_bzero(data.data(), data.size() * sizeof(*data.data()));
+        }
+    }
+
+    // Recurses into arrays and objects. Scalars are stored inline and not wiped.
+    void wipe(nlohmann::json& data) noexcept;
+
+    template <typename T, typename U> inline void wipe(std::pair<T, U>& data) noexcept
+    {
+        wipe(data.first);
+        wipe(data.second);
+    }
+
+    template <typename T> inline void wipe(std::optional<T>& data) noexcept
+    {
+        if (data.has_value()) {
+            wipe(*data);
+        }
     }
 
     template <typename T, typename U, typename V> inline void init_container(T& dst, const U& arg1, const V& arg2)
@@ -54,5 +84,14 @@ namespace green {
     }
 
 } // namespace green
+
+// Never use on a local that is returned: under NRVO the local is the return
+// value, and so would be wiped before the caller can read it.
+#define GDK_WIPE_ON_EXIT(name) const auto name##_wiper = gsl::finally([&to_wipe = (name)] { green::wipe(to_wipe); })
+
+// Declare 'name' from the given expression, and wipe it as GDK_WIPE_ON_EXIT
+#define GDK_AUTO_WIPE(name, ...)                                                                                       \
+    auto name = __VA_ARGS__;                                                                                           \
+    GDK_WIPE_ON_EXIT(name)
 
 #endif

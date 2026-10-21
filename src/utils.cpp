@@ -821,4 +821,4 @@ extern "C" int GA_validate_mnemonic(const char* mnemonic, uint32_t* valid)
     return GA_OK;
 }
 
-void GA_destroy_string(char* str) { free(str); }
+void GA_destroy_string(char* str) { wally_free_string(str); }

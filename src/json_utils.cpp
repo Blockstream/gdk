@@ -10,6 +10,7 @@
 #include "ga_strings.hpp"
 #include "ga_wally.hpp"
 #include "logging.hpp"
+#include "memory.hpp"
 
 namespace {
     static auto find(const nlohmann::json& src, std::string_view key)
@@ -266,10 +267,32 @@ namespace green {
         return true;
     }
 
+    void wipe(nlohmann::json& data) noexcept
+    {
+        if (data.is_string()) {
+            wipe(data.get_ref<std::string&>());
+        } else if (data.is_binary()) {
+            wipe(data.get_binary());
+        } else if (data.is_structured()) {
+            for (auto& child : data) {
+                wipe(child);
+            }
+        }
+    }
+
     void j_erase(nlohmann::json& data, std::string_view key)
     {
         if (!data.is_null() && !data.empty()) {
             data.erase(key);
+        }
+    }
+
+    void j_secure_erase(nlohmann::json& data, std::string_view key)
+    {
+        // find() returns end() for null and non-object data
+        if (auto p = data.find(key); p != data.end()) {
+            wipe(*p);
+            data.erase(p);
         }
     }
 } // namespace green

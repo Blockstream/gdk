@@ -77,5 +77,8 @@ namespace green {
 
     // Erase an element, do not throw if data is null
     void j_erase(nlohmann::json& data, std::string_view key);
+
+    // Wipe and erase an element, if present
+    void j_secure_erase(nlohmann::json& data, std::string_view key);
 } // namespace green
 #endif
