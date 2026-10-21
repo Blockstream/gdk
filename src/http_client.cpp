@@ -141,7 +141,7 @@ namespace green {
         const auto ctx = std::make_shared<asio::ssl::context>(asio::ssl::context::tls);
         ctx->set_options(asio::ssl::context::default_workarounds | asio::ssl::context::no_sslv2
             | asio::ssl::context::no_sslv3 | asio::ssl::context::no_tlsv1 | asio::ssl::context::no_tlsv1_1
-            | asio::ssl::context::single_dh_use);
+            | asio::ssl::context::single_dh_use | SSL_OP_CLEANSE_PLAINTEXT);
         ctx->set_verify_mode(asio::ssl::context::verify_peer | asio::ssl::context::verify_fail_if_no_peer_cert);
         // attempt to load system roots
         ctx->set_default_verify_paths();
