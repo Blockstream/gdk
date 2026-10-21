@@ -77,7 +77,8 @@ impl Session for ElectrumSession {
                 self.credentials_from_pin_data(&serde_json::from_value(input)?).to_json()
             }
             "encrypt_with_pin" => self.encrypt_with_pin(&serde_json::from_value(input)?).to_json(),
-            "decrypt_with_pin" => self.decrypt_with_pin(&serde_json::from_value(input)?).to_json(),
+            // Not to_json(): it would leave an unwiped copy of the decrypted credentials
+            "decrypt_with_pin" => Ok(self.decrypt_with_pin(&serde_json::from_value(input)?)?),
 
             "get_block_height" => self.get_block_height().to_json(),
 

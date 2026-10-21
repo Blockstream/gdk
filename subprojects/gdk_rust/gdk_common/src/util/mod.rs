@@ -1,6 +1,7 @@
 use bitcoin::secp256k1;
 use elements_miniscript::confidential::slip77::MasterBlindingKey as Slip77MasterBlindingKey;
 use pbkdf2::pbkdf2_hmac_array;
+use serde::Serialize;
 use sha2::Sha512;
 use std::borrow::Cow;
 use std::convert::TryFrom;
@@ -8,6 +9,7 @@ use std::ffi::{CStr, CString};
 use std::fmt;
 use std::os::raw::c_char;
 use std::time::{SystemTime, UNIX_EPOCH};
+use zeroize::{Zeroize, Zeroizing};
 
 use crate::EC;
 
@@ -117,7 +119,51 @@ pub fn pbkdf2_hmac_sha512_256(password: Vec<u8>, salt: Vec<u8>, cost: u32) -> [u
 }
 
 pub fn make_str<'a, S: Into<Cow<'a, str>>>(data: S) -> *mut c_char {
-    CString::new(data.into().into_owned()).unwrap().into_raw()
+    let data = Zeroizing::new(data.into().into_owned());
+    // Exact capacity, so CString::new does not re-allocate and leave a copy
+    let mut bytes = Vec::with_capacity(data.len() + 1);
+    bytes.extend_from_slice(data.as_bytes());
+    CString::new(bytes).unwrap().into_raw()
+}
+
+/// Serialize `value` as JSON into a buffer allocated once at its exact size,
+/// plus a spare byte for a NUL terminator. A growing buffer would free unwiped
+/// partial copies of the JSON as it re-allocates.
+pub fn to_zeroizing_json<T: Serialize + ?Sized>(
+    value: &T,
+) -> serde_json::Result<Zeroizing<Vec<u8>>> {
+    struct Count(usize);
+    impl std::io::Write for Count {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0 += bytes.len();
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut count = Count(0);
+    serde_json::to_writer(&mut count, value)?;
+    let mut json = Zeroizing::new(Vec::with_capacity(count.0 + 1));
+    serde_json::to_writer(&mut *json, value)?;
+    Ok(json)
+}
+
+/// Like `make_str`, for JSON from `to_zeroizing_json`: the NUL terminator
+/// fits in its spare byte, so the buffer is handed over without a copy
+pub fn make_str_from_json(mut json: Zeroizing<Vec<u8>>) -> *mut c_char {
+    CString::new(std::mem::take(&mut *json)).unwrap().into_raw()
+}
+
+/// Zeroize every string in `value`, recursing into arrays and objects.
+/// Numbers and booleans are stored inline in their node and are not zeroized.
+pub fn zeroize_value(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::String(s) => s.zeroize(),
+        serde_json::Value::Array(a) => a.iter_mut().for_each(zeroize_value),
+        serde_json::Value::Object(o) => o.values_mut().for_each(zeroize_value),
+        _ => {}
+    }
 }
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
@@ -134,6 +180,14 @@ mod tests {
     use elements::Script;
     use std::convert::TryInto;
     use std::str::FromStr;
+
+    #[test]
+    fn test_to_zeroizing_json_exact_capacity() {
+        let value = serde_json::json!({ "mnemonic": "abandon ".repeat(24), "n": [1, 2, 3] });
+        let json = to_zeroizing_json(&value).unwrap();
+        assert_eq!(*json, serde_json::to_vec(&value).unwrap());
+        assert_eq!(json.capacity(), json.len() + 1);
+    }
 
     #[test]
     /// test vectors taken from libwally-core test_confidential_addr.py test_master_blinding_key

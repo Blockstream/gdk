@@ -4,7 +4,7 @@ extern crate serde_json;
 pub mod error;
 mod exchange_rates;
 
-use gdk_common::util::{make_str, read_str};
+use gdk_common::util::{make_str, make_str_from_json, read_str, to_zeroizing_json, zeroize_value};
 use serde_json::Value;
 
 use std::ffi::CString;
@@ -21,7 +21,7 @@ use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::{sweep, ElectrumSession};
 use serde::Serialize;
-use zeroize::Zeroize;
+use zeroize::{Zeroize, Zeroizing};
 
 pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
@@ -144,11 +144,17 @@ pub extern "C" fn GDKRUST_call_session(
     }
     let sess: &mut GdkSession = unsafe { &mut *(ptr as *mut GdkSession) };
     let method = read_str(method);
-    let input = read_str(input);
+    let input = Zeroizing::new(read_str(input));
 
     match call_session(sess, &method, &input) {
-        Ok(value) => {
-            unsafe { *output = make_str(value.to_string()) };
+        Ok(mut value) => {
+            if METHODS_TO_REDACT_OUT.contains(&method.as_str()) {
+                let json = to_zeroizing_json(&value).unwrap();
+                unsafe { *output = make_str_from_json(json) };
+                zeroize_value(&mut value);
+            } else {
+                unsafe { *output = make_str(value.to_string()) };
+            }
             GA_OK
         }
 
@@ -156,7 +162,10 @@ pub extern "C" fn GDKRUST_call_session(
             let suppress_log =
                 &err.message == "Scriptpubkey not found" && &method == "get_scriptpubkey_data";
 
-            if !suppress_log {
+            if METHODS_TO_REDACT_IN.contains(&method.as_str()) {
+                // The message can quote the input, e.g. a PIN given as a number
+                log::error!("error: {}", err.error);
+            } else if !suppress_log {
                 log::error!("error: {:?}", err);
             }
 
@@ -171,6 +180,20 @@ pub extern "C" fn GDKRUST_call_session(
         }
     }
 }
+
+/// Methods whose input/output hold private data: not logged, and wiped after use
+const METHODS_TO_REDACT_IN: [&str; 8] = [
+    "login",
+    "login_wo",
+    "register_user",
+    "encrypt_with_pin",
+    "decrypt_with_pin",
+    "create_subaccount",
+    "credentials_from_pin_data",
+    "set_master_blinding_key",
+];
+const METHODS_TO_REDACT_OUT: [&str; 4] =
+    ["credentials_from_pin_data", "decrypt_with_pin", "get_master_blinding_key", "login_wo"];
 
 fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Value, JsonError> {
     let input = serde_json::from_str(input)?;
@@ -195,24 +218,16 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
     }
 
     // Redact inputs containing private data
-    let methods_to_redact_in = vec![
-        "login",
-        "register_user",
-        "encrypt_with_pin",
-        "decrypt_with_pin",
-        "create_subaccount",
-        "credentials_from_pin_data",
-        "set_master_blinding_key",
-    ];
-    let input_str = format!("{:?}", &input);
-    let input_redacted = if methods_to_redact_in.contains(&method)
-        || input_str.contains("pin")
-        || input_str.contains("mnemonic")
-        || input_str.contains("xprv")
-    {
+    let input_redacted = if METHODS_TO_REDACT_IN.contains(&method) {
         "redacted".to_string()
     } else {
-        input_str
+        let input_str = Zeroizing::new(format!("{:?}", &input));
+        if input_str.contains("pin") || input_str.contains("mnemonic") || input_str.contains("xprv")
+        {
+            "redacted".to_string()
+        } else {
+            input_str.to_string()
+        }
     };
 
     info!("GDKRUST_call_session handle_call {} input {:?}", method, input_redacted);
@@ -221,9 +236,7 @@ fn call_session(sess: &mut GdkSession, method: &str, input: &str) -> Result<Valu
         GdkBackend::Electrum(ref mut s) => s.handle_call(&method, input),
     };
 
-    let methods_to_redact_out =
-        vec!["credentials_from_pin_data", "decrypt_with_pin", "get_master_blinding_key"];
-    let mut output_redacted = if methods_to_redact_out.contains(&method) {
+    let mut output_redacted = if METHODS_TO_REDACT_OUT.contains(&method) {
         "redacted".to_string()
     } else {
         format!("{:?}", res)
@@ -294,7 +307,7 @@ pub extern "C" fn GDKRUST_call(
     output: *mut *const c_char,
 ) -> i32 {
     let method = read_str(method);
-    let input = read_str(input);
+    let input = Zeroizing::new(read_str(input));
     debug!("GDKRUST_call {}", &method);
 
     let (error_value, result) = match handle_call(&method, &input) {

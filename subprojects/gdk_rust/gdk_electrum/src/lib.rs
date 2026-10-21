@@ -35,7 +35,9 @@ use gdk_common::{bitcoin, elements};
 use gdk_common::model::*;
 use gdk_common::network::NetworkParameters;
 use gdk_common::store::ToCipher;
-use gdk_common::util::{asset_blinding_key_to_ec_private_key, MasterBlindingKey};
+use gdk_common::util::{
+    asset_blinding_key_to_ec_private_key, to_zeroizing_json, zeroize_value, MasterBlindingKey,
+};
 use gdk_common::{be::*, State};
 
 use gdk_common::aes::aead::NewAead;
@@ -249,6 +251,12 @@ pub struct EncryptWithPinDetails {
     plaintext: serde_json::Value,
 }
 
+impl Drop for EncryptWithPinDetails {
+    fn drop(&mut self) {
+        zeroize_value(&mut self.plaintext);
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DecryptWithPinDetails {
     /// The PIN used to encrypt the `PinData`.
@@ -344,8 +352,6 @@ impl ElectrumSession {
         Ok(())
     }
 
-    // Note any `Value` the returned credentials are parsed into is not wiped:
-    // `serde_json::Value` has no `Drop` hook to wipe it with.
     fn inner_decrypt_with_pin(
         &self,
         details: &DecryptWithPinDetails,
@@ -780,7 +786,7 @@ impl ElectrumSession {
             self.network.pin_server_public_key()?,
         );
 
-        let plaintext = serde_json::to_vec(&details.plaintext)?;
+        let plaintext = to_zeroizing_json(&details.plaintext)?;
         pin_client.encrypt(&plaintext, &details.pin).map_err(Into::into)
     }
 
