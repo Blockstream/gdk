@@ -407,6 +407,7 @@ namespace green {
     class encrypt_with_pin_call : public auth_handler_impl {
     public:
         encrypt_with_pin_call(session& session, nlohmann::json details);
+        ~encrypt_with_pin_call();
 
     private:
         state_type call_impl() override;
@@ -417,6 +418,7 @@ namespace green {
     class decrypt_with_pin_call : public auth_handler_impl {
     public:
         decrypt_with_pin_call(session& session, nlohmann::json details);
+        ~decrypt_with_pin_call();
 
     private:
         state_type call_impl() override;

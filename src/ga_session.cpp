@@ -1352,15 +1352,13 @@ namespace green {
     nlohmann::json ga_session::decrypt_with_pin_impl(const nlohmann::json& details, bool is_login)
     {
         try {
-            // FIXME: clear password after use
-            const auto& pin = details.at("pin");
-            const auto& data = details.at("pin_data");
-            const auto password = get_pin_password(pin, data.at("pin_identifier"));
-            const std::string salt = data.at("salt");
-            const auto key = pbkdf2_hmac_sha512_256(password, ustring_span(salt));
+            const auto& pin = j_strref(details, "pin");
+            const auto& data = j_ref(details, "pin_data");
+            GDK_AUTO_WIPE(password, get_pin_password(pin, j_strref(data, "pin_identifier")));
+            const auto& salt = j_strref(data, "salt");
+            GDK_AUTO_WIPE(key, pbkdf2_hmac_sha512_256(password, ustring_span(salt)));
 
-            // FIXME: clear data after use
-            const auto plaintext = aes_cbc_decrypt_from_hex(key, data.at("encrypted_data"));
+            GDK_AUTO_WIPE(plaintext, aes_cbc_decrypt_from_hex(key, j_strref(data, "encrypted_data")));
             return json_parse(plaintext);
         } catch (const autobahn::call_error& e) {
             GDK_LOG(warning) << "pin " << (is_login ? "login " : "") << "failed: " << e.what();
@@ -2914,7 +2912,7 @@ namespace green {
     {
         ensure_full_session();
 
-        const std::string pin = details.at("pin");
+        const auto& pin = j_strref(details, "pin");
         const nlohmann::json& plaintext = details.at("plaintext");
         const std::string device_id = j_str(details, "device_id").value_or(b2h(get_random_bytes<8>()));
 
@@ -2923,12 +2921,13 @@ namespace green {
 
         // Ask the server to create a new PIN identifier and PIN password
         constexpr bool return_password = true;
-        const std::string pin_info = wamp_cast(m_wamp->call("pin.set_pin_login", pin, device_id, return_password));
+        GDK_AUTO_WIPE(pin_info, wamp_cast(m_wamp->call("pin.set_pin_login", pin, device_id, return_password)));
 
         std::vector<std::string> id_and_password;
         boost::algorithm::split(id_and_password, pin_info, boost::is_any_of(";"));
         GDK_RUNTIME_ASSERT(id_and_password.size() == 2u);
-        const auto& password = id_and_password.back();
+        auto& password = id_and_password.back();
+        GDK_WIPE_ON_EXIT(password);
         // The server generates the password as str(uuid.uuid4()), 36 chars
         GDK_RUNTIME_ASSERT(password.size() >= 36u);
 
@@ -2938,10 +2937,9 @@ namespace green {
         // old GreenBits installs.
         const auto salt = get_random_bytes<16>();
         const auto salt_b64 = base64_from_bytes(salt);
-        const auto key = pbkdf2_hmac_sha512_256(ustring_span(password), ustring_span(salt_b64));
+        GDK_AUTO_WIPE(key, pbkdf2_hmac_sha512_256(ustring_span(password), ustring_span(salt_b64)));
 
-        // FIXME: secure string
-        const std::string json = plaintext.dump();
+        GDK_AUTO_WIPE(json, plaintext.dump());
 
         return { { "pin_identifier", id_and_password.front() }, { "salt", salt_b64 },
             { "encrypted_data", aes_cbc_encrypt_to_hex(key, ustring_span(json)) } };
@@ -2964,7 +2962,7 @@ namespace green {
     // Idempotent
     std::vector<unsigned char> ga_session::get_pin_password(const std::string& pin, const std::string& pin_identifier)
     {
-        std::string password = wamp_cast(m_wamp->call("pin.get_password", pin, pin_identifier));
+        GDK_AUTO_WIPE(password, wamp_cast(m_wamp->call("pin.get_password", pin, pin_identifier)));
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 

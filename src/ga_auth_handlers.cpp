@@ -2488,6 +2488,8 @@ namespace green {
     {
     }
 
+    encrypt_with_pin_call::~encrypt_with_pin_call() { wipe(m_details); }
+
     auth_handler::state_type encrypt_with_pin_call::call_impl()
     {
         m_result["pin_data"] = m_session->encrypt_with_pin(m_details);
@@ -2502,6 +2504,8 @@ namespace green {
         , m_details(std::move(details))
     {
     }
+
+    decrypt_with_pin_call::~decrypt_with_pin_call() { wipe(m_details); }
 
     auth_handler::state_type decrypt_with_pin_call::call_impl()
     {
