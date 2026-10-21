@@ -11,6 +11,7 @@ namespace green {
     class register_call : public auth_handler_impl {
     public:
         register_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data);
+        ~register_call();
 
     private:
         state_type call_impl() override;
@@ -23,6 +24,7 @@ namespace green {
     class login_user_call : public auth_handler_impl {
     public:
         login_user_call(session& session, nlohmann::json hw_device, nlohmann::json credential_data);
+        ~login_user_call();
 
     private:
         state_type call_impl() override;
@@ -397,6 +399,7 @@ namespace green {
     class get_credentials_call : public auth_handler_impl {
     public:
         get_credentials_call(session& session, nlohmann::json details);
+        ~get_credentials_call();
 
     private:
         state_type call_impl() override;

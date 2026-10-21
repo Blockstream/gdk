@@ -262,6 +262,9 @@ namespace green {
     {
     }
 
+    // Credentials are wiped now that registration is done; the signer wipes its own copy
+    register_call::~register_call() { wipe(m_credential_data); }
+
     auth_handler::state_type register_call::call_impl()
     {
         if (m_hw_request == hw_request::get_xpubs) {
@@ -306,6 +309,9 @@ namespace green {
     {
     }
 
+    // Credentials are wiped now, not once the signer exists: a failed xpub request recreates it from them
+    login_user_call::~login_user_call() { wipe(m_credential_data); }
+
     auth_handler::state_type login_user_call::call_impl()
     {
         const bool is_electrum = m_net_params.is_electrum();
@@ -313,7 +319,9 @@ namespace green {
         if (!m_signer) {
             if (m_credential_data.contains("pin")) {
                 // Login with PIN. Fetch the mnemonic from the pin and pin data
-                m_credential_data = m_session->credentials_from_pin_data(m_credential_data);
+                auto credentials = m_session->credentials_from_pin_data(m_credential_data);
+                wipe(m_credential_data);
+                m_credential_data = std::move(credentials);
             }
 
             // Create our signer
@@ -2461,11 +2469,13 @@ namespace green {
     {
     }
 
+    get_credentials_call::~get_credentials_call() { wipe(m_details); }
+
     auth_handler::state_type get_credentials_call::call_impl()
     {
         const auto signer = get_signer();
         m_result = signer->get_credentials();
-        const auto password = j_str_or_empty(m_details, "password");
+        GDK_AUTO_WIPE(password, j_str_or_empty(m_details, "password"));
         if (!password.empty()) {
             // Encrypt the mnemonic credentials with the supplied password
             GDK_RUNTIME_ASSERT(m_result.contains("mnemonic"));

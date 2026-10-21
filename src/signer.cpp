@@ -192,9 +192,9 @@ namespace green {
         if (get_device() != other->get_device()) {
             return false;
         }
-        auto my_credentials = get_credentials();
+        GDK_AUTO_WIPE(my_credentials, get_credentials());
         j_erase(my_credentials, "master_blinding_key");
-        auto other_credentials = other->get_credentials();
+        GDK_AUTO_WIPE(other_credentials, other->get_credentials());
         j_erase(other_credentials, "master_blinding_key");
         return my_credentials == other_credentials;
     }
