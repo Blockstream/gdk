@@ -180,10 +180,11 @@ namespace green {
         {
             char* output = nullptr;
             int ret;
+            GDK_AUTO_WIPE(input_str, input.dump());
             if (session) {
-                ret = GDKRUST_call_session(session, method.c_str(), input.dump().c_str(), &output);
+                ret = GDKRUST_call_session(session, method.c_str(), input_str.c_str(), &output);
             } else {
-                ret = GDKRUST_call(method.c_str(), input.dump().c_str(), &output);
+                ret = GDKRUST_call(method.c_str(), input_str.c_str(), &output);
             }
             nlohmann::json cppjson = nlohmann::json();
             if (output) {

@@ -72,15 +72,16 @@ namespace green {
         const bool is_watch_only = signer->is_watch_only();
 
         // Load the cache on the rust side
-        nlohmann::json store_details;
+        GDK_AUTO_WIPE(store_details, nlohmann::json{});
         if (is_watch_only) {
             // Create a cache filename and encryption key
-            auto local_encryption_key = pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT);
+            GDK_AUTO_WIPE(local_encryption_key, pbkdf2_hmac_sha512(public_key, signer::PASSWORD_SALT));
             // Use a network name unique to rich watch only, so in the future
             // we can use ga_cache for singlesig caching without conflict.
             auto network_name = m_net_params.network() + "RWO";
-            const auto [filename, type, encryption_key]
+            auto [filename, type, encryption_key]
                 = cache::get_name_type_and_key(local_encryption_key, network_name, signer);
+            GDK_WIPE_ON_EXIT(encryption_key);
             (void)type;
             store_details = { { "filename", std::move(filename) }, { "encryption_key_hex", b2h(encryption_key) } };
         } else {
