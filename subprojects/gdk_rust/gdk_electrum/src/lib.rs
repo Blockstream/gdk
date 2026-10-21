@@ -45,6 +45,7 @@ use gdk_common::elements::confidential::{self, Asset, Nonce};
 use gdk_common::error::Error::{BtcEncodingError, ElementsEncodingError};
 use gdk_common::exchange_rates::{Currency, ExchangeRatesCache};
 use gdk_common::network;
+use gdk_common::zeroize::Zeroizing;
 use gdk_common::NetworkId;
 use gdk_common::EC;
 use std::collections::hash_map::Entry;
@@ -343,7 +344,12 @@ impl ElectrumSession {
         Ok(())
     }
 
-    fn inner_decrypt_with_pin(&self, details: &DecryptWithPinDetails) -> Result<Vec<u8>, Error> {
+    // Note any `Value` the returned credentials are parsed into is not wiped:
+    // `serde_json::Value` has no `Drop` hook to wipe it with.
+    fn inner_decrypt_with_pin(
+        &self,
+        details: &DecryptWithPinDetails,
+    ) -> Result<Zeroizing<Vec<u8>>, Error> {
         let agent = self.build_request_agent()?;
 
         let pin_client = PinClient::new(

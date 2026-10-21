@@ -21,6 +21,7 @@ use gdk_common::log::{self, debug, info, LevelFilter, Metadata, Record};
 use gdk_common::session::{JsonError, Session};
 use gdk_electrum::{sweep, ElectrumSession};
 use serde::Serialize;
+use zeroize::Zeroize;
 
 pub const GA_OK: i32 = 0;
 pub const GA_ERROR: i32 = -1;
@@ -257,8 +258,9 @@ pub extern "C" fn GDKRUST_set_notification_handler(
 #[no_mangle]
 pub extern "C" fn GDKRUST_destroy_string(ptr: *mut c_char) {
     unsafe {
-        // retake pointer and drop
-        let _ = CString::from_raw(ptr);
+        // Retake the pointer, wipe it and drop it
+        let mut s = CString::from_raw(ptr).into_bytes();
+        s.zeroize();
     }
 }
 

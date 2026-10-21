@@ -5,6 +5,7 @@ use bitcoin::secp256k1::{
 };
 use block_modes::BlockMode;
 use once_cell::sync::Lazy;
+use zeroize::Zeroizing;
 
 use crate::crypto::{Aes256Cbc, ClientKey, Salt};
 use crate::{Pin, Result};
@@ -30,14 +31,15 @@ impl PinServerRequest {
         client_key: &ClientKey,
         encryption_key: &RequestEncryptionKey,
     ) -> Result<Self> {
-        let hashed_pin = sha256::Hash::hash(pin.as_bytes());
+        // A short PIN is quickly found from its hash, so the hash is wiped too
+        let hashed_pin = Zeroizing::new(sha256::Hash::hash(pin.as_bytes()).to_byte_array());
 
         let salt = Salt::<32>::new();
 
         let serialized_cke = encryption_key.cke.serialize();
 
         let data = {
-            let mut v = Vec::<u8>::with_capacity(97);
+            let mut v = Zeroizing::new(Vec::<u8>::with_capacity(97));
             v.extend(&serialized_cke);
             v.extend(&hashed_pin[..]);
             v.extend(salt.as_bytes());
@@ -51,7 +53,7 @@ impl PinServerRequest {
             let (recovery_id, signature) =
                 EC.sign_ecdsa_recoverable(&message, client_key.secret_key()).serialize_compact();
 
-            let mut v = Vec::<u8>::with_capacity(129);
+            let mut v = Zeroizing::new(Vec::<u8>::with_capacity(129));
             v.extend(&hashed_pin[..]);
             v.extend(salt.as_bytes());
             v.push((31 + recovery_id.to_i32()) as u8);
@@ -121,9 +123,9 @@ impl HandShake {
     /// a single request-response cycle. The following request should generate
     /// a new handshake.
     pub(crate) fn generate_keys(self) -> (RequestEncryptionKey, ResponseDecryptionKey) {
-        let secret_key = SecretKey::new(&mut rand::thread_rng());
+        let mut secret_key = SecretKey::new(&mut rand::thread_rng());
 
-        let shared_secret = { SharedSecret::new(&self.ske.0, &secret_key) };
+        let mut shared_secret = { SharedSecret::new(&self.ske.0, &secret_key) };
 
         let encryption_key = RequestEncryptionKey {
             ske: self.ske.0,
@@ -137,14 +139,18 @@ impl HandShake {
             hmac_key: derive(3, &shared_secret),
         };
 
+        secret_key.non_secure_erase();
+        shared_secret.non_secure_erase();
+
         (encryption_key, decryption_key)
     }
 }
 
-fn derive(value: u8, key: &SharedSecret) -> Hmac<sha256::Hash> {
-    let mut engine = HmacEngine::<sha256::Hash>::new(&key.secret_bytes()[..]);
+fn derive(value: u8, key: &SharedSecret) -> Zeroizing<[u8; 32]> {
+    let secret = Zeroizing::new(key.secret_bytes());
+    let mut engine = HmacEngine::<sha256::Hash>::new(&secret[..]);
     engine.input(&[value]);
-    Hmac::from_engine(engine)
+    Zeroizing::new(Hmac::from_engine(engine).to_byte_array())
 }
 
 /// The 1st half of [`HandShake::generate_key`]'s output.
@@ -154,8 +160,8 @@ fn derive(value: u8, key: &SharedSecret) -> Hmac<sha256::Hash> {
 pub(crate) struct RequestEncryptionKey {
     ske: PublicKey,
     cke: PublicKey,
-    encryption_key: Hmac<sha256::Hash>,
-    hmac_key: Hmac<sha256::Hash>,
+    encryption_key: Zeroizing<[u8; 32]>,
+    hmac_key: Zeroizing<[u8; 32]>,
 }
 
 /// The 2nd half of [`HandShake::generate_key`]'s output.
@@ -163,8 +169,8 @@ pub(crate) struct RequestEncryptionKey {
 /// Can be passed to [`PinServerResponse::decrypt_server_key`] to decrypt the
 /// server key contained in the PIN server response.
 pub(crate) struct ResponseDecryptionKey {
-    decryption_key: Hmac<sha256::Hash>,
-    hmac_key: Hmac<sha256::Hash>,
+    decryption_key: Zeroizing<[u8; 32]>,
+    hmac_key: Zeroizing<[u8; 32]>,
 }
 
 impl ResponseDecryptionKey {
@@ -173,16 +179,16 @@ impl ResponseDecryptionKey {
     #[cfg(test)]
     pub(crate) fn new(decryption_key: Hmac<sha256::Hash>, hmac_key: Hmac<sha256::Hash>) -> Self {
         Self {
-            decryption_key,
-            hmac_key,
+            decryption_key: Zeroizing::new(decryption_key.to_byte_array()),
+            hmac_key: Zeroizing::new(hmac_key.to_byte_array()),
         }
     }
 
-    pub(crate) fn decryption_key(&self) -> &Hmac<sha256::Hash> {
+    pub(crate) fn decryption_key(&self) -> &[u8; 32] {
         &self.decryption_key
     }
 
-    pub(crate) fn hmac_key(&self) -> &Hmac<sha256::Hash> {
+    pub(crate) fn hmac_key(&self) -> &[u8; 32] {
         &self.hmac_key
     }
 }

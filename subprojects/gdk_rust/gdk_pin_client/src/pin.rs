@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
+use zeroize::ZeroizeOnDrop;
 
 /// A PIN used to encrypt and decrypt
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize, ZeroizeOnDrop)]
 #[serde(transparent)]
 pub struct Pin {
     /// The PIN doesn't actually have to be a sequence of 6 digits, it can be

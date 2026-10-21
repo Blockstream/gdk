@@ -27,6 +27,7 @@ url = "2.2.2"
 elements-miniscript = "0.4.0"
 pbkdf2 = {version = "0.12"}
 sha2 = { version = "0.10"}
+zeroize = { version = "1.8", features = ["zeroize_derive"] }
 
 [dev-dependencies]
 strum = "0.24"

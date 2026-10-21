@@ -3,6 +3,7 @@ use std::str::FromStr;
 use bitcoin::secp256k1::hashes::{sha256, Hash, HashEngine, Hmac, HmacEngine};
 use bitcoin::PublicKey;
 use url::Url;
+use zeroize::Zeroizing;
 
 use crate::crypto;
 use crate::crypto::{Aes256Cbc, ClientKey, ServerKey};
@@ -45,7 +46,7 @@ impl PinClient {
 
     /// Decrypts the [`PinData`] obtained by calling [`PinClient::encrypt`],
     /// returning the original plaintext.
-    pub fn decrypt(&self, data: &PinData, pin: &Pin) -> Result<Vec<u8>> {
+    pub fn decrypt(&self, data: &PinData, pin: &Pin) -> Result<Zeroizing<Vec<u8>>> {
         let server_key = self.get_pin(pin, data.client_key())?;
 
         if let Some(hmac) = data.hmac() {

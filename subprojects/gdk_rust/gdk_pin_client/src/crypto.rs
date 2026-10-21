@@ -2,6 +2,7 @@ use rand::Rng;
 
 use bitcoin::{self, secp256k1::SecretKey};
 use block_modes::BlockMode;
+use zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing};
 
 pub(crate) type Aes256Cbc = block_modes::Cbc<aes::Aes256, block_modes::block_padding::Pkcs7>;
 
@@ -9,6 +10,13 @@ pub(crate) type Aes256Cbc = block_modes::Cbc<aes::Aes256, block_modes::block_pad
 #[derive(Debug, Clone)]
 pub(crate) struct ClientKey {
     key: SecretKey,
+}
+
+impl Drop for ClientKey {
+    // `SecretKey` is foreign, so it cannot derive `ZeroizeOnDrop`
+    fn drop(&mut self) {
+        self.key.non_secure_erase();
+    }
 }
 
 impl ClientKey {
@@ -27,7 +35,7 @@ impl ClientKey {
 
 /// A key stored on the PIN server. Used to decrypt the data stored in the
 /// [`PinData`].
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, ZeroizeOnDrop)]
 pub(crate) struct ServerKey {
     bytes: Vec<u8>,
 }
@@ -86,11 +94,11 @@ pub(crate) fn decrypt(
     encrypted: &[u8],
     server_key: &ServerKey,
     salt: Salt<16>,
-) -> crate::Result<Vec<u8>> {
+) -> crate::Result<Zeroizing<Vec<u8>>> {
     let decipher = Aes256Cbc::new_from_slices(server_key.as_bytes(), salt.as_bytes())
         .expect("Both the ServerKey and the Salt have the right length");
 
-    decipher.decrypt_vec(encrypted).map_err(Into::into)
+    decipher.decrypt_vec(encrypted).map(Zeroizing::new).map_err(Into::into)
 }
 
 mod serde_impls {
@@ -120,7 +128,7 @@ mod serde_impls {
                 {
                     use bitcoin::hashes::hex::FromHex;
 
-                    let bytes = <Vec<u8>>::from_hex(s).map_err(E::custom)?;
+                    let bytes = Zeroizing::new(<Vec<u8>>::from_hex(s).map_err(E::custom)?);
 
                     let key = SecretKey::from_slice(&bytes).map_err(E::custom)?;
 
@@ -139,7 +147,10 @@ mod serde_impls {
         where
             S: ser::Serializer,
         {
-            serializer.serialize_str(&self.key.secret_bytes().to_lower_hex_string())
+            let mut bytes = self.key.secret_bytes();
+            let hex = Zeroizing::new(bytes.to_lower_hex_string());
+            bytes.zeroize();
+            serializer.serialize_str(&hex)
         }
     }
 

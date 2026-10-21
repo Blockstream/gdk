@@ -388,7 +388,7 @@ pub struct AccountInfo {
     pub slip132_extended_pubkey: Option<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, zeroize::ZeroizeOnDrop)]
 pub struct Credentials {
     pub mnemonic: String,
     #[serde(default)]

@@ -30,6 +30,7 @@ pub use rand;
 pub use serde_cbor;
 pub use state::State;
 pub use ureq;
+pub use zeroize;
 
 pub static EC: once_cell::sync::Lazy<bitcoin::secp256k1::Secp256k1<bitcoin::secp256k1::All>> =
     once_cell::sync::Lazy::new(|| {
