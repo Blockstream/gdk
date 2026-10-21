@@ -10,6 +10,7 @@
 #include "ga_auth_handlers.hpp"
 #include "gdk.h"
 #include "json_utils.hpp"
+#include "memory.hpp"
 #include "network_parameters.hpp"
 #include "redeposit_auth_handlers.hpp"
 #include "session.hpp"
@@ -266,7 +267,10 @@ int GA_destroy_session(struct GA_session* session)
 
 int GA_destroy_json(GA_json* json)
 {
-    delete json_cast(json);
+    if (json) {
+        green::wipe(*json_cast(json));
+        delete json_cast(json);
+    }
     return GA_OK;
 }
 
@@ -459,8 +463,10 @@ GDK_DEFINE_C_FUNCTION_3(GA_rsa_verify, struct GA_session*, session, GA_json*, de
 GDK_DEFINE_C_FUNCTION_2(GA_convert_string_to_json, const char*, input, GA_json**, output,
     { *json_cast(output) = new nlohmann::json(green::json_parse(input)); })
 
-GDK_DEFINE_C_FUNCTION_2(GA_convert_json_to_string, const GA_json*, json, char**, output,
-    { *output = to_c_string(json_cast(json)->dump()); })
+GDK_DEFINE_C_FUNCTION_2(GA_convert_json_to_string, const GA_json*, json, char**, output, {
+    GDK_AUTO_WIPE(dumped, json_cast(json)->dump());
+    *output = to_c_string(dumped);
+})
 
 GDK_DEFINE_C_FUNCTION_2(GA_register_network, const char*, name, const GA_json*, network_details,
     { green::network_parameters::add(name, *json_cast(network_details)); })
