@@ -660,6 +660,16 @@ namespace green {
     {
     }
 
+    sign_transaction_call::~sign_transaction_call()
+    {
+        // On happy path this is empty. This wipes if anything is
+        // left over if signing did not finish.
+        for (auto& private_key : m_sweep_private_keys) {
+            wipe(private_key);
+        }
+        wipe(m_details);
+    }
+
     void sign_transaction_call::initialize()
     {
         const bool is_liquid = m_net_params.is_liquid();
@@ -667,7 +677,7 @@ namespace green {
         bool have_checked_full_session = false;
 
         if (!m_details.empty()) {
-            j_erase(m_details, "utxos"); // Not needed anymore
+            j_secure_erase(m_details, "utxos"); // Not needed anymore, and may hold sweep private keys
         }
         if (!j_str_is_empty(m_details, "error")) {
             // Can't sign a tx with an error, return it as-is
@@ -723,11 +733,12 @@ namespace green {
                 }
                 const uint32_t sighash_flags = WALLY_SIGHASH_ALL;
                 const auto tx_signature_hash = tx->get_signature_hash(*m_session, inputs, i, sighash_flags);
-                m_sweep_private_keys[i] = input["private_key"];
-                const auto sig = ec_sig_from_bytes(h2b(m_sweep_private_keys[i]), tx_signature_hash);
+                m_sweep_private_keys[i] = j_strref(input, "private_key");
+                GDK_AUTO_WIPE(private_key, h2b(m_sweep_private_keys[i]));
+                const auto sig = ec_sig_from_bytes(private_key, tx_signature_hash);
                 m_sweep_signatures[i] = b2h(ec_sig_to_der(sig, sighash_flags));
                 input["skip_signing"] = true;
-                j_erase(input, "private_key");
+                j_secure_erase(input, "private_key");
             } else if (!j_bool_or_false(input, "skip_signing")) {
                 // Wallet input we have been asked to sign. Must be spendable by us
                 const auto& addr_type = j_strref(input, "address_type");
@@ -1154,6 +1165,8 @@ namespace green {
         , m_details(std::move(details))
     {
     }
+
+    create_transaction_call::~create_transaction_call() { wipe(m_details); }
 
     auth_handler::state_type create_transaction_call::call_impl()
     {
@@ -1665,6 +1678,8 @@ namespace green {
     {
     }
 
+    get_unspent_outputs_for_private_key_call::~get_unspent_outputs_for_private_key_call() { wipe(m_details); }
+
     auth_handler::state_type get_unspent_outputs_for_private_key_call::call_impl()
     {
         if (m_net_params.is_liquid()) {
@@ -2068,6 +2083,8 @@ namespace green {
         // sign_only is for multisig signing by the Green service only
         GDK_RUNTIME_ASSERT(!sign_only || !m_net_params.is_electrum());
     }
+
+    send_transaction_call::~send_transaction_call() { wipe(m_details); }
 
     void send_transaction_call::initialize()
     {

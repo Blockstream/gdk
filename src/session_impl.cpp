@@ -1201,22 +1201,24 @@ namespace green {
 
     nlohmann::json session_impl::get_external_unspent_outputs(const nlohmann::json& details)
     {
-        auto private_key = j_strref(details, "private_key");
-        auto password = j_str_or_empty(details, "password");
+        const auto& prefixed_key = j_strref(details, "private_key");
+        GDK_AUTO_WIPE(password, j_str_or_empty(details, "password"));
 
         std::string address_type = "p2pkh";
-        if (boost::algorithm::starts_with(private_key, "p2pkh:")) {
-            private_key = private_key.substr(strlen("p2pkh:"));
+        std::string_view prefix;
+        if (boost::algorithm::starts_with(prefixed_key, "p2pkh:")) {
+            prefix = "p2pkh:";
             address_type = "p2pkh";
-        } else if (boost::algorithm::starts_with(private_key, "p2wpkh:")) {
-            private_key = private_key.substr(strlen("p2wpkh:"));
+        } else if (boost::algorithm::starts_with(prefixed_key, "p2wpkh:")) {
+            prefix = "p2wpkh:";
             address_type = "p2wpkh";
-        } else if (boost::algorithm::starts_with(private_key, "p2wpkh-p2sh:")) {
-            private_key = private_key.substr(strlen("p2wpkh-p2sh:"));
+        } else if (boost::algorithm::starts_with(prefixed_key, "p2wpkh-p2sh:")) {
+            prefix = "p2wpkh-p2sh:";
             address_type = "p2sh-p2wpkh";
         }
+        GDK_AUTO_WIPE(private_key, prefixed_key.substr(prefix.size()));
 
-        std::vector<unsigned char> private_key_bytes;
+        GDK_AUTO_WIPE(private_key_bytes, std::vector<unsigned char>{});
         bool is_compressed;
         try {
             std::tie(private_key_bytes, is_compressed)
@@ -1224,7 +1226,7 @@ namespace green {
         } catch (const std::exception&) {
             throw user_error(res::id_invalid_private_key);
         }
-        auto private_key_hex = b2h(private_key_bytes);
+        GDK_AUTO_WIPE(private_key_hex, b2h(private_key_bytes));
         auto public_key_hex = b2h(ec_public_key_from_private_key(private_key_bytes, !is_compressed));
         GDK_LOG(debug) << "lookup up " << address_type << " pubkey " << public_key_hex;
 

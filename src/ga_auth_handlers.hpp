@@ -83,6 +83,7 @@ namespace green {
     class sign_transaction_call : public auth_handler_impl {
     public:
         sign_transaction_call(session& session, nlohmann::json details);
+        ~sign_transaction_call();
 
     private:
         state_type call_impl() override;
@@ -162,6 +163,7 @@ namespace green {
     class create_transaction_call : public auth_handler_impl {
     public:
         create_transaction_call(session& session, nlohmann::json details);
+        ~create_transaction_call();
 
     private:
         state_type call_impl() override;
@@ -228,6 +230,7 @@ namespace green {
     class get_unspent_outputs_for_private_key_call : public auth_handler_impl {
     public:
         get_unspent_outputs_for_private_key_call(session& session, nlohmann::json details);
+        ~get_unspent_outputs_for_private_key_call();
 
     protected:
         state_type call_impl() override;
@@ -324,6 +327,7 @@ namespace green {
     class send_transaction_call final : public auth_handler_impl {
     public:
         send_transaction_call(session& session, nlohmann::json details, bool sign_only = false);
+        ~send_transaction_call();
 
         void request_code(const std::string& method) override;
 
