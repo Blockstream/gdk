@@ -257,6 +257,15 @@ namespace green {
             return nlohmann::json::from_msgpack(sbuf.data(), sbuf.data() + sbuf.size());
         }
 
+        static void wipe_string(const msgpack::object& obj) noexcept
+        {
+            if (obj.type == msgpack::type::STR) {
+                wally_bzero(const_cast<char*>(obj.via.str.ptr), obj.via.str.size);
+            } else if (obj.type == msgpack::type::BIN) {
+                wally_bzero(const_cast<char*>(obj.via.bin.ptr), obj.via.bin.size);
+            }
+        }
+
         template <typename T>
         static bool is_elapsed(std::chrono::time_point<std::chrono::system_clock> from, T duration)
         {
@@ -300,6 +309,14 @@ namespace green {
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event) { return wamp_cast_json_impl(*event); }
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result) { return wamp_cast_json_impl(result); }
+
+    void wipe(autobahn::wamp_call_result& result) noexcept
+    {
+        // Top level only: the nesting depth is server controlled
+        for (size_t i = 0; i < result.number_of_arguments(); ++i) {
+            wipe_string(result.argument<msgpack::object>(i));
+        }
+    }
 
     wamp_transport::wamp_transport(const network_parameters& net_params, boost::asio::io_context::strand& strand,
         wamp_transport::notify_fn_t fn, std::string server_prefix, bool is_mandatory)

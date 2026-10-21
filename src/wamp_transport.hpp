@@ -22,6 +22,7 @@ namespace green {
 
     nlohmann::json wamp_cast_json(const autobahn::wamp_event& event);
     nlohmann::json wamp_cast_json(const autobahn::wamp_call_result& result);
+    void wipe(autobahn::wamp_call_result& result) noexcept;
 
     template <typename T = std::string> T wamp_cast(const autobahn::wamp_call_result& result)
     {

@@ -2923,7 +2923,8 @@ namespace green {
 
         // Ask the server to create a new PIN identifier and PIN password
         constexpr bool return_password = true;
-        GDK_AUTO_WIPE(pin_info, wamp_cast(m_wamp->call("pin.set_pin_login", pin, device_id, return_password)));
+        GDK_AUTO_WIPE(result, m_wamp->call("pin.set_pin_login", pin, device_id, return_password));
+        GDK_AUTO_WIPE(pin_info, wamp_cast(result));
 
         std::vector<std::string> id_and_password;
         boost::algorithm::split(id_and_password, pin_info, boost::is_any_of(";"));
@@ -2964,7 +2965,8 @@ namespace green {
     // Idempotent
     std::vector<unsigned char> ga_session::get_pin_password(const std::string& pin, const std::string& pin_identifier)
     {
-        GDK_AUTO_WIPE(password, wamp_cast(m_wamp->call("pin.get_password", pin, pin_identifier)));
+        GDK_AUTO_WIPE(result, m_wamp->call("pin.get_password", pin, pin_identifier));
+        GDK_AUTO_WIPE(password, wamp_cast(result));
         return std::vector<unsigned char>(password.begin(), password.end());
     }
 
