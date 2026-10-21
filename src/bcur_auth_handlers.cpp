@@ -2,6 +2,7 @@
 
 #include "assertion.hpp"
 #include "exception.hpp"
+#include "memory.hpp"
 
 #include <nlohmann/json.hpp>
 #include <string>
@@ -98,7 +99,7 @@ namespace green {
                 };
                 return retv;
             }
-            std::vector<uint8_t> privkey = h2b(private_key.value());
+            GDK_AUTO_WIPE(privkey, h2b(private_key.value()));
             GDK_RUNTIME_ASSERT(privkey.size() == EC_PRIVATE_KEY_LEN);
             std::string salt_str = "bip85_bip39_entropy";
             gsl::span<uint8_t> salt(reinterpret_cast<uint8_t*>(salt_str.data()), salt_str.size());
@@ -113,8 +114,7 @@ namespace green {
                     "internal wally error on parse_jaderesponse, error_code: " + std::to_string(wally_error));
             }
 
-            std::vector<uint8_t> jade_entropy;
-            jade_entropy.resize(buffer_required_len);
+            GDK_AUTO_WIPE(jade_entropy, std::vector<uint8_t>(buffer_required_len));
             size_t buffer_written_len = 0;
             wally_error = wally_aes_cbc_with_ecdh_key(privkey.data(), privkey.size(), nullptr, 0,
                 response.encrypted_data, response.encrypted_len, response.pubkey, EC_PUBLIC_KEY_LEN, salt.data(),
@@ -142,6 +142,8 @@ namespace green {
             uint32_t num_words;
             uint32_t index;
             std::string private_key;
+
+            ~json_jaderequest() { wipe(private_key); }
         };
         bool from_json(const nlohmann::json& input, json_jaderequest& jrequest)
         {
@@ -158,7 +160,7 @@ namespace green {
 
         static ur::UR prepare_jaderequest_ur(const json_jaderequest& jrequest)
         {
-            auto private_key = h2b(jrequest.private_key);
+            GDK_AUTO_WIPE(private_key, h2b(jrequest.private_key));
             auto public_key = ec_public_key_from_private_key({ private_key });
 
             jade_bip8539_request request;
@@ -202,6 +204,8 @@ namespace green {
     {
     }
 
+    bcur_encoder_call::~bcur_encoder_call() { wipe(m_details); }
+
     auth_handler::state_type bcur_encoder_call::call_impl()
     {
 #ifndef USE_REAL_BCUR
@@ -240,6 +244,8 @@ namespace green {
         , m_details(std::move(details))
     {
     }
+
+    bcur_decoder_call::~bcur_decoder_call() { wipe(m_details); }
 
     auth_handler::state_type bcur_decoder_call::call_impl()
     {
@@ -281,7 +287,8 @@ namespace green {
         } else if (ur_type == "crypto-account") {
             m_result = deserialize_account(ur.cbor());
         } else if (ur_type == "jade-bip8539-reply") {
-            m_result = deserialize_jaderesponse(ur.cbor(), j_str(m_details, "private_key"));
+            GDK_AUTO_WIPE(private_key, j_str(m_details, "private_key"));
+            m_result = deserialize_jaderesponse(ur.cbor(), private_key);
         } else if (ur_type == "jade-pin") {
             m_result["result"] = deserialize_jaderpc(ur.cbor());
         } else {

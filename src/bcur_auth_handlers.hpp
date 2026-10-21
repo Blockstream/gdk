@@ -14,6 +14,7 @@ namespace green {
     class bcur_encoder_call : public auth_handler_impl {
     public:
         explicit bcur_encoder_call(session& session, nlohmann::json details);
+        ~bcur_encoder_call();
 
     private:
         state_type call_impl() override;
@@ -25,6 +26,7 @@ namespace green {
     class bcur_decoder_call : public auth_handler_impl {
     public:
         explicit bcur_decoder_call(session& session, nlohmann::json details);
+        ~bcur_decoder_call();
 
     private:
         state_type call_impl() override;
