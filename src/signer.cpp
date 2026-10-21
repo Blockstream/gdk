@@ -31,28 +31,32 @@ namespace green {
 
             if (auto user_mnemonic = j_str(credentials, "mnemonic"); user_mnemonic) {
                 // Mnemonic, or a hex seed
-                const auto bip39_passphrase = j_str(credentials, "bip39_passphrase");
-                std::string mnemonic = *user_mnemonic;
-                if (mnemonic.find(' ') != std::string::npos) {
+                GDK_WIPE_ON_EXIT(user_mnemonic);
+                GDK_AUTO_WIPE(bip39_passphrase, j_str(credentials, "bip39_passphrase"));
+                if (user_mnemonic->find(' ') != std::string::npos) {
                     // Mnemonic, possibly encrypted
+                    GDK_AUTO_WIPE(mnemonic, std::string{});
                     if (auto password = j_str(credentials, "password"); password) {
+                        GDK_WIPE_ON_EXIT(password);
                         GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and password");
                         // Encrypted; decrypt it
-                        mnemonic = decrypt_mnemonic(mnemonic, *password);
+                        mnemonic = decrypt_mnemonic(*user_mnemonic, *password);
+                    } else {
+                        mnemonic = *user_mnemonic;
                     }
-                    auto passphrase = bip39_passphrase.value_or(std::string{});
-                    auto seed = b2h(bip39_mnemonic_to_seed(mnemonic, passphrase));
+                    GDK_AUTO_WIPE(passphrase, bip39_passphrase.value_or(std::string{}));
+                    GDK_AUTO_WIPE(seed_bytes, bip39_mnemonic_to_seed(mnemonic, passphrase));
+                    auto seed = b2h(seed_bytes);
                     nlohmann::json ret = { { "mnemonic", std::move(mnemonic) }, { "seed", std::move(seed) } };
                     if (!passphrase.empty()) {
                         ret["bip39_passphrase"] = std::move(passphrase);
                     }
                     return ret;
                 }
-                if (mnemonic.size() == 129u && mnemonic.back() == 'X') {
+                if (user_mnemonic->size() == 129u && user_mnemonic->back() == 'X') {
                     // Hex seed (a 512 bit bip32 seed encoding in hex with 'X' appended)
                     GDK_RUNTIME_ASSERT_MSG(!bip39_passphrase, "cannot use bip39_passphrase and hex seed");
-                    mnemonic.pop_back();
-                    return { { "seed", std::move(mnemonic) } };
+                    return { { "seed", user_mnemonic->substr(0, 128) } };
                 }
             }
 
@@ -166,15 +170,14 @@ namespace green {
             throw user_error(res::id_the_hardware_wallet_you_are);
         }
 
-        if (const auto seed_hex = j_str(m_credentials, "seed"); seed_hex) {
+        if (auto seed_hex = m_credentials.find("seed"); seed_hex != m_credentials.end()) {
             // FIXME: Allocate m_master_key in mlocked memory
-            std::vector<unsigned char> seed = h2b(*seed_hex);
+            GDK_AUTO_WIPE(seed, h2b(seed_hex->get_ref<const std::string&>()));
             const uint32_t version = m_is_main_net ? BIP32_VER_MAIN_PRIVATE : BIP32_VER_TEST_PRIVATE;
             m_master_key = bip32_key_from_seed_alloc(seed, version, 0);
             if (m_is_liquid) {
                 m_master_blinding_key = asset_blinding_key_from_seed(seed);
             }
-            wipe_and_truncate(seed);
         }
     }
 
@@ -202,8 +205,8 @@ namespace green {
         if (is_hardware() || is_watch_only() || is_remote()) {
             return std::string();
         }
-        if (const auto mnemonic = j_str(m_credentials, "mnemonic"); mnemonic) {
-            return encrypt_mnemonic(*mnemonic, password); // Mnemonic
+        if (auto mnemonic = m_credentials.find("mnemonic"); mnemonic != m_credentials.end()) {
+            return encrypt_mnemonic(mnemonic->get_ref<const std::string&>(), password); // Mnemonic
         }
         return j_strref(m_credentials, "seed") + "X"; // Hex seed
     }

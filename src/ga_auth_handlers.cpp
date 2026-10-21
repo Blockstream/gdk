@@ -516,7 +516,9 @@ namespace green {
 
         if (sa_type == "2of3") {
             // The user can provide a recovery mnemonic or bip32 xpub, but not both
-            auto recovery_mnemonic = j_str_or_empty(m_details, "recovery_mnemonic");
+            GDK_AUTO_WIPE(recovery_mnemonic, j_str_or_empty(m_details, "recovery_mnemonic"));
+            // Erase it now: this handler does not wipe m_details, and the checks below can throw
+            j_secure_erase(m_details, "recovery_mnemonic");
             const bool missing_recovery_xpub = j_str_is_empty(m_details, "recovery_xpub");
             if (!(missing_recovery_xpub ^ recovery_mnemonic.empty())) {
                 throw user_error("2of3 accounts require either recovery_mnemonic or recovery_xpub");
@@ -525,9 +527,8 @@ namespace green {
             if (missing_recovery_xpub) {
                 // Derive recovery_xpub from recovery_mnemonic
                 const std::array<uint32_t, 2> mnemonic_path{ harden(3), harden(m_subaccount) };
-                const nlohmann::json credentials = { { "mnemonic", std::move(recovery_mnemonic) } };
+                GDK_AUTO_WIPE(credentials, nlohmann::json{ { "mnemonic", std::move(recovery_mnemonic) } });
                 m_details["recovery_xpub"] = signer{ m_net_params, {}, credentials }.get_bip32_xpub(mnemonic_path);
-                j_erase(m_details, "recovery_mnemonic");
             }
         }
 

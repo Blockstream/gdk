@@ -284,15 +284,15 @@ namespace green {
         if (password.empty()) {
             return encrypted_mnemonic; // Unencrypted
         }
-        const auto entropy = bip39_mnemonic_to_bytes(encrypted_mnemonic);
+        GDK_AUTO_WIPE(entropy, bip39_mnemonic_to_bytes(encrypted_mnemonic));
         GDK_RUNTIME_ASSERT_MSG(entropy.size() == 36, "Invalid encrypted mnemonic");
         const auto ciphertext = gsl::make_span(entropy).first(32);
         const auto salt = gsl::make_span(entropy).last(4);
 
-        const std::vector<unsigned char> derived = scrypt(ustring_span(password), salt);
+        GDK_AUTO_WIPE(derived, scrypt(ustring_span(password), salt));
 
         const auto key = gsl::make_span(derived).last(32);
-        std::vector<unsigned char> plaintext(32);
+        GDK_AUTO_WIPE(plaintext, std::vector<unsigned char>(32));
         aes(key, ciphertext, AES_FLAG_DECRYPT, plaintext);
         for (int i = 0; i < 32; ++i) {
             plaintext[i] ^= derived[i];
@@ -310,15 +310,15 @@ namespace green {
         if (password.empty()) {
             return plaintext_mnemonic;
         }
-        const auto plaintext = bip39_mnemonic_to_bytes(plaintext_mnemonic);
+        GDK_AUTO_WIPE(plaintext, bip39_mnemonic_to_bytes(plaintext_mnemonic));
         const auto sha_buffer = sha256d(plaintext);
         const auto salt = gsl::make_span(sha_buffer).first(4);
 
-        const std::vector<unsigned char> derived = scrypt(ustring_span(password), salt);
+        GDK_AUTO_WIPE(derived, scrypt(ustring_span(password), salt));
         const auto derivedhalf1 = gsl::make_span(derived).first(32);
         const auto derivedhalf2 = gsl::make_span(derived).last(32);
 
-        std::array<unsigned char, 32> decrypted;
+        GDK_AUTO_WIPE(decrypted, std::array<unsigned char, 32>{});
         for (int i = 0; i < 32; ++i) {
             decrypted[i] = plaintext[i] ^ derivedhalf1[i];
         }
@@ -776,7 +776,7 @@ namespace {
     {
         try {
             GDK_RUNTIME_ASSERT(output);
-            auto entropy = green::get_random_bytes<N>();
+            GDK_AUTO_WIPE(entropy, green::get_random_bytes<N>());
             GDK_VERIFY(::bip39_mnemonic_from_bytes(nullptr, entropy.data(), entropy.size(), output));
             if (::bip39_mnemonic_validate(nullptr, *output) != GA_OK) {
                 wally_free_string(*output);
@@ -784,7 +784,6 @@ namespace {
                 // This should only be possible with bad hardware/cosmic rays
                 GDK_RUNTIME_ASSERT_MSG(false, "Mnemonic creation failed!");
             }
-            wally_bzero(entropy.data(), entropy.size());
             return GA_OK;
         } catch (const std::exception& e) {
             return GA_ERROR;

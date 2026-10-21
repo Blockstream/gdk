@@ -402,6 +402,7 @@ namespace green {
         std::vector<unsigned char> entropy(BIP39_ENTROPY_LEN_288); // FIXME: secure_array
         VERIFY_MNEMONIC(::bip39_mnemonic_to_bytes(nullptr, mnemonic.data(), entropy.data(), entropy.size(), &written));
         if (written != BIP39_ENTROPY_LEN_128 && written != BIP39_ENTROPY_LEN_256 && written != BIP39_ENTROPY_LEN_288) {
+            wipe(entropy);
             throw user_error(res::id_invalid_mnemonic);
         }
         entropy.resize(written);
