@@ -154,7 +154,7 @@ namespace green {
         const bool m_is_main_net;
         const bool m_is_liquid;
         const unsigned char m_btc_version;
-        const nlohmann::json m_credentials;
+        nlohmann::json m_credentials;
         const nlohmann::json m_device;
         wally_ext_key_ptr m_master_key;
         // Mutable post construction

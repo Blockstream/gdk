@@ -183,9 +183,8 @@ namespace green {
 
     signer::~signer()
     {
-        if (m_master_blinding_key) {
-            wally_bzero(m_master_blinding_key->data(), m_master_blinding_key->size());
-        }
+        wipe(m_credentials);
+        wipe(m_master_blinding_key);
     }
 
     bool signer::is_compatible_with(const std::shared_ptr<signer>& other) const
