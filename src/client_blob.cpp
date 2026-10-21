@@ -65,6 +65,12 @@ namespace green {
 
     client_blob::client_blob() { reset(); }
 
+    client_blob::~client_blob()
+    {
+        wipe(m_key);
+        wipe(m_hmac_key);
+    }
+
     void client_blob::reset()
     {
         m_data = nlohmann::json();
@@ -75,7 +81,9 @@ namespace green {
             m_data[i] = nlohmann::json();
         }
         m_client_id.clear();
+        wipe(m_key);
         m_key.reset();
+        wipe(m_hmac_key);
         m_hmac_key.reset();
         m_hmac.clear();
         m_is_outdated = false;
@@ -94,19 +102,19 @@ namespace green {
 
     void client_blob::set_key(byte_span_t key)
     {
-        pbkdf2_hmac256_t k;
-        GDK_RUNTIME_ASSERT(k.size() == key.size());
-        std::copy(key.begin(), key.end(), k.begin());
+        GDK_AUTO_WIPE(k, make_byte_array<PBKDF2_HMAC_SHA256_LEN>(key));
         set_optional_variable(m_key, std::move(k));
     }
 
     void client_blob::compute_keys(byte_span_t public_key)
     {
         // Compute the encryption and HMAC keys
-        const auto tmp_key = pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT);
+        GDK_AUTO_WIPE(tmp_key, pbkdf2_hmac_sha512(public_key, signer::BLOB_SALT));
         const auto tmp_span = gsl::make_span(tmp_key);
-        set_optional_variable(m_key, sha256(tmp_span.subspan(SHA256_LEN)));
-        set_optional_variable(m_hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        GDK_AUTO_WIPE(key, sha256(tmp_span.subspan(SHA256_LEN)));
+        GDK_AUTO_WIPE(hmac_key, make_byte_array<SHA256_LEN>(tmp_span.subspan(SHA256_LEN, SHA256_LEN)));
+        set_optional_variable(m_key, std::move(key));
+        set_optional_variable(m_hmac_key, std::move(hmac_key));
     }
 
     bool client_blob::has_key() const { return m_key.has_value(); }

@@ -23,6 +23,7 @@ namespace green {
         client_blob& operator=(const client_blob&) = delete;
         client_blob(client_blob&&) = delete;
         client_blob& operator=(client_blob&&) = delete;
+        ~client_blob();
 
         void reset();
 
