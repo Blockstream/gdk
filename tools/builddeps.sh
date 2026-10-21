@@ -321,10 +321,10 @@ cmake --install tmp/${source_name}/build
 
 # building autobahn-cpp
 name="autobahn-cpp"
-source_url="https://github.com/Blockstream/autobahn-cpp/archive/76a3bac92830e8d2741b8151b84d37c2465f1de3.tar.gz"
-source_name="autobahn-cpp-76a3bac92830e8d2741b8151b84d37c2465f1de3"
-source_filename="autobahn-cpp-76a3bac92830e8d2741b8151b84d37c2465f1de3.tar.gz"
-source_hash="d75acf90e32862c34af44e08a8116d73fec6e2c7f135af02d7359d91ceb8fcc3"
+source_url="https://github.com/Blockstream/autobahn-cpp/archive/54163f74a75d70e285ff45bcded7eb02a8e747f8.tar.gz"
+source_name="autobahn-cpp-54163f74a75d70e285ff45bcded7eb02a8e747f8"
+source_filename="autobahn-cpp-54163f74a75d70e285ff45bcded7eb02a8e747f8.tar.gz"
+source_hash="8c27cdaa6b6ac2f58e9db56dafb4574861fbfc8d1d8fceadcff8555b7bff977a"
 prepare_sources ${source_url} ${source_filename} ${source_hash}
 rm -f tmp/${source_name}/cmake/Modules/FindWebsocketpp.cmake
 rm -f tmp/${source_name}/cmake/Modules/FindMsgpack.cmake
