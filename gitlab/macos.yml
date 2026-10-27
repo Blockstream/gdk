@@ -1,0 +1,32 @@
+
+include:
+  - local: "gitlab/common.yml"
+
+
+release-macos:
+  tags:
+    - garelease
+  stage: release
+  needs: [ build_clang_osx ]
+  script:
+    - cd $CI_PROJECT_DIR
+    - mkdir -p gdk_dist/
+    - tar -czf gdk_dist/gdk-macos-arm64-jni.tar.gz gdk-macos-arm64-jni --remove-files
+    - tar -czf gdk_dist/gdk-macos-x86_64-jni.tar.gz gdk-macos-x86_64-jni --remove-files
+    - cd gdk_dist
+    - /opt/process_release
+  artifacts:
+    name: "macos-$CI_PROJECT_NAME-$CI_COMMIT_SHORT_SHA"
+    expire_in: 3 days
+    paths:
+    - $CI_PROJECT_DIR/gdk_dist
+    when: on_success
+
+
+upload-macos-gcloud:
+  extends: .gcloud-publish
+  needs: [ release-macos ]
+  script:
+    - url=${GCLOUD_URL}/${subfolder}/macos
+    - echo ${url}
+    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist/* ${url}

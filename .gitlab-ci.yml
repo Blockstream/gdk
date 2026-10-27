@@ -16,6 +16,7 @@ include:
   - gitlab/python.yml
   - gitlab/android.yml
   - gitlab/ios.yml
+  - gitlab/macos.yml
   - gitlab/docker.yml
 
 
@@ -182,13 +183,20 @@ build_clang_osx:
     - uv venv --python 3.14 venv-3.14
     - source venv-3.14/bin/activate
     - uv pip install --require-hashes -r ./tools/requirements.txt
-    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-$GDK_MACOS_TARGET_ARCH"
+    - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-java-$GDK_MACOS_TARGET_ARCH"
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
     - mkdir -p wheelhouse
     - cp $INSTALL_PATH/share/python/*.whl wheelhouse
     - deactivate
+    # The python build only builds the wheel; the java bindings reuse the same gdk build
+    - cmake --build build-clang --target green_gdk_java --parallel 16
+    - cmake --install build-clang --prefix gdk-macos-${GDK_MACOS_TARGET_ARCH}-jni --component gdk-java --strip
+  artifacts:
+    paths:
+    - wheelhouse
+    - gdk-macos-${GDK_MACOS_TARGET_ARCH}-jni
 
 
 build_osx_wheel_release:
@@ -261,7 +269,7 @@ apidocs:
 jumbo-release:
   extends: .debian-image
   stage: release
-  needs: [build-android, build_clang_trixie, build_gcc_ubuntu2004_arm64]
+  needs: [build-android, build_clang_trixie, build_gcc_ubuntu2004_arm64, build_clang_osx]
   artifacts:
     expire_in: 7 days
     when: on_success
@@ -275,6 +283,9 @@ jumbo-release:
     - cp -r install-java/lib/* gdk-${suffix}/lib
     - cp -r gdk-android-jni/lib gdk-${suffix}/
     - cp -r gdk-android-jni/share gdk-${suffix}/
+    - mkdir -p gdk-${suffix}/lib/aarch64-apple-darwin gdk-${suffix}/lib/x86_64-apple-darwin
+    - cp gdk-macos-arm64-jni/lib/aarch64-apple-darwin/libgreen_gdk_java.dylib gdk-${suffix}/lib/aarch64-apple-darwin/
+    - cp gdk-macos-x86_64-jni/lib/x86_64-apple-darwin/libgreen_gdk_java.dylib gdk-${suffix}/lib/x86_64-apple-darwin/
 
     - tar -czf archive.tar.gz gdk-${suffix} --remove-files
 
