@@ -103,6 +103,13 @@ fn init_logging(level: LevelFilter) {
     });
 }
 
+/// electrum-client installs the provider lazily on the first TLS connection, which races
+/// when several sessions connect at once and makes the loser fail its connect.
+fn init_crypto_provider() {
+    let _ =
+        rustls::crypto::CryptoProvider::install_default(rustls::crypto::ring::default_provider());
+}
+
 fn create_session(network: &Value) -> Result<GdkSession, Value> {
     info!("create_session {:?}", network);
     if !network.is_object() || !network.as_object().unwrap().contains_key("server_type") {
@@ -329,6 +336,7 @@ fn handle_call(method: &str, input: &str) -> Result<String, Error> {
         "init" => {
             let param: InitParam = serde_json::from_str(input)?;
             init_logging(LevelFilter::from_str(&param.log_level).unwrap_or(LevelFilter::Off));
+            init_crypto_provider();
             gdk_registry::init(&param.registry_dir)?;
             // TODO: read more initialization params
             to_string(&json!("".to_string()))
