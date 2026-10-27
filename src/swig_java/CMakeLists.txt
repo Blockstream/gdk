@@ -1,5 +1,5 @@
-if(MINGW OR APPLE)
-    message("windows/macOS environment: skipping java bindings")
+if(MINGW OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    message("windows/iOS environment: skipping java bindings")
     return()
 endif()
 
@@ -11,7 +11,7 @@ else()
     return()
 endif()
 
-find_program(SED REQUIRED NAMES sed gsed)
+find_program(SED REQUIRED NAMES gsed sed)
 find_package(SWIG)
 if(NOT SWIG_FOUND)
     message("swig not found: skipping swig java binding")
@@ -46,6 +46,10 @@ swig_add_library(
     LANGUAGE java NO_PROXY
     SOURCES swig_green_gdk.i
 )
+# UseSWIG names Java modules .jnilib on Apple; System.loadLibrary expects .dylib
+if(APPLE)
+    set_target_properties(green_gdk_java PROPERTIES SUFFIX ".dylib")
+endif()
 target_include_directories(green_gdk_java PRIVATE ${JNI_INCLUDE_DIRS})
 target_link_options(green_gdk_java PRIVATE ${GDK_LINK_OPTIONS})
 
@@ -61,20 +65,22 @@ add_custom_command(
 )
 
 get_library_install_dir(_libInstallDir)
-add_custom_command(
-    OUTPUT libgreen_gdk_java.syms
-    COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:green_gdk_java> libgreen_gdk_java.syms
-    DEPENDS green_gdk_java
-    BYPRODUCTS libgreen_gdk_java.syms
-    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-)
-add_custom_target(green_gdk_syms ALL DEPENDS libgreen_gdk_java.syms)
-install(
-    FILES ${CMAKE_BINARY_DIR}/libgreen_gdk_java.syms
-    DESTINATION ${_libInstallDir}
-    COMPONENT gdk-java
-    EXCLUDE_FROM_ALL
-)
+if(NOT APPLE)
+    add_custom_command(
+        OUTPUT libgreen_gdk_java.syms
+        COMMAND ${CMAKE_OBJCOPY} --only-keep-debug $<TARGET_FILE:green_gdk_java> libgreen_gdk_java.syms
+        DEPENDS green_gdk_java
+        BYPRODUCTS libgreen_gdk_java.syms
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    )
+    add_custom_target(green_gdk_syms ALL DEPENDS libgreen_gdk_java.syms)
+    install(
+        FILES ${CMAKE_BINARY_DIR}/libgreen_gdk_java.syms
+        DESTINATION ${_libInstallDir}
+        COMPONENT gdk-java
+        EXCLUDE_FROM_ALL
+    )
+endif()
 
 install(
     FILES ${CMAKE_CURRENT_BINARY_DIR}/GDK.java
