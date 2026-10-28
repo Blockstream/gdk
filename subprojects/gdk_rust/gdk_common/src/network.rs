@@ -79,10 +79,7 @@ impl NetworkId {
     }
 
     pub fn default_min_fee_rate(&self) -> u64 {
-        match self {
-            NetworkId::Elements(_) => 100,
-            NetworkId::Bitcoin(_) => 1000,
-        }
+        100
     }
 }
 
