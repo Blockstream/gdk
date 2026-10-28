@@ -856,7 +856,10 @@ namespace green {
                 const auto old_fee_rate = j_amount_or_zero(result, "old_fee_rate");
                 const auto calculated_fee_rate = j_amountref(result, "calculated_fee_rate");
                 const auto vsize = j_amountref(result, "transaction_vsize").value();
-                const amount::value_type bandwidth_fee = vsize * session.get_min_fee_rate().value() / 1000;
+                // Rounded up as core does
+                const auto min_fee_rate = static_cast<double>(session.get_min_fee_rate().value());
+                const auto bandwidth_fee
+                    = static_cast<amount::value_type>(std::ceil(static_cast<double>(vsize) * min_fee_rate / 1000.0));
                 if (btc_details.fee.value() < (old_fee + bandwidth_fee) || calculated_fee_rate <= old_fee_rate) {
                     set_tx_error(result, res::id_invalid_replacement_fee_rate);
                 }
