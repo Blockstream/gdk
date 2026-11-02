@@ -81,4 +81,4 @@ upload-ios-gcloud:
   script:
     - url=${GCLOUD_URL}/${subfolder}/ios
     - echo ${url}
-    - gsutil cp -r $CI_PROJECT_DIR/gdk_dist/* ${url}
+    - gcloud storage cp --recursive "$CI_PROJECT_DIR"/gdk_dist/* "${url}"
