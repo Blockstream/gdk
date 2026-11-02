@@ -61,6 +61,9 @@ namespace green {
         // Disconnect the transport.
         void disconnect(); // Currently synchronous
 
+        // Join the reconnect thread. Call while the io_context is still running.
+        void shutdown();
+
         // Reconnect the transport in response to an error detected by a caller
         // outside this class. This is a no-op if the transport has already
         // detected the same error and has reconnected/is reconnecting.

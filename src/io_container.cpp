@@ -19,11 +19,15 @@ namespace green {
     }
     void io_container::shutdown(gsl::span<std::thread> pool) noexcept
     {
+        no_std_exception_escape([io = std::ref(*m_io)] { io.get().stop(); }, "io_context stop");
         no_std_exception_escape([wg = std::ref(m_work_guard)] { wg.get().reset(); }, "io_context m_work_guard");
         no_std_exception_escape(
             [pool = std::ref(pool)] {
-                std::for_each(pool.get().begin(), pool.get().end(), [](auto& thread) { thread.join(); });
-                ;
+                std::for_each(pool.get().begin(), pool.get().end(), [](auto& thread) {
+                    if (thread.joinable()) {
+                        thread.join();
+                    }
+                });
             },
             "io_context pool");
     }

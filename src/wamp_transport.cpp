@@ -362,10 +362,18 @@ namespace green {
         m_client_tls->init_asio(&m_strand.context());
     }
 
-    wamp_transport::~wamp_transport()
+    wamp_transport::~wamp_transport() { shutdown(); }
+
+    void wamp_transport::shutdown()
     {
         no_std_exception_escape([this] { change_state_to(state_t::exited, std::string(), false); }, "wamp dtor(1)");
-        no_std_exception_escape([this] { m_reconnect_thread.join(); }, "wamp dtor(2)");
+        no_std_exception_escape(
+            [this] {
+                if (m_reconnect_thread.joinable()) {
+                    m_reconnect_thread.join();
+                }
+            },
+            "wamp shutdown(2)");
     }
 
     void wamp_transport::connect(const std::string& proxy, bool wait)
@@ -404,7 +412,7 @@ namespace green {
             m_proxy = proxy;
         }
         const auto initial_state = m_state.load();
-        GDK_RUNTIME_ASSERT(initial_state != state_t::exited);
+        GDK_RUNTIME_ASSERT(initial_state != state_t::exited || new_state == state_t::exited);
         m_desired_state = new_state;
         const bool is_noop = new_state == initial_state;
         locker.unlock();

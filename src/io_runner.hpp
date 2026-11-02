@@ -30,6 +30,8 @@ namespace green {
         io_runner() { m_io.start(m_pool); }
 
         ~io_runner() { m_io.shutdown(m_pool); }
+        // Stop the io_context and wait for its worker threads to exit.
+        void shutdown() { m_io.shutdown(m_pool); }
         boost::asio::io_context& get_io_context() { return m_io.get_io_context(); }
 
     private:

@@ -118,14 +118,20 @@ namespace green {
 
     session_impl::~session_impl()
     {
+        // Disconnect and stop the transports before stopping the io_context.
+        for (auto& connection : m_wamp_connections) {
+            no_std_exception_escape([&connection] { connection->disconnect(); }, "ga_session wamp_transport");
+        }
+        for (auto& connection : m_wamp_connections) {
+            no_std_exception_escape([&connection] { connection->shutdown(); }, "ga_session wamp_transport");
+        }
+
+        // Stop pending callbacks before destroying the websocketpp clients.
+        m_io.shutdown();
+
         m_blobserver.reset();
         for (auto& connection : m_wamp_connections) {
-            no_std_exception_escape(
-                [&connection] {
-                    connection->disconnect();
-                    connection.reset();
-                },
-                "ga_session wamp_transport");
+            no_std_exception_escape([&connection] { connection.reset(); }, "ga_session wamp_transport");
         };
         no_std_exception_escape([this] { m_strand.reset(); }, "session_impl m_strand");
     }
