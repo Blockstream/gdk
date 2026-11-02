@@ -184,8 +184,6 @@ build_clang_osx:
     - source venv-3.14/bin/activate
     - uv pip install --require-hashes -r ./tools/requirements.txt
     - PREBUILT_DIR="$CI_BUILDS_DIR/$PREBUILT_SUBDIR/clang-osx-java-$GDK_MACOS_TARGET_ARCH"
-    - JAVA_HOME=$(/usr/libexec/java_home)
-    - export JAVA_HOME
     - if [[ ! -d "$PREBUILT_DIR" ]]; then ./tools/builddeps.sh --parallel 16 --clang --prefix $PREBUILT_DIR; fi
     - touch $CI_BUILDS_DIR/$PREBUILT_SUBDIR/last_use # marking last use to help out during sweeping operations
     - ./tools/build.sh --clang --buildtype release --install $INSTALL_PATH --no-deps-rebuild --python-version venv --external-deps-dir $PREBUILT_DIR --parallel 16
