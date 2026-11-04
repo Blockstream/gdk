@@ -1,5 +1,29 @@
 # Changelog
 
+## Release 0.78.1 - 26-10-30
+
+### Added
+- Swift: Expose getRandomBytes.
+
+### Changed
+- Security: Wipe credentials, keys, seeds and other sensitive data from memory once they are no longer needed.
+- Singlesig: Lower the Bitcoin default min fee rate to 0.1 sat/vB.
+- Multisig: Take the value and asset of explicit Liquid UTXOs from the transaction instead of the server.
+- Multisig: Check that the PIN password returned by the server is at least 36 characters.
+- Signing: Validate user sighash flags before signing with any signer, including hardware signers.
+- Signing: (Liquid) Only allow SIGHASH_SINGLE|ANYONECANPAY on LiquiDEX maker proposals (1 input, 1 output paying the wallet).
+- Transactions: Report out-of-range output indices as user errors.
+- LiquiDEX: Verify the maker input against the previous output it spends when validating a proposal.
+- Python: Drop Python 2 API uses removed in SWIG 4.5.
+- Dependencies: Update wally, websocketpp and autobahn-cpp.
+- Dependencies: Update Rust dependencies electrum-client to 0.24.2, tokio to 1.54.1, rustls, rustls-webpki and webpki-roots.
+
+### Fixed
+- Singlesig: Fix Electrum TLS connections failing when several sessions connect at the same time.
+- Singlesig: Re-subscribe scripts in one batched request after reconnecting to the Electrum server, instead of one request per script.
+- Transactions: Round up the RBF replacement bandwidth fee as Bitcoin Core does.
+- Wamp: fix a use-after-free by stopping the shared io_context before destroying websocketpp clients
+
 ## Release 0.78.0 - 26-09-10
 
 ### Added
