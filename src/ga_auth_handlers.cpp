@@ -1618,8 +1618,10 @@ namespace green {
             // nlocktime is less than or equal to the block number in
             // 'expiry_height'. Therefore we filter out UTXOs where nlocktime
             // is greater than 'expiry_height', or not present (i.e. non-expiring UTXOs)
-            filter_utxos(outputs,
-                [expiry_height](const auto& u) { return j_uint32_or_zero(u, "expiry_height") > expiry_height; });
+            filter_utxos(outputs, [expiry_height](const auto& u) {
+                const auto expiry = j_uint32(u, "expiry_height");
+                return !expiry.has_value() || *expiry > expiry_height;
+            });
         }
 
         const auto dust_limit = j_amount_or_zero(m_details, "dust_limit");
