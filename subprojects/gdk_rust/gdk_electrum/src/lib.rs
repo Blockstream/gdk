@@ -1416,6 +1416,18 @@ impl Syncer {
         synced_spent_utxos: &mut HashSet<BEOutPoint>,
         batch_subscribe: bool,
     ) -> Result<(), Error> {
+        {
+            // Caches written before fetch_txs checked txids can hold history without its tx
+            let mut store_write = self.store.lock()?;
+            let acc_store = store_write.account_cache_mut(account.num())?;
+            let all_txs = &acc_store.all_txs;
+            let count = acc_store.heights.len();
+            acc_store.heights.retain(|txid, _| all_txs.contains_key(txid));
+            if acc_store.heights.len() != count {
+                // Dropped history: refetch all of it, a dropped txid may be a real tx of ours
+                acc_store.script_statuses = None;
+            }
+        }
         let map_script_txids = self.create_map_script_txids(account)?;
         let mut new_statuses = ScriptStatuses::new();
         let cache_statuses = account.status()?;
