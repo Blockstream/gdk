@@ -1763,12 +1763,7 @@ impl Syncer {
         let txs_to_download: Vec<bitcoin::Txid> =
             history_txs_id.difference(&txs_in_db).map(BETxidConvert::into_bitcoin).collect();
         if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download.iter())?;
-            let mut txs_downloaded: Vec<BETransaction> = vec![];
-            for vec in txs_bytes_downloaded {
-                let tx = BETransaction::deserialize(&vec, self.network.id())?;
-                txs_downloaded.push(tx);
-            }
+            let txs_downloaded = self.fetch_txs(client, &txs_to_download)?;
             info!("txs_downloaded {:?}", txs_downloaded.len());
 
             for tx in txs_downloaded.into_iter() {
@@ -1817,9 +1812,7 @@ impl Syncer {
             .collect();
 
         if !txs_to_download.is_empty() {
-            let txs_bytes_downloaded = client.batch_transaction_get_raw(txs_to_download.iter())?;
-            for vec in txs_bytes_downloaded {
-                let tx = BETransaction::deserialize(&vec, self.network.id())?;
+            for tx in self.fetch_txs(client, &txs_to_download)? {
                 let txid = tx.txid();
                 if !txs.iter().any(|t| t.0 == txid) {
                     is_previous.insert(txid);
@@ -1833,6 +1826,26 @@ impl Syncer {
             unblinds,
             is_previous,
         })
+    }
+
+    fn fetch_txs(
+        &self,
+        client: &Client,
+        txids: &[bitcoin::Txid],
+    ) -> Result<Vec<BETransaction>, Error> {
+        let txs = client
+            .batch_transaction_get_raw(txids.iter())?
+            .iter()
+            .map(|bytes| BETransaction::deserialize(bytes, self.network.id()))
+            .collect::<Result<Vec<_>, _>>()?;
+        for (tx, txid) in txs.iter().zip(txids) {
+            let got = tx.txid().into_bitcoin();
+            if got != *txid {
+                // Server returned a tx we didn't ask for: storing it would leave history without its tx
+                return Err(Error::Generic(format!("server returned tx {got} for {txid}")));
+            }
+        }
+        Ok(txs)
     }
 }
 
