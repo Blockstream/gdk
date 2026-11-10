@@ -523,8 +523,13 @@ impl DerefMut for BETransactions {
     }
 }
 impl BETransactions {
+    fn get_previous_tx(&self, outpoint: &BEOutPoint) -> Option<&BETransactionEntry> {
+        // The outpoint comes from a server supplied tx, its vout may not exist
+        self.0.get(&outpoint.txid()).filter(|txe| (outpoint.vout() as usize) < txe.tx.output_len())
+    }
+
     pub fn get_previous_output_script_pubkey(&self, outpoint: &BEOutPoint) -> Option<BEScript> {
-        self.0.get(&outpoint.txid()).map(|txe| txe.tx.output_script(outpoint.vout()))
+        self.get_previous_tx(outpoint).map(|txe| txe.tx.output_script(outpoint.vout()))
     }
 
     pub fn get_previous_output_address(
@@ -532,7 +537,7 @@ impl BETransactions {
         outpoint: &BEOutPoint,
         network: NetworkId,
     ) -> Option<String> {
-        match self.0.get(&outpoint.txid()) {
+        match self.get_previous_tx(outpoint) {
             None => None,
             Some(txe) => txe.tx.output_address(outpoint.vout(), network),
         }
@@ -543,7 +548,7 @@ impl BETransactions {
         outpoint: &BEOutPoint,
         all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<u64> {
-        match self.0.get(&outpoint.txid()) {
+        match self.get_previous_tx(outpoint) {
             None => None,
             Some(txe) => txe.tx.output_value(outpoint.vout(), &all_unblinded),
         }
@@ -554,7 +559,7 @@ impl BETransactions {
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<elements::issuance::AssetId> {
-        match self.0.get(&outpoint.txid.into()) {
+        match self.get_previous_tx(&outpoint.into()) {
             None => None,
             Some(txe) => txe.tx.output_asset(outpoint.vout, &all_unblinded),
         }
@@ -565,7 +570,7 @@ impl BETransactions {
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
-        match self.0.get(&outpoint.txid.into()) {
+        match self.get_previous_tx(&outpoint.into()) {
             None => None,
             Some(txe) => txe.tx.output_assetblinder_hex(outpoint.vout, &all_unblinded),
         }
@@ -576,7 +581,7 @@ impl BETransactions {
         outpoint: elements::OutPoint,
         all_unblinded: &HashMap<elements::OutPoint, elements::TxOutSecrets>,
     ) -> Option<String> {
-        match self.0.get(&outpoint.txid.into()) {
+        match self.get_previous_tx(&outpoint.into()) {
             None => None,
             Some(txe) => txe.tx.output_amountblinder_hex(outpoint.vout, &all_unblinded),
         }

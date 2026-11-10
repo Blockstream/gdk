@@ -1656,9 +1656,9 @@ impl Syncer {
         for txid in acc_store.heights.keys() {
             let tx = acc_store.all_txs.get(&txid).unwrap();
             for previous_outpoint in tx.tx.previous_outputs() {
-                if let Some(previous_tx) = acc_store.all_txs.get(&previous_outpoint.txid()) {
-                    let previous_script_pubkey =
-                        previous_tx.tx.output_script(previous_outpoint.vout());
+                if let Some(previous_script_pubkey) =
+                    acc_store.all_txs.get_previous_output_script_pubkey(&previous_outpoint)
+                {
                     if acc_store.paths.contains_key(&previous_script_pubkey) {
                         script_txid
                             .entry(previous_script_pubkey.into_bitcoin())
