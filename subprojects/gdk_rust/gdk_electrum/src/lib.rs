@@ -73,6 +73,7 @@ use std::thread::JoinHandle;
 
 pub const DEFAULT_GAP_LIMIT: u32 = 20;
 const FEE_ESTIMATE_INTERVAL: Duration = Duration::from_secs(120);
+const MAX_RELAY_FEE: u64 = 1000; // Bitcoin Core's default minrelaytxfee before 29.1
 
 type ScriptStatuses = HashMap<bitcoin::ScriptBuf, ScriptStatus>;
 
@@ -228,7 +229,8 @@ fn socksify(proxy: Option<&str>) -> Option<String> {
 }
 
 fn try_get_fee_estimates(client: &Client, min_rate: u64) -> Result<Vec<FeeEstimate>, Error> {
-    let relay_fee = (client.relay_fee()? * 100_000_000.0) as u64;
+    // Don't let the server raise the minimum above any default node policy
+    let relay_fee = ((client.relay_fee()? * 100_000_000.0) as u64).min(MAX_RELAY_FEE);
     let min_rate = min_rate.max(relay_fee);
     let blocks: Vec<usize> = (1..25).collect();
     // max is covering a rounding errors in production electrs which sometimes cause a fee
