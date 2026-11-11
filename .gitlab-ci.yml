@@ -119,7 +119,9 @@ rust_audit:
   allow_failure: true
   script:
     - cd subprojects/gdk_rust/
-    - cargo audit -D warnings --ignore RUSTSEC-2021-0127
+    # RUSTSEC-2026-0441: pin-utils is only used in tests
+    # TODO: remove the ignore once no other dependency pulls in pin-utils
+    - cargo audit -D warnings --ignore RUSTSEC-2021-0127 --ignore RUSTSEC-2026-0441
 
 
 build_clang_fedora:
