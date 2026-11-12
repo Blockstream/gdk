@@ -40,19 +40,23 @@
 
 
 .gcloud-publish:
+  extends:
+    - .gcp_wif_variables
+    - .gcp_wif_id_token
   image: $GCLOUD_IMAGE
   tags:
     - ga
   stage: publish
+  environment:
+    name: release-downloads
+    action: start
   variables:
     GCLOUD_URL: "gs://green-gdk-builds"
   before_script:
     - subfolder=$CI_PROJECT_NAME-$CI_COMMIT_SHA
-    - TMPF=$(mktemp) || exit 1
-    - echo $GCLOUD_PUSH_KEY > $TMPF
-    - export GOOGLE_APPLICATION_CREDENTIALS=$TMPF
-    - gcloud auth activate-service-account --key-file=$TMPF
-    - rm -f $TMPF
+    - !reference [.gcp_wif_login_script]
+  after_script:
+    - !reference [.gcp_wif_cleanup_script]
 
 
 ##### WARNING!!!!

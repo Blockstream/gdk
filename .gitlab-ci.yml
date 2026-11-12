@@ -18,6 +18,11 @@ include:
   - gitlab/ios.yml
   - gitlab/macos.yml
   - gitlab/docker.yml
+  - component: $CI_SERVER_FQDN/infrastructure/devops/gitlab-components/gcp-wif-auth/gcp-auth@v1
+    inputs:
+      service_account_email: gdk-ci-build-pusher@green-backend.iam.gserviceaccount.com
+      pool_id: gitlab-protected-env
+      disable_auth_job: true
 
 
 ## disables MR-triggered pipelines and allows only branch-triggered pipelines
