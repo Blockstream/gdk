@@ -11,6 +11,7 @@ SOURCE_DIR="$1"; shift
 OUTPUT_DIR="$1"; shift
 ARTIFACT="$1"; shift
 export MACOSX_DEPLOYMENT_TARGET=$1; shift
+GDK_ROOT="$1"; shift
 
 export CC_i686_linux_android=i686-linux-android23-clang
 export CARGO_TARGET_I686_LINUX_ANDROID_LINKER=${CC_i686_linux_android}
@@ -41,6 +42,7 @@ CARGO_ARGS+=("--locked")
 if [ "$BUILDTYPE" == "Release" ]; then
     CARGO_ARGS+=("--release")
     ARTIFACT_PATH_HINT=${OUTPUT_DIR}"/release"
+    export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }--remap-path-prefix=${GDK_ROOT}=."
 else
     ARTIFACT_PATH_HINT=${OUTPUT_DIR}"/debug"
 fi
@@ -92,7 +94,7 @@ fi
 
 if [[ ${TRIPLE} == *"android"* ]];then
     export PATH=${PATH}:${ANDROID_TOOLCHAIN_ROOT}/bin
-    export RUSTFLAGS="-L${SOURCE_DIR}/libgcc"
+    export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }-L${SOURCE_DIR}/libgcc"
 elif [[ ${TRIPLE} == "aarch64-apple-ios" ]]; then
     LD_ARCH="-arch arm64 -platform_version ios ${MACOSX_DEPLOYMENT_TARGET} ${MACOSX_DEPLOYMENT_TARGET}"
 elif [[ ${TRIPLE} == "x86_64-apple-ios" ]]; then
