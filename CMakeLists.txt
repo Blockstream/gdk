@@ -1,6 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
 project(gdk VERSION 0.78.1 LANGUAGES C CXX)
 
+include(CheckCXXCompilerFlag)
+# GCC < 8 (Amazon Linux 2, used for aws_lambda) doesn't support it
+check_cxx_compiler_flag("-ffile-prefix-map=${CMAKE_SOURCE_DIR}=." HAVE_FILE_PREFIX_MAP)
+if(HAVE_FILE_PREFIX_MAP AND NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    # Release: keep the checkout path out of the output; debuggers need it
+    add_compile_options("-ffile-prefix-map=${CMAKE_SOURCE_DIR}=.")
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
