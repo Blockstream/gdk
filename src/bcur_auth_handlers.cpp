@@ -37,7 +37,7 @@ namespace green {
 
         static nlohmann::json deserialize_psbt(const std::vector<uint8_t>& cbor)
         {
-            crypto_psbt psbt;
+            crypto_psbt psbt{}; // ur-c can fail before setting psbt.psbt, which the holder frees
             urc_psbt_ptr holder(&psbt, urc_crypto_psbt_free);
             int result = urc_crypto_psbt_deserialize(cbor.data(), cbor.size(), &psbt);
             if (result != URC_OK) {
