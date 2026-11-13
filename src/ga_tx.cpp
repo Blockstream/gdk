@@ -244,6 +244,11 @@ namespace green {
             // requirements are satisfied
             const auto old_fee = j_amountref(prev_tx, "fee");
             const auto old_fee_rate = j_amountref(prev_tx, "fee_rate");
+            if (!is_electrum && !net_params.is_liquid()) {
+                // Multisig: the server gives the fee and weight, check the fee rate matches the tx size
+                const auto vsize = Tx::vsize_from_weight(tx.get_weight(/*with_discount=*/false));
+                GDK_RUNTIME_ASSERT(old_fee_rate.value() == old_fee.value() * 1000 / vsize);
+            }
             result["old_fee"] = old_fee.value();
             result["old_fee_rate"] = old_fee_rate.value();
 
@@ -297,6 +302,8 @@ namespace green {
                         GDK_RUNTIME_ASSERT(tx.get_output(out_index).script_len == spk.size());
                         GDK_RUNTIME_ASSERT(!memcmp(tx.get_output(out_index).script, &spk[0], spk.size()));
                     }
+                    // Validate amount matches the transaction output
+                    GDK_RUNTIME_ASSERT(j_amountref(output).value() == tx.get_output(out_index).satoshi);
                     const bool is_relevant = j_bool_or_false(output, "is_relevant");
                     if (is_relevant) {
                         // Validate address is owned by the wallet
