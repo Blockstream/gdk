@@ -53,12 +53,12 @@ namespace green {
             GDK_RUNTIME_ASSERT_MSG(
                 result == URC_OK, "ur-c: Parsing crypto-output failed with error code:" + std::to_string(result));
             char* formatted_output = nullptr;
-            urc_string_ptr holder(formatted_output, urc_string_free);
             // Add missing "[0;1]/*" derivation elements to BIP44 paths
             const auto mode = urc_crypto_output_format_mode_BIP44_compatible;
             result = urc_crypto_output_format(&output, mode, &formatted_output);
             GDK_RUNTIME_ASSERT_MSG(
                 result == URC_OK, "ur-c: crypto-output format failed with error code:" + std::to_string(result));
+            urc_string_ptr holder(formatted_output, urc_string_free);
             return { { "descriptor", formatted_output } };
         }
 
@@ -73,11 +73,11 @@ namespace green {
             }
 
             char** formatted_descriptors = nullptr;
-            urc_string_array_ptr holder(formatted_descriptors, urc_string_array_free);
             result = urc_crypto_account_format(
                 &account, urc_crypto_output_format_mode_BIP44_compatible, &formatted_descriptors);
             GDK_RUNTIME_ASSERT_MSG(
                 result == URC_OK, "ur-c: crypto-account format failed with error code:" + std::to_string(result));
+            urc_string_array_ptr holder(formatted_descriptors, urc_string_array_free);
             nlohmann::json::array_t descriptors;
             size_t i = 0;
             while (formatted_descriptors[i] != nullptr) {
@@ -134,9 +134,9 @@ namespace green {
         nlohmann::json deserialize_jaderpc(const green::byte_span_t raw)
         {
             char* raw_json = nullptr;
-            urc_string_ptr holder(raw_json, urc_string_free);
             int result = urc_jade_rpc_deserialize(raw.data(), raw.size(), &raw_json);
             GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
+            urc_string_ptr holder(raw_json, urc_string_free);
             return json_parse(raw_json);
         }
 
@@ -172,9 +172,9 @@ namespace green {
 
             uint8_t* buffer = nullptr;
             size_t buffer_len = 0;
-            urc_buffer_ptr holder(buffer, urc_free);
             int result = urc_jade_bip8539_request_serialize(&request, &buffer, &buffer_len);
             GDK_RUNTIME_ASSERT_MSG(result == URC_OK, "internal ur-c error, error_code: " + std::to_string(result));
+            urc_buffer_ptr holder(buffer, urc_free);
             ur::UR ur("jade-bip8539-request", { buffer, buffer + buffer_len });
             return ur;
         }
@@ -185,11 +185,11 @@ namespace green {
             const crypto_psbt psbt{ raw.data(), raw.size() };
             uint8_t* cbor = nullptr;
             size_t cbor_len = 0;
-            urc_buffer_ptr holder(cbor, urc_free);
             int result = urc_crypto_psbt_serialize(&psbt, &cbor, &cbor_len);
             if (result != URC_OK) {
                 throw user_error("ur-c: Serializing crypto_psbt failed with error code:" + std::to_string(result));
             }
+            urc_buffer_ptr holder(cbor, urc_free);
             return { "crypto-psbt", { cbor, cbor + cbor_len } };
         }
 
