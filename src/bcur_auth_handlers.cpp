@@ -76,6 +76,8 @@ namespace green {
             urc_string_array_ptr holder(formatted_descriptors, urc_string_array_free);
             result = urc_crypto_account_format(
                 &account, urc_crypto_output_format_mode_BIP44_compatible, &formatted_descriptors);
+            GDK_RUNTIME_ASSERT_MSG(
+                result == URC_OK, "ur-c: crypto-account format failed with error code:" + std::to_string(result));
             nlohmann::json::array_t descriptors;
             size_t i = 0;
             while (formatted_descriptors[i] != nullptr) {
