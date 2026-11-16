@@ -173,7 +173,7 @@ public class Session {
                     let notificationContext = notificationContexts[nsString],
                     let notificationContext = notificationContext,
                     let jsonDetails = details,
-                    let dict = try! convertOpaqueJsonToDict(o: jsonDetails) {
+                    let dict = try? convertOpaqueJsonToDict(o: jsonDetails) {
                     notificationContext(dict)
                 }
             }
