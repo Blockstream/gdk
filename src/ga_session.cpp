@@ -888,6 +888,14 @@ namespace green {
     {
         no_std_exception_escape([&]() {
             GDK_RUNTIME_ASSERT(locker.owns_lock());
+            try {
+                // Throws on strings that are not valid UTF-8
+                (void)details.dump();
+            } catch (const std::exception& e) {
+                // Invalid server data: drop the block
+                GDK_LOG(warning) << "Ignoring block notification: " << e.what();
+                return;
+            }
 
             details["initial_timestamp"] = m_earliest_block_time;
             j_rename(details, "count", "block_height");
