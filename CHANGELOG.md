@@ -1,5 +1,26 @@
 # Changelog
 
+## Release 0.78.2 - 26-11-17
+
+### Added
+
+### Changed
+- Singlesig: Check that transactions downloaded from the Electrum server match the requested txid.
+- Singlesig: Drop cached history entries whose transaction is missing, and refetch the account history.
+- Singlesig: Cap the relay fee reported by the Electrum server at 1 sat/vB when computing the minimum fee rate.
+- Transactions: When bumping a fee, check the previous transaction's output amounts against the raw transaction and, for multisig, its fee rate against its size.
+- Build: Keep the checkout path out of release C++ and Rust builds.
+- Dependencies: Update wally to 1.6.1 and ur-c.
+
+### Fixed
+- Multisig: get_unspent_outputs with "expired_at"/"expires_in" no longer returns coins that have no expiry.
+- Multisig: Ignore block notifications from the server that are not valid UTF-8.
+- Singlesig: Fix a crash when a transaction spends an output index that its previous transaction doesn't have.
+- BC-UR: Fix memory leaks when formatting and serializing ur-c data, and a crash when parsing an invalid crypto-psbt.
+- BC-UR: Report an error instead of crashing when formatting a crypto-account fails.
+- Swift: Don't crash when a notification fails to convert to a dictionary.
+
+
 ## Release 0.78.1 - 26-10-30
 
 ### Added
@@ -23,6 +44,7 @@
 - Singlesig: Re-subscribe scripts in one batched request after reconnecting to the Electrum server, instead of one request per script.
 - Transactions: Round up the RBF replacement bandwidth fee as Bitcoin Core does.
 - Wamp: fix a use-after-free by stopping the shared io_context before destroying websocketpp clients
+
 
 ## Release 0.78.0 - 26-09-10
 

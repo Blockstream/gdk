@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(gdk VERSION 0.78.1 LANGUAGES C CXX)
+project(gdk VERSION 0.78.2 LANGUAGES C CXX)
 
 include(CheckCXXCompilerFlag)
 # GCC < 8 (Amazon Linux 2, used for aws_lambda) doesn't support it
